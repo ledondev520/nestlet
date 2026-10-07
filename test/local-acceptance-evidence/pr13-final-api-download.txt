@@ -1,0 +1,29 @@
+Supplementary correspondence; not an official agency form.
+
+Prepared on: 2026-10-07
+
+To: Synthetic Intake Team
+recipient@example.invalid
+
+Subject: Request for lease-up instructions — PR13-SYNTHETIC
+
+Hello,
+
+I am preparing administrative lease-up materials for the property below and would appreciate your guidance.
+
+Property: 128 Synthetic Example Lane
+Owner: Example Owner
+Case reference: PR13-SYNTHETIC
+Proposed rent (not approved): $2100
+
+Please confirm the applicable lease-up instructions, current Request for Tenancy Approval package, supporting documentation, and submission method for this case.
+
+Please confirm an approved secure channel before requesting sensitive identity, tax, or banking documents.
+
+This document does not constitute an eligibility determination, rent approval, agency acceptance, or proof of submission.
+
+Thank you for your assistance.
+
+Sincerely,
+Synthetic Operator
+sender@example.invalid

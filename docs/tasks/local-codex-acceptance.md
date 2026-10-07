@@ -2,13 +2,15 @@
 
 ## Claim and status
 
-- Status: **Follow-up: LC-04/05/06 verified resolved; live/HTTPS and future feature acceptance remain separate**
+- Status: **Visual evidence reported; SQLite baseline 146/146; combined browser journey and LC-07 admin-name contract pending**
 - Assigned executor: **Local Codex**, started by the project owner
 - Claiming account/person: Local Codex, authorized by owner ledondev520
 - Base commit: `826202ee7da2b072d544c716cba19ac9cf38d6bf`; synchronized documentation from `6678aeaa57c666fcf77b2700653ed391c2034f0d` (runtime unchanged)
-- Branch: `codex/acceptance-followup` (original `test/local-codex-acceptance` merged in PR #2)
+- Branch: `codex/design-acceptance`; earlier acceptance branches merged in PR #2 and PR #7
 - PR URL: https://github.com/ledondev520/nestlet/pull/2 (merged)
-- Follow-up PR: https://github.com/ledondev520/nestlet/pull/7
+- Follow-up PR: https://github.com/ledondev520/nestlet/pull/7 (merged)
+- Visual acceptance PR: https://github.com/ledondev520/nestlet/pull/10
+- Visual runtime: `e4179b14ae8b2c8051b64d0fad5035d55351d074`; superseded later PR #4 heads require their own verification
 - LC-06 fixed-head verification: `55548513d6a5d66c8920d0fa1882ca0065bc3128`, default macOS suite 103/103 and independent HTTP 5/5
 - Follow-up runtime: `8715b0d78a8cff0b5ebbbb5ea6db0bacd8137342`, identical tree to merged main `b431ea59405cbbf9ab6ec9945010f66f655b1781`
 - Second-round runtime: `8b42962e55305e3cc70b7c20ce5d7e4d74ed13c7`; Node 24 + actual Poppler/browser
@@ -68,3 +70,28 @@ Do not use a mock provider, simulated parser or fabricated response for this acc
 Include tested commit, npm ci outcome, Poppler/parser availability, commands, browser details, a compact pass/fail/not-run table, screenshots with synthetic content only, exact reproduction steps, severity, and suggested owner. Keep product correctness separate from maintainability notes. Report whether any failures prevent the primary case workflow. Exclude environment secrets, private paths, raw customer materials and unrelated personal screen content.
 
 Finish only when the reviewable draft PR exists, or report the exact permission/publishing blocker with a local patch/diff available for the owner. Branch creation and a local test pass are not evidence that a remote PR exists.
+
+
+07:08 UTC browser checkpoint on main `443675c`: ordinary registration → manual review → edited draft → explicit save → actual server restart → login/open restores draft; logout clears workspace and a second account has an empty case list. Evidence and remaining Not run branches are in docs/local-acceptance.md. Six-character backend fix remains pending; owner reconfirmed the requirement. No provider call or production change in this acceptance run.
+
+07:34 UTC: independently tested PR #12 `3bfcaa3`: npm ci/check pass, 179/179 default and 5/5 independent HTTP acceptance pass. Six-character backend/private-helper boundaries and admin alias contract pass; LC-07 backend resolved. Final integrated browser and actual production admin setup remain unverified. Coordinator completed the bounded provider probe separately; no duplicate paid call needed.
+
+07:50 UTC composite2b983da (PR12 3bfcaa3 + PR4 7b74b227): actual six-character signup still rejected by old frontend guard; longer synthetic signup and real XLSX selected mapping→review→draft→save plus admin-alias settings succeed. Seven requested UI screenshots added; 179/179 composite suite. Kimi owns four reported blockers; final integrated journey remains incomplete.
+
+08:08 UTC composite93caef8 (backend d1bcbdd + frontend ace9222): real-browser5reject/6register/relogin passes; nativeChromePDF593/TXT470/CSV197character imports succeed. P1-1 and positive-pathP1-2 closed atthiscomposite;187/187 suite. Telemetry and chat/newpersistence remain separate.
+
+08:15 UTC composite200a58d (b68e857 + 5381f13): real browser→SQLite one workflow/9 sequential client events, save request correlation and bounded content-marker exclusion pass. Sanitized JSON+UI evidence added. Stale business-response identity race remains open; full timing/failure coverage not claimed.
+
+08:36 UTC compositecc9c9f2 (8959bb9 + b8f789a):223tests/220pass3fail: actualfact-revocationCASE_INVALID, oldschema2assertion, missingnewUIerrors. ReportedPR12. Realchat-homeauth/disabled-key gates pass withoutanswerfabrication; livechat/imageandexpandedUI remainNotrun.
+
+08:56 UTC backend8a7f5de + frontendb2de3d4 composite78091a4:230tests229pass1fail. Actual fact-revocation/archive/schema3 fixes pass; missing CASE_ISSUE_NOT_FOUND/ARTIFACT_STALE UI mappings remain. Chat isolation/persistence UI not accepted.
+
+09:09 UTC composite3ce0cff (8a7f5de+a2417b6): realbrowser reproducesreadinessconfirmfailure+answerscleared, andfollowupreplacessource/disablesreviewbeforeSend. Kimirootgates1/4 supportedwith2screenshots;CASE_ISSUE_NOT_FOUNDstillmissing4/5localization.
+
+09:27 UTC compositee01db90 (8a7f5de+d137191):230/230 passes. Actualbrowser followup/auth-disabled-send preservesoriginalsource5confirmationsandmanualdraft. Gate1observedregressionclosed forthesepaths; livestreampathsnotrun. Newownershiprootfrontendlogic/Kimidesign; otherreadiness/isolation/final/navigationgatesremain.
+
+10:02 UTC PR13e39adc0 strict231/231. Real ordinary6register/customer/readinesspropertyroute/finalgenerate/customer-case-documentopen pass; finalDOM/storage/HTTP922bytes identical. NEWP1 editingopenedfinalthenSave remainsdirty (artifactidentity retained after draft clear), blocksnextreadiness; reportedPR13. Nativebrowserdownload/409recovery notpassed due tool/guard limitations.
+
+10:13 UTC PR14fa6ff5b: install/build/frontend7 pass;14 officialsources andJSX transforms match. ActualCSP/dialog/focus/mobilepreviewpass exceptEnglish320header395pxoverflowP2. Appentrycomponent-only, auth/chatmodulesnotwired; fullmigrationNotrun. Productaudit0,dev7highforownertriage.
+
+10:47 UTC PR14 9045cd7 fullReact: real6register/Unicodecustomer/case/materialreview/genuineconflict4answersretained/reloadfinal/restartpass. ActualoriginalTXTbytes/search/user+ownerisolation/deletecase-retention/restartHTTPpass.320zh/enoverflowclosed. Backend252/254 defaultmac fixturepath failures,conditional2/2;frontend121/121 componentdiagnostics. Containeroldschema3assertfails. Live/nativeexport/browserupload/asyncidentity/WAL notpassed.

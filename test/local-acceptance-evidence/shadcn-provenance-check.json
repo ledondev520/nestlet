@@ -1,0 +1,75 @@
+{
+  "revision": "04b5af3c0ec02fc6a4330e4f441c15571adfdb76",
+  "components": [
+    {
+      "name": "button",
+      "upstreamHashMatches": true,
+      "vendoredTransformMatches": true
+    },
+    {
+      "name": "input",
+      "upstreamHashMatches": true,
+      "vendoredTransformMatches": true
+    },
+    {
+      "name": "card",
+      "upstreamHashMatches": true,
+      "vendoredTransformMatches": true
+    },
+    {
+      "name": "dialog",
+      "upstreamHashMatches": true,
+      "vendoredTransformMatches": true
+    },
+    {
+      "name": "label",
+      "upstreamHashMatches": true,
+      "vendoredTransformMatches": true
+    },
+    {
+      "name": "textarea",
+      "upstreamHashMatches": true,
+      "vendoredTransformMatches": true
+    },
+    {
+      "name": "tabs",
+      "upstreamHashMatches": true,
+      "vendoredTransformMatches": true
+    },
+    {
+      "name": "select",
+      "upstreamHashMatches": true,
+      "vendoredTransformMatches": true
+    },
+    {
+      "name": "native-select",
+      "upstreamHashMatches": true,
+      "vendoredTransformMatches": true
+    },
+    {
+      "name": "badge",
+      "upstreamHashMatches": true,
+      "vendoredTransformMatches": true
+    },
+    {
+      "name": "alert",
+      "upstreamHashMatches": true,
+      "vendoredTransformMatches": true
+    },
+    {
+      "name": "separator",
+      "upstreamHashMatches": true,
+      "vendoredTransformMatches": true
+    },
+    {
+      "name": "checkbox",
+      "upstreamHashMatches": true,
+      "vendoredTransformMatches": true
+    },
+    {
+      "name": "skeleton",
+      "upstreamHashMatches": true,
+      "vendoredTransformMatches": true
+    }
+  ]
+}

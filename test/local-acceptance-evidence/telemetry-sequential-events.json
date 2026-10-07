@@ -1,0 +1,105 @@
+{
+  "workflow_count": 1,
+  "client_event_count": 9,
+  "events": [
+    {
+      "source": "server",
+      "event": "request.case_list",
+      "outcome": "success",
+      "activeMs": null,
+      "waitMs": null,
+      "serverMs": 1
+    },
+    {
+      "source": "client",
+      "event": "input.paste",
+      "outcome": "success",
+      "activeMs": 15866,
+      "waitMs": null,
+      "serverMs": null
+    },
+    {
+      "source": "client",
+      "event": "review.confirm",
+      "outcome": "success",
+      "activeMs": 5715,
+      "waitMs": null,
+      "serverMs": null
+    },
+    {
+      "source": "client",
+      "event": "review.confirm",
+      "outcome": "success",
+      "activeMs": 284,
+      "waitMs": null,
+      "serverMs": null
+    },
+    {
+      "source": "client",
+      "event": "review.confirm",
+      "outcome": "success",
+      "activeMs": 286,
+      "waitMs": null,
+      "serverMs": null
+    },
+    {
+      "source": "client",
+      "event": "review.confirm",
+      "outcome": "success",
+      "activeMs": 283,
+      "waitMs": null,
+      "serverMs": null
+    },
+    {
+      "source": "client",
+      "event": "review.confirm",
+      "outcome": "success",
+      "activeMs": 283,
+      "waitMs": null,
+      "serverMs": null
+    },
+    {
+      "source": "client",
+      "event": "draft.generate",
+      "outcome": "success",
+      "activeMs": 287,
+      "waitMs": null,
+      "serverMs": null
+    },
+    {
+      "source": "client",
+      "event": "draft.edit",
+      "outcome": "success",
+      "activeMs": 6245,
+      "waitMs": null,
+      "serverMs": null
+    },
+    {
+      "source": "server",
+      "event": "request.case_create",
+      "outcome": "success",
+      "activeMs": null,
+      "waitMs": null,
+      "serverMs": 2
+    },
+    {
+      "source": "server",
+      "event": "request.case_list",
+      "outcome": "success",
+      "activeMs": null,
+      "waitMs": null,
+      "serverMs": 0
+    },
+    {
+      "source": "client",
+      "event": "case.save",
+      "outcome": "success",
+      "activeMs": 46,
+      "waitMs": 12,
+      "serverMs": null
+    }
+  ],
+  "one_workflow": true,
+  "save_correlated": true,
+  "excluded_markers_absent": true
+}
