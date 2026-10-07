@@ -1,7 +1,7 @@
 export const savedCasesCopy = {
   zh: {
     allOriginals: '全部原件（含未关联）', originalsHint: '展开查找此账户保存的文件，无需先选择客户或事项。',
-    title: '已保存事项', intro: '从这里找回所有已保存的事项，包括尚未关联客户的对话与材料工作。',
+    title: '已保存事项', intro: "继续处理已保存的事项。",
     all: '全部事项', recent: '最近 10 项', unassigned: '未关联客户', scope: '事项范围',
     search: '搜索已保存事项', placeholder: '输入事项名称或记录编号', searchHint: '按名称或编号查找，结果按最近更新时间排序。',
     recentHint: '显示当前搜索结果中最近更新的 10 项；选择“全部事项”查看其余记录。',
@@ -18,7 +18,7 @@ export const savedCasesCopy = {
   },
   en: {
     allOriginals: 'All originals, including unassigned', originalsHint: 'Expand to find saved files without selecting a customer or case first.',
-    title: 'Saved cases', intro: 'Reopen every saved case here, including conversation or materials work that has not been linked to a customer.',
+    title: 'Saved cases', intro: "Continue a saved case.",
     all: 'All cases', recent: 'Latest 10', unassigned: 'Unassigned', scope: 'Case scope',
     search: 'Search saved cases', placeholder: 'Enter a case title or record ID', searchHint: 'Search titles or IDs. Results are ordered by their most recent update.',
     recentHint: 'Showing the 10 most recently updated search results. Choose All cases to see the rest.',

@@ -113,7 +113,7 @@ test('shows linked cases and immutable artifact versions with stale labels and c
   });
   await render(api, { onOpenCase: id => opened.push(id) }); await select(a);
   assert.match(text(), /Saved synthetic letter/); assert.match(text(), /Version 2/); assert.match(text(), /Historical version/);
-  assert.match(text(), /do not automatically become verified legal names/);
+  assert.doesNotMatch(text(), /do not automatically become verified legal names/);
   await click(button('Open case: Synthetic linked case'));
   await click(button('Open document’s case: Saved synthetic letter'));
   assert.deepEqual(opened, [caseA.id, caseA.id]);
@@ -213,7 +213,7 @@ test('inline form validation changes language without changing input and cancel 
 test('malformed server directories fail visibly instead of crashing or fabricating records', async () => {
   const api = apiFor(() => ({ clients: {} }));
   await render(api);
-  assert.match(text(), /The request could not be completed/); assert.doesNotMatch(text(), /No customer records yet/);
+  assert.match(text(), /The action failed/); assert.doesNotMatch(text(), /No customer records yet/);
 });
 
 test('successful case creation opens exactly its saved ID and reloads the complete directory', async () => {

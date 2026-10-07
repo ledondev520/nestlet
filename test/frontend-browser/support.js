@@ -81,7 +81,7 @@ export async function saveCase(page, title, { review = false } = {}) {
     await expect(confirmations).toHaveCount(5);
     for (const checkbox of await confirmations.all()) await checkbox.check();
   }
-  await expect(materials.getByRole('button', { name: 'Extract with AI', exact: true })).toBeDisabled();
+  await expect(materials.getByRole('button', { name: 'Extract with DeepSeek', exact: true })).toBeDisabled();
   const saved = page.waitForResponse(value => new URL(value.url()).pathname === '/api/cases' && value.request().method() === 'POST');
   await materials.getByRole('button', { name: 'Save case', exact: true }).click();
   const response = await saved;
