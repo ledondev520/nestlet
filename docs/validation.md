@@ -244,3 +244,11 @@ Local Codex removed repeated chat consent/footnote/footer prose under the owner'
 Validation: 266 backend tests and 158 frontend tests passed under Node 24.18.0 with an owned, canonical TMPDIR (the default macOS temporary directory fails this repository's permission checks). Build and syntax checks passed. Actual loopback browser login with a public disposable fixture, refresh recovery and 390px no-horizontal-overflow checks passed. Production password-manager save prompts and a live paid-model call are not established by these checks.
 
 Independent Standards and Spec reviews found no release blockers; duplicate control copy and the session contract documentation were corrected. Seven existing real-browser acceptance tests passed, including bilingual 320/390px layouts and account isolation. An additional controlled-React keyboard test passed for Enter versus Shift+Enter/IME; this is not a physical IME-device test.
+
+## Interface copy sweep, October 7, 2026
+
+At the owner's request, local Codex reviewed chat, material intake, customer/file directories, documents, account settings and shared recovery states. Removed implementation-status commentary and redundant permanent notes in both languages. Runtime failures still describe the required next action; unsaved edits, conflicts, file limitations and incomplete responses remain distinguishable.
+
+Material extraction now starts from the explicitly named DeepSeek action without a second consent checkbox. Changing source text or uploading files never starts a provider request; the existing request validation and the consent field remain. Updated the controlled React test to verify this trigger and retained its failure/no-fallback assertions.
+
+Validation: 158 frontend tests passed. Production build passed. Browser smoke, bilingual responsive flows, stored files/documents and account isolation are tested with the existing seven-test suite on a disposable local service. No production material or live provider call was used for validation.

@@ -25,7 +25,7 @@ The HTTP check and test discovery do not execute Chromium. Only a successful act
 - A real PNG is decoded locally for chat preview through the file chooser and can be removed; corrupt PNG bytes produce an error while preserving unsent text
 - A privately saved PNG honestly reports unavailable OCR/text and adds no invented source text
 - Malformed CSV/PDF produce real server errors and no saved phantom original; prior page input remains
-- Actual parser requests without document-consent headers are rejected. File selection alone does not privately upload. AI consent remains unchecked and no model requests occur
+- Actual parser requests without document-consent headers are rejected. File selection alone does not privately upload. The explicit DeepSeek extraction action remains disabled without configuration and no model requests occur
 - No workbook hyperlinks are followed. Strict CSP and uncaught browser-error checks remain active
 
 All inputs are public synthetic fixtures. The one additional ordinary account brings the existing full suite to its real five-registration budget; retries remain disabled. Screenshots use the same synthetic evidence labelling as the existing suite.

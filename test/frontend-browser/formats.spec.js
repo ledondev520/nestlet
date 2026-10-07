@@ -8,9 +8,10 @@ test('real CSV/PDF/XLSX/XLS parsing, mapping, exact originals, image honesty, an
   test.setTimeout(180000);
   testInfo.annotations.push({ type: 'fixture-source-revision', description: FORMAT_SOURCE_REVISION });
   const assertBrowserClean = await watchBrowser(page);
-  const writes = [], externalRequests = [];
+  const writes = [], externalRequests = [], providerRequests = [];
   page.on('request', request => {
     const url = new URL(request.url());
+    if (['/api/chat','/api/extract'].includes(url.pathname)) providerRequests.push(url.pathname);
     if (url.pathname === '/api/assets' && request.method() === 'POST') writes.push(url.pathname);
     if (url.hostname === 'untrusted.invalid') externalRequests.push(url.href);
   });
@@ -166,7 +167,7 @@ test('real CSV/PDF/XLSX/XLS parsing, mapping, exact originals, image honesty, an
     const { asset } = await upload(PIXEL);
     expect(asset).toMatchObject({ textStatus: 'unavailable', previewKind: 'image' });
     const queuedImage = materials.getByRole('list', { name: 'Files to process', exact: true }).getByRole('listitem').filter({ hasText: PIXEL.name });
-    await expect(queuedImage).toContainText('Images and scanned PDFs have no OCR');
+    await expect(queuedImage).toContainText('Original saved. No text was extracted; add it below.');
     await expect(source).toHaveValue(before);
     const text = await (await page.request.get(`/api/assets/${asset.id}/text`)).json();
     expect(text.text).toBe('');
@@ -196,8 +197,8 @@ test('real CSV/PDF/XLSX/XLS parsing, mapping, exact originals, image honesty, an
       expect((await response.json()).code).toBe('DOCUMENT_CONSENT_REQUIRED');
       await expect(source).toHaveValue(before);
     }
-    await expect(materials.getByRole('checkbox', { name: 'This text is de-identified, and I agree to send it to DeepSeek', exact: true })).not.toBeChecked();
-    await expect(materials.getByRole('button', { name: 'Extract with AI', exact: true })).toBeDisabled();
+    expect(providerRequests).toEqual([]);
+    await expect(materials.getByRole('button', { name: 'Extract with DeepSeek', exact: true })).toBeDisabled();
   });
 
   await test.step('Save the parsed material and real originals, then recover them after a full reload', async () => {

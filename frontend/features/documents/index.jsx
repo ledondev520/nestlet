@@ -47,7 +47,6 @@ function MessageSource({lang, caseId, value, onChange, conversations, loadMessag
     </NativeSelect>}
     {value && !conversationId && <p className="break-all text-xs text-muted-foreground">{d.source}: {value}</p>}
     {failed && <p role="alert" className="text-sm text-destructive">{d.sourceUnavailable}</p>}
-    <p className="text-xs text-muted-foreground">{d.sourceNotEvidence}</p>
   </fieldset>;
 }
 
@@ -76,7 +75,6 @@ function ContextDetails({record, lang, disabled, onAdd, form, onForm}) {
         <div className="space-y-1"><Label htmlFor="document-detail-value">{d.answer}</Label><Input id="document-detail-value" value={value} maxLength={FACT_KEYS.includes(key) ? 3000 : 1000} disabled={disabled || notApplicable} onChange={event => onForm({...form,value:event.target.value,touched:true})} /></div>
       </div>
       {['documentDate','salutation','senderRole','senderOrganization','recipientOrganization','attachments','nextActionOwner','targetDate'].includes(key) && <div className="flex items-center gap-2"><Checkbox id="document-detail-na" checked={notApplicable} disabled={disabled} onCheckedChange={checked => onForm({...form,notApplicable:checked === true,touched:true})} /><Label htmlFor="document-detail-na">{d.notApplicable}</Label></div>}
-      <p className="text-xs text-muted-foreground">{d.optionalHint}</p>
       <Button type="submit" size="sm" variant="outline" disabled={disabled || (!value.trim() && !notApplicable)}>{d.addAnswer}</Button>
     </form>
   </details>;
@@ -103,7 +101,7 @@ export function DocumentsPage({lang = 'zh', caseId, onDirtyChange, onOpenIntake,
   if (!caseId) return <Card className="paper-card"><CardHeader><CardTitle className="paper-title">{d.title}</CardTitle><CardDescription>{d.selectCase}</CardDescription></CardHeader></Card>;
   return <div ref={page.observation.ref} onFocusCapture={page.observation.onFocusCapture} onBlurCapture={page.observation.onBlurCapture} className="space-y-6" data-testid="documents-page">
     <header className="flex flex-wrap items-start justify-between gap-3">
-      <div className="space-y-2"><p className="text-xs tracking-widest text-muted-foreground">{d.eyebrow}</p><h1 className="paper-title text-3xl">{record?.title || d.title}</h1><p className="max-w-2xl text-sm text-muted-foreground">{d.subtitle}</p></div>
+      <div className="space-y-2"><h1 className="paper-title text-3xl">{record?.title || d.title}</h1><p className="max-w-2xl text-sm text-muted-foreground">{d.subtitle}</p></div>
       <div className="flex flex-wrap gap-2">{onOpenIntake && <Button variant="outline" size="sm" onClick={onOpenIntake}><ArrowUpRight aria-hidden="true" />{d.material}</Button>}<Button variant="ghost" size="sm" disabled={busy} onClick={() => page.reload(true)}><RefreshCw aria-hidden="true" />{d.reload}</Button></div>
     </header>
     {state.error && <Alert variant="destructive" role="alert"><AlertTitle>{conflict ? d.conflict : documentErrorText(state.error, lang)}</AlertTitle>{conflict && <AlertDescription className="space-y-2"><p>{documentErrorText(state.error, lang)}</p><Button size="sm" variant="outline" disabled={busy} onClick={() => page.reload(true)}>{d.reload}</Button></AlertDescription>}</Alert>}
@@ -132,7 +130,6 @@ export function DocumentsPage({lang = 'zh', caseId, onDirtyChange, onOpenIntake,
           </form>}
           {!questionKeys.length && <Button data-journey-action="draft.generate" disabled={busy || !state.readiness?.ready || page.contentDirty} onClick={page.generate}><FileText aria-hidden="true" />{d.generate}</Button>}
           {page.contentDirty && <p className="text-sm text-muted-foreground">{d.saveBeforeExport}</p>}
-          <p className="text-xs text-muted-foreground">{d.generationHint}</p>
         </CardContent>
       </Card>
       <ContextDetails key={record.id} record={record} lang={lang} disabled={busy} onAdd={updateAnswer} form={state.detailForm} onForm={detailForm => patch({detailForm})} />

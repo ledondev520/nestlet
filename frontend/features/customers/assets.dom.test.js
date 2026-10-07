@@ -91,8 +91,8 @@ test('case filters and page navigation preserve scope and reset offset for a new
 
 test('old-server 404 is unavailable, not a successful empty directory, in either language', async () => {
   const api = apiFor(() => Promise.reject({ status: 404, code: 'INVALID_RESPONSE' }));
-  await render(api); assert.match(content(), /Original materials are not available yet/); assert.match(content(), /still use the case and saved-document/); assert.doesNotMatch(content(), /No saved originals yet/);
-  await render(api, { lang: 'zh' }); assert.match(content(), /原始资料功能尚未就绪/); assert.doesNotMatch(content(), /Original materials are not available yet/);
+  await render(api); assert.match(content(), /Could not load original files/); assert.match(content(), /Refresh and try again/); assert.doesNotMatch(content(), /No saved originals yet/);
+  await render(api, { lang: 'zh' }); assert.match(content(), /无法加载原件列表/); assert.doesNotMatch(content(), /Could not load original files/);
 });
 
 test('foreign or missing scope is distinguished from unsupported API; errors preserve retry', async () => {

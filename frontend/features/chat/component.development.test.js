@@ -103,7 +103,7 @@ test('development React: stream errors keep received text visibly incomplete aft
     return response({},500);
   }});context.after(app.close);
   await app.flush();await app.type('Question before interrupted fixture');await app.click(app.button('Send'));await app.flush();
-  assert.match(app.dom.window.document.body.textContent,/Retained partial fixture/);assert.match(app.dom.window.document.body.textContent,/This reply is incomplete/);
+  assert.match(app.dom.window.document.body.textContent,/Retained partial fixture/);assert.match(app.dom.window.document.body.textContent,/Reply interrupted/);
   assert.equal(app.requests.filter(item=>item.path==='/api/chat').length,1);assert.ok(app.button('Edit this question again'));
 });
 
@@ -259,7 +259,7 @@ test('development React: source cards never claim persistence when assistant sav
   await app.click(app.button('Send'));await app.flush();await app.flush();
   const sources=app.dom.window.document.querySelector('[aria-label="Sources for this request"]');assert.ok(sources);
   assert.match(sources.textContent,/check its save status/);assert.doesNotMatch(sources.textContent,/references are saved/i);
-  assert.match(app.dom.window.document.body.textContent,/saved state is not yet confirmed|could not be confirmed as saved/i);
+  assert.match(app.dom.window.document.body.textContent,/Save not confirmed|Could not confirm the saved reply/i);
   assert.match(app.dom.window.document.body.textContent,/Synthetic reference received before save failure/);
 });
 
