@@ -2,6 +2,10 @@
 .env.*
 !.env.example
 node_modules/
+/public/next/
+/playwright-report/
+/test-results/
+/frontend/lib/.session-test-*.mjs
 artifacts/
 *.log
 

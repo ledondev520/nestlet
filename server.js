@@ -1,12 +1,16 @@
 import http from 'node:http';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, randomBytes } from 'node:crypto';
 import { createRequire } from 'node:module';
+import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { readFile } from 'node:fs/promises';
+import { readFile, access } from 'node:fs/promises';
 import { spawn, spawnSync } from 'node:child_process';
 import { validateSuggestions } from './public/core.js';
 import { createOperatorAuth } from './auth.js';
 import { openStorage, StorageError } from './storage.js';
+import { AssetError, isAssetRecordsPath, handleAssetRecords } from './asset-records.js';
+import { openAssetVault } from './private-assets.js';
+import { ASSET_LIMITS, ASSET_TYPES } from './asset-domain.js';
 import { CaseRecordsError, isCaseRecordsPath, handleCaseRecords } from './case-records.js';
 import { DocumentContextError } from './document-context.js';
 import { createTelemetry, TelemetryError, telemetryId, telemetryPageOptions } from './telemetry.js';
@@ -28,6 +32,10 @@ let enabled = process.env.ENABLE_LIVE_AI === 'true' && Boolean(apiKey);
 let connectionVerifiedAt = null;
 let configurationRevision = 0;
 const storage = openStorage({ filename: process.env.NESTLET_DB_PATH || fileURLToPath(new URL('./data/nestlet.sqlite', import.meta.url)) });
+const assetDirectory = process.env.NESTLET_ASSETS_PATH || resolve(dirname(process.env.NESTLET_DB_PATH || fileURLToPath(new URL('./data/nestlet.sqlite', import.meta.url))), 'assets');
+const publicDirectory = fileURLToPath(root);
+if (assetDirectory === publicDirectory.slice(0,-1) || assetDirectory.startsWith(publicDirectory)) throw new Error('Private assets must be outside the public directory.');
+const assetVault = openAssetVault({directory:assetDirectory});
 const telemetry = createTelemetry(storage);
 const auth = createOperatorAuth({ passwordHash: process.env.NESTLET_OPERATOR_PASSWORD_HASH, operatorUsername: process.env.NESTLET_OPERATOR_USERNAME, publicOrigin, host: process.env.HOST,
   findTrialUser: username => storage.findUserByUsername(username), findTrialUserById: id => storage.getUserById(id),
@@ -100,6 +108,7 @@ function settingsStatus(request) {
     secureSettings: auth.secure && auth.configured && (!session || owner),
     role: session?.role || null, canManageSettings: owner, caseStorageEnabled: true,
     registrationEnabled: auth.configured && (auth.secure || auth.localTransportAllowed),
+    assetStorageEnabled: true, assetLimits: ASSET_LIMITS, assetTypes: Object.keys(ASSET_TYPES),
     chatEnabled: true, chatImageTypes: CHAT_IMAGE_TYPES, chatLimits: CHAT_LIMITS,
     ...(session ? { csrfToken: session.csrfToken, userId: session.userId, username: session.username } : {}) };
   if (!owner) return common;
@@ -482,6 +491,17 @@ const server = http.createServer(async (request, response) => {
         throw new TelemetryError('TELEMETRY_UNAVAILABLE', 503);
       }
     }
+    if (isAssetRecordsPath(telemetryUrl.pathname)) {
+      verifyOrigin(request);
+      const mutation = request.method !== 'GET';
+      if (mutation && !request.headers.origin) throw new RequestError(403,'ORIGIN_REJECTED','A same-origin browser request is required.');
+      const session = requireSession(request,mutation);
+      return await handleAssetRecords({request,response,url:telemetryUrl,session,storage,vault:assetVault,readBody,readJson,json,signal:cancel.signal,
+        parsers:{pdfEnabled,workbookEnabled,
+          pdfText:async(bytes,signal)=>{if(activePdfExtractions>=2)throw new RequestError(429,'BUSY','Document processing is busy.');activePdfExtractions++;try{return await pdfText(bytes,signal);}finally{activePdfExtractions--;}},
+          workbookPreview:async(bytes,signal)=>{if(activeWorkbookExtractions>=2)throw new RequestError(429,'BUSY','Workbook processing is busy.');activeWorkbookExtractions++;try{return await workbookPreview(bytes,signal);}finally{activeWorkbookExtractions--;}}
+        }});
+    }
     if (isCaseRecordsPath(telemetryUrl.pathname)) {
       const mutation = request.method !== 'GET';
       if (mutation) verifyOrigin(request);
@@ -515,9 +535,9 @@ const server = http.createServer(async (request, response) => {
           if (!storage.deleteCase(session.userId, id, expectedVersion)) throw new RequestError(404, 'CASE_NOT_FOUND', 'The case was not found in your account.');
           return json(200, { deleted: true });
         }
-        const record = storage.updateCase(session.userId, id, payload, expectedVersion);
-        if (!record) throw new RequestError(404, 'CASE_NOT_FOUND', 'The case was not found in your account.');
-        return json(200, { case: record });
+        const result = storage.updateCase(session.userId, id, payload, expectedVersion, {returnEffects:true});
+        if (!result) throw new RequestError(404, 'CASE_NOT_FOUND', 'The case was not found in your account.');
+        return json(200, result);
       }
       throw new RequestError(404, 'CASE_NOT_FOUND', 'The requested case route was not found.');
     }
@@ -645,7 +665,8 @@ const server = http.createServer(async (request, response) => {
         throw new RequestError(502, 'EXTRACTION_FAILED', 'Extraction failed. No suggestions were applied.');
       } finally { activeExtractions--; }
     }
-    const routes = { '/': 'index.html', '/app.js': 'app.js', '/core.js': 'core.js', '/agency-guidance.js': 'agency-guidance.js', '/style.css': 'style.css', '/logo.svg': 'logo.svg',
+    const routes = { '/': 'next/index.html', '/legacy': 'index.html', '/legacy/': 'index.html', '/app.js': 'app.js', '/core.js': 'core.js', '/agency-guidance.js': 'agency-guidance.js', '/style.css': 'style.css', '/logo.svg': 'logo.svg',
+      '/next': 'next/index.html', '/next/': 'next/index.html', '/next/app.js': 'next/app.js', '/next/index.css': 'next/index.css',
       '/samples/nestlet-synthetic-case.txt': 'samples/nestlet-synthetic-case.txt',
       '/samples/nestlet-synthetic-case.csv': 'samples/nestlet-synthetic-case.csv',
       '/samples/nestlet-synthetic-case.pdf': 'samples/nestlet-synthetic-case.pdf',
@@ -653,12 +674,33 @@ const server = http.createServer(async (request, response) => {
       '/samples/nestlet-synthetic-case.xls': 'samples/nestlet-synthetic-case.xls' };
     if (request.method !== 'GET' || !Object.hasOwn(routes, request.url)) { response.writeHead(404); return response.end('Not found'); }
     const file = routes[request.url];
+    let content;
+    try {
+      // A partially copied frontend must not produce a blank page or silently
+      // fall back to the old product. Static filenames remain explicitly allowed.
+      if (file === 'next/index.html') await Promise.all(['next/app.js', 'next/index.css'].map(asset => access(new URL(asset, root))));
+      content = await readFile(new URL(file, root));
+    } catch (error) {
+      if (file.startsWith('next/') && error.code === 'ENOENT') {
+        response.writeHead(503, { 'Content-Type': 'text/html; charset=utf-8', 'Retry-After': '60' });
+        return response.end('<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>工作区暂不可用 · Workspace unavailable</title><main><h1>工作区暂不可用</h1><p>新版界面尚未完成部署。请稍后重试，或联系管理员。</p><section lang="en"><h2>Workspace temporarily unavailable</h2><p>The new interface has not finished deploying. Please try again shortly or contact the administrator.</p></section></main></html>');
+      }
+      throw error;
+    }
+    if (file === 'next/index.html') {
+      // Radix's official scroll-lock helper creates a trusted style element.
+      // Authorize that element only for this HTML response; scripts and style
+      // attributes keep the original strict policy, without unsafe-inline.
+      const styleNonce = randomBytes(18).toString('base64');
+      response.setHeader('Content-Security-Policy', response.getHeader('Content-Security-Policy').replace("style-src 'self'", `style-src 'self' 'nonce-${styleNonce}'`));
+      content = Buffer.from(content.toString('utf8').replace('__NESTLET_STYLE_NONCE__', styleNonce));
+    }
     const contentTypes = { js: 'text/javascript; charset=utf-8', css: 'text/css; charset=utf-8', svg: 'image/svg+xml', html: 'text/html; charset=utf-8', txt: 'text/plain; charset=utf-8', csv: 'text/csv; charset=utf-8', pdf: 'application/pdf', xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', xls: 'application/vnd.ms-excel' };
     response.setHeader('Content-Type', contentTypes[file.split('.').at(-1)]);
     if (file.startsWith('samples/')) response.setHeader('Content-Disposition', `attachment; filename="${file.slice('samples/'.length)}"`);
-    response.end(await readFile(new URL(file, root)));
+    response.end(content);
   } catch (error) {
-    if (error instanceof RequestError || error instanceof StorageError || error instanceof TelemetryError || error instanceof ChatError || error instanceof CaseRecordsError || error instanceof DocumentContextError) return json(error.status, { error: error.message, code: error.code, ...(error.details ? {details:error.details} : {}) });
+    if (error instanceof AssetError || error instanceof RequestError || error instanceof StorageError || error instanceof TelemetryError || error instanceof ChatError || error instanceof CaseRecordsError || error instanceof DocumentContextError) return json(error.status, { error: error.message, code: error.code, ...(error.details ? {details:error.details} : {}) });
     return json(500, { error: 'Request could not be completed', code: 'INTERNAL_ERROR' });
   }
 });

@@ -88,3 +88,16 @@ The dedicated document-context PATCH archives any existing legacy case.draftText
 Staleness currently uses the conservative case version comparison, including non-content title or customer-association edits. Historical GET remains available for viewing/copying the clearly labeled older version. It does not silently rewrite prior documents.
 
 Document-context detail review revocation is not a separate API in this version: confirm:false proposes unconfirmed information and preserves an already confirmed identical detail. A different unconfirmed proposal conflicts; an explicit confirm:true correction replaces it. Do not present a detail-level revoke-review action as implemented. Existing core factChanges supports clearing a same-value fact confirmation.
+
+## Generic case PUT: preserve old operator edits
+
+`PUT /api/cases/:id` now preserves any replaced or cleared nonempty legacy `draftText` as an immutable draft artifact in the same SQLite transaction as the case update. The artifact retains exact text, the previous draft kind, previous case version and prior provenance. No extra client option is required or accepted.
+
+- If source text, core facts/review/provenance, draft type or namesVerified change while the request carries the unchanged old draft, that stale compatibility draft is archived and the returned case.draftText is cleared.
+- A distinct valid replacement draft is saved as requested, and the old draft is archived first. The replacement still has to satisfy the existing case review validation.
+- Friendly title/customer association changes alone do not invalidate an unchanged legacy draft.
+- The response remains backward-compatible with `{case}` and adds `archivedLegacyDraft:boolean`, `archivedArtifactId:UUID|null`, and `legacyDraftInvalidated:boolean`.
+- Intake should apply the returned case, retain its own edits on errors, and refresh artifact history when archivedLegacyDraft is true. Old versions remain readable; this action is not a final-document approval.
+- Version conflicts, invalid associations, archive validation/capacity errors and database failures roll back the case update and archival together. An old draft that cannot be archived under the artifact rules is never silently discarded.
+
+The internal storage updateCase method still returns a case by default. Trusted server callers may request the response envelope with the fifth option `{returnEffects:true}`. The existing `{archiveLegacyDraft:true}` dedicated-confirmation path keeps its stronger explicit-clear behavior.

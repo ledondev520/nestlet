@@ -5,20 +5,43 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "test": "node --test test/core.test.js test/server.test.js test/auth.test.js test/agency-guidance.test.js test/operator-setup.test.js test/localization-contract.test.js test/storage.test.js test/case-api.test.js test/trial-user-setup.test.js test/registration-api.test.js test/telemetry.test.js test/telemetry-api.test.js test/admin-alias.test.js test/chat.test.js test/chat-api.test.js test/document-context.test.js test/customer-case-api.test.js test/library-storage.test.js test/schema3-migration.test.js",
-    "check": "node --check server.js && node --check public/app.js && node --check public/core.js && node --check workbook-worker.js && node --check auth.js && node --check scripts/hash-operator-password.js && node --check public/agency-guidance.js && node --check scripts/setup-operator.js && node --check scripts/operator-setup.js && node --check storage.js && node --check scripts/setup-trial-user.js && node --check scripts/trial-user-setup.js && node --check telemetry.js && node --check chat.js && node --check document-context.js && node --check case-records.js",
+    "test": "node --test test/core.test.js test/server.test.js test/auth.test.js test/agency-guidance.test.js test/operator-setup.test.js test/localization-contract.test.js test/storage.test.js test/case-api.test.js test/trial-user-setup.test.js test/registration-api.test.js test/telemetry.test.js test/telemetry-api.test.js test/admin-alias.test.js test/chat.test.js test/chat-api.test.js test/document-context.test.js test/customer-case-api.test.js test/library-storage.test.js test/schema3-migration.test.js test/assets-api.test.js test/assets-storage.test.js test/schema4-migration.test.js test/private-data.test.js test/assets-image-validation.test.js test/legacy-draft-preservation.test.js",
+    "check": "node --check server.js && node --check public/app.js && node --check public/core.js && node --check workbook-worker.js && node --check auth.js && node --check scripts/hash-operator-password.js && node --check public/agency-guidance.js && node --check scripts/setup-operator.js && node --check scripts/operator-setup.js && node --check storage.js && node --check scripts/setup-trial-user.js && node --check scripts/trial-user-setup.js && node --check telemetry.js && node --check chat.js && node --check document-context.js && node --check case-records.js && node --check asset-domain.js && node --check asset-records.js && node --check private-assets.js && node --check asset-image-worker.js && node --check scripts/private-data.js && node --check scripts/private-data-operations.js",
     "test:development": "node --test test/core.test.js test/server.test.js test/development-provider.test.js test/app.test.js",
     "hash-password": "node scripts/hash-operator-password.js",
     "setup-operator": "node scripts/setup-operator.js",
-    "setup-trial-user": "node scripts/setup-trial-user.js"
+    "setup-trial-user": "node scripts/setup-trial-user.js",
+    "dev:frontend": "vite",
+    "build": "vite build",
+    "test:frontend": "node --test test/frontend-*.test.js frontend/lib/*.test.js frontend/features/*/*.test.js",
+    "test:browser:frontend": "playwright test --config=playwright.frontend.config.js",
+    "private-data": "node scripts/private-data.js"
   },
   "engines": {
     "node": ">=24"
   },
   "dependencies": {
+    "class-variance-authority": "0.7.1",
+    "clsx": "2.1.1",
+    "get-nonce": "1.0.1",
+    "jpeg-js": "0.4.4",
+    "lucide-react": "1.52.0",
+    "pngjs": "7.0.0",
+    "radix-ui": "1.7.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "tailwind-merge": "3.7.0",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
-    "jsdom": "26.1.0"
+    "@babel/core": "7.29.7",
+    "@babel/plugin-transform-typescript": "7.29.9",
+    "@playwright/test": "1.63.0",
+    "@tailwindcss/vite": "4.3.3",
+    "@vitejs/plugin-react": "6.1.2",
+    "jsdom": "26.1.0",
+    "tailwindcss": "4.3.3",
+    "tw-animate-css": "1.4.0",
+    "vite": "8.3.3"
   }
 }

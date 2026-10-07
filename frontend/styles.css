@@ -1,0 +1,154 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@import "./design-system/tokens.css";
+
+/* Exact Kimi tokens from commit 2154dd9; adapt semantics without redefining
+   the canonical --accent primitive (shadcn's accent utility is a tint). */
+:root {
+  --cinnabar: var(--accent);
+  --cinnabar-deep: var(--accent-deep);
+  --cinnabar-tint: var(--accent-tint);
+  --serif: var(--font-display);
+  --sans: var(--font-body);
+  --radius: var(--radius-control);
+  --background: var(--bg-canvas);
+  --foreground: var(--text-primary);
+  --card: var(--bg-surface);
+  --card-foreground: var(--text-primary);
+  --popover: var(--bg-overlay);
+  --popover-foreground: var(--text-primary);
+  --primary: var(--action-primary-bg);
+  --primary-foreground: var(--action-primary-text);
+  --secondary: var(--bg-recessed);
+  --secondary-foreground: var(--text-primary);
+  --muted: var(--bg-recessed);
+  --muted-foreground: var(--text-muted);
+  --accent-foreground: var(--accent-deep);
+  --destructive: var(--status-error);
+  --border: var(--border-default);
+  --input: var(--border-strong);
+  --ring: var(--focus-ring);
+  --radius-overlay: 12px;
+}
+
+@theme inline {
+  --font-sans: var(--sans);
+  --font-serif: var(--serif);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent-tint);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-info: var(--info);
+  --color-info-background: var(--info-tint);
+  --color-waiting: var(--waiting);
+  --color-waiting-background: var(--waiting-bg);
+  --radius-sm: var(--radius-badge);
+  --radius-md: var(--radius-control);
+  --radius-lg: var(--radius-control);
+  --radius-xl: var(--radius-panel);
+}
+
+@layer base {
+  * { @apply border-border; }
+  body { @apply m-0 bg-background font-sans text-foreground antialiased; font: var(--text-body); }
+  button:not(:disabled), a { cursor: pointer; }
+  ::selection { background: var(--cinnabar-tint); }
+}
+
+/* Apply the design owner's component states to official shadcn primitives. */
+[data-slot="button"] {
+  min-width: 0;
+  transition: color var(--duration-fast) var(--ease-standard), background-color var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard), transform var(--duration-fast) var(--ease-standard);
+}
+[data-slot="button"]:disabled { opacity: .42; }
+[data-slot="button"]:not(:disabled):active { transform: scale(.98); }
+[data-slot="button"][data-variant="default"]:not(:disabled):hover { background: var(--action-primary-hover); }
+[data-slot="button"][data-variant="secondary"] { border: 1px solid var(--border-strong); }
+[data-slot="button"][data-variant="outline"] { background: var(--bg-surface); border-color: var(--border-strong); }
+[data-slot="button"][data-variant="link"] { color: var(--accent-deep); }
+[data-slot="button"][aria-current="page"] { border-bottom: 2px solid var(--accent); }
+[data-slot="input"], [data-slot="textarea"], [data-slot="native-select"], [data-slot="select-trigger"] { background: var(--input-bg); }
+[data-slot="input"]:focus, [data-slot="textarea"]:focus, [data-slot="native-select"]:focus, [data-slot="select-trigger"]:focus { background: var(--input-bg-focus); border-color: var(--input-border-focus); }
+[data-slot="card"] { border-radius: var(--radius-panel); box-shadow: var(--shadow-sheet); padding-block: 30px; }
+[data-slot="card-header"], [data-slot="card-content"], [data-slot="card-footer"] { padding-inline: 34px; }
+[data-slot="card-title"] { font: var(--text-title); }
+[data-slot="badge"] { border-radius: var(--radius-badge); }
+[data-slot="dialog-overlay"] { background: var(--scrim); }
+[data-slot="dialog-content"], [data-slot="select-content"] { background: var(--bg-overlay); border-color: var(--border-overlay); border-radius: var(--radius-overlay); box-shadow: var(--shadow-overlay); }
+[data-slot="alert"]:has(.text-destructive), [data-slot="alert"].text-destructive { border-left: 3px solid var(--status-error); background: var(--status-error-bg); }
+button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, summary:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.paper-shell {
+  max-width: var(--shell-max);
+  margin: 0 auto;
+  padding: 0 40px 56px;
+}
+.paper-masthead {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 22px 0 18px;
+  border-bottom: 2px solid var(--ink);
+  position: relative;
+}
+.paper-masthead::after {
+  content: "";
+  position: absolute;
+  bottom: -5px;
+  left: 0;
+  right: 0;
+  border-bottom: 1px solid var(--hairline-strong);
+}
+.paper-card { box-shadow: var(--shadow-sheet); }
+.paper-title { font-family: var(--serif); }
+h1.paper-title { font: var(--text-display); text-wrap: balance; }
+.paper-divider { border-top: 1px solid var(--hairline); }
+.paper-note { border-left: 3px solid var(--cinnabar); background: var(--cinnabar-tint); }
+.print-document {
+  max-width: 760px;
+  margin: 32px auto;
+  padding: 24px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: 14px/1.65 Georgia, "Times New Roman", serif;
+  color: #111;
+  background: #fff;
+}
+@media print {
+  body:has(.print-document) { background: #fff; }
+  .print-document { max-width: none; margin: 0; padding: 0; font-size: 11pt; }
+}
+@media (max-width: 760px) {
+  .paper-shell { padding: 0 18px 36px; }
+  .paper-masthead { align-items: flex-start; }
+  input, textarea, select { font-size: 16px !important; }
+  [data-slot="card"] { padding-block: 20px; }
+  [data-slot="card-header"], [data-slot="card-content"], [data-slot="card-footer"] { padding-inline: 18px; }
+}
+@media (max-width: 600px) {
+  .paper-tagline { display: none; }
+  .paper-tools { margin-left: auto; max-width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}

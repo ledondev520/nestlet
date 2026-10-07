@@ -3,6 +3,7 @@ import {AGENCY_OPTIONS, DEFAULT_GUIDANCE_AGENCY, GUIDANCE_COPY, getAgencyGuidanc
 
 const copy = {
   zh: {
+    artifactEditsKept: '文书中的未保存编辑仍保留，请另存文书版本；已保存的历史版本不会被修改。',
     errorReadinessUnsaved: '请先保存案件或当前文书的修改，再补齐资料。你的输入仍保留。', errorReadinessChanged: '资料已在服务器保存，但等待期间工作区又有修改。你的本地输入未被覆盖；请先保留修改，再打开最新案件对照。',
     errorCaseIssueNotFound: '这条待办事项不存在或不属于当前案件，请刷新后重试。', artifactOpen: '打开', artifactArchived: '旧稿已保留在文档版本中', generateFinal: '生成完成版', customerCases: '客户案件', artifactHistory: '历史版本，请根据当前案件重新生成',
     workspaceTitle: '从材料到英文草稿', safeShort: '仅限虚构或去标识化资料', inputShort: '放入材料', sampleShort: '试用示例', pasteShort: '或在这里粘贴去标识化文本…', inputHelp: '支持格式与处理方式', nextReview: 'AI 提取并核对', reviewShort: '核对五项事实', sourceHint: '原文可展开查看', check: '确认', editedShort: '人工修改 · 查看出处', missingShort: '待补充：', missingScope: '仅表示本次材料未提供，并非机构缺件通知', nextHelp: '后续事项与导出说明', draftTypeShort: '草稿类型', backInput: '返回材料', backReview: '返回核对', gateShort: '请确认每一项；未知信息可保留空白', draftShort: '可直接编辑。辅助文书，非官方表格；请人工复核后使用。', footerShort: '仅生成草稿 · 不自动发送或提交',
@@ -53,6 +54,7 @@ const copy = {
     fields: ['房源地址', '业主', '住房机构 PHA', '案例编号', '拟议租金']
   },
   en: {
+    artifactEditsKept: 'Your unsaved document edits are retained. Save a document version; existing history is unchanged.',
     errorReadinessUnsaved: 'Save your case or document edits before completing these details. Your input is preserved.', errorReadinessChanged: 'The details were saved on the server, but the workspace changed while waiting. Your local input was preserved. Keep those edits, then open the latest case to reconcile.',
     errorCaseIssueNotFound: 'This case issue is unavailable. Refresh the case and try again.', artifactOpen: 'Open', artifactArchived: 'The earlier draft is preserved in document versions', generateFinal: 'Generate final document', customerCases: 'Customer cases', artifactHistory: 'Historical version; regenerate from the current case',
     workspaceTitle: 'From document to English draft', safeShort: 'Synthetic or de-identified information only', inputShort: 'Add your document', sampleShort: 'Try sample', pasteShort: 'Or paste de-identified text here…', inputHelp: 'Formats and processing details', nextReview: 'Extract & review with AI', reviewShort: 'Review five facts', sourceHint: 'Expand a source to check it', check: 'Confirm', editedShort: 'Edited · View source', missingShort: 'To confirm:', missingScope: 'Not provided in this review, not an agency missing-document notice', nextHelp: 'Next steps and export details', draftTypeShort: 'Draft type', backInput: 'Back to document', backReview: 'Back to review', gateShort: 'Confirm every field. Unknown information can stay blank.', draftShort: 'Edit directly. Supplementary draft, not an official form. Review before use.', footerShort: 'Drafts only · Nothing is sent or submitted automatically',
@@ -836,6 +838,19 @@ function clearReview() {
   state.message = '';
   state.mode = 'demo';
 }
+function invalidateDocumentPreview() {
+  // Fact changes invalidate a clean preview, not its immutable stored version.
+  // A genuinely edited body stays available as a draft until the user saves it.
+  let savedLegacyBody = '';
+  try {savedLegacyBody = JSON.parse(state.savedFingerprint || '{}').draftText || '';} catch {}
+  const editedBody = state.generated && (state.artifactId
+    ? state.draftText !== state.artifactSavedContent
+    : state.draftText !== savedLegacyBody);
+  state.artifactStatus = 'draft'; state.message = '';
+  if (editedBody) {state.caseMessage = 'artifactEditsKept'; return;}
+  state.artifactId = null; state.artifactSavedContent = ''; state.artifactIsStale = false;
+  state.draftText = ''; state.legacyDraftText = ''; state.generated = false;
+}
 function cancelProcessing() {
   state.version++;
   state.controller?.abort();
@@ -1245,16 +1260,16 @@ function bind() {
     field.conflict = false;
     field.edited = true;
     state.namesVerified = false;
-    state.draftText = ''; state.generated = false; state.message = '';
+    invalidateDocumentPreview();
     render();
   }));
   document.querySelectorAll('[data-confirm]').forEach(element => element.addEventListener('change', () => {
     if (element.checked) track('review.confirm', 'success');
     state.fields[Number(element.dataset.confirm)].confirmed = element.checked;
-    state.draftText = ''; state.generated = false; state.message = '';
+    invalidateDocumentPreview();
     render();
   }));
-  on('names-verified', 'change', event => {state.namesVerified = event.target.checked; state.draftText = ''; state.generated = false; render();});
+  on('names-verified', 'change', event => {state.namesVerified = event.target.checked; invalidateDocumentPreview(); render();});
   on('draft-type', 'change', event => {state.kind = event.target.value; state.readinessAnswers = {}; loadReadiness().then(render); updateCaseIndicator();});
   on('generate', 'click', generateFinalArtifact);
   on('generate-final', 'click', generateFinalArtifact);

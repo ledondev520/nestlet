@@ -2,6 +2,19 @@
 
 Checkpoint: 2026-10-07. This is a development checkpoint, not final acceptance. Deployment and real-browser integration remain separate; rerun after the final source freeze.
 
+React/shadcn foundation checkpoint (09:33 UTC): production build and seven API/build contracts pass. This is a component preview, not a completed business-page migration. The combined baseline has one legacy localization failure; supported-browser and Docker validation remain pending. See [exact migration evidence](shadcn-migration.md).
+## Artifact invalidation regression, 10:29 UTC
+
+Based on exact main `2fc15f216714d0331a82456edb1d97b9f76f8498`, the new actual-HTTP/SQLite plus development-DOM test first reproduced the reported defect: after opening a final, clearing property, reviewing the unknown and successfully saving, the interface incorrectly remained `Unsaved changes`. A clean preview now exits the opened-artifact editing identity when facts/review state change. Stored artifact versions are untouched. A genuinely edited document remains available as a draft until explicitly saved as a new version.
+
+- `npm run check`: passed
+- `npm test`: strict **231/231 passed**, unchanged evidence tier
+- `node --test test/artifact-invalidation.integration.test.js test/library-ui.test.js test/localization-contract.test.js`: **14/14 passed**. The new lifecycle test uses real HTTP, sessions and disposable SQLite; it executes DOM events in JSDOM, not a browser. Existing library diagnostics use explicit response doubles and remain separately labeled
+- The new lifecycle test verifies the formerly blocked completion/regeneration path, original immutable content, stale historical metadata, and retention/saving of actual unsaved document edits
+- `test/artifact-invalidation.browser.mjs` contains the same end-to-end checks for an independently authorized Chromium environment. Local execution was **blocked before page interaction** by the container's `socket() ... Operation not permitted` restriction; the supported escalation retry had the same result. No browser pass is claimed
+
+For the browser script, use a separately installed official Playwright test runner and its Chromium, then run `node --test test/artifact-invalidation.browser.mjs`. If the runner is installed outside this checkout, `NESTLET_PLAYWRIGHT_MODULE` may identify its module; `NESTLET_CHROMIUM_EXECUTABLE` may identify an already installed Chromium executable. These are optional test-only inputs, not production dependencies or application configuration. The script creates only disposable synthetic accounts/data and makes no model request. The default CI retains strict tests and adds the independently labeled actual-HTTP/DOM lifecycle regression; real-browser acceptance remains a separate gate.
+
 ## Strict acceptance command
 
 Engineering integration checkpoint, **09:27 UTC**: strict **231/231 passed, 0 failed/skipped**, and syntax passes after both frontend engineering owners froze their scoped changes. The prior missing error maps are resolved in this candidate. Its app.js SHA256 is `90df9e4b34fc622c1358816e821db0c895d4d31da793238a047fcdbfb2576950`, based on local integration `4a015b7030596401cd3c70243f41f38c6ff69d52` plus engineering edits awaiting commit. The one new strict test exercises actual first-action server-created workflow headers through case/conversation/no-key chat and verifies case/user/request linkage without private content in logs.
@@ -188,3 +201,32 @@ A direct cloud-browser loopback navigation was blocked; no alternate route was u
 ## Limits
 
 Source-substring validation does not prove semantic truth or discover every contradiction. Sensitive-identifier pattern checks are not comprehensive de-identification. PDF text extraction does not verify reading order or official form fields; no OCR is supported. CSV prefix bytes are tested, but actual Excel/Google Sheets formula execution has not been exercised. Named-trial access can be revoked by rotating the credential; no account-disable endpoint is implemented in this scope. These tests establish neither agency-specific compliance nor production security/privacy readiness. No real customer records, housing decisions, external communication, or official submissions were used.
+
+## Private originals / schema4 candidate — October 7, 2026, 10:11 UTC
+
+On the dedicated private-assets feature branch based on 8a7f5de:
+
+- `npm run check`: passed; all new server/parser/operations modules included
+- `npm test`: 250 tests, 249 passed, one known existing legacy bilingual-route fallback failure (`CHAT_TOO_LARGE` in `test/localization-contract.test.js`); frontend/integration lane owns that mapping. No full-release pass is claimed
+- New private-assets coverage: 20 passing tests with real disposable SQLite, HTTP sessions, original byte uploads/downloads, real Poppler/SheetJS/PNG/JPEG parsing, PNG malformed-filter/palette/Adam7 rejection, Unicode literal search, ordinary/admin isolation, CSRF/Origin/explicit-save checks, quotas (including actual 51×5 MiB stored files), unsafe symlink/hardlink paths, digest corruption, process restart and preserving originals when a case is deleted
+- Genuine baseline schema3 DDL migration to schema4 preserved users/customers/cases/conversations/messages/artifacts/telemetry rows exactly; failure rollback and future-schema fail-closed checks passed. Existing schema1/2 migration checks now target schema4 and passed
+- Manual backup, verify, restore-to-new-directory after simulated source loss, exact-user export without credential tables, corrupt/missing/unexpected snapshot rejection, CLI execution and orphan reporting without deletion passed using synthetic data
+- FTS5 was directly verified available in Node24; bounded Unicode-normalized literal substring SQL search was deliberately selected for this version. No FTS query language, semantic search, OCR or automatic AI library access is claimed
+- Existing parser resource limits remain; image decoding runs in an isolated process with stripped environment, timeout/address/CPU/heap and pixel/decode-memory limits. No private file/model transmission or third-party viewer is involved
+
+This is local backend evidence. The standalone feature branch does not include the separately owned Docker allowlist/COPY or React changes. Integrated image startup, real-browser PDF/image preview/CSP, end-to-end UI, exact-SHA release CI and deployment remain separate verification. No production files, credentials or database were read or modified; no backup job was scheduled and no deployment was performed.
+
+### Private-assets integration follow-up — October 7, 2026, 10:22 UTC
+
+- Merged main `2fc15f2` into the asset branch without conflict; its legacy bilingual fallback fix removed the prior failure. Final local `npm run check` and `npm test`: **254/254 passed**
+- Added actual interrupted HTTP-stream checks: two held uploads exhaust the processing slots, cancellation releases both, no partial original is retained, and a later complete upload downloads correctly
+- Added a checked-in live-write SQLite backup/restore test with another real connection committing originals during the backup
+- Independent read-only review separately exercised 7,805 original files (including five concurrent uploads), an 8.57 MB inventory manifest, full verification and new-directory restore successfully. The original 8 MiB metadata ceiling was increased to 64 MiB to fit the full bounded account inventory
+- Pre-upgrade schema3 backup now remains schema3, creates no source assets directory and leaves the entire source SQLite file byte-identical. Restore into a separate directory remains schema3; a subsequent real schema4 migration rehearsal there preserves the old case/version. CLI output is redacted verification/schema/count metadata only, suitable for deployment logs; source paths, filenames, user IDs and manifest contents are not printed
+- Restore output must be outside its source snapshot and cannot already exist; backup/export output cannot be nested under source originals
+
+No API/server/storage/package contracts changed in this follow-up. The separate runtime/frontend integration and exact release checks remain required. Timeout/decompression-bomb adversarial tests and non-Linux/no-prlimit equivalent native-memory enforcement remain unverified; no cross-platform hard-resource-limit claim is made.
+
+### October 7, 2026 — atomic generic case-update draft preservation
+
+Isolated branch based on main `2fc15f216714d0331a82456edb1d97b9f76f8498`. New `test/legacy-draft-preservation.test.js` passes 9/9 using actual disposable SQLite files and authenticated HTTP, including concurrent writer processes, optimistic conflicts, cross-user denial, archive/update triggers that force rollback, capacity failure, exact text/provenance retention and response metadata. No provider doubles, paid calls or production records are used. On this isolated candidate, `npm run check` passed and the full default `npm test` passed 240/240 with 0 skipped. Pinned dependency installation succeeded with an explicit temporary npm cache after the default cache path was unavailable. These results are not a browser/deployment or real-provider acceptance claim.

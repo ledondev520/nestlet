@@ -25,7 +25,7 @@ const client = (overrides = {}) => validateClientBatch({ events: [{ event: 'revi
 const backend = (overrides = {}) => serverTelemetryEvent({ event: 'request.case_read', requestId: randomUUID(), httpStatus: 200, serverElapsedMs: 7, ...overrides });
 const code = expected => error => error.code === expected;
 
-test('real schema1 to schema3 migration preserves every original user/case column and credential hash', t => {
+test('real schema1 to schema4 migration preserves every original user/case column and credential hash', t => {
   const directory = mkdtempSync(join(realpathSync(tmpdir()), 'nestlet-migrate-'));
   const filename = join(directory, 'v1.sqlite');
   t.after(() => rmSync(directory, { recursive: true, force: true }));
@@ -47,7 +47,7 @@ test('real schema1 to schema3 migration preserves every original user/case colum
   storage.close();
   db = new DatabaseSync(filename);
   try {
-    assert.equal(db.prepare('PRAGMA user_version').get().user_version, 3);
+    assert.equal(db.prepare('PRAGMA user_version').get().user_version, 4);
     assert.deepEqual(db.prepare('SELECT * FROM users ORDER BY id').all(), users);
     assert.deepEqual(db.prepare('SELECT id,user_id,title,payload_json,version,created_at,updated_at FROM cases ORDER BY id').all(), cases);
     assert.equal(db.prepare('SELECT client_id FROM cases WHERE id=?').get(cid).client_id, null);
