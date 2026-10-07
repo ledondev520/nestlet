@@ -380,3 +380,10 @@ Other passing executed tests include actual HTTP/SQLite customer search and owne
 Actual browser checks on this composite: the new chat composer is visible; signed-out Send opens login and retains the synthetic question; six-character administrator login succeeds; sending with this intentionally unconfigured provider shows the truthful disabled/configuration message, retains input and produces no invented answer. Evidence: [independent chat homepage](../test/local-acceptance-evidence/chat-home-independent.png), [disabled provider gate](../test/local-acceptance-evidence/chat-disabled-independent.png). No provider call was attempted.
 
 Live streaming, stop/retry with real deltas, image interpretation, customer/conversation/artifact navigation and final-preview/export byte parity remain Not run in the browser. No production setup or rollout occurred. Task-owned server, browser and disposable worktree were cleaned up.
+
+
+## New error localization follow-up — 7 October 2026, 08:44 UTC
+
+Targeted source-contract retest on local composite `4654ccb3752fcf653bfb804194c5dcdb6314bd44` (unchanged backend `8959bb9f82f6c7d2e1ea0ba0d616a04498ab6a2a` plus frontend `b2de3d4bfabd79ccf29e47f5d59cf659960d3181`): `node --test test/localization-contract.test.js` **5/5 passed**. The new backend error-code coverage failure is resolved at this pair. This verifies explicit bilingual mappings and safe fallbacks, not every new endpoint's rendered browser error/recovery behavior.
+
+The unchanged backend fact-revocation failure and schema-test mismatch are not closed by this targeted run; the full 223-test suite was not repeated. Additional chat source/fact preservation, account-switch cleanup and durable-conversation wiring issues identified by root in Issue #3 comment6034241545 remain with Kimi and are not claimed independently reproduced or resolved here. Wait for fixed backend/interaction SHAs before retesting those paths. No provider or production action.
