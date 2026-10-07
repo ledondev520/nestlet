@@ -59,6 +59,79 @@ Every interactive component ships: default / hover / active (`scale(.97–.98)`)
 
 Keyboard-visible focus everywhere (verified with real Tab navigation, not programmatic focus alone); status updates use `role="status"`/`role="alert"` without moving focus; pointer targets ≥ 24px via label padding where the control itself is smaller; programmatic page language follows the UI locale; print stylesheet isolates the export artifact.
 
+## Role map per the design-system contract (§2)
+
+Single source: role → value → where it is used → states. Components consume roles only; exceptions need a task reason.
+
+### Color roles
+
+| Role | Token / value | Used for | States |
+| --- | --- | --- | --- |
+| 页面 page | `--paper` #f6f1e6 | canvas, recessed inputs | — |
+| 正文 foreground | `--ink` #252a20 | all primary text | — |
+| 次级正文 | `--ink-soft` #575d4a (4.9:1 on paper) | secondary text, placeholders-as-hints | — |
+| 辅助文字 muted | `--faint-strong` #5f6350 (5.6:1 sheet / 5.2:1 paper) | metadata, summaries, counts | hover → `--accent-deep` when interactive |
+| 装饰 muted-decor | `--faint` #8d9080 (3.2:1) | non-informational markers only | never for meaning |
+| 卡片 card | `--sheet` #fffdf6 | panels, draft sheet, settings drawer | — |
+| 浮层 popover | `--bg-overlay` sheet + `--border-overlay` + `--shadow-overlay` + `--scrim` rgba(37,42,32,.32) | dialogs, dropdown surfaces | open/closed; focus trapped only when truly modal |
+| 主操作 primary | bg `--ink`, text `--paper` | one per view | hover → `--accent` bg; active scale .98; busy keeps label + spinner-free honest text; disabled .42 opacity + reason in text |
+| 次操作 secondary | bg `--paper-deep`, border `--hairline-strong` | supporting actions | hover darkens one step |
+| 低强调 ghost/link | sheet+strong border / `--accent-deep` text | tertiary, navigation | link underline on hover |
+| 交互高亮 accent | `--accent` #b8402a / `--accent-tint` | current step, focus ring, primary hover, DRAFT stamp | — |
+| 边界 border | `--hairline` / hover `--hairline-strong` / focus `--ink` | all separators and fields | — |
+| 输入 input | bg `--paper` → focus `--sheet`; border `--input-border` → focus `--ink` | every field | invalid: border `--accent-deep` + linked text error |
+| 焦点 ring | 2px `--accent`, offset 2px | every interactive element | keyboard-only (`:focus-visible`); never removed |
+
+### Status roles (信息/等待/成功/警告/错误)
+
+| Status | Text / bg | Used for | Notes |
+| --- | --- | --- | --- |
+| 信息 info | `--info` #3d5a6c / `--info-tint` | neutral notices, guidance blocks | icon + text, not color-only |
+| 等待 waiting/busy | `--ink-soft` / `--paper-deep` + 处理中… text | in-progress rows, progress track | no fake percentages; cancellable path visible |
+| 成功 success | `--ok` / `--ok-tint` | saved, reviewed badges | "已保存" only after server success |
+| 警告 warning | `--warn` / `--warn-tint` | missing info, stale versions | pairs with guidance text |
+| 错误/破坏 error | `--accent-deep` / `--accent-tint`, 3px left rail | failures, conflicts, destructive | says what failed, what survives, next step |
+
+### Typography roles
+
+| Role | Stack / size / weight / line-height | Usage |
+| --- | --- | --- |
+| 页面标题 | display serif, 30px/700/1.3, `text-wrap: balance` | workspace h1 |
+| 区块标题 | display serif, 19px/700/1.35 | panel h2, wordmark 23px |
+| 正文/会话 | body sans, 14px/400/1.75 | UI text, chat |
+| 字段标签 | body sans, 12px/600 | labels, table heads |
+| 辅助文字 | body sans, 12px/400/1.65 | hints, metadata |
+| 文档正文 | Georgia serif, 14px/1.85 (print 11–12pt/1.5) | English draft/artifact reading |
+| 等宽数据 | mono, 11px, tabular-nums | counts, endpoints, versions, excerpts |
+
+CJK: no uppercase transform, letter-spacing ≤ .02em. Latin micro-labels: ≤ .08em, small-caps allowed.
+
+### Spacing / size roles
+
+| Role | Value | Usage |
+| --- | --- | --- |
+| 页边距 page margin | 40px desktop / 16px mobile | shell padding |
+| 区块距 section gap | 20–24px | between panels and major blocks |
+| 组内距 group gap | 10–16px | action rows, field groups |
+| 控件内距 control padding | 10–12px vertical / 14–20px horizontal | buttons, inputs |
+| 目录密度 directory | 44px rows, 12px text, chevron/link actions | customer/case/conversation lists |
+| 阅读宽度 reading | 68ch max | draft/document body |
+| composer | thread max 46vh; input min 110px auto-grow to 30vh | chat area |
+
+### Radius / elevation roles
+
+| Role | Value | Usage |
+| --- | --- | --- |
+| 控件 control | 8px | buttons, inputs, chips |
+| 容器 container | 12–14px | panels, drawers, bubbles |
+| 徽章 badge | 4px | status tags (never pills; pill = static model label only) |
+| 浮层 overlay | 12px + `--shadow-overlay` + scrim | dialogs/popovers |
+| 分隔 separator | 1px `--hairline` | preferred over shadows for grouping |
+
+### Focus / motion
+
+focus-visible 2px cinnabar outline (offset 2px) — distinct from selected (filled disc / accent underline). pressed = scale .97–.98. disabled = .42 opacity + textual reason where not obvious. busy = label text change (正在处理…), no fake spinner-only state. Feedback 180–250ms `--ease-standard`; reduced-motion removes all of it including the streaming caret blink.
+
 ## For the shadcn/Vite migration
 
 - shadcn's HSL CSS-var theme maps cleanly: set `--background`/`--card`/`--popover` = paper/sheet family, `--primary` = ink (hover accent), `--destructive` = accent-deep, `--ring` = accent, `--muted(-foreground)` = paper-deep/faint-strong, `--border`/`--input` = hairline/strong. Keep hex values from `tokens.json`; do not adopt the default shadcn gray/slate palette.

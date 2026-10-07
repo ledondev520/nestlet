@@ -71,8 +71,29 @@
   --duration-fast: 180ms;
   --duration-base: 220ms;
 
+  /* Overlays (浮层/遮罩) */
+  --bg-overlay: var(--sheet);
+  --scrim: rgba(37, 42, 32, .32);
+  --border-overlay: var(--hairline-strong);
+  --shadow-overlay: 0 2px 6px rgba(88, 74, 43, .08), 0 18px 44px -16px rgba(88, 74, 43, .3);
+
+  /* Inputs */
+  --input-bg: var(--paper);
+  --input-bg-focus: var(--sheet);
+  --input-border: var(--hairline-strong);
+  --input-border-focus: var(--ink);
+
+  /* Status additions: information and waiting (信息/等待) */
+  --info: #3d5a6c;
+  --info-tint: #e4ecf0;
+  --waiting: var(--ink-soft);
+  --waiting-bg: var(--paper-deep);
+
   /* Layout */
   --shell-max: 960px;
   --content-max: 640px;
+  --reading-max: 68ch;        /* document/draft reading width */
+  --composer-max-height: 46vh; /* chat thread; composer input 110px→auto-grow */
+  --directory-row-height: 44px; /* customer/case list density (44px touch target) */
   --breakpoint-mobile: 760px;
 }
