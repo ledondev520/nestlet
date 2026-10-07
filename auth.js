@@ -2,6 +2,7 @@
 import { createHash, randomBytes, scrypt, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
 import { normalizeEmail } from './email-auth-domain.js';
+import { accountPermissions } from './account-administration.js';
 const derive = promisify(scrypt);
 const COOKIE = 'nestlet_session';
 const IDLE_MS = 30 * 60 * 1000;
@@ -19,7 +20,7 @@ function normalizeLoginUsername(value, allowEmpty = false) {
 /** An optional login alias, never a replacement for the immutable owner identity. */
 export const normalizeOperatorUsername = (value = 'owner') => normalizeLoginUsername(value, true);
 
-export function createOperatorAuth({ passwordHash = '', operatorUsername = 'owner', publicOrigin = '', host = '127.0.0.1', findTrialUser = () => null, findTrialUserById = () => null, findUserByEmail = () => null } = {}) {
+export function createOperatorAuth({ passwordHash = '', operatorUsername = 'owner', publicOrigin = '', host = '127.0.0.1', findTrialUser = () => null, findTrialUserById = () => null, findUserByEmail = () => null, hasAdministratorCapability = () => false } = {}) {
   const fingerprint = value => createHash('sha256').update(value).digest('hex');
   const sessions = new Map();
   const attempts = [];
@@ -49,7 +50,7 @@ export function createOperatorAuth({ passwordHash = '', operatorUsername = 'owne
     const current = session.role === 'owner' ? { role: 'owner', passwordHash } : findTrialUserById(session.userId);
     if (!current || current.role !== session.role || typeof current.passwordHash !== 'string' || fingerprint(current.passwordHash) !== session.credentialFingerprint) { sessions.delete(token); return null; }
     session.lastUsed = Date.now();
-    return { token, csrfToken: session.csrfToken, userId: session.userId, username: session.username, role: session.role };
+    return { token, csrfToken: session.csrfToken, userId: session.userId, username: session.username, role: session.role, ...accountPermissions(session, hasAdministratorCapability(session.userId)) };
   };
   const csrfValid = (request, session) => {
     const token = request.headers['x-csrf-token'];
@@ -68,7 +69,7 @@ export function createOperatorAuth({ passwordHash = '', operatorUsername = 'owne
     const token = randomBytes(32).toString('base64url');
     const csrfToken = randomBytes(32).toString('base64url');
     sessions.set(token, { rememberMe, csrfToken, created: now, lastUsed: now, userId: target.id, username: target.username, role: target.role, credentialFingerprint: fingerprint(target.passwordHash) });
-    return { csrfToken, cookie: cookie(token), userId: target.id, username: target.username, role: target.role };
+    return { csrfToken, cookie: cookie(token), userId: target.id, username: target.username, role: target.role, ...accountPermissions({ userId: target.id, role: target.role }, hasAdministratorCapability(target.id)) };
   };
   return {
     get configured() { return isConfigured(); },

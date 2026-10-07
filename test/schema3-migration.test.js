@@ -44,12 +44,12 @@ function legacy(t) {
   return {filename,userId,caseId,workflowId,before};
 }
 
-test('schema2→5 keeps every original row/column and event high-water while permitting the new fixed chat event',t=>{
+test('schema2→current keeps every original row/column and event high-water while permitting the new fixed chat event',t=>{
   const f=legacy(t);const store=openStorage({filename:f.filename});
   try {
     const db=new DatabaseSync(f.filename,{readOnly:true});
     try {
-      assert.equal(db.prepare('PRAGMA user_version').get().user_version,5);
+      assert.equal(db.prepare('PRAGMA user_version').get().user_version,6);
       assert.equal(db.prepare('PRAGMA application_id').get().application_id,1314083916);
       assert.ok(JSON.stringify(db.prepare('SELECT * FROM users ORDER BY id').all())===f.before.users,'User columns changed');
       assert.ok(JSON.stringify(db.prepare('SELECT id,user_id,title,payload_json,version,created_at,updated_at FROM cases ORDER BY id').all())===f.before.cases,'Case columns changed');
@@ -67,7 +67,7 @@ test('schema2→5 keeps every original row/column and event high-water while per
   try {assert.equal(reopened.getCase(f.userId,f.caseId).sourceText,payload.sourceText);assert.equal(reopened.listClients(f.userId).length,0);} finally {reopened.close();}
 });
 
-test('failed additive schema3 migration rolls back event rebuild and original sequence; future schema6 fails closed',t=>{
+test('failed additive schema3 migration rolls back event rebuild and original sequence; future schema7 fails closed',t=>{
   const f=legacy(t);let db=new DatabaseSync(f.filename);
   db.exec('CREATE TABLE clients (sentinel TEXT NOT NULL);');db.prepare('INSERT INTO clients VALUES(?)').run('preserve-conflicting-table');db.close();
   assert.throws(()=>openStorage({filename:f.filename}));
@@ -77,7 +77,7 @@ test('failed additive schema3 migration rolls back event rebuild and original se
   assert.equal(db.prepare("SELECT seq FROM sqlite_sequence WHERE name='telemetry_events'").get().seq,500);
   assert.equal(db.prepare('SELECT sentinel FROM clients').get().sentinel,'preserve-conflicting-table');
   assert.ok(!db.prepare("SELECT sql FROM sqlite_master WHERE name='telemetry_events'").get().sql.includes('request.chat'));
-  db.exec('PRAGMA user_version=6;');db.close();
+  db.exec('PRAGMA user_version=7;');db.close();
   const before=readFileSync(f.filename);
   assert.throws(()=>openStorage({filename:f.filename}),error=>error.code==='STORAGE_VERSION_UNSUPPORTED');
   assert.deepEqual(readFileSync(f.filename),before);

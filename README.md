@@ -97,6 +97,7 @@ No real personal records, raw customer materials, secret values or private infra
 - [Five-case pilot protocol, not results](docs/pilot.md)
 - [Full application architecture and lifecycle](docs/architecture.md)
 - [SQLite storage and named-trial runtime](docs/sqlite-runtime.md)
+- [Prepared owner-controlled administrator capability and schema6 release gates](docs/account-administration.md)
 - [First operator session and verification gates](docs/onboarding.md)
 - [Code and data flow](docs/code-walkthrough.md)
 - [Collaboration contract](docs/collaboration.md)

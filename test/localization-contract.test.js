@@ -62,7 +62,7 @@ test('every currently emitted backend error code has an explicit bilingual route
     INVALID_INPUT: 'errorLive', INVALID_JSON: 'errorGeneric', INVALID_PDF: 'errorPdf', INVALID_WORKBOOK: 'errorWorkbook',
     OCR_REQUIRED: 'errorScanned', ORIGIN_REJECTED: 'errorGeneric', PDF_ENCRYPTED: 'errorEncrypted', PDF_TIMEOUT: 'errorPdf',
     PDF_UNAVAILABLE: 'errorPdf', PROVIDER_ERROR: 'errorLive', REQUEST_CANCELLED: 'errorFile', SENSITIVE_DATA: 'errorSensitive',
-    SETTINGS_CHANGED: 'errorGeneric', TEXT_TOO_LARGE: 'errorTextSize', UNSUPPORTED_MEDIA_TYPE: 'errorFile',
+    SETTINGS_CHANGED: 'errorGeneric', METHOD_NOT_ALLOWED: 'errorGeneric', TEXT_TOO_LARGE: 'errorTextSize', UNSUPPORTED_MEDIA_TYPE: 'errorFile',
     WORKBOOK_ENCRYPTED: 'errorWorkbook', WORKBOOK_TIMEOUT: 'errorWorkbook', WORKBOOK_TOO_COMPLEX: 'errorWorkbook',
     WORKBOOK_UNAVAILABLE: 'errorWorkbook', INTERNAL_ERROR: 'errorGeneric', USER_EXISTS: 'errorCredentials',
     STORAGE_PATH_INVALID: 'errorBackend', STORAGE_VERSION_UNSUPPORTED: 'errorBackend',

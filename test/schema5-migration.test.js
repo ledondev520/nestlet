@@ -50,7 +50,7 @@ const SCHEMA4_ASSETS_SQL = `CREATE TABLE assets (
           BEGIN UPDATE assets SET case_id=NULL,version=version+1,updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE case_id=OLD.id AND owner_user_id=OLD.user_id; END;
         PRAGMA user_version = 4;`;
 const TABLES = ['users', 'clients', 'cases', 'conversations', 'messages', 'artifacts', 'telemetry_workflows', 'telemetry_events', 'assets', 'sqlite_sequence'];
-const now = '2026-10-07T09:00:00.000Z';
+const now = new Date().toISOString();
 const salt = randomBytes(16),
   passwordHash = `scrypt$${salt.toString('base64url')}$${scryptSync('synthetic-schema5-migration-password', salt, 32).toString('base64url')}`;
 const rows = (db, table) => JSON.stringify(db.prepare('SELECT * FROM ' + table + ' ORDER BY rowid').all());
@@ -114,7 +114,7 @@ function assertPreserved(db, before) {
   assert.equal(db.prepare('PRAGMA integrity_check').get().integrity_check, 'ok');
 }
 
-test('historical schema4→5 is additive and preserves every users/data row, schema object and foreign key after restart', t => {
+test('historical schema4→current is additive and preserves every users/data row, schema object and foreign key after restart', t => {
   const f = fixture(t);
   const storage = openStorage({ filename: f.filename });
   try {
@@ -128,7 +128,7 @@ test('historical schema4→5 is additive and preserves every users/data row, sch
     }
   } finally { storage.close(); }
   inspect(f.filename, db => {
-    assert.equal(db.prepare('PRAGMA user_version').get().user_version, 5);
+    assert.equal(db.prepare('PRAGMA user_version').get().user_version, 6);
     assert.equal(db.prepare('PRAGMA application_id').get().application_id, 0x4e53544c);
     assertPreserved(db, f.before);
     for (const table of ['email_identities', 'email_actions', 'email_rate_buckets'])
@@ -178,15 +178,15 @@ test('failure late in schema5 migration rolls back all email DDL and leaves sche
   });
 });
 
-test('future schema6 fails closed without changing persistent database bytes, schema or journal mode', t => {
+test('future schema7 fails closed without changing persistent database bytes, schema or journal mode', t => {
   const f = fixture(t);
-  inspect(f.filename, db => { db.exec('PRAGMA journal_mode=WAL; PRAGMA user_version=6;'); });
+  inspect(f.filename, db => { db.exec('PRAGMA journal_mode=WAL; PRAGMA user_version=7;'); });
   const bytes = readFileSync(f.filename), files = readdirSync(f.directory).sort();
   assert.throws(() => openStorage({ filename: f.filename }), error => error.code === 'STORAGE_VERSION_UNSUPPORTED');
   assert.deepEqual(readFileSync(f.filename), bytes);
   assert.deepEqual(readdirSync(f.directory).sort(), files);
   inspect(f.filename, db => {
-    assert.equal(db.prepare('PRAGMA user_version').get().user_version, 6);
+    assert.equal(db.prepare('PRAGMA user_version').get().user_version, 7);
     assert.equal(db.prepare('PRAGMA journal_mode').get().journal_mode, 'wal');
     assertPreserved(db, f.before);
     assert.deepEqual(schema(db), f.before.schema);

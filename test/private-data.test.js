@@ -220,7 +220,7 @@ test('pre-upgrade schema3 backup remains schema3 and leaves source unchanged thr
     migrated.close();
   }
   check = new DatabaseSync(restored.filename, { readOnly: true });
-  assert.equal(check.prepare('PRAGMA user_version').get().user_version, 5);
+  assert.equal(check.prepare('PRAGMA user_version').get().user_version, 6);
   check.close();
   assert.deepEqual(readFileSync(filename), before);
   assert.equal(verifyPrivateBackup({ input: output }).schemaVersion, 3);
@@ -366,7 +366,7 @@ test('backup waits for a bounded real exclusive writer and verifies its committe
   } finally { store.close(); }
 });
 
-test('schema5 private snapshot preserves verified email binding, pending hash-only actions and rate limits on restore', async t => {
+test('current-schema private snapshot preserves verified email binding, pending hash-only actions and rate limits on restore', async t => {
   const f = await fixture(t), store = openStorage({ filename: f.filename });
   const { createHash } = await import('node:crypto');
   const fingerprint = createHash('sha256').update(store.getUserById(f.user.id).passwordHash).digest('hex');
@@ -377,7 +377,7 @@ test('schema5 private snapshot preserves verified email binding, pending hash-on
   store.emailAuth.markAccepted(reset.tokenHash, now); assert.equal(store.emailAuth.reserveRequest(email, 'synthetic-ip', now), 'allowed');
   store.close();
   const output = join(f.root, 'email-snapshot');
-  const backed = await backupPrivateData({ ...f, output }); assert.equal(backed.schemaVersion, 5);
+  const backed = await backupPrivateData({ ...f, output }); assert.equal(backed.schemaVersion, 6);
   const restored = await restorePrivateBackup({ input: output, output: join(f.root, 'email-restored') });
   const recovered = openStorage({ filename: restored.filename });
   try {
@@ -391,7 +391,7 @@ test('schema5 private snapshot preserves verified email binding, pending hash-on
 });
 
 
-test('schema5 backups require the private originals directory even when no asset rows exist', async t => {
+test('current-schema backups require the private originals directory even when no asset rows exist', async t => {
   const root = mkdtempSync(join(realpathSync(tmpdir()), 'nestlet-schema5-vault-guard-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const filename = join(root, 'nestlet.sqlite'), assetsDirectory = join(root, 'missing-assets'), output = join(root, 'snapshot');

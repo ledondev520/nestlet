@@ -7,6 +7,7 @@ import { readFile, access } from 'node:fs/promises';
 import { spawn, spawnSync } from 'node:child_process';
 import { validateSuggestions } from './public/core.js';
 import { createOperatorAuth } from './auth.js';
+import { AccountAdministrationError, isBootstrapOwner } from './account-administration.js';
 import { createEmailAuth, EmailAuthError } from './email-auth.js';
 import { createEmailDelivery } from './email-delivery.js';
 import { normalizeEmail } from './email-auth-domain.js';
@@ -43,7 +44,8 @@ const assetVault = openAssetVault({directory:assetDirectory});
 const telemetry = createTelemetry(storage);
 const auth = createOperatorAuth({ passwordHash: process.env.NESTLET_OPERATOR_PASSWORD_HASH, operatorUsername: process.env.NESTLET_OPERATOR_USERNAME, publicOrigin, host: process.env.HOST,
   findTrialUser: username => storage.findUserByUsername(username), findTrialUserById: id => storage.getUserById(id),
-  findUserByEmail: email => storage.emailAuth.findByEmail(email) });
+  findUserByEmail: email => storage.emailAuth.findByEmail(email),
+  hasAdministratorCapability: id => storage.accountAdministration.administrator(id) });
 const emailAuth = createEmailAuth({ storage: storage.emailAuth, delivery: createEmailDelivery(), publicOrigin,
   currentCredential: id => id === 'owner' ? process.env.NESTLET_OPERATOR_PASSWORD_HASH : storage.getUserById(id)?.passwordHash });
 const trialAiRequests = [];
@@ -89,7 +91,7 @@ function requireSession(request, mutation = true) {
 
 function requireOwnerSession(request, mutation = true) {
   const session = requireSession(request, mutation);
-  if (session.role !== 'owner') throw new RequestError(403, 'OWNER_REQUIRED', 'Only the owner can manage provider settings.');
+  if (!isBootstrapOwner(session)) throw new RequestError(403, 'OWNER_REQUIRED', 'Only the owner can manage provider settings.');
   return session;
 }
 
@@ -106,12 +108,13 @@ function requireSecureSettings(request) {
 
 function settingsStatus(request) {
   const session = auth.getSession(request);
-  const owner = session?.role === 'owner';
+  const owner = isBootstrapOwner(session);
   const common = { model, providerEndpoint: 'https://api.deepseek.com/chat/completions',
     liveEnabled: enabled && auth.configured, authConfigured: auth.configured, authenticated: Boolean(session),
     secureLogin: auth.secure || auth.localTransportAllowed,
     secureSettings: auth.secure && auth.configured && (!session || owner),
     role: session?.role || null, canManageSettings: owner, caseStorageEnabled: true,
+    administrator: session?.administrator === true, canManageAccounts: owner, canViewDiagnostics: session?.canViewDiagnostics === true,
     registrationEnabled: auth.configured && (auth.secure || auth.localTransportAllowed) && emailAuth.configured,
     ...emailAuth.status(session?.userId, session?.role),
     assetStorageEnabled: true, assetLimits: ASSET_LIMITS, assetTypes: Object.keys(ASSET_TYPES),
@@ -424,7 +427,8 @@ const server = http.createServer(async (request, response) => {
       const result = await auth.login(body.password, body.email ?? body.username, body.rememberMe === true);
       if (result.error) throw new RequestError(result.error === 'LOGIN_RATE_LIMITED' ? 429 : result.error === 'OPERATOR_SETUP_REQUIRED' ? 503 : 401, result.error, result.error === 'LOGIN_RATE_LIMITED' ? 'Too many sign-in attempts. Wait a minute before retrying.' : 'Operator sign-in failed. Check the password or server setup.');
       response.setHeader('Set-Cookie', result.cookie);
-      return json(200, { authenticated: true, csrfToken: result.csrfToken, role: result.role, userId: result.userId, username: result.username });
+      return json(200, { authenticated: true, csrfToken: result.csrfToken, role: result.role, userId: result.userId, username: result.username,
+        administrator: result.administrator, canManageAccounts: result.canManageAccounts, canViewDiagnostics: result.canViewDiagnostics });
     }
     if (request.url === '/api/logout' && request.method === 'POST') {
       verifyOrigin(request);
@@ -461,6 +465,34 @@ const server = http.createServer(async (request, response) => {
       try { return json(200, await testProviderConnection(AbortSignal.any([cancel.signal, AbortSignal.timeout(15000)]))); }
       catch (error) { if (error instanceof RequestError) throw error; throw new RequestError(502, 'CONNECTION_FAILED', 'Connection verification failed. No chat completion was tested.'); }
       finally { activeConnectionTests--; }
+    }
+    const accountUrl = new URL(request.url, 'http://localhost');
+    const accountRoute = /^\/api\/admin\/accounts\/(owner|[0-9a-f-]{36})\/administrator$/u.exec(accountUrl.pathname);
+    if (accountUrl.pathname === '/api/admin/accounts' || accountUrl.pathname === '/api/admin/account-audit' || accountRoute) {
+      verifyOrigin(request);
+      const mutation = request.method !== 'GET';
+      const session = requireOwnerSession(request, mutation);
+      if (mutation && !request.headers.origin) throw new RequestError(403, 'ORIGIN_REJECTED', 'A same-origin browser request is required.');
+      if (!auth.secure && !auth.localTransportAllowed) throw new RequestError(403, 'HTTPS_REQUIRED', 'Account administration requires HTTPS outside loopback development.');
+      if (request.method === 'GET' && accountUrl.pathname === '/api/admin/account-audit') {
+        const values = [...accountUrl.searchParams];
+        if (values.some(([key,value]) => !['before','limit'].includes(key) || !/^[1-9][0-9]{0,15}$/u.test(value)) || new Set(values.map(([key]) => key)).size !== values.length) throw new AccountAdministrationError();
+        return json(200, storage.accountAdministration.audit(session, Object.fromEntries(values.map(([key,value]) => [key,Number(value)]))));
+      }
+      if (accountUrl.search) throw new AccountAdministrationError();
+      if (request.method === 'GET' && accountUrl.pathname === '/api/admin/accounts') return json(200, storage.accountAdministration.listAccounts(session));
+      if (request.method === 'PUT' && accountRoute) return json(200, storage.accountAdministration.setAdministrator(session, accountRoute[1], await readJson(request, 1024)));
+      throw new RequestError(405, 'METHOD_NOT_ALLOWED', 'Method not allowed.');
+    }
+    if (accountUrl.pathname === '/api/admin/diagnostics') {
+      verifyOrigin(request);
+      const session = requireSession(request, false);
+      if (!session.canViewDiagnostics) throw new AccountAdministrationError('ADMINISTRATOR_REQUIRED', 403);
+      if (request.method !== 'GET') throw new RequestError(405, 'METHOD_NOT_ALLOWED', 'Method not allowed.');
+      if (accountUrl.search) throw new AccountAdministrationError();
+      // Bounded process health only: no account roster, telemetry, paths, configuration secrets or customer data.
+      return json(200, { model, liveEnabled: enabled && auth.configured, pdfEnabled, workbookEnabled,
+        uptimeSeconds: Math.floor(process.uptime()), activeRequests: { chat: activeChatRequests, extraction: activeExtractions, pdf: activePdfExtractions, workbook: activeWorkbookExtractions } });
     }
     const telemetryUrl = new URL(request.url, 'http://localhost');
     const workflowRoute = /^\/api\/workflows\/([0-9a-f-]{36})\/(bind|events)$/u.exec(telemetryUrl.pathname);
@@ -722,7 +754,7 @@ const server = http.createServer(async (request, response) => {
     if (file.startsWith('samples/')) response.setHeader('Content-Disposition', `attachment; filename="${file.slice('samples/'.length)}"`);
     response.end(content);
   } catch (error) {
-    if (error instanceof EmailAuthError || error instanceof AssetError || error instanceof RequestError || error instanceof StorageError || error instanceof TelemetryError || error instanceof ChatError || error instanceof CaseRecordsError || error instanceof DocumentContextError) return json(error.status, { error: error.message, code: error.code, ...(error.details ? {details:error.details} : {}) });
+    if (error instanceof AccountAdministrationError || error instanceof EmailAuthError || error instanceof AssetError || error instanceof RequestError || error instanceof StorageError || error instanceof TelemetryError || error instanceof ChatError || error instanceof CaseRecordsError || error instanceof DocumentContextError) return json(error.status, { error: error.message, code: error.code, ...(error.details ? {details:error.details} : {}) });
     return json(500, { error: 'Request could not be completed', code: 'INTERNAL_ERROR' });
   }
 });
