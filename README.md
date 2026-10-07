@@ -8,28 +8,32 @@ A standalone JavaScript frontend and backend for one Housing Choice Voucher pape
 
 The final workflow starts empty and uses real document parsing and `deepseek-flash` extraction. It must not substitute samples, mocked model output, a local rule extractor or an older model alias when configuration or a provider call fails. Test fixtures and isolated fake-provider tests are development evidence only.
 
-**Transition checkpoint, October 7, 2026:** PDF and workbook backend routes are implemented; UI integration, removal of the earlier demo flow and full end-to-end acceptance are being reconciled. Read [validation](docs/validation.md) for the exact tested snapshot. Source code or tests passing at an intermediate commit are not final acceptance.
+**Checkpoint, October 7, 2026:** operator authentication, protected parser/extraction/settings routes, real PDF/Excel import, Flash-only extraction and authenticated HTTPS key settings are implemented. The workflow starts empty and has no silent mock/provider fallback. Local Codex reported a real-browser retake against `8b429` covering login, PDF/Excel and exports, plus 87 core and five independent HTTP checks; see [validation](docs/validation.md) for the exact evidence and limitations.
+
+The initial private loopback deployment of `8b429` was reported successful at 04:48 UTC in [deployment run 37573150783](https://github.com/ledondev520/nestlet/actions/runs/37573150783); deployment-log review remains separate. Public DNS/trusted HTTPS, production operator configuration and a real DeepSeek call are not established by that result. No first-case time saving or ROI has been validated.
+
+**Operator setup helper:** The user-run operator setup helper has passed independent code review after the unsafe-ancestor and hidden-input fixes. Packaging and real-container CI verification are still pending; the next release PR has not yet been published. Code-review approval is not a published or deployed helper release. Use its production instructions only after the reviewed helper-enabled release is published, container-verified and staged. Public HTTPS/frontend access and a live model call remain unverified.
 
 ## Install and run
 
 Use Node.js 24 to match the container runtime, npm, and Poppler's `pdftotext` for text-PDF extraction. Node package dependencies are pinned in `package-lock.json`.
 
 ```sh
-npm ci
+npm ci --ignore-scripts
 npm run check
 npm test
 npm start
 ```
 
-Open http://127.0.0.1:4173. The server binds to loopback. `npm start` does not load `.env` automatically. For configuration, copy `.env.example` to a private ignored `.env`, populate the key through an authorized secure mechanism, then run:
+Open http://127.0.0.1:4173. The server binds to loopback. `npm start` does not load `.env` automatically. For configuration, copy `.env.example` to a private ignored `.env`, provide the operator password hash through an authorized private setup, then run:
 
 ```sh
 node --env-file=.env server.js
 ```
 
-Required for real AI extraction: server-side `DEEPSEEK_API_KEY` and `ENABLE_LIVE_AI=true`. The only supported product model is `deepseek-flash`; legacy aliases are not maintained. An absent key must be a visible configuration blocker, not an offline success. No live account/key/model response has yet been verified by the project.
+Protected routes require configured operator authentication, sign-in and CSRF protection. For real extraction, configure an authorized key either server-side with `DEEPSEEK_API_KEY` and `ENABLE_LIVE_AI=true`, or through the implemented authenticated HTTPS Settings screen with explicit enablement. Browser-entered keys remain in server process memory only. The only supported product model is `deepseek-flash`; legacy aliases are not maintained. An absent key must be a visible configuration blocker, not an offline success. No live account/key/model response has yet been verified by the project.
 
-Never paste secrets into chat, browser fields, screenshots or commits. Before sending any production tenant material, resolve provider terms, retention, training use, geography and authorization. The current development build accepts synthetic or thoroughly de-identified inputs only. [Provider notes](docs/provider.md)
+Never paste secrets into chat, arbitrary browser fields, screenshots or commits. The operator personally enters/submits credentials only through the authorized private setup or the authenticated HTTPS Settings screen. Before sending any production tenant material, resolve provider terms, retention, training use, geography and authorization. The current development build accepts synthetic or thoroughly de-identified inputs only. [Provider notes](docs/provider.md)
 
 ### Dependencies and input limits
 
@@ -51,6 +55,8 @@ This is synthetic documentation data, not a preloaded production case. Exported 
 
 ## Working with a case
 
+Assistance is optional. Keep the existing process and use Nestlet only when a first real case exposes a document-reading, missing-information or English-writing difficulty. No migration, repeated data entry or feature expansion is required to establish a need.
+
 1. Start with an empty case and import or paste safe material
 2. Review parsed text or map the workbook's selected sheet/row before sending minimal text for extraction
 3. Inspect source-linked facts; resolve conflicts and review every field, including unknowns
@@ -65,7 +71,7 @@ The interface defaults to Simplified Chinese and supports English, including err
 
 Frontend, backend and parser code live in this repository. Sites is only a temporary preview and is not a runtime or deployment dependency. An owner-only preview is not assumed accessible to collaborators.
 
-No VPS target is selected and no remote deployment is claimed. [VPS and Docker deployment plan](docs/deployment.md) documents requirements, a proposed container recipe, release gates and rollback. The current server has no authentication or multi-user isolation: do not expose an unprotected live API to the internet.
+The owner selected the same VPS as the existing Jiesong service, with Nestlet isolated as an independent service. Private addresses and access details are not published here. An initial loopback container deployment is reported above; public DNS and trusted TLS remain pending. [Deployment status and guide](docs/deployment.md) distinguishes implementation, deployment, configuration and verification. Single-operator authentication exists; multi-user tenant isolation and production privacy readiness do not.
 
 ## Data boundaries
 
@@ -78,6 +84,7 @@ No real personal records, raw customer materials, secret values or private infra
 - [English operator documents versus official forms](docs/official-artifacts.md)
 - [Official domain sources and version checks](docs/domain-sourcebook.md)
 - [Five-case pilot protocol, not results](docs/pilot.md)
+- [First operator session and verification gates](docs/onboarding.md)
 - [Code and data flow](docs/code-walkthrough.md)
 - [Collaboration contract](docs/collaboration.md)
 - [Local Codex acceptance task](docs/tasks/local-codex-acceptance.md)

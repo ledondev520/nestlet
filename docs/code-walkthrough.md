@@ -5,7 +5,9 @@ This is a small JavaScript app, not a framework scaffold. Read the modules in th
 ## File responsibilities
 
 ```text
-server.js           loopback HTTP server, PDF/workbook imports, provider extraction
+server.js           HTTP routes, protected PDF/workbook imports, provider/settings calls
+auth.js             single-operator password verification, sessions and CSRF
+public/agency-guidance.js bilingual official-source references, unconfirmed acceptance
 public/core.js      review gate, drafts, CSV, AI suggestion validation
 workbook-worker.js isolated real XLSX/XLS parsing and bounded preview
 public/app.js       bilingual interface, transient state, operator review and export actions
@@ -13,11 +15,12 @@ public/index.html   browser entry point
 public/style.css    responsive screen and print presentation
 public/logo.svg     provisional brand artwork
 test/core.test.js   behavior checks at the exported core interface
-test/server.test.js local HTTP checks with provider fetch mocked
+test/server.test.js real local HTTP and file-parser checks
+test/auth.test.js   single-operator authentication/session behavior
 docs/               scope, sources, pilot, collaboration and evidence
 ```
 
-The backend uses SheetJS for workbooks and an operating-system pdftotext dependency for PDFs. No browser API key or database is implemented. The app is independently deployable; Sites is only a temporary preview.
+The backend uses SheetJS for workbooks and an operating-system pdftotext dependency for PDFs. Authenticated HTTPS browser key entry is implemented; the submitted key stays in server process memory, not browser storage or a case database. No persistent case database is implemented. The app is independently deployable; Sites is only a temporary preview.
 
 ## Main path
 
@@ -36,7 +39,7 @@ Empty case → pasted text / TXT / CSV / PDF / XLSX / XLS
 
 CSV export is a separate data interchange path through `exportCSV`. Reimport goes through `parseCSV` and creates new text to review; it does not restore a prior confirmation or agency status.
 
-Final contract: no preloaded sample, mock response or silent local-extractor fallback. Cleanup of the earlier demo route is in progress; test the release commit rather than treating this diagram as a pass result.
+Final contract: no preloaded sample, mock response or silent local-extractor fallback. This behavior is implemented; real-provider verification remains a separate release gate. Explicit manual entry is not a simulated AI result.
 
 ## Core contracts
 
@@ -65,16 +68,20 @@ Rendering escapes input before inserting it into HTML. Export must use the inten
 ## Optional network path
 
 ```text
-Browser confirms de-identified text transmission
-  → same-origin POST /api/extract
-  → server checks live enablement, consent and input
-  → server attaches its environment-only credential
+Operator signs in; browser receives HttpOnly session cookie + CSRF token
+  → optional HTTPS Settings save to server-memory key storage
+  → browser confirms de-identified text transmission
+  → same-origin POST /api/extract with session + CSRF
+  → server checks authorization, live enablement, consent and input
+  → server attaches its server-held credential
   → DeepSeek JSON response
   → server validates suggestions
   → browser receives unconfirmed facts, never a key
 ```
 
-`GET /api/status` describes configuration, not live account health. Offline tests replace outbound provider fetch, so no successful account call is implied. The static route allowlist must not expose server code or environment files. The loopback server and security headers are safeguards for a prototype, not authentication or production hardening.
+`GET /api/status` reports sanitized configuration/capabilities, not live account health. `/api/login` verifies the configured operator hash; `/api/logout` invalidates that session. PDF/workbook parsing and extraction require session plus CSRF. Key writes/tests additionally require the configured HTTPS origin. Sessions and browser-saved keys are lost on server restart; an environment-provided key can be loaded again at startup.
+
+`POST /api/settings/test` explicitly checks model access through DeepSeek `/models`, not chat completion. Historical development-double tests are separate from real HTTP/file/browser evidence and cannot prove a successful provider call. The static route allowlist must not expose server code or environment files. Single-operator authentication is implemented, but does not establish multi-tenant isolation or production privacy readiness.
 
 ## What to inspect when changing behavior
 
