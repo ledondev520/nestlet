@@ -60,7 +60,8 @@
   --radius-badge: 4px;
   --radius-control: 8px;
   --radius-panel: 14px;
-  --radius-bubble-user: 12px 12px 4px 12px;
+  --radius-bubble-user: 20px 20px 4px 20px;  /* chat-polish: floating composer idiom */
+  --radius-composer: 20px;                  /* docked chat composer */
   --radius-pill: 999px;
 
   /* Elevation: warm-tinted, never pure black */
