@@ -2,10 +2,20 @@
 // shipped storage module. Schema-1 DDL matches baseline 2c13615; all rows are synthetic.
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
-import { closeSync, mkdtempSync, openSync, rmSync, statSync } from 'node:fs';
+import { closeSync, lstatSync, mkdtempSync, openSync, rmSync, statSync } from 'node:fs';
+import { isAbsolute, join } from 'node:path';
 import { randomBytes, scryptSync } from 'node:crypto';
 import { openStorage } from './storage.js';
-const directory = mkdtempSync('/data/ci-migration-');
+import { openAssetVault, parseAsset } from './private-assets.js';
+// Default is the disposable Docker CI volume; a private local directory enables
+// the same real-SQLite smoke without Docker. Never use a production data path.
+const dataDirectory = process.env.NESTLET_CI_DATA_DIR || '/data';
+assert.ok(isAbsolute(dataDirectory));
+const dataInfo = lstatSync(dataDirectory);
+assert.ok(dataInfo.isDirectory());
+assert.equal(dataInfo.mode & 0o777, 0o700);
+assert.equal(dataInfo.uid, process.getuid());
+const directory = mkdtempSync(join(dataDirectory, 'ci-migration-'));
 const filename = directory + '/schema1.sqlite';
 const userId = '11111111-1111-4111-8111-111111111111';
 const caseId = '22222222-2222-4222-8222-222222222222';
@@ -54,17 +64,42 @@ try {
   assert.equal(storage.getCase(userId, caseId).sourceText, payload.sourceText);
   assert.equal(storage.getCase(userId, caseId).version, 3);
   assert.equal(storage.getCase('owner', caseId), null);
+  // Exercise the newly migrated asset structures through shipped runtime code,
+  // including a real immutable original, case association, search and isolation.
+  const original = Buffer.from('Synthetic migration original');
+  const vault = openAssetVault({ directory: join(directory, 'assets') });
+  const asset = storage.createAsset(userId, await parseAsset(original, {
+    originalFilename: 'synthetic-migration.txt', mimeType: 'text/plain'
+  }), { caseId }, id => vault.write(id, original));
+  assert.equal(asset.caseId, caseId);
+  assert.equal(storage.listAssets(userId, { q: 'migration original' }).total, 1);
+  assert.equal(storage.getAsset('owner', asset.id), null);
+  assert.deepEqual(vault.read(asset), original);
+  storage.close(); storage = openStorage({ filename });
+  assert.equal(storage.getAsset(userId, asset.id).sha256, asset.sha256);
+  assert.equal(storage.getAsset(userId, asset.id).caseId, caseId);
+  assert.equal(storage.getAsset('owner', asset.id), null);
+  assert.equal(storage.getCase(userId, caseId).version, 3);
   storage.close(); storage = undefined;
   database = new DatabaseSync(filename, { readOnly: true });
   assert.equal(database.prepare('PRAGMA application_id').get().application_id, 0x4e53544c);
-  assert.equal(database.prepare('PRAGMA user_version').get().user_version, 3);
+  assert.equal(database.prepare('PRAGMA user_version').get().user_version, 4);
   assert.ok(JSON.stringify(database.prepare('SELECT * FROM users ORDER BY id').all()) === JSON.stringify(beforeUsers), 'Migration changed user columns');
   assert.ok(JSON.stringify(database.prepare('SELECT id,user_id,title,payload_json,version,created_at,updated_at FROM cases ORDER BY id').all()) === JSON.stringify(beforeCases), 'Migration changed case columns');
   assert.equal(database.prepare('PRAGMA quick_check').get().quick_check, 'ok');
   assert.equal(database.prepare('SELECT client_id FROM cases WHERE id=?').get(caseId).client_id, null);
   for (const table of ['clients','conversations','messages','artifacts']) assert.equal(database.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get().n, 0);
+  assert.equal(database.prepare('SELECT COUNT(*) AS n FROM assets').get().n, 1);
+  const schemaObjects = new Set(database.prepare('SELECT name FROM sqlite_master').all().map(row => row.name));
+  for (const name of ['assets', 'assets_owner_created', 'assets_owner_case', 'assets_owner_client',
+    'assets_owner_insert', 'assets_owner_update', 'assets_immutable_content',
+    'assets_follow_case_customer', 'assets_preserve_case_delete']) {
+    assert.ok(schemaObjects.has(name), `Missing schema4 structure: ${name}`);
+  }
+  assert.equal(database.prepare('PRAGMA foreign_key_check').all().length, 0);
+  assert.equal(statSync(join(directory, 'assets', asset.id + '.blob')).mode & 0o777, 0o600);
   assert.equal(statSync(filename).mode & 0o777, 0o600);
-  console.log('Actual schema1→3 migration preserved every synthetic user/case column, credential hash, identity, version and private file mode. Application database was not modified by this test.');
+  console.log('Actual schema1→4 migration preserved every synthetic user/case column, credential hash, identity and version; schema4 asset structures, original bytes, search, ownership, reopen and private file modes passed. Application database was not modified by this test.');
 } finally {
   storage?.close();
   database?.close();
