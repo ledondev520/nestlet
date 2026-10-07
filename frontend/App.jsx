@@ -18,8 +18,8 @@ const views = ['chat', 'intake', 'customers', 'documents', 'settings'];
 const viewLabels = { zh: { chat: '对话', intake: '材料与事实', customers: '客户库', documents: '文档', settings: '账户与设置' }, en: { chat: 'Conversation', intake: 'Materials and facts', customers: 'Customers', documents: 'Documents', settings: 'Account and settings' } };
 const currentView = () => views.includes(window.location.hash.slice(1)) ? window.location.hash.slice(1) : 'chat';
 
-function MigrationPending({ lang }) {
-  return <Alert><AlertDescription>{lang === 'zh' ? '此页面正在迁移。需要时可以先返回现有工作区。' : 'This page is being migrated. You can return to the existing workspace in the meantime.'}</AlertDescription></Alert>;
+function PageUnavailable({ lang }) {
+  return <Alert><AlertDescription>{lang === 'zh' ? '页面加载失败，请刷新重试。' : 'This page could not load. Refresh and try again.'}</AlertDescription></Alert>;
 }
 
 function AccountWorkspace({ lang, view, navigate }) {
@@ -82,7 +82,7 @@ function AccountWorkspace({ lang, view, navigate }) {
     // Explicit case switches remount after the dirty guard. First-save binding
     // keeps the current chat composer mounted, including prepared image previews.
     const key = ['chat', 'intake', 'documents'].includes(id) ? `${id}:${workspaceEpoch}` : id;
-    return <section key={key} hidden={view !== id} aria-label={viewLabels[lang][id]}><FeatureBoundary lang={lang}>{Page ? <Page lang={lang} {...props} /> : <MigrationPending lang={lang} />}</FeatureBoundary></section>;
+    return <section key={key} hidden={view !== id} aria-label={viewLabels[lang][id]}><FeatureBoundary lang={lang}>{Page ? <Page lang={lang} {...props} /> : <PageUnavailable lang={lang} />}</FeatureBoundary></section>;
   })}</DraftWorkspaceProvider>;
 }
 
@@ -112,9 +112,9 @@ export default function App() {
   return <ApplicationShell lang={lang} view={view} onNavigate={status.authenticated ? navigate : undefined}
     onLanguageChange={() => setLang(value => value === 'zh' ? 'en' : 'zh')}
     account={status.authenticated ? <><Button variant="outline" size="sm" onClick={() => navigate('settings')} aria-label={lang === 'zh' ? '账户与设置' : 'Account and settings'}><Settings aria-hidden="true" /></Button>{AccountControls && <AccountControls lang={lang} />}</> : null}>
-    {recovery === 'suspended' && <Alert className="mb-5"><AlertDescription>{lang === 'zh' ? '登录已过期。可恢复的未提交文字仅在当前标签页暂存最多 30 分钟；关闭或刷新页面后无法恢复。请用同一账户重新登录。图片和待上传文件需要重新添加，文字尚未保存到服务器。' : 'Your session expired. Recoverable unsaved text is held only in this tab for up to 30 minutes; closing or refreshing the page clears it. Sign in with the same account to recover it. Re-add images and pending files. This text is not saved to the server.'}</AlertDescription></Alert>}
-    {recovery === 'restored' && <Alert className="mb-5"><AlertDescription>{lang === 'zh' ? '已重新验证账户并恢复可用的未提交文字。请核对最新案例内容，再明确保存；图片和待上传文件需要重新添加。' : 'Your account was verified and available unsaved text restored. Review the latest case before saving explicitly. Re-add images and pending files.'}</AlertDescription></Alert>}
+    {recovery === 'suspended' && <Alert className="mb-5"><AlertDescription>{lang === 'zh' ? '登录已过期。请在 30 分钟内使用同一账号重新登录，并保持当前页面打开，以恢复未保存的文字。' : 'Your session expired. Keep this page open and sign in with the same account within 30 minutes to recover unsaved text.'}</AlertDescription></Alert>}
+    {recovery === 'restored' && <Alert className="mb-5"><AlertDescription>{lang === 'zh' ? '已恢复未保存的文字，请重新添加图片和文件。' : 'Unsaved text restored. Reattach images and files.'}</AlertDescription></Alert>}
     {error && <Alert variant="destructive" className="mb-5"><AlertDescription>{lang === 'zh' ? '连接状态未能刷新，请重试。' : 'Connection status could not be refreshed. Try again.'}<Button variant="outline" size="sm" onClick={() => refresh().catch(() => {})}>{lang === 'zh' ? '重试' : 'Retry'}</Button></AlertDescription></Alert>}
-    {loading ? <div role="status" aria-label={lang === 'zh' ? '正在连接' : 'Connecting'} className="space-y-4"><Skeleton className="h-8 w-48" /><Skeleton className="h-60 w-full" /></div> : status.authenticated && status.userId ? <AccountWorkspace key={status.userId} lang={lang} view={view} navigate={navigate} /> : AuthPanel ? <AuthPanel lang={lang} onAuthenticated={authenticated} /> : <Card><CardHeader><CardTitle>{lang === 'zh' ? '登录后继续' : 'Sign in to continue'}</CardTitle></CardHeader><CardContent><MigrationPending lang={lang} /></CardContent></Card>}
+    {loading ? <div role="status" aria-label={lang === 'zh' ? '正在连接' : 'Connecting'} className="space-y-4"><Skeleton className="h-8 w-48" /><Skeleton className="h-60 w-full" /></div> : status.authenticated && status.userId ? <AccountWorkspace key={status.userId} lang={lang} view={view} navigate={navigate} /> : AuthPanel ? <AuthPanel lang={lang} onAuthenticated={authenticated} /> : <Card><CardHeader><CardTitle>{lang === 'zh' ? '登录后继续' : 'Sign in to continue'}</CardTitle></CardHeader><CardContent><PageUnavailable lang={lang} /></CardContent></Card>}
   </ApplicationShell>;
 }

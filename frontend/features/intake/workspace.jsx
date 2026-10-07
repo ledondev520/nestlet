@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { Upload, FileText, ArrowRight, RotateCcw, Check, ShieldCheck, X } from 'lucide-react';
+import { Upload, FileText, ArrowRight, RotateCcw, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -53,7 +53,6 @@ export function IntakeWorkspace({
   const [queue, setQueue] = useState([]),
     [assets, setAssets] = useState([]),
     [workbook, setWorkbook] = useState(null);
-  const [aiConsent, setAiConsent] = useState(false);
   const workRef = useRef(work),
     baseRef = useRef(base),
     queueRef = useRef(queue),
@@ -141,7 +140,6 @@ export function IntakeWorkspace({
       ...previous,
       sourceText: value
     }));
-    setAiConsent(false);
     setNotice('');
   };
   useEffect(() => {
@@ -298,7 +296,6 @@ export function IntakeWorkspace({
       recovery.current = null;
       setPhase('idle');
       setReading(true);
-      setAiConsent(false);
       return;
     }
     epoch.current++;
@@ -322,7 +319,6 @@ export function IntakeWorkspace({
     setConflict(false);
     setError(null);
     setNotice('');
-    setAiConsent(false);
     setPhase('idle');
     setReading(Boolean(caseId));
   }, [caseId]);
@@ -519,7 +515,6 @@ export function IntakeWorkspace({
       sourceText
     }, result.fields, 'manual');
     updateWork(next);
-    setAiConsent(false);
     updateItem(workbook.queueId, {
       file: null,
       state: 'ready',
@@ -540,10 +535,6 @@ export function IntakeWorkspace({
     }
   }
   async function liveExtract() {
-    if (!aiConsent) {
-      setError(new IntakeError('CONSENT_REQUIRED'));
-      return;
-    }
     if (!status.liveEnabled) {
       setError(new IntakeError('LIVE_DISABLED'));
       return;
@@ -566,7 +557,6 @@ export function IntakeWorkspace({
       if (!Array.isArray(result.fields) || result.fields.length !== FIELDS.length || result.fields.some((field, index) => field?.key !== FIELDS[index] || typeof field.value !== 'string' || typeof field.source !== 'string')) throw new IntakeError('INVALID_RESPONSE');
       updateWork(applySuggestions(workRef.current, validateSuggestions(result.fields, sourceText), 'live'));
       setNotice('extracted');
-      setAiConsent(false);
     } catch (failure) {
       if (!aborted(failure) && current(token.scope)) setError(failureFor(failure));else if (current(token.scope)) setNotice('cancelNote');
     } finally {
@@ -688,7 +678,6 @@ export function IntakeWorkspace({
       setConflict(false);
       setError(null);
       setNotice('reconcileDone');
-      setAiConsent(false);
     } catch (failure) {
       setError(failure);
     }
@@ -701,7 +690,6 @@ export function IntakeWorkspace({
     setConflict(false);
     setError(null);
     setNotice('');
-    setAiConsent(false);
   }
   const sourceTooLong = work.sourceText.length > LIMITS.source;
   const reviewed = work.fields.filter(field => field.confirmed && !field.conflict).length;
@@ -720,7 +708,7 @@ export function IntakeWorkspace({
         ...previous,
         title: event.target.value
       }))} /></div>
-    <Card><CardHeader><CardTitle className="flex items-center gap-2"><Upload className="size-4" aria-hidden="true" />{words.materialTitle}</CardTitle><CardDescription>{words.materialHelp}</CardDescription></CardHeader><CardContent className="space-y-5"><div className="paper-note flex gap-3 rounded-md p-4 text-sm leading-6"><ShieldCheck className="mt-1 size-4 shrink-0" aria-hidden="true" /><p>{words.safeOnly}</p></div><div className="rounded-lg border border-dashed border-input bg-background p-5"><Label htmlFor={`${id}-files`} className="mb-3 block">{words.chooseFiles}</Label><Input id={`${id}-files`} type="file" multiple accept=".txt,.csv,.pdf,.xlsx,.xls,.png,.jpg,.jpeg" disabled={blocked || Boolean(workbook)} aria-describedby={`${id}-formats`} onChange={event => {
+    <Card><CardHeader><CardTitle className="flex items-center gap-2"><Upload className="size-4" aria-hidden="true" />{words.materialTitle}</CardTitle></CardHeader><CardContent className="space-y-5"><div className="rounded-lg border border-dashed border-input bg-background p-5"><Label htmlFor={`${id}-files`} className="mb-3 block">{words.chooseFiles}</Label><Input id={`${id}-files`} type="file" multiple accept=".txt,.csv,.pdf,.xlsx,.xls,.png,.jpg,.jpeg" disabled={blocked || Boolean(workbook)} aria-describedby={`${id}-formats`} onChange={event => {
             addFiles(event.target.files);
             event.target.value = '';
           }} /><p id={`${id}-formats`} className="mt-3 text-xs text-muted-foreground">{words.formats}</p></div>
@@ -735,12 +723,12 @@ export function IntakeWorkspace({
         setError(failure);
       }
     }} onClose={closeMapping} />}
-    <Card><CardHeader><CardTitle>{words.sourceTitle}</CardTitle><CardDescription>{words.sourceHelp}</CardDescription></CardHeader><CardContent className="space-y-4"><Label className="sr-only" htmlFor={`${id}-source`}>{words.sourceTitle}</Label><Textarea id={`${id}-source`} className="min-h-64 resize-y font-mono text-sm leading-7" value={work.sourceText} placeholder={words.sourcePlaceholder} disabled={blocked} aria-invalid={sourceTooLong} aria-describedby={`${id}-source-count`} onChange={event => markSource(event.target.value)} /><p id={`${id}-source-count`} className={`text-right font-mono text-xs ${sourceTooLong ? 'text-destructive' : 'text-muted-foreground'}`}>{work.sourceText.length.toLocaleString(lang === 'zh' ? 'zh-CN' : 'en-US')} / 50,000 {words.chars}</p>{sourceTooLong && <p role="alert" className="text-sm text-destructive">{words.sourceTooLong}</p>}<div className="flex flex-wrap items-center gap-3"><Button variant="secondary" disabled={blocked || sourceTooLong || !work.sourceText.trim()} onClick={manualExtract}>{words.manual}</Button><p className="max-w-lg text-xs leading-5 text-muted-foreground">{words.manualHelp}</p></div><Separator /><div className="space-y-3"><h3 className="text-sm font-medium">{words.aiTitle}</h3><p className="text-xs leading-6 text-muted-foreground">{words.aiHelp}</p>{!status.liveEnabled && <p className="text-sm text-muted-foreground">{words.aiUnavailable}</p>}<div className="flex items-start gap-3"><Checkbox id={`${id}-ai-consent`} checked={aiConsent} disabled={blocked || !status.liveEnabled} onCheckedChange={value => setAiConsent(value === true)} /><Label htmlFor={`${id}-ai-consent`} className="text-sm leading-6">{words.aiConsent}</Label></div><Button disabled={blocked || !status.liveEnabled || !aiConsent || sourceTooLong || !work.sourceText.trim()} onClick={liveExtract}>{phase === 'extracting' ? words.extracting : words.aiExtract}</Button></div></CardContent></Card>
+    <Card><CardHeader><CardTitle>{words.sourceTitle}</CardTitle><CardDescription>{words.sourceHelp}</CardDescription></CardHeader><CardContent className="space-y-4"><Label className="sr-only" htmlFor={`${id}-source`}>{words.sourceTitle}</Label><Textarea id={`${id}-source`} className="min-h-64 resize-y font-mono text-sm leading-7" value={work.sourceText} placeholder={words.sourcePlaceholder} disabled={blocked} aria-invalid={sourceTooLong} aria-describedby={`${id}-source-count`} onChange={event => markSource(event.target.value)} /><p id={`${id}-source-count`} className={`text-right font-mono text-xs ${sourceTooLong ? 'text-destructive' : 'text-muted-foreground'}`}>{work.sourceText.length.toLocaleString(lang === 'zh' ? 'zh-CN' : 'en-US')} / 50,000 {words.chars}</p>{sourceTooLong && <p role="alert" className="text-sm text-destructive">{words.sourceTooLong}</p>}<div className="flex flex-wrap items-center gap-3"><Button variant="secondary" disabled={blocked || sourceTooLong || !work.sourceText.trim()} onClick={manualExtract}>{words.manual}</Button><p className="max-w-lg text-xs leading-5 text-muted-foreground">{words.manualHelp}</p></div><Separator /><div className="space-y-3"><h3 className="text-sm font-medium">{words.aiTitle}</h3>{!status.liveEnabled && <p className="text-sm text-muted-foreground">{words.aiUnavailable}</p>}<Button disabled={blocked || !status.liveEnabled || sourceTooLong || !work.sourceText.trim()} onClick={liveExtract}>{phase === 'extracting' ? words.extracting : words.aiExtract}</Button></div></CardContent></Card>
     <Card><CardHeader><div className="flex items-center justify-between gap-3"><CardTitle>{words.factsTitle}</CardTitle><Badge variant="secondary">{reviewed} / 5 {words.reviewed}</Badge></div><CardDescription>{words.factsHelp}</CardDescription></CardHeader><CardContent className="space-y-6">{work.fields.map((field, index) => <div key={field.key} className="space-y-3 border-b pb-6 last:border-0 last:pb-0"><div className="flex flex-wrap items-center gap-2"><span className="font-mono text-xs text-muted-foreground">0{index + 1}</span><Label className="text-base font-medium" htmlFor={`${id}-${field.key}`}>{words.fieldLabels[field.key]}</Label><Badge variant={field.conflict ? 'destructive' : 'outline'}>{field.conflict ? words.conflict : field.confirmed ? words.reviewed : words.needsReview}</Badge>{field.edited && <span className="text-xs text-muted-foreground">{words.edited}</span>}</div><Input id={`${id}-${field.key}`} value={field.value} maxLength={3000} placeholder={words.unknown} disabled={blocked} onChange={event => editField(field.key, {
             value: event.target.value,
             confirmed: false,
             edited: true
-          })} />{field.key === 'rent' && <p className="text-xs text-muted-foreground">{words.rentNote}</p>}<div className="space-y-2"><Label htmlFor={`${id}-${field.key}-source`} className="text-xs text-muted-foreground">{words.fieldSource}</Label><Textarea id={`${id}-${field.key}-source`} className="min-h-20 text-xs leading-6" value={field.source} maxLength={50000} placeholder={words.sourceNone} disabled={blocked} onChange={event => editField(field.key, {
+          })} /><div className="space-y-2"><Label htmlFor={`${id}-${field.key}-source`} className="text-xs text-muted-foreground">{words.fieldSource}</Label><Textarea id={`${id}-${field.key}-source`} className="min-h-20 text-xs leading-6" value={field.source} maxLength={50000} placeholder={words.sourceNone} disabled={blocked} onChange={event => editField(field.key, {
               source: event.target.value,
               confirmed: false,
               edited: true

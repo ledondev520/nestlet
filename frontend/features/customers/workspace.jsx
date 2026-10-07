@@ -138,7 +138,7 @@ function CustomerDetail({ api, customerId, lang, onOpenCase, onRenamed, onCreate
       <CardContent className="space-y-4">
         {client.loading && <Loading label={t.customerLoading} />}
         <ErrorNotice error={client.error} t={t} onRetry={client.refresh} />
-        {client.data && <><p className="paper-note rounded-r-md px-3 py-2 text-xs leading-relaxed">{t.identityNote}</p>
+        {client.data && <>
           <div className="flex flex-wrap items-center gap-2"><Badge variant="secondary">{cases.data ? t.caseCount(cases.data.length) : '—'}</Badge><Badge variant="secondary">{artifacts.data ? t.artifactCount(artifacts.data.length) : '—'}</Badge><Button type="button" size="sm" variant="ghost" ref={renameTrigger} className="ml-auto" disabled={renaming || creatingCase} onClick={() => { setRenaming(true); setNotice(''); }}><Pencil aria-hidden="true" />{t.rename}</Button></div>
           {renaming && <RenameCustomer api={api} client={client.data} t={t} onSaved={renamed} onLatest={record => { client.replace(record); onRenamed(record); }} onCancel={() => setRenaming(false)} />}</>}
         {notice && <p role="status" className="flex items-start gap-2 text-sm"><Check className="mt-0.5 size-4 shrink-0" aria-hidden="true" />{t[notice]}</p>}

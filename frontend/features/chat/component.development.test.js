@@ -102,7 +102,7 @@ test('development React: stream errors keep received text visibly incomplete aft
     return response({},500);
   }});context.after(app.close);
   await app.flush();await app.type('Question before interrupted fixture');await app.click(app.button('Send'));await app.flush();
-  assert.match(app.dom.window.document.body.textContent,/Retained partial fixture/);assert.match(app.dom.window.document.body.textContent,/This reply is incomplete/);
+  assert.match(app.dom.window.document.body.textContent,/Retained partial fixture/);assert.match(app.dom.window.document.body.textContent,/Reply interrupted/);
   assert.equal(app.requests.filter(item=>item.path==='/api/chat').length,1);assert.ok(app.button('Edit this question again'));
 });
 
