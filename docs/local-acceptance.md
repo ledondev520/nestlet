@@ -363,3 +363,20 @@ An isolated synthetic administrator signs in with six characters, enters marked 
 Unique synthetic source/property/owner/reference/draft markers and the disposable password do not appear in either telemetry table. This is a bounded marker check, not exhaustive assurance of all payloads, files or logs. Successful workflow adoption and repeated client-event persistence demonstrate the corrected workflow-create request and reuse path works against the real server. Evidence: [sanitized SQLite-derived event summary](../test/local-acceptance-evidence/telemetry-sequential-events.json), [corresponding saved case](../test/local-acceptance-evidence/telemetry-case-saved.png).
 
 The remaining P2 stale business-response correlation race from Issue #3 comment6033794883 remains open; no delayed identity-switch regression was run here. Active/background/idle timing accuracy, cancellation/retry, all failure outcomes and complete journey telemetry remain unverified. No provider call, actual credential, real customer material or production action was used. The local app process, test page and disposable database/worktree were cleaned up.
+
+
+## Customer library integration preflight and chat gates — 7 October 2026, 08:36 UTC
+
+Fixed local composite `cc9c9f27841a6719c62cb82b64982910afe0f64b`: backend PR #12 `8959bb9f82f6c7d2e1ea0ba0d616a04498ab6a2a` plus frontend PR #4 `b8f789ae1b3083cfdb08a2dafec303794c10a4cc`. Pinned install and syntax pass on macOS/Node24. The full default suite is **223 total, 220 pass, 3 fail, 0 skip**. Exact-head remote test and container jobs also fail. This is a failing integration preflight, not an accepted release.
+
+Failures reported to backend/front-end owners in PR #12 comment6034166567:
+
+1. **Functional regression:** `test/customer-case-api.test.js:419` withdraws/corrects a reviewed legacy fact. Its real `PATCH /api/cases/:id/document-context` returns400 `CASE_INVALID` instead of200 with stale mutable draft cleared and immutable artifact history preserved (assertion at428). Root owns the runtime fix.
+2. `test/storage.test.js:37` still expects schema2 while the actual schema is3. Root owns the outdated test expectation.
+3. The localization contract lacks `CLIENT_INVALID` and the new error families in frontend `b8f789a`. Kimi owns explicit bilingual handling; do not hide the failure behind a generic server error.
+
+Other passing executed tests include actual HTTP/SQLite customer search and owner/ordinary isolation, optimistic versions, multiple conversation and immutable artifact records, downloaded artifact byte equality, readiness/final gates, confirmed-answer persistence and real server restart. Authored database message fixtures are provenance-guard evidence only; they are explicitly not live model messages. These positive results do not override the failing fact-revocation path or certify the entire planned E01–E12 browser journey.
+
+Actual browser checks on this composite: the new chat composer is visible; signed-out Send opens login and retains the synthetic question; six-character administrator login succeeds; sending with this intentionally unconfigured provider shows the truthful disabled/configuration message, retains input and produces no invented answer. Evidence: [independent chat homepage](../test/local-acceptance-evidence/chat-home-independent.png), [disabled provider gate](../test/local-acceptance-evidence/chat-disabled-independent.png). No provider call was attempted.
+
+Live streaming, stop/retry with real deltas, image interpretation, customer/conversation/artifact navigation and final-preview/export byte parity remain Not run in the browser. No production setup or rollout occurred. Task-owned server, browser and disposable worktree were cleaned up.

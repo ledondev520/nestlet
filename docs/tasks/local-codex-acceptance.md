@@ -81,3 +81,5 @@ Finish only when the reviewable draft PR exists, or report the exact permission/
 08:08 UTC composite93caef8 (backend d1bcbdd + frontend ace9222): real-browser5reject/6register/relogin passes; nativeChromePDF593/TXT470/CSV197character imports succeed. P1-1 and positive-pathP1-2 closed atthiscomposite;187/187 suite. Telemetry and chat/newpersistence remain separate.
 
 08:15 UTC composite200a58d (b68e857 + 5381f13): real browser→SQLite one workflow/9 sequential client events, save request correlation and bounded content-marker exclusion pass. Sanitized JSON+UI evidence added. Stale business-response identity race remains open; full timing/failure coverage not claimed.
+
+08:36 UTC compositecc9c9f2 (8959bb9 + b8f789a):223tests/220pass3fail: actualfact-revocationCASE_INVALID, oldschema2assertion, missingnewUIerrors. ReportedPR12. Realchat-homeauth/disabled-key gates pass withoutanswerfabrication; livechat/imageandexpandedUI remainNotrun.
