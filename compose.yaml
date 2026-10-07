@@ -15,6 +15,9 @@ services:
       HOST: 0.0.0.0
       PORT: "4173"
       PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-http://127.0.0.1:4173}
+      # Single-quote the scrypt hash in .env to preserve literal dollar signs.
+      # Empty means authentication is unconfigured: paid AI and settings stay disabled.
+      NESTLET_OPERATOR_PASSWORD_HASH: ${NESTLET_OPERATOR_PASSWORD_HASH:-}
       DEEPSEEK_MODEL: deepseek-flash
       ENABLE_LIVE_AI: ${ENABLE_LIVE_AI:-false}
       # Optional server-provided key. Prefer the authenticated, RAM-only settings flow.

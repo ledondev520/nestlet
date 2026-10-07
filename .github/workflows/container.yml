@@ -1,0 +1,42 @@
+name: Nestlet container smoke
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      COMPOSE_PROJECT_NAME: nestlet-container-ci
+      NESTLET_IMAGE_TAG: ci
+      PUBLIC_ORIGIN: https://nestlet.invalid
+      NESTLET_OPERATOR_PASSWORD_HASH: ''
+      ENABLE_LIVE_AI: 'true'
+      # Public test sentinel, never a real credential; requests must fail before provider access.
+      DEEPSEEK_API_KEY: ci-public-nonsecret-sentinel
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate Compose and build actual image
+        run: |
+          docker compose config --quiet
+          docker compose build --pull
+      - name: Start loopback-only runtime
+        run: docker compose up -d --no-build --wait --wait-timeout 90
+      - name: Check published address and host health
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(docker compose port nestlet 4173)" = '127.0.0.1:4173'
+          test "$(docker inspect --format '{{.HostConfig.ReadonlyRootfs}}' "$(docker compose ps -q nestlet)")" = 'true'
+          curl --fail --silent --show-error http://127.0.0.1:4173/api/health | python3 -c 'import json,sys; assert json.load(sys.stdin)=={"ok":True}'
+      - name: Check runtime dependencies and fail-closed endpoints
+        run: docker compose exec -T nestlet node --input-type=module < ops/container-smoke.mjs
+      - name: Clean up CI-only container
+        if: always()
+        run: docker compose down --volumes --remove-orphans

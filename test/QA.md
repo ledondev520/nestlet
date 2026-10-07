@@ -1,44 +1,67 @@
-# Nestlet QA checkpoint
+# Nestlet validation
 
-Date: 2026-10-07. This checkpoint covers the current source tree at the time of the run; rerun after integration changes.
+Checkpoint: 2026-10-07. This is a development checkpoint, not final acceptance. Deployment and real-browser integration remain separate; rerun after the final source freeze.
 
-## Execution
+## Strict acceptance command
 
-- `npm run check`: passed JavaScript syntax checks
-- `npm test`: 86 tests passed, 0 failed, 0 skipped
-- Initial baseline: 62 tests, 55 passed and 7 failed
-- Source changes made by backend/frontend owners; QA owns the tests and synthetic fixtures
-- All provider calls replaced by a test-only fake adapter before each disposable server starts. No actual API key or paid request used
+`npm test` runs only `test/core.test.js`, `test/server.test.js`, and `test/auth.test.js`.
 
-## Executed stages
+Current result: **83 passed, 0 failed, 0 skipped**: 52 core behavior tests, 22 real HTTP/file-parser tests, and 9 real authentication/session tests. `npm run check` also passes.
 
-### Core public functions
+This command uses real core functions, disposable actual HTTP servers, actual PDF/XLS/XLSX bytes, and installed real document parsers. It does not replace fetch, HTTP responses, provider calls, or file-reading functions. Server processes use disposable operator test credentials with real scrypt verification, and are deliberately configured without an API key and with live AI disabled. Parser tests log in and send real session/CSRF tokens. The suite verifies that unavailable live extraction is reported truthfully. Test source text and files contain authored non-personal examples only.
 
-Verified five-field extraction, unknowns, verbatim source snippets, duplicate-label conflicts, exact field identity and boolean review requirements, control-character rejection, unknown placeholders, all three English template types, CSV quoting/BOM/blank cases/notice metadata, malformed CSV rejection, CR/LF/Unicode row-injection prevention, formula-prefix neutralization, provider source/value grounding, malformed suggestions, duplicate suggestions, and preservation of both sides of deterministic conflicts.
+## Coverage established by strict tests
 
-### HTTP public routes
+### Core behavior: 52 tests
 
-Verified disabled live mode, same-origin and fetch-metadata checks, consent, JSON shape/media type, byte and character limits, chunked oversized request response, source-grounded unconfirmed suggestions, provider transport/JSON/schema/oversize/truncation/tool-call failures, one bounded transient retry, two-request concurrency limit, client cancellation and capacity recovery, synthetic sensitive-identifier pattern rejection before provider access, safe error messages, basic security headers, static MIME type, and restricted static routing.
+- Five-field extraction, missing/unknown values, verbatim source snippets, repeated-label conflicts
+- Exact required field keys, explicit boolean confirmation, unresolved conflict and control-character draft gates
+- Unknown placeholders, all three English templates, purpose labels and human-review boundaries
+- CSV quoting, BOM, empty cases, notice metadata, malformed shape rejection, row-injection flattening and formula-prefix neutralization
+- Source-substring/value validation for supplied suggestions, malformed/duplicate input, preservation of both sides of deterministic conflicts
+- Explicit spreadsheet row/column mapping, source-cell provenance, unmapped unknowns, fresh human-review state, and rejection of hidden/blocked/duplicate/out-of-range selections
 
-### PDF public route with real parser
+### Real HTTP and file parsing: 22 tests
 
-Verified text extraction from a synthetic text PDF with the installed local `pdftotext`; no AI call. Verified explicit upload consent, MIME/origin checks, blank/vector PDF no-OCR rejection, true AES-256 password-encrypted PDF rejection, corrupt and disguised PDF rejection, 5 MiB upload limit, and 50,000-character extracted-text limit. Fixtures are synthetic and reproducible. PDF tests explicitly report skips if `pdftotext` is missing; the recorded checkpoint has no skips.
+- Real server status identifies configured model `deepseek-flash`, reports no configured key/live capability, and returns a disabled error without substituting fabricated fields
+- Basic security headers, every shipped browser dependency (including the agency-guidance module), static MIME types, and restricted source/environment paths
+- Actual local PDF text extraction; consent, MIME, origin and size checks; blank/vector no-text, encrypted, corrupt, disguised, and overlong extracted-text failures
+- Actual `.xlsx` and binary `.xls` preview, including exact string values
+- Actual XLSX cached-formula, hyperlink, merged-cell and hidden-row suppression; hidden-sheet identification
+- Actual XLS hyperlink/merge suppression and hidden-sheet identification. Formula and hidden-row metadata were not retained by the legacy fixture writer, so those legacy paths are not claimed tested
+- Workbook consent/MIME/origin/byte-limit checks, CSV disguised as Excel, corrupt packages, and complete 413 response for an oversized chunked upload
 
-## Open verification stages
+- Actual hidden-column and 200-row/50-column preview limits, 13-worksheet rejection, and real encrypted XLSX/XLS rejection. Encrypted public test files include source attribution, SHA-256 and MIT license in `test/fixtures/README.md`
 
-- Browser actions, pixels, desktop and mobile layouts, keyboard focus, zh-CN default and complete English toggle
-- UI generation gate, current proper-name/CJK approval policy, editing and print/export contents
-- UI file picker, repeated selection, cancel/reset while asynchronous work is pending, preservation of old work after failed import
-- Clipboard and actual downloaded TXT/CSV/print-to-PDF artifacts
+### Real authentication/session HTTP: 9 tests
 
-A direct cloud-browser loopback navigation was blocked. No alternate route was used to bypass that restriction. Browser coverage must be run through an authorized supported preview, otherwise reported unverified.
+- Actual scrypt password verification, HttpOnly/SameSite/Secure cookie attributes, session-only CSRF disclosure
+- Missing/foreign Origin and invalid-password rejection; non-HTTPS public sign-in rejection
+- Missing/wrong/Unicode CSRF rejection; same-origin settings check
+- Actual PDF/XLSX bytes rejected when signed out or without CSRF, and parsed with an authorized session
+- No-key live extraction and connection-test refusal, with no simulated provider result
+- HTTP settings refusal even after permitted local-development sign-in
+- Logout revokes the actual server session and expires its cookie
+- Unconfigured and malformed authentication fail closed for every file/AI/settings route, including loopback
+- Ten actual failed login attempts trigger the configured rate limit
 
-## Important limits
+These tests configure an HTTPS public origin while talking to the local upstream over HTTP, as a reverse-proxy application-layer check. They do not prove a TLS deployment.
 
-- No real provider entitlement/model quality, billing, privacy terms, retention, or region tested
-- No OCR and no image-based document understanding
-- PDF extraction warnings do not prove correct reading order or government-form field validity
-- Source substring grounding does not prove semantic truth, all contradictions, or correct field classification
-- CSV formula-prefix bytes are tested; actual Excel/Google Sheets execution behavior has not been tested
-- The sensitive-data guard is a limited pattern check, not de-identification or comprehensive data-loss prevention
-- No real customer data, agency submission, external communication, housing eligibility/rent decision, or production security certification
+## Historical development checks, excluded from acceptance
+
+`test/development-provider.test.js` contains isolated provider-response doubles. `test/app.test.js` uses jsdom with simulated browser-only services. They remain in the separately named `test:development` command as historical development diagnostics and have not been rerun or maintained after the no-mock acceptance requirement and auth redesign; their counts are not included above and they are not evidence of live AI, real-browser behavior, or no-mock acceptance.
+
+Earlier reports of 86 passing tests included such development doubles. That count must not be presented as final no-mock acceptance or a successful real DeepSeek connection.
+
+## Still unverified / pending
+
+- Real DeepSeek authentication, entitlement, live `deepseek-flash` responses and quality: **not run; secure API configuration required**
+- Real browser interaction, desktop/mobile pixels, keyboard focus, complete zh-CN/English switching, output download/clipboard/print artifacts, and async reset/cancel behavior: **not established by this suite**
+- Real 30-minute idle-session expiry: separate real-time check is running; not included in the fast suite count. Eight-hour absolute expiry is not time-tested
+- End-to-end deployed service and externally reachable reverse-proxy configuration
+
+A direct cloud-browser loopback navigation was blocked; no alternate route was used to bypass it. Browser checks must run in the separately authorized browser environment or remain explicitly unverified.
+
+## Limits
+
+Source-substring validation does not prove semantic truth or discover every contradiction. Sensitive-identifier pattern checks are not comprehensive de-identification. PDF text extraction does not verify reading order or official form fields; no OCR is supported. CSV prefix bytes are tested, but actual Excel/Google Sheets formula execution has not been exercised. These tests establish neither agency-specific compliance nor production security/privacy readiness. No real customer records, housing decisions, external communication, or official submissions were used.

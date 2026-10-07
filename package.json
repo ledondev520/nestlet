@@ -5,9 +5,10 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "test": "node --test test/core.test.js test/server.test.js",
-    "check": "node --check server.js && node --check public/app.js && node --check public/core.js && node --check workbook-worker.js",
-    "test:development": "node --test test/core.test.js test/server.test.js test/development-provider.test.js test/app.test.js"
+    "test": "node --test test/core.test.js test/server.test.js test/auth.test.js test/agency-guidance.test.js",
+    "check": "node --check server.js && node --check public/app.js && node --check public/core.js && node --check workbook-worker.js && node --check auth.js && node --check scripts/hash-operator-password.js && node --check public/agency-guidance.js",
+    "test:development": "node --test test/core.test.js test/server.test.js test/development-provider.test.js test/app.test.js",
+    "hash-password": "node scripts/hash-operator-password.js"
   },
   "engines": {
     "node": ">=20"
