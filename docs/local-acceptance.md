@@ -316,3 +316,26 @@ The actual HTTP/SQLite/scrypt tests reject five-character administrator login an
 **LC-07 backend contract resolved at this revision:** a configurable administrator alias now exists without changing the stable owner role/identity. This does not claim a real administrator has been initialized. The six-character backend/private-helper requirement passes independent regression execution. PR #4's frontend alignment and the final integrated browser journey remain separate; PR #12 alone does not contain the final frontend. No production rollout, actual model extraction, vision/SSE-provider acceptance or browser telemetry validation is certified by this result.
 
 Coordinator-reported provider evidence (not independently repeated): Issue #9 comment 6033129332 reports model catalog HTTP 200 with deepseek-flash present and one bounded synthetic generation HTTP 200, 362 ms, 21 tokens. It is component-only evidence. No duplicate paid probe is needed, and the previously requested local probe confirmation is no longer required for that check.
+
+
+## Composite browser screenshots and observed six-character blocker — 7 October 2026, 07:50 UTC
+
+Local test-only merge SHA `2b983da619a3836bea894e09495d78a1890c6dd7`: backend PR #12 `3bfcaa3dc89fa2e6220ea9dd64c3b8aed8c1cf00` plus frontend PR #4 `7b74b227e50a5eaca28fa20043d5a3472da862b4`, merged without conflicts. This is an isolated composite, not a published production release. Pinned install and syntax pass; composite default suite **179/179** with no skips. No frontend/runtime fixes were made by Local Codex.
+
+**Observed P1, confirms already-assigned frontend P1-1:** registering with a valid synthetic username and matching six-character disposable password fails in the browser with the generic six-to-256-character validation error; the same username with a longer synthetic password registers successfully. The frontend still checks `<12` in its submit handler despite its six-character hint. Backend six-character success remains independently established in the preceding checkpoint. Kimi owns the correction; final integrated five/six browser acceptance remains Fail at this composite.
+
+Real-browser progress using only disposable synthetic material: ordinary account registration with a longer password, real XLSX upload via native Chrome/macOS file chooser, workbook preview, selected column mapping, five fact confirmations, English draft generation, explicit case save and visible saved-case list succeeded. Mapped property/owner/rent retained actual workbook values; unmapped PHA/reference stayed empty and appear as unconfirmed placeholders in the draft. This run does not claim all five workbook columns were selected. Logout followed by the configured synthetic administrator alias opens the owner-only settings panel and an empty owner case list. On loopback HTTP the panel truthfully blocks key entry and shows this isolated environment has no provider configured; this is not production configuration evidence.
+
+Screenshots requested by the coordinator, all actual UI and synthetic-only:
+
+- [Homepage/workspace](../test/local-acceptance-evidence/combined-home.png)
+- [Login](../test/local-acceptance-evidence/combined-login.png)
+- [Signup and observed six-character rejection](../test/local-acceptance-evidence/combined-six-rejected.png)
+- [Review after real workbook mapping](../test/local-acceptance-evidence/combined-mapped-review.png)
+- [English preview](../test/local-acceptance-evidence/combined-draft.png)
+- [Saved cases](../test/local-acceptance-evidence/combined-saved.png)
+- [Isolated administrator settings](../test/local-acceptance-evidence/combined-settings.png)
+
+The in-app browser file-picker upload timed out and then became unresponsive; native Chrome plus its actual OS file chooser provided the working upload path. Native screenshots were cropped only to remove browser tabs/toolbars; page contents were not modified. No password was saved to the browser password manager. Task-owned server and native test tab were closed afterward.
+
+**Not run/remaining:** composite TXT/CSV/PDF/XLS positive intake, exports, restart/resume repetition, concurrency/cancel branches, mobile/keyboard and end-to-end telemetry. The known P1-2/P1-3/P1-4 remain with Kimi and were not independently closed by this checkpoint. No chat composer exists in this tested frontend, so live chat streaming/images are not accepted. No live key, provider call or production action occurred in this browser run.
