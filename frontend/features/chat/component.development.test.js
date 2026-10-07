@@ -240,3 +240,25 @@ test('development React: new action clears the current view while the picker reo
   await app.flush();assert.match(app.dom.window.document.body.textContent,/Retained synthetic history/);
   assert.equal(app.requests.some(item=>['POST','PUT','DELETE'].includes(item.options.method)),false);
 });
+
+test('development React: source cards never claim persistence when assistant saving fails',async context=>{
+  const caseId=randomUUID(),conversationId=randomUUID(),userMessageId=randomUUID(),requestId=randomUUID();let sent=false,clientMessageId;
+  const frame=(name,value)=>`event: ${name}\ndata: ${JSON.stringify(value)}\n\n`;
+  const appendix='\n\nSources\n[S1] Synthetic reference received before save failure.';
+  const app=await mount({caseId,status:{...identity,libraryRetrievalEnabled:true},fetchHandler:async(path,options)=>{
+    if(path===`/api/cases/${caseId}`)return response({case:{id:caseId,title:'Synthetic source save failure'}});
+    if(path===`/api/cases/${caseId}/conversations`)return response({conversations:[{id:conversationId,caseId,title:'Synthetic thread'}]});
+    if(path===`/api/conversations/${conversationId}`)return response({conversation:{id:conversationId,caseId},messages:sent?[{id:userMessageId,clientMessageId,requestId,role:'user',content:'Read synthetic source',state:'complete'}]:[]});
+    if(path==='/api/chat'){
+      sent=true;clientMessageId=JSON.parse(options.body).clientMessageId;
+      return new Response(frame('delta',{text:'A partial response [S1]'})+frame('sources',{requestId,items:[{sourceId:'S1',kind:'case',id:caseId,version:1,title:'Synthetic reference',titleTruncated:false,retrievalState:'read'}],appendix})+frame('error',{code:'CHAT_SAVE_FAILED',requestId}),{headers:{'Content-Type':'text/event-stream','X-Library-Retrieval':'enabled'}});
+    }
+    return response({},500);
+  }});context.after(app.close);
+  await app.flush();await app.type('Read synthetic source');for(const box of app.dom.window.document.querySelectorAll('[role="checkbox"]'))await app.click(box);
+  await app.click(app.button('Send to DeepSeek'));await app.flush();await app.flush();
+  const sources=app.dom.window.document.querySelector('[aria-label="Sources for this request"]');assert.ok(sources);
+  assert.match(sources.textContent,/check its save status/);assert.doesNotMatch(sources.textContent,/references are saved/i);
+  assert.match(app.dom.window.document.body.textContent,/saved state is not yet confirmed|could not be confirmed as saved/i);
+  assert.match(app.dom.window.document.body.textContent,/Synthetic reference received before save failure/);
+});
