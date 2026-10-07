@@ -2,11 +2,12 @@
 
 ## Assignment and claim
 
-- Status: **Unclaimed; coordinate before editing**
+- Status: **Claimed by Kimi K3 on 2026-10-07** (via the project owner's local environment)
 - Intended contributor: Kimi K3, supplied and started by the project owner
 - Repository: https://github.com/ledondev520/nestlet
 - Suggested branch: `design/kimi-k3-frontend`
-- Base commit: fetch current main and record its full SHA before work
+- Base commit: `993676bdbd8797919cde187528e01aaa796f1f11` (origin/main at claim time; auth/settings/file-workflow changes from the main frontend owner had NOT landed on main — `git diff origin/main` shows docs-only changes, `public/*` identical)
+- Agreed file scope (confirmed with project owner 2026-10-07): `public/style.css`, `public/index.html`, `public/logo.svg`, plus `public/app.js` **rendering layer only** (DOM structure, class names, interaction presentation; no changes to state logic, API contracts, copy strings, element IDs used by tests, or safety validation)
 - Delivery: working frontend plus evidence in a **draft PR**; no merge or deployment
 
 The main frontend owner is currently integrating authentication, settings and file workflows. Ask the owner whether those changes have landed and agree a base commit/file scope first. Do not concurrently overwrite the same files. A task file does not automatically communicate with another assistant. Report your claim and progress to the project owner; nobody is authorized by this document to contact an unspecified external service or transmit private materials.

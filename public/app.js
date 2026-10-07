@@ -4,13 +4,16 @@ import {AGENCY_OPTIONS, DEFAULT_GUIDANCE_AGENCY, GUIDANCE_COPY, getAgencyGuidanc
 const copy = {
   zh: {
     workspaceTitle: '从材料到英文草稿', safeShort: '仅限虚构或去标识化资料', inputShort: '放入材料', sampleShort: '试用示例', pasteShort: '或在这里粘贴去标识化文本…', inputHelp: '支持格式与处理方式', nextReview: 'AI 提取并核对', reviewShort: '核对五项事实', sourceHint: '原文可展开查看', check: '确认', editedShort: '人工修改 · 查看出处', missingShort: '待补充：', missingScope: '仅表示本次材料未提供，并非机构缺件通知', nextHelp: '后续事项与导出说明', draftTypeShort: '草稿类型', backInput: '返回材料', backReview: '返回核对', gateShort: '请确认每一项；未知信息可保留空白', draftShort: '可直接编辑。辅助文书，非官方表格；请人工复核后使用。', footerShort: '仅生成草稿 · 不自动发送或提交',
+    chatEmpty: '可以直接提问下一步怎么走，或粘贴案例材料后发送。图片与材料也可以拖拽进来。', chatSend: '发送', chatStop: '停止', chatRetry: '重试', chatStreaming: '正在回复…', chatAttachImage: '添加图片', chatImageOnly: '请协助分析附图内容。', chatImageBad: '仅支持 PNG / JPEG 图片，最多 2 张，每张不超过 2 MB、边长不超过 8192 像素。', chatTooLong: '单次对话消息最长 8,000 字符；更长的材料请直接使用提取与核对流程。', chatIncomplete: '回复中断，以上内容不完整。可重试。', errorChat: '对话请求失败。可重试；已输入的内容不会丢失。', chatConsent: '继续会把对话内容、当前材料与所附图片发送给 DeepSeek。仅限虚构或去标识化资料。你是否已确认数据处理条款和授权，并同意发送？', chatYou: '你', chatAssistant: '巢小秘', chatRemoveImage: '移除图片',
+    errorClientInvalid: '客户信息不符合要求，请检查后重试。', errorClientNotFound: '未找到该客户，可能已被删除。', errorClientConflict: '该客户记录已在别处更新。当前输入已保留，请刷新核对后再试。', errorConversationInvalid: '对话内容不符合要求。', errorConversationNotFound: '未找到该对话。', errorMessageInvalid: '消息格式无效。', errorChatBusy: '该对话正在处理上一条回复，请稍候。', errorChatTurnExists: '该轮回复已存在，请刷新查看。', errorChatSaveFailed: '对话保存失败；当前内容未丢失，可重试。', errorChatProvider: '模型服务暂时不可用，请稍后重试。', errorChatOutput: '回复格式不受支持，未显示。请重试。', errorDocContext: '文档上下文无效。', errorDocConflict: '文档信息已在别处更新。当前修改已保留，请刷新核对。', errorDocDetails: '文档信息不符合要求，请检查必填项。', errorDocRequired: '还有必填信息未完成，请先补齐。', errorDocContent: '文档内容无效。', errorDocPlaceholders: '文档仍含待填占位符，不能标记为完成。', errorArtifactInvalid: '文档产物无效。', errorArtifactNotFound: '未找到该文档产物。', errorArtifactSource: '生成依据不完整，请先补齐材料。', errorCapacity: '存储容量已满，请清理后再试。', errorArtifactStale: '该文档版本基于旧案例内容，已不可直接下载；请重新生成新版本。',
+    customerLabel: '客户', customerSearch: '搜索客户姓名…', customerCreate: '新建客户', customerLinked: '已关联：', conversationLabel: '对话', conversationNew: '新对话', conversationMain: '主对话', artifactSave: '保存文档版本', artifactSavedOk: '文档版本已保存', artifactList: '已存文档版本', artifactDownload: '下载', artifactStaleBadge: '内容已过期', artifactStatusDraft: '草稿', artifactStatusFinal: '完成版', readinessMissing: '生成前请补齐以下信息：', readinessReady: '必填信息已齐备', readinessConfirmAll: '确认并保存', readinessAnswer: '填写…',
     settings: '设置', modelLabel: '模型', endpointLabel: '接口', readyStatus: '提取已启用', configStatus: '尚未启用 AI', backendStatus: '后端未连接', checkingStatus: '正在检查连接', configHelp: '在服务器设置 DEEPSEEK_API_KEY，并将 ENABLE_LIVE_AI 设为 true 后重启。密钥仅保留在服务器，不在浏览器保存。', manualAction: '按标签手动整理', errorConfig: 'DeepSeek 尚未启用。请在设置中查看服务器配置步骤；不会自动切换到模拟结果。', errorBackend: '尚未连接到处理服务器。请启动完整服务后再使用 AI 或文件处理。', filePick: '上传文件', workbookHint: 'Excel 文件上传至服务器读取工作表；需选择单行并确认字段映射。不会执行公式或宏。', workbookConsent: '此 Excel 文件将上传至本服务器以读取工作表和单元格，不会自动发送至 DeepSeek。请确认仅含虚构或去标识化资料。继续？', mapTitle: '选择一行，映射字段', sheetLabel: '工作表', rowLabel: '数据行', columnLabel: '列', skipColumn: '不导入', applyMapping: '确认映射并核对', cancelMapping: '取消导入', errorWorkbook: '无法读取此工作簿。请使用未加密的 XLSX / XLS，或导出为单案例 CSV。', errorMapping: '请选择有效数据行和不重复的列；公式、隐藏或合并单元格不能导入。', workbookLimited: '仅预览前 200 行、50 列；其余内容未载入', workbookBlocked: '部分单元格不可导入，请选择普通可见值',
     operatorSetup: '请先配置操作员账户', operatorSetupHelp: '请在服务器配置 NESTLET_OPERATOR_PASSWORD_HASH 与 HTTPS 的 PUBLIC_ORIGIN，再重启服务。', signInRequired: '请先登录', operatorPassword: '登录密码', signIn: '登录', signOut: '退出登录', refreshStatus: '刷新状态', apiKey: 'DeepSeek API Key', replaceKey: '更换 API Key（可选）', keepExistingKey: '留空以保留现有密钥', saveSettings: '保存设置', enableLive: '启用 DeepSeek 提取', keyMemoryNotice: '网页填写的密钥仅存于服务器内存，服务重启后需重新填写；浏览器不保存密钥。', keyEnvironment: '密钥：服务器环境', keyMemory: '密钥：服务器内存', keyMissing: '尚未配置密钥', testConnection: '测试连接', connectionVerified: '模型访问已验证，尚未测试文本生成', settingsSaved: '设置已保存，连接验证状态单独显示', connectionSuccess: '已确认账户可访问 DeepSeek Flash，未调用文本生成', loginSuccess: '已登录，可继续原来的操作', logoutSuccess: '已退出，工作区已清空；已保存案例仍保留', logoutConfirm: '退出登录会清空工作区，未保存的修改会丢失。已保存的案例仍保留。继续？', errorAuth: '请登录后重新执行刚才的操作。', errorSession: '登录状态已失效，请重新登录。', errorHttps: '密码和密钥设置仅在可信 HTTPS 页面开放。请先完成服务器 HTTPS 配置。', errorCredentials: '用户名或密码不正确，或账户尚未配置。', errorRateLimit: '操作过于频繁，请一分钟后重试。', errorSettings: '设置无效，请检查 API Key 格式。', errorKeyRequired: '请先填写并保存 API Key。', errorConnection: '连接验证失败。请检查密钥和账户访问权限；未测试文本生成。', errorModel: '此账户未返回 DeepSeek Flash 的访问权限，请核实后重试。',
     workflowFocus: '资料参考', localLoginNotice: '本机开发登录。API 密钥的网页录入仍要求已认证的 HTTPS 页面。',
     account: '账户', trialAccess: '普通账号', trialAccountHint: '可以处理自己的案例；服务连接由管理员维护。', loginUsername: '用户名', loginUsernameHint: '普通账号填写用户名；管理员可留空', errorOwnerRequired: '此操作仅管理员可用。', errorTrialUnavailable: '服务暂不可用，请联系管理员。',
     savedCases: '我的已存案例', saveCase: '保存案例', caseName: '案例名称', untitledCase: '未命名案例', chooseCase: '选择已保存案例', openCase: '打开', deleteCase: '删除存档', savedScope: '只保存当前账户的文本、核对事实和草稿，不保存原始文件。不会自动保存。', caseSaved: '已保存', caseNotSaved: '尚未保存', unsavedChanges: '有未保存的修改', caseSaveSuccess: '案例已保存', caseOpened: '已打开保存的案例', caseDeleted: '已删除存档，当前工作区内容仍保留', unsavedOpen: '当前修改尚未保存。打开其他案例会替换工作区，继续？', deleteCaseConfirm: '永久删除这个已保存案例？此操作无法撤销。', errorCaseNotFound: '案例不存在或当前账户无权访问。', errorCaseInvalid: '案例内容无效，请检查名称和字段。', errorCaseTooLarge: '案例总数据不能超过 256 KiB，原文和草稿各不能超过 50,000 字符。请缩短内容后重试。', errorCaseConflict: '此案例已在别处修改，未覆盖当前内容。请先导出或复制需要保留的修改，再打开最新存档核对。', errorCaseStorage: '案例存储暂不可用，当前工作区未改变。请稍后重试。', errorCaseChanged: '工作区在加载期间发生变化，未替换内容。请确认修改后再次打开。', errorTrialLimit: '普通账号的提取次数已达限额，请稍后再试或联系管理员。',
     errorCaseLimit: '当前账户已达到 100 个案例的上限。请先删除不再需要的存档，再添加新案例；现有案例仍可更新。',
-    register: '注册普通账号', repeatPassword: '再次输入密码', registerUsernameHint: '3–64 位小写字母或数字，可含 _ . -；owner 保留给管理员', registerPasswordHint: '密码为 12–256 个字符', registrationSuccess: '普通账号已创建并登录', registrationUnavailable: '注册暂未开放，请联系管理员。', errorRegistration: '请使用符合格式的用户名和 12–256 字符密码；两次密码须一致。', errorPasswordMismatch: '两次输入的密码不一致，请检查。', errorUsernameExists: '该用户名已被使用，请换一个。', errorRegistrationRate: '注册请求过于频繁，请稍后重试。',
+    register: '注册普通账号', repeatPassword: '再次输入密码', registerUsernameHint: '3–64 位小写字母或数字，可含 _ . -；owner 保留给管理员', registerPasswordHint: '密码为 6–256 个字符', registrationSuccess: '普通账号已创建并登录', registrationUnavailable: '注册暂未开放，请联系管理员。', errorRegistration: '请使用符合格式的用户名和 6–256 字符密码；两次密码须一致。', errorPasswordMismatch: '两次输入的密码不一致，请检查。', errorUsernameExists: '该用户名已被使用，请换一个。', errorRegistrationRate: '注册请求过于频繁，请稍后重试。',
     sampleDownloads: '下载虚构测试材料', sampleDownloadHint: '仅用于测试。下载后自行导入；不会自动填入案例或调用 AI。', sampleWorkbookHint: 'Excel 请选择 Synthetic case 工作表第 2 行，将 A–E 列依次对应五项字段。',
     signInOrRegister: '登录 / 注册', manageAccount: '管理',
     brand: '巢小秘', tag: '一份材料 · 向前一步', demo: '手动整理', liveMode: 'DeepSeek 实时提取',
@@ -49,13 +52,16 @@ const copy = {
   },
   en: {
     workspaceTitle: 'From document to English draft', safeShort: 'Synthetic or de-identified information only', inputShort: 'Add your document', sampleShort: 'Try sample', pasteShort: 'Or paste de-identified text here…', inputHelp: 'Formats and processing details', nextReview: 'Extract & review with AI', reviewShort: 'Review five facts', sourceHint: 'Expand a source to check it', check: 'Confirm', editedShort: 'Edited · View source', missingShort: 'To confirm:', missingScope: 'Not provided in this review, not an agency missing-document notice', nextHelp: 'Next steps and export details', draftTypeShort: 'Draft type', backInput: 'Back to document', backReview: 'Back to review', gateShort: 'Confirm every field. Unknown information can stay blank.', draftShort: 'Edit directly. Supplementary draft, not an official form. Review before use.', footerShort: 'Drafts only · Nothing is sent or submitted automatically',
+    chatEmpty: 'Ask what to do next, or paste case material and send it. You can also drop files or images here.', chatSend: 'Send', chatStop: 'Stop', chatRetry: 'Retry', chatStreaming: 'Replying…', chatAttachImage: 'Add image', chatImageOnly: 'Please help analyze the attached image(s).', chatImageBad: 'Only PNG / JPEG images, at most 2, each up to 2 MB and 8192 px per side.', chatTooLong: 'A chat message is limited to 8,000 characters. Use the extract & review flow for longer material.', chatIncomplete: 'The reply was interrupted; the content above is incomplete. You can retry.', errorChat: 'The conversation request failed. You can retry; your input is preserved.', chatConsent: 'This sends the conversation, current material and attached images to DeepSeek. Use only synthetic or de-identified information. Have you verified the data-processing terms and authorization, and do you agree to send?', chatYou: 'You', chatAssistant: 'Nestlet', chatRemoveImage: 'Remove image',
+    errorClientInvalid: 'Customer details are invalid. Check and try again.', errorClientNotFound: 'Customer not found. It may have been deleted.', errorClientConflict: 'This customer record changed elsewhere. Your input is preserved; reload to reconcile and retry.', errorConversationInvalid: 'The conversation content is invalid.', errorConversationNotFound: 'Conversation not found.', errorMessageInvalid: 'The message is invalid.', errorChatBusy: 'This conversation is still processing the previous reply. Please wait.', errorChatTurnExists: 'That turn already exists. Reload to view it.', errorChatSaveFailed: 'Saving the conversation failed; your content is intact. You can retry.', errorChatProvider: 'The model provider is temporarily unavailable. Try again later.', errorChatOutput: 'The reply format is unsupported and was hidden. Please retry.', errorDocContext: 'The document context is invalid.', errorDocConflict: 'Document details changed elsewhere. Your edits are preserved; reload to reconcile.', errorDocDetails: 'Document details are invalid. Check the required items.', errorDocRequired: 'Required information is still missing. Complete it first.', errorDocContent: 'The document content is invalid.', errorDocPlaceholders: 'The document still contains placeholders and cannot be marked final.', errorArtifactInvalid: 'The artifact is invalid.', errorArtifactNotFound: 'Artifact not found.', errorArtifactSource: 'The source material is incomplete. Add it first.', errorCapacity: 'Storage capacity is reached. Free space and retry.', errorArtifactStale: 'This artifact version is based on older case content and cannot be downloaded directly; generate a fresh version.',
+    customerLabel: 'Customer', customerSearch: 'Search customer names…', customerCreate: 'Create customer', customerLinked: 'Linked: ', conversationLabel: 'Conversation', conversationNew: 'New', conversationMain: 'Main conversation', artifactSave: 'Save document version', artifactSavedOk: 'Document version saved', artifactList: 'Saved document versions', artifactDownload: 'Download', artifactStaleBadge: 'Stale', artifactStatusDraft: 'Draft', artifactStatusFinal: 'Final', readinessMissing: 'Before generating, please supply:', readinessReady: 'All required information is present', readinessConfirmAll: 'Confirm & save', readinessAnswer: 'Answer…',
     settings: 'Settings', modelLabel: 'Model', endpointLabel: 'Endpoint', readyStatus: 'Extraction enabled', configStatus: 'AI is not enabled', backendStatus: 'Backend not connected', checkingStatus: 'Checking connection', configHelp: 'Set DEEPSEEK_API_KEY and ENABLE_LIVE_AI=true on the server, then restart. Credentials stay on the server and are never stored in the browser.', manualAction: 'Process labels manually', errorConfig: 'DeepSeek is not enabled. Open Settings for server configuration steps. No simulated result will be substituted.', errorBackend: 'The processing backend is not connected. Start the complete service before using AI or server-side file processing.', filePick: 'Upload a file', workbookHint: 'Excel files are read on the server. Select one row and confirm the field mapping. Formulas and macros are not executed.', workbookConsent: 'This Excel file will be uploaded to the server to read worksheets and cells, not automatically sent to DeepSeek. Confirm that it contains only synthetic or de-identified information. Continue?', mapTitle: 'Choose one row and map its fields', sheetLabel: 'Worksheet', rowLabel: 'Data row', columnLabel: 'Column', skipColumn: 'Skip this field', applyMapping: 'Confirm mapping & review', cancelMapping: 'Cancel import', errorWorkbook: 'Could not read this workbook. Use an unencrypted XLSX / XLS file, or export one case as CSV.', errorMapping: 'Choose a valid row and distinct columns. Formula, hidden, or merged cells cannot be imported.', workbookLimited: 'Preview limited to the first 200 rows and 50 columns', workbookBlocked: 'Some cells cannot be imported. Choose ordinary visible values.',
     operatorSetup: 'Operator setup required', operatorSetupHelp: 'Configure NESTLET_OPERATOR_PASSWORD_HASH and an HTTPS PUBLIC_ORIGIN on the server, then restart.', signInRequired: 'Sign in to continue', operatorPassword: 'Access password', signIn: 'Sign in', signOut: 'Sign out', refreshStatus: 'Refresh status', apiKey: 'DeepSeek API Key', replaceKey: 'Replace API key (optional)', keepExistingKey: 'Leave blank to keep the existing key', saveSettings: 'Save settings', enableLive: 'Enable DeepSeek extraction', keyMemoryNotice: 'Keys entered here stay only in server memory and must be entered again after a server restart. The browser does not store them.', keyEnvironment: 'Key: server environment', keyMemory: 'Key: server memory', keyMissing: 'No key configured', testConnection: 'Test connection', connectionVerified: 'Model access verified; text generation not tested', settingsSaved: 'Settings saved. Connection verification is shown separately.', connectionSuccess: 'DeepSeek Flash model access verified. No text generation was called.', loginSuccess: 'Signed in. You can resume your previous action.', logoutSuccess: 'Signed out. The workspace is cleared; saved cases are retained.', logoutConfirm: 'Signing out clears the workspace and loses unsaved changes. Saved cases are retained. Continue?', errorAuth: 'Sign in, then retry your previous action.', errorSession: 'Your session has expired. Sign in again.', errorHttps: 'Password and key settings require a trusted HTTPS page. Configure server HTTPS first.', errorCredentials: 'Incorrect username or password, or the account is not configured.', errorRateLimit: 'Too many attempts. Wait one minute before retrying.', errorSettings: 'Invalid settings. Check the API key format.', errorKeyRequired: 'Enter and save an API key first.', errorConnection: 'Connection verification failed. Check the key and account access. Text generation was not tested.', errorModel: 'DeepSeek Flash was not listed for this account. Verify access before retrying.',
     workflowFocus: 'Reference focus', localLoginNotice: 'Local development sign-in. Browser API-key entry still requires an authenticated HTTPS page.',
     account: 'Account', trialAccess: 'Standard account', trialAccountHint: 'Work with your own cases. The service connection is managed by the owner.', loginUsername: 'Username', loginUsernameHint: 'Enter your account username; admins may leave this blank', errorOwnerRequired: 'This action is available only to the owner.', errorTrialUnavailable: 'The service is unavailable. Contact the administrator.',
     savedCases: 'My saved cases', saveCase: 'Save case', caseName: 'Case name', untitledCase: 'Untitled case', chooseCase: 'Choose a saved case', openCase: 'Open', deleteCase: 'Delete saved case', savedScope: 'Saves text, reviewed facts, and drafts for this account only. Original files are not stored. Saving is manual.', caseSaved: 'Saved', caseNotSaved: 'Not saved yet', unsavedChanges: 'Unsaved changes', caseSaveSuccess: 'Case saved', caseOpened: 'Saved case opened', caseDeleted: 'Saved case deleted. The current workspace content is retained.', unsavedOpen: 'Your changes are not saved. Opening another case replaces the workspace. Continue?', deleteCaseConfirm: 'Permanently delete this saved case? This cannot be undone.', errorCaseNotFound: 'This case does not exist or is not available to this account.', errorCaseInvalid: 'Invalid case content. Check the name and fields.', errorCaseTooLarge: 'Total case data cannot exceed 256 KiB; source text and draft each allow up to 50,000 characters. Shorten the content and retry.', errorCaseConflict: 'This case changed elsewhere. Your work was not overwritten. Export or copy the edits you need to keep, then open the latest saved case to compare.', errorCaseStorage: 'Case storage is unavailable. Your current workspace is unchanged. Try again later.', errorCaseChanged: 'The workspace changed while loading. Nothing was replaced. Review your edits before opening again.', errorTrialLimit: 'The standard-account extraction limit has been reached. Try later or contact the administrator.',
     errorCaseLimit: 'This account has reached the 100-case limit. Delete an unneeded saved case before adding another. Existing cases can still be updated.',
-    register: 'Create standard account', repeatPassword: 'Repeat password', registerUsernameHint: '3–64 lowercase letters or digits; _ . - allowed. The name owner is reserved.', registerPasswordHint: 'Use 12–256 characters for your password', registrationSuccess: 'Standard account created. You are signed in.', registrationUnavailable: 'Registration is unavailable. Contact the administrator.', errorRegistration: 'Use a valid username and a 12–256-character password. Both password entries must match.', errorPasswordMismatch: 'The passwords do not match. Please check both entries.', errorUsernameExists: 'This username is taken. Choose another.', errorRegistrationRate: 'Too many registration attempts. Please try again later.',
+    register: 'Create standard account', repeatPassword: 'Repeat password', registerUsernameHint: '3–64 lowercase letters or digits; _ . - allowed. The name owner is reserved.', registerPasswordHint: 'Use 6–256 characters for your password', registrationSuccess: 'Standard account created. You are signed in.', registrationUnavailable: 'Registration is unavailable. Contact the administrator.', errorRegistration: 'Use a valid username and a 6–256-character password. Both password entries must match.', errorPasswordMismatch: 'The passwords do not match. Please check both entries.', errorUsernameExists: 'This username is taken. Choose another.', errorRegistrationRate: 'Too many registration attempts. Please try again later.',
     sampleDownloads: 'Download synthetic test files', sampleDownloadHint: 'For testing only. Download and import a file yourself; nothing is prefilled and no AI call is automatic.', sampleWorkbookHint: 'For Excel, select row 2 of the Synthetic case sheet and map columns A–E to the five fields in order.',
     signInOrRegister: 'Sign in / Register', manageAccount: 'Manage',
     brand: 'Nestlet', tag: 'ONE DOCUMENT. ONE STEP FORWARD.', demo: 'Manual processing', liveMode: 'DeepSeek live extraction',
@@ -95,7 +101,138 @@ const copy = {
 };
 
 const kinds = DRAFT_TYPES;
-const state = {lang: 'zh', stage: 0, guidanceAgency: DEFAULT_GUIDANCE_AGENCY, guidanceOpen: false, text: '', fields: [], draftText: '', generated: false, error: '', message: '', busy: false, liveEnabled: false, pdfEnabled: false, workbookEnabled: false, workbook: null, sheetIndex: 0, rowIndex: 0, mapping: {}, settingsOpen: false, settingsBusy: false, settingsError: '', settingsMessage: '', authConfigured: false, authenticated: false, role: null, canManageSettings: false, userId: null, workspaceOwnerId: null, username: '', loginUsername: '', authForm: 'login', registrationEnabled: false, secureLogin: false, caseStorageEnabled: false, caseId: null, caseVersion: null, caseTitle: '', savedFingerprint: null, cases: [], selectedCaseId: '', casesOpen: false, caseBusy: false, caseError: '', caseMessage: '', caseEpoch: 0, secureSettings: false, configured: false, csrfToken: '', connectionVerifiedAt: null, keyStorage: 'none', statusChecked: false, statusError: false, model: 'deepseek-flash', providerEndpoint: 'https://api.deepseek.com/chat/completions', mode: 'demo', source: '', sample: false, namesVerified: false, kind: 'followup', generatedKind: 'followup', version: 0, controller: null};
+const state = {lang: 'zh', stage: 0, guidanceAgency: DEFAULT_GUIDANCE_AGENCY, guidanceOpen: false, text: '', fields: [], draftText: '', generated: false, error: '', message: '', busy: false, liveEnabled: false, pdfEnabled: false, workbookEnabled: false, workbook: null, sheetIndex: 0, rowIndex: 0, mapping: {}, settingsOpen: false, settingsBusy: false, settingsError: '', settingsMessage: '', authConfigured: false, authenticated: false, role: null, canManageSettings: false, userId: null, workspaceOwnerId: null, username: '', loginUsername: '', authForm: 'login', registrationEnabled: false, secureLogin: false, caseStorageEnabled: false, caseId: null, caseVersion: null, caseTitle: '', savedFingerprint: null, cases: [], selectedCaseId: '', casesOpen: false, caseBusy: false, caseError: '', caseMessage: '', caseEpoch: 0, secureSettings: false, configured: false, csrfToken: '', connectionVerifiedAt: null, keyStorage: 'none', statusChecked: false, statusError: false, model: 'deepseek-flash', providerEndpoint: 'https://api.deepseek.com/chat/completions', mode: 'demo', source: '', sample: false, namesVerified: false, kind: 'followup', generatedKind: 'followup', version: 0, controller: null, chatMessages: [], chatImages: [], chatBusy: false, chatError: '', chatIncomplete: false, customers: [], customerId: null, customerQuery: '', conversations: [], conversationId: '', artifacts: [], readiness: null, readinessBusy: false};
+let draftEditTracked = false;
+let chatController = null;
+let chatStopRequested = false;
+/** Nonblocking client telemetry per docs/telemetry-api.md v1.
+    Operational metadata only: never records document text, draft text, filenames,
+    passwords, keys, or arbitrary metadata. A telemetry failure must never change
+    business state, clear work, or mark anything as failed. */
+let workflowId = null;
+let workflowUserId = null;
+let correlationRequestId = null;
+let creating = null;
+let disabled = false;
+let telemetryEpoch = 0;
+let activeMs = 0;
+let activeSince = null;
+let hooks = { isAuthenticated: () => false, getCsrf: () => '', getUserId: () => null };
+
+const clock = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
+const isVisible = () => typeof document === 'undefined' || document.visibilityState !== 'hidden';
+function pauseActive() {
+  if (activeSince !== null) {
+    activeMs += clock() - activeSince;
+    activeSince = null;
+  }
+}
+function resumeActive() {
+  if (activeSince === null && isVisible()) activeSince = clock();
+}
+function takeActiveMs() {
+  pauseActive();
+  const value = Math.min(Math.round(activeMs), 86400000);
+  activeMs = 0;
+  resumeActive();
+  return value;
+}
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => (isVisible() ? resumeActive() : pauseActive()));
+  resumeActive();
+}
+
+function configureTelemetry(options) {
+  hooks = {...hooks, ...options};
+}
+
+/** Start a fresh journey: abandon any in-flight creation (its finally guards on
+    promise identity, so a newer creation is never cleared by the old one). */
+function resetTelemetry() {
+  telemetryEpoch++;
+  workflowId = null;
+  workflowUserId = null;
+  correlationRequestId = null;
+  creating = null;
+  disabled = false;
+  activeMs = 0;
+  pauseActive();
+  activeSince = null;
+  resumeActive();
+}
+
+/** Headers for business requests that support workflow correlation. */
+function telemetryHeaders() {
+  return workflowId && workflowUserId === hooks.getUserId() ? { 'X-Workflow-Id': workflowId } : {};
+}
+
+/** Observe a business response. A request ID is only correlated when telemetry
+    is active, the server used this exact workflow, and the workflow belongs to
+    the currently authenticated identity. */
+function noteBusinessResponse(response) {
+  try {
+    const get = response?.headers?.get?.bind(response.headers);
+    if (!get) return;
+    const returnedWorkflow = get('X-Workflow-Id');
+    if (returnedWorkflow && !workflowId && hooks.isAuthenticated()) {
+      workflowId = returnedWorkflow;
+      workflowUserId = hooks.getUserId();
+    }
+    if (returnedWorkflow && returnedWorkflow !== workflowId) { correlationRequestId = null; return; }
+    if (workflowId && workflowUserId !== hooks.getUserId()) { correlationRequestId = null; return; }
+    correlationRequestId = get('X-Telemetry-Status') === 'active' ? get('X-Request-Id') : null;
+  } catch { /* telemetry is best-effort */ }
+}
+
+async function ensureWorkflow() {
+  if (workflowId && workflowUserId === hooks.getUserId()) return workflowId;
+  if (disabled || !hooks.isAuthenticated()) return null;
+  if (!creating) {
+    const epoch = telemetryEpoch;
+    const userId = hooks.getUserId();
+    const pending = (async () => {
+      try {
+        const response = await fetch('/api/workflows', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': hooks.getCsrf() }, body: '{}' });
+        if (epoch !== telemetryEpoch || userId !== hooks.getUserId()) return null;
+        if (!response.ok) { disabled = true; return null; }
+        const result = await response.json();
+        if (epoch !== telemetryEpoch || userId !== hooks.getUserId()) return null;
+        if (typeof result.workflowId === 'string') {
+          workflowId = result.workflowId;
+          workflowUserId = userId;
+        } else disabled = true;
+      } catch { if (epoch === telemetryEpoch) disabled = true; }
+      return workflowId;
+    })();
+    creating = pending;
+    pending.finally(() => { if (creating === pending) creating = null; });
+  }
+  return creating;
+}
+
+/** Fire-and-forget client event. `extra` may carry waitMs and a fixed errorCode. */
+function track(event, outcome, extra = {}) {
+  if (disabled || !hooks.isAuthenticated()) return;
+  const epoch = telemetryEpoch;
+  const userId = hooks.getUserId();
+  const payload = { event, outcome, clientActiveMs: takeActiveMs() };
+  if (Number.isInteger(extra.waitMs)) payload.clientWaitMs = Math.min(Math.max(extra.waitMs, 0), 300000);
+  if (correlationRequestId) payload.requestId = correlationRequestId;
+  if (typeof extra.errorCode === 'string') payload.errorCode = extra.errorCode;
+  void (async () => {
+    const id = await ensureWorkflow();
+    if (!id || epoch !== telemetryEpoch || userId !== hooks.getUserId() || !hooks.isAuthenticated()) return;
+    try {
+      await fetch(`/api/workflows/${encodeURIComponent(id)}/events`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': hooks.getCsrf() },
+        body: JSON.stringify({ events: [payload] })
+      });
+    } catch { /* never surface telemetry failures */ }
+  })();
+}
+
+configureTelemetry({isAuthenticated: () => state.authenticated, getCsrf: () => state.csrfToken, getUserId: () => state.userId});
 const t = () => copy[state.lang];
 const esc = value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
 const byId = id => document.getElementById(id);
@@ -143,7 +280,7 @@ function settingsMarkup() {
   else if (!state.authConfigured) controls = `<p>${d.operatorSetupHelp}</p>`;
   else if (!state.authenticated) {
     const registering = state.authForm === 'register' && state.registrationEnabled;
-    controls = operatorLoginAvailable() ? `${localDevelopmentLogin() ? `<p class="small">${d.localLoginNotice}</p>` : ''}<div class="actions"><button id="auth-signin" class="link" type="button" ${!registering || disabled ? 'disabled' : ''}>${d.signIn}</button><button id="auth-register" class="link" type="button" ${registering || !state.registrationEnabled || disabled ? 'disabled' : ''}>${d.register}</button></div><form id="login-form" autocomplete="off" novalidate><label for="login-username">${d.loginUsername}</label><input id="login-username" class="input" type="text" autocomplete="off" maxlength="64" value="${esc(state.loginUsername)}" placeholder="${registering ? d.registerUsernameHint : d.loginUsernameHint}" ${disabled}><label for="operator-password">${d.operatorPassword}</label><div class="credential-row"><input id="operator-password" name="operator-password" type="password" autocomplete="off" minlength="12" maxlength="256" ${disabled}>${registering ? '' : `<button class="primary" type="submit" ${disabled}>${d.signIn}</button>`}</div>${registering ? `<p class="small">${d.registerPasswordHint}</p><label for="password-confirmation">${d.repeatPassword}</label><div class="credential-row"><input id="password-confirmation" type="password" autocomplete="off" minlength="12" maxlength="256" ${disabled}><button class="primary" type="submit" ${disabled}>${d.register}</button></div>` : ''}</form>` : `<p>${d.errorHttps}</p>`;
+    controls = operatorLoginAvailable() ? `${localDevelopmentLogin() ? `<p class="small">${d.localLoginNotice}</p>` : ''}<div class="actions"><button id="auth-signin" class="link" type="button" ${!registering || disabled ? 'disabled' : ''}>${d.signIn}</button><button id="auth-register" class="link" type="button" ${registering || !state.registrationEnabled || disabled ? 'disabled' : ''}>${d.register}</button></div><form id="login-form" autocomplete="off" novalidate><label for="login-username">${d.loginUsername}</label><input id="login-username" class="input" type="text" autocomplete="off" maxlength="64" value="${esc(state.loginUsername)}" placeholder="${registering ? d.registerUsernameHint : d.loginUsernameHint}" ${disabled}><label for="operator-password">${d.operatorPassword}</label><div class="credential-row"><input id="operator-password" name="operator-password" type="password" autocomplete="off" minlength="6" maxlength="256" ${disabled}>${registering ? '' : `<button class="primary" type="submit" ${disabled}>${d.signIn}</button>`}</div>${registering ? `<p class="small">${d.registerPasswordHint}</p><label for="password-confirmation">${d.repeatPassword}</label><div class="credential-row"><input id="password-confirmation" type="password" autocomplete="off" minlength="6" maxlength="256" ${disabled}><button class="primary" type="submit" ${disabled}>${d.register}</button></div>` : ''}</form>` : `<p>${d.errorHttps}</p>`;
   } else if (!managesSettings()) {
     controls = `<p>${state.role === 'trial' ? d.trialAccountHint : d.errorOwnerRequired}</p><button id="logout" class="link" ${disabled}>${d.signOut}</button>`;
   } else if (!secureSettingsAvailable()) {
@@ -159,7 +296,18 @@ const authErrorKeys = {
   TRIAL_LIMIT_REACHED: 'errorTrialLimit', USER_INVALID: 'errorCredentials', OWNER_REQUIRED: 'errorOwnerRequired', AUTH_REQUIRED: 'errorAuth', CSRF_REJECTED: 'errorSession', OPERATOR_SETUP_REQUIRED: 'operatorSetupHelp', HTTPS_REQUIRED: 'errorHttps',
   INVALID_CREDENTIALS: 'errorCredentials', LOGIN_RATE_LIMITED: 'errorRateLimit', SETTINGS_RATE_LIMITED: 'errorRateLimit',
   INVALID_SETTINGS: 'errorSettings', API_KEY_REQUIRED: 'errorKeyRequired', CONNECTION_FAILED: 'errorConnection', MODEL_UNAVAILABLE: 'errorModel',
-  BUSY: 'errorBusy', LIVE_DISABLED: 'errorConfig'
+  BUSY: 'errorBusy', LIVE_DISABLED: 'errorConfig',
+  CLIENT_INVALID: 'errorClientInvalid', CLIENT_NOT_FOUND: 'errorClientNotFound', CLIENT_CONFLICT: 'errorClientConflict',
+  CONVERSATION_INVALID: 'errorConversationInvalid', CONVERSATION_NOT_FOUND: 'errorConversationNotFound', MESSAGE_INVALID: 'errorMessageInvalid',
+  CHAT_CONVERSATION_BUSY: 'errorChatBusy', CHAT_TURN_EXISTS: 'errorChatTurnExists', CHAT_SAVE_FAILED: 'errorChatSaveFailed',
+  CHAT_INVALID: 'errorChat', CHAT_TOO_LARGE: 'chatTooLong', CHAT_IMAGE_INVALID: 'chatImageBad', CHAT_IMAGE_UNSUPPORTED: 'chatImageBad',
+  CHAT_PROVIDER_FAILED: 'errorChatProvider', CHAT_STREAM_FAILED: 'chatIncomplete', CHAT_INCOMPLETE: 'chatIncomplete', CHAT_UNSUPPORTED_OUTPUT: 'errorChatOutput',
+  DOCUMENT_CONTEXT_INVALID: 'errorDocContext', DOCUMENT_CONTEXT_CONFLICT: 'errorDocConflict', DOCUMENT_DETAILS_INVALID: 'errorDocDetails',
+  DOCUMENT_DETAILS_REQUIRED: 'errorDocRequired', DOCUMENT_CONTENT_INVALID: 'errorDocContent', DOCUMENT_ENGLISH_REQUIRED: 'draftEnglishRequired',
+  DOCUMENT_PLACEHOLDERS_REMAIN: 'errorDocPlaceholders',
+  ARTIFACT_INVALID: 'errorArtifactInvalid', ARTIFACT_NOT_FOUND: 'errorArtifactNotFound', ARTIFACT_SOURCE_INCOMPLETE: 'errorArtifactSource',
+  DOCUMENT_NOT_READY: 'errorDocRequired', ARTIFACT_STALE: 'errorArtifactStale',
+  CAPACITY_REACHED: 'errorCapacity'
 };
 function responseError(result, fallback) {
   let key = authErrorKeys[result?.code] || fallback;
@@ -177,12 +325,14 @@ function requestHeaders(extra = {}) {
   return {...extra, ...(state.csrfToken ? {'X-CSRF-Token': state.csrfToken} : {})};
 }
 function applyStatus(status) {
+  const previousUserId = state.userId;
   for (const key of ['liveEnabled', 'pdfEnabled', 'workbookEnabled', 'authConfigured', 'authenticated', 'secureSettings', 'secureLogin', 'configured', 'caseStorageEnabled', 'registrationEnabled']) {
     if (key in status) state[key] = status[key] === true;
   }
   state.role = ['owner', 'trial'].includes(status.role) ? status.role : null;
   state.canManageSettings = state.role === 'owner' && status.canManageSettings === true;
   state.userId = typeof status.userId === 'string' ? status.userId : null;
+  if (state.userId !== previousUserId) resetTelemetry();
   state.username = typeof status.username === 'string' ? status.username : '';
   if (state.userId && state.workspaceOwnerId && state.userId !== state.workspaceOwnerId) {replaceText(''); forgetCaseIdentity(); state.cases = []; state.selectedCaseId = '';}
   if (state.userId) state.workspaceOwnerId = state.userId;
@@ -226,7 +376,7 @@ async function settingsRequest(path, payload, successKey) {
       if (result.ok !== true || result.check !== 'model-access' || result.chatCompletionTested !== false || result.model !== 'deepseek-flash' || typeof result.verifiedAt !== 'string' || !Number.isFinite(Date.parse(result.verifiedAt))) throw new Error('errorConnection');
       state.connectionVerifiedAt = result.verifiedAt;
     } else if (path === '/api/logout') {
-      replaceText(''); forgetCaseIdentity(); state.workspaceOwnerId = null; state.cases = []; state.selectedCaseId = ''; state.authenticated = false; state.csrfToken = ''; await refreshStatus();
+      replaceText(''); forgetCaseIdentity(); state.workspaceOwnerId = null; state.cases = []; state.selectedCaseId = ''; state.authenticated = false; state.csrfToken = ''; resetTelemetry(); await refreshStatus();
     } else if (path === '/api/login' || path === '/api/register') {
       state.csrfToken = typeof result.csrfToken === 'string' ? result.csrfToken : '';
       await refreshStatus();
@@ -263,17 +413,18 @@ function updateCaseIndicator() {
 }
 function forgetCaseIdentity() {
   state.caseId = null; state.caseVersion = null; state.caseTitle = ''; state.savedFingerprint = null;
-  state.caseError = ''; state.caseMessage = ''; state.caseEpoch++;
+  state.caseError = ''; state.caseMessage = ''; state.caseEpoch++; state.customerId = null; state.customerQuery = ''; state.conversations = []; state.conversationId = ''; state.artifacts = []; state.readiness = null; state.chatMessages = [];
 }
 function caseControlsMarkup() {
   if (!state.authenticated || !state.caseStorageEnabled) return '';
   const d = t();
   const disabled = state.caseBusy || state.busy ? 'disabled' : '';
-  return `<section class="case-controls" aria-label="${d.savedCases}"><div class="actions"><button id="save-case" class="secondary" ${disabled || !hasCaseContent() ? 'disabled' : ''}>${d.saveCase}</button><details id="case-manager" class="help-details" ${state.casesOpen ? 'open' : ''}><summary>${d.savedCases}</summary><div class="draft-choice"><label for="case-title">${d.caseName}</label><input id="case-title" class="input" maxlength="120" value="${esc(state.caseTitle)}" placeholder="${d.untitledCase}"></div><div class="draft-choice"><label for="saved-case">${d.savedCases}</label><select id="saved-case" ${disabled}><option value="">${d.chooseCase}</option>${state.cases.map(item => `<option value="${esc(item.id)}" ${state.selectedCaseId === item.id ? 'selected' : ''}>${esc(item.title)}</option>`).join('')}</select></div><div class="actions"><button id="open-case" class="secondary" ${disabled || !state.selectedCaseId ? 'disabled' : ''}>${d.openCase}</button><button id="delete-case" class="link" ${disabled || !state.selectedCaseId ? 'disabled' : ''}>${d.deleteCase}</button><button id="refresh-cases" class="link" ${disabled}>${d.refreshStatus}</button></div><p>${d.savedScope}</p></details><span id="case-save-status" class="small" role="status">${caseStatusLabel()}</span></div><div class="error" role="alert">${state.caseError ? d[state.caseError] || d.errorGeneric : ''}</div><div class="success" role="status">${state.caseMessage ? d[state.caseMessage] : ''}</div></section>`;
+  return `<section class="case-controls" aria-label="${d.savedCases}"><div class="actions"><button id="save-case" class="secondary" ${disabled || !hasCaseContent() ? 'disabled' : ''}>${d.saveCase}</button><details id="case-manager" class="help-details" ${state.casesOpen ? 'open' : ''}><summary>${d.savedCases}</summary><div class="draft-choice"><label for="case-title">${d.caseName}</label><input id="case-title" class="input" maxlength="120" value="${esc(state.caseTitle)}" placeholder="${d.untitledCase}"></div><div class="draft-choice"><label for="saved-case">${d.savedCases}</label><select id="saved-case" ${disabled}><option value="">${d.chooseCase}</option>${state.cases.map(item => `<option value="${esc(item.id)}" ${state.selectedCaseId === item.id ? 'selected' : ''}>${esc(item.title)}</option>`).join('')}</select></div><div class="actions"><button id="open-case" class="secondary" ${disabled || !state.selectedCaseId ? 'disabled' : ''}>${d.openCase}</button><button id="delete-case" class="link" ${disabled || !state.selectedCaseId ? 'disabled' : ''}>${d.deleteCase}</button><button id="refresh-cases" class="link" ${disabled}>${d.refreshStatus}</button></div><p>${d.savedScope}</p></details><span id="case-save-status" class="small" role="status">${caseStatusLabel()}</span></div><div class="customer-row"><label for="customer-query">${d.customerLabel}</label><input id="customer-query" class="input" maxlength="120" placeholder="${d.customerSearch}" value="${esc(state.customerQuery)}" ${disabled}><button id="customer-create" class="link" ${disabled || !state.customerQuery.trim() ? 'disabled' : ''}>${d.customerCreate}</button>${state.customerId ? `<span class="small customer-linked">${d.customerLinked}${esc(state.customers.find(c => c.id === state.customerId)?.displayName || state.customerQuery)}</span>` : ''}${state.customers.length ? `<div class="customer-results">${state.customers.map(c => `<button type="button" class="link" data-customer="${esc(c.id)}" data-name="${esc(c.displayName)}">${esc(c.displayName)}</button>`).join('')}</div>` : ''}</div>${state.artifacts.length ? `<div class="artifact-list"><h3>${d.artifactList}</h3>${state.artifacts.map(a => `<div class="artifact-row"><span class="artifact-name">${esc(a.title || a.kind)} · v${a.version}</span><span class="field-status">${a.status === 'final' ? d.artifactStatusFinal : d.artifactStatusDraft}</span>${a.isStale ? `<span class="field-status warning">${d.artifactStaleBadge}</span>` : ''}<a class="link" href="/api/artifacts/${esc(a.id)}/download">${d.artifactDownload}</a></div>`).join('')}</div>` : ''}<div class="error" role="alert">${state.caseError ? d[state.caseError] || d.errorGeneric : ''}</div><div class="success" role="status">${state.caseMessage ? d[state.caseMessage] : ''}</div></section>`;
 }
 const caseErrorKeys = {CASE_LIMIT_REACHED: 'errorCaseLimit', CASE_NOT_FOUND: 'errorCaseNotFound', CASE_INVALID: 'errorCaseInvalid', CASE_TOO_LARGE: 'errorCaseTooLarge', CASE_CONFLICT: 'errorCaseConflict', CASE_STORAGE_UNAVAILABLE: 'errorCaseStorage'};
 async function caseRequest(path, method = 'GET', payload) {
-  const response = await fetch(path, {method, cache: 'no-store', headers: requestHeaders(payload ? {'Content-Type': 'application/json'} : {}), ...(payload ? {body: JSON.stringify(payload)} : {})});
+  const response = await fetch(path, {method, cache: 'no-store', headers: requestHeaders({...telemetryHeaders(), ...(payload ? {'Content-Type': 'application/json'} : {})}), ...(payload ? {body: JSON.stringify(payload)} : {})});
+  noteBusinessResponse(response);
   const result = await response.json();
   if (!response.ok) throw responseError(result, caseErrorKeys[result.code] || 'errorCaseStorage');
   return result;
@@ -306,14 +457,17 @@ async function saveCurrentCase() {
   const id = state.caseId;
   state.caseBusy = true; state.caseError = ''; state.caseMessage = ''; render();
   try {
-    const result = await caseRequest(id ? `/api/cases/${encodeURIComponent(id)}` : '/api/cases', id ? 'PUT' : 'POST', {...payload, ...(id ? {expectedVersion: state.caseVersion} : {})});
+    const saveStart = performance.now();
+    const result = await caseRequest(id ? `/api/cases/${encodeURIComponent(id)}` : '/api/cases', id ? 'PUT' : 'POST', {...payload, clientId: state.customerId || null, ...(id ? {expectedVersion: state.caseVersion} : {})});
     if (!validCaseRecord(result.case)) throw new Error('errorCaseStorage');
     if (userId === state.userId && epoch === state.caseEpoch) {
       state.caseId = result.case.id; state.caseVersion = result.case.version; state.savedFingerprint = fingerprint;
       state.selectedCaseId = result.case.id; state.caseMessage = 'caseSaveSuccess';
+      track('case.save', 'success', {waitMs: Math.round(performance.now() - saveStart)});
+      await loadCaseExtras();
     }
     await refreshCaseList(false);
-  } catch (error) {if (userId === state.userId && epoch === state.caseEpoch) state.caseError = copy.en[error.message] ? error.message : 'errorCaseStorage';}
+  } catch (error) {if (userId === state.userId && epoch === state.caseEpoch) {state.caseError = copy.en[error.message] ? error.message : 'errorCaseStorage'; track('case.save', 'failure', {errorCode: 'UNKNOWN_CLIENT_ERROR'});}}
   finally {state.caseBusy = false; render();}
 }
 async function openSavedCase() {
@@ -325,6 +479,7 @@ async function openSavedCase() {
   const userId = state.userId;
   state.caseBusy = true; state.caseError = ''; state.caseMessage = ''; render();
   try {
+    const openStart = performance.now();
     const result = await caseRequest(`/api/cases/${encodeURIComponent(selected)}`);
     if (!validCaseRecord(result.case)) throw new Error('errorCaseStorage');
     if (userId !== state.userId || epoch !== state.caseEpoch || before !== caseFingerprint()) throw new Error('errorCaseChanged');
@@ -335,8 +490,12 @@ async function openSavedCase() {
     state.mode = record.extractionMode === 'live' ? 'live' : 'demo';
     state.caseId = record.id; state.caseVersion = record.version; state.caseTitle = record.title;
     state.savedFingerprint = caseFingerprint(); state.stage = state.generated ? 2 : state.fields.length ? 1 : 0;
+    state.customerId = typeof record.clientId === 'string' ? record.clientId : null;
+    state.customerQuery = '';
     state.caseMessage = 'caseOpened';
-  } catch (error) {if (userId === state.userId) state.caseError = copy.en[error.message] ? error.message : 'errorCaseStorage';}
+    track('case.open', 'success', {waitMs: Math.round(performance.now() - openStart)});
+    await loadCaseExtras();
+  } catch (error) {if (userId === state.userId) {state.caseError = copy.en[error.message] ? error.message : 'errorCaseStorage'; track('case.open', 'failure', {errorCode: 'UNKNOWN_CLIENT_ERROR'});}}
   finally {state.caseBusy = false; render();}
 }
 async function deleteSavedCase() {
@@ -350,9 +509,93 @@ async function deleteSavedCase() {
     if (userId !== state.userId) return;
     if (state.caseId === item.id) {state.caseId = null; state.caseVersion = null; state.savedFingerprint = null;}
     state.selectedCaseId = ''; state.caseMessage = 'caseDeleted';
+    track('case.delete', 'success');
     await refreshCaseList(false);
-  } catch (error) {if (userId === state.userId) state.caseError = copy.en[error.message] ? error.message : 'errorCaseStorage';}
+  } catch (error) {if (userId === state.userId) {state.caseError = copy.en[error.message] ? error.message : 'errorCaseStorage'; track('case.delete', 'failure', {errorCode: 'UNKNOWN_CLIENT_ERROR'});}}
   finally {state.caseBusy = false; render();}
+}
+
+
+/** Customer library, durable conversations, artifacts and document readiness —
+    docs/customer-case-api.md v1. All routes go through caseRequest (session,
+    CSRF, telemetry headers, mapped bilingual errors). */
+async function loadCustomers(search = '') {
+  if (!state.authenticated || !state.caseStorageEnabled) return;
+  try {
+    const result = await caseRequest('/api/clients?limit=50' + (search ? `&search=${encodeURIComponent(search)}` : ''));
+    if (Array.isArray(result.clients)) state.customers = result.clients;
+  } catch { /* listing failure keeps current state */ }
+}
+async function createCustomer() {
+  const name = state.customerQuery.trim();
+  if (!name || state.caseBusy) return;
+  try {
+    const result = await caseRequest('/api/clients', 'POST', {displayName: name});
+    if (result.client?.id) {
+      state.customerId = result.client.id;
+      state.customerQuery = result.client.displayName;
+      await loadCustomers();
+    }
+  } catch (error) {state.caseError = copy.en[error.message] ? error.message : 'errorClientInvalid';}
+  render();
+}
+async function selectConversation(id) {
+  state.conversationId = id;
+  if (!id) {state.chatMessages = []; render(); return;}
+  try {
+    const result = await caseRequest(`/api/conversations/${encodeURIComponent(id)}`);
+    state.chatMessages = (result.messages || []).map(m => ({role: m.role, content: m.content, incomplete: m.state !== 'complete'}));
+  } catch { /* keep current thread */ }
+  render();
+}
+async function loadReadiness() {
+  if (!state.caseId) {state.readiness = null; return;}
+  try {
+    state.readiness = await caseRequest(`/api/cases/${encodeURIComponent(state.caseId)}/readiness?kind=${state.kind}&locale=${state.lang}`);
+  } catch { state.readiness = null; }
+}
+async function loadCaseExtras() {
+  if (!state.caseId) return;
+  try {
+    const result = await caseRequest(`/api/cases/${encodeURIComponent(state.caseId)}/conversations`);
+    state.conversations = Array.isArray(result.conversations) ? result.conversations : [];
+    if (!state.conversationId && state.conversations.length) await selectConversation(state.conversations[0].id);
+  } catch { /* conversations unavailable */ }
+  try {
+    const result = await caseRequest(`/api/cases/${encodeURIComponent(state.caseId)}/artifacts`);
+    state.artifacts = Array.isArray(result.artifacts) ? result.artifacts : [];
+  } catch { /* artifacts unavailable */ }
+  await loadReadiness();
+}
+async function saveArtifact() {
+  if (!state.caseId || !state.generated || draftNeedsEnglish()) return;
+  try {
+    const result = await caseRequest(`/api/cases/${encodeURIComponent(state.caseId)}/artifacts`, 'POST',
+      {kind: state.generatedKind, status: 'draft', content: exportDraft(), expectedCaseVersion: state.caseVersion});
+    if (result.artifact?.id) {
+      state.artifacts = [result.artifact, ...state.artifacts];
+      state.message = 'artifactSavedOk';
+    }
+  } catch (error) {state.caseError = copy.en[error.message] ? error.message : 'errorArtifactInvalid';}
+  render();
+}
+async function confirmReadiness() {
+  if (!state.caseId || state.readinessBusy) return;
+  const changes = {};
+  document.querySelectorAll('[data-readiness]').forEach(el => {
+    const value = el.value.trim();
+    if (value) changes[el.dataset.readiness] = {value};
+  });
+  if (!Object.keys(changes).length) return;
+  state.readinessBusy = true; render();
+  try {
+    const result = await caseRequest(`/api/cases/${encodeURIComponent(state.caseId)}/document-context`, 'PATCH',
+      {changes, confirm: true, expectedVersion: state.caseVersion});
+    if (result.case && Number.isInteger(result.case.version)) state.caseVersion = result.case.version;
+    state.readiness = result.readiness || null;
+    state.caseMessage = 'caseSaveSuccess';
+  } catch (error) {state.caseError = copy.en[error.message] ? error.message : 'errorDocDetails';}
+  finally {state.readinessBusy = false; render();}
 }
 
 function agencyMarkup() {
@@ -388,6 +631,8 @@ function render() {
   const needsEnglish = fieldsNeedEnglish();
   const stage = state.stage;
   document.documentElement.lang = state.lang === 'zh' ? 'zh-CN' : 'en';
+  const chatThread = state.chatMessages.length || state.chatError ? `<div class="chat-thread" id="chat-thread" aria-live="polite">${state.chatMessages.map(m => `<div class="chat-msg ${m.role}"><span class="chat-role">${m.role === 'user' ? d.chatYou : d.chatAssistant}</span>${m.images && m.images.length ? `<span class="chat-msg-images">${m.images.map(img => `<img src="${img.preview}" alt="">`).join('')}</span>` : ''}<p${m.streaming ? ' id="chat-streaming"' : ''}>${esc(m.content)}${m.streaming ? '<span class="chat-cursor" aria-hidden="true">▍</span>' : ''}</p>${m.incomplete ? `<p class="chat-incomplete">${d.chatIncomplete}</p>` : ''}</div>`).join('')}${state.chatError ? `<div class="error" role="alert">${d[state.chatError] || d.errorChat}${!state.chatBusy && state.chatMessages.some(m => m.role === 'user') ? ` <button type="button" id="chat-retry" class="link">${d.chatRetry}</button>` : ''}</div>` : ''}</div>` : `<p class="chat-empty">${d.chatEmpty}</p>`;
+  const chatChips = state.chatImages.length ? `<div class="chat-chips">${state.chatImages.map((img, i) => `<span class="chat-chip"><img src="${img.preview}" alt=""><button type="button" data-chip="${i}" aria-label="${d.chatRemoveImage}">×</button></span>`).join('')}</div>` : '';
   byId('app').innerHTML = `<div class="shell compact-shell">
     <header><a class="brand" href="#main" aria-label="Nestlet"><img src="/logo.svg" alt=""><div class="wordmark">${d.brand}<span class="small">${state.lang === 'zh' ? ' Nestlet' : ''}</span></div></a><div class="tools"><span class="pill mode">DeepSeek Flash</span><button class="ghost" id="settings" aria-expanded="${state.settingsOpen}">${!state.authenticated ? d.signInOrRegister : managesSettings() ? d.manageAccount : d.account}</button><button class="ghost" id="language" lang="${state.lang === 'zh' ? 'en' : 'zh-CN'}" aria-label="${state.lang === 'zh' ? 'Switch interface to English' : '切换界面为中文'}">${state.lang === 'zh' ? 'English' : '中文'}</button></div></header>
     ${settingsMarkup()}
@@ -396,13 +641,15 @@ function render() {
     ${caseControlsMarkup()}
     <main id="main" class="grid" ${stage === 2 ? 'hidden' : ''}>
       <section class="panel" id="input-panel" ${stage !== 0 ? 'hidden' : ''}><div class="panel-top"><h2>${d.inputShort}</h2></div>
+        ${state.caseId ? `<div class="conversation-bar"><label for="conversation-select">${d.conversationLabel}</label><select id="conversation-select" ${state.chatBusy || !state.conversations.length ? 'disabled' : ''}>${state.conversations.map(c => `<option value="${esc(c.id)}" ${c.id === state.conversationId ? 'selected' : ''}>${esc(c.title || d.conversationMain)}</option>`).join('')}</select><button id="conversation-new" class="link" ${state.chatBusy ? 'disabled' : ''}>${d.conversationNew}</button></div>` : ''}
+        ${chatThread}
         <label class="file ${busy ? 'disabled' : ''}"><span aria-hidden="true">↥</span><span>${d.filePick}<small class="file-formats">TXT · CSV${state.pdfEnabled ? ' · PDF' : ''}${state.workbookEnabled ? ' · XLSX · XLS' : ''}</small></span><input type="file" id="file" accept=".txt,.csv,text/plain,text/csv${state.pdfEnabled ? ',.pdf,application/pdf' : ''}${state.workbookEnabled ? ',.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel' : ''}" ${busy ? 'disabled' : ''}></label>
         <details class="help-details" id="sample-downloads"><summary>${d.sampleDownloads}</summary><div class="actions">${['txt', 'csv', 'pdf', 'xlsx', 'xls'].map(extension => `<a href="/samples/nestlet-synthetic-case.${extension}" download="nestlet-synthetic-case.${extension}">${extension.toUpperCase()}</a>`).join('')}</div><p>${d.sampleDownloadHint}</p><p>${d.sampleWorkbookHint}</p></details>
         ${state.workbook || state.source ? `<div class="document-name">${esc(state.workbook?.filename || state.source)}</div>` : ''}
         ${state.workbook ? workbookMarkup() : `
-        <label class="sr-only" for="input">${d.input}</label><textarea class="input" id="input" maxlength="50000" placeholder="${d.pasteShort}" ${busy ? 'disabled' : ''}>${esc(state.text)}</textarea>
+        ${chatChips}<label class="sr-only" for="input">${d.input}</label><textarea class="input" id="input" maxlength="50000" placeholder="${d.pasteShort}" ${busy || state.chatBusy ? 'disabled' : ''}>${esc(state.text)}</textarea>
         <div class="input-meta"><details class="help-details"><summary>${d.inputHelp}</summary><p>${d.inputHint}</p><p>${state.pdfEnabled ? d.pdfHint : d.noPdfHint}</p><p>${state.workbookEnabled ? d.workbookHint : ''}</p><p>${d.localHint}</p><p class="label-list">Property: · Owner: · PHA: · Case reference: · Proposed rent:</p><p>${d.privacy}</p></details><span class="small char-count" id="char-count">${state.text.length.toLocaleString()} / 50,000</span></div>
-        <div class="actions"><button class="primary" id="live" ${busy ? 'disabled' : ''}>${d.nextReview} →</button><button class="link" id="extract" ${busy ? 'disabled' : ''}>${d.manualAction}</button>${busy ? `<button class="secondary" id="cancel">${d.cancel}</button>` : ''}<button class="link push-right" id="reset">${d.reset}</button></div>
+        <div class="actions"><button class="primary" id="chat-send" ${busy || state.chatBusy ? 'disabled' : ''}>${state.chatBusy ? d.chatStreaming : d.chatSend + ' →'}</button><button class="ghost" id="chat-image" ${busy || state.chatBusy ? 'disabled' : ''}>${d.chatAttachImage}</button><input type="file" id="image-file" accept="image/png,image/jpeg" multiple class="sr-only" ${busy || state.chatBusy ? 'disabled' : ''}><button class="secondary" id="live" ${busy || state.chatBusy ? 'disabled' : ''}>${d.nextReview}</button><button class="link" id="extract" ${busy || state.chatBusy ? 'disabled' : ''}>${d.manualAction}</button>${state.chatBusy ? `<button class="secondary" id="chat-stop">${d.chatStop}</button>` : ''}${busy ? `<button class="secondary" id="cancel">${d.cancel}</button>` : ''}<button class="link push-right" id="reset">${d.reset}</button></div>
         `}
         <div class="error" role="alert">${state.error ? d[state.error] || d.errorGeneric : ''}</div><div class="success" role="status">${busy ? d.busy : ['loaded', 'cancelled'].includes(state.message) ? d[state.message] : ''}</div>
       </section>
@@ -415,11 +662,12 @@ function render() {
         ${agencyMarkup()}
         ${nameFields().length ? `<label class="confirm name-preflight"><input type="checkbox" id="names-verified" ${state.namesVerified ? 'checked' : ''} ${busy ? 'disabled' : ''}>${d.nameReview}</label>` : ''}
         <div class="draft-choice"><label for="draft-type">${d.draftTypeShort}</label><select id="draft-type" ${busy ? 'disabled' : ''}>${kinds.map((kind, index) => `<option value="${kind}" ${state.kind === kind ? 'selected' : ''}>${d.types[index]}</option>`).join('')}</select></div>
+        ${state.caseId && state.readiness ? (Array.isArray(state.readiness.missing) && state.readiness.missing.length ? `<div class="readiness"><p class="readiness-title">${d.readinessMissing}</p>${state.readiness.missing.map(m => `<label class="readiness-item"><span>${esc(m.question || m.key)}</span><input class="input" data-readiness="${esc(m.key)}" placeholder="${d.readinessAnswer}" ${state.readinessBusy ? 'disabled' : ''}></label>`).join('')}<button id="readiness-confirm" class="secondary" ${state.readinessBusy ? 'disabled' : ''}>${d.readinessConfirmAll}</button></div>` : `<p class="small readiness-ready">${d.readinessReady}</p>`) : ''}
         <div class="actions"><button id="generate" class="primary" ${canDraft(fields) && !needsEnglish && !busy ? '' : 'disabled'}>${d.generate} →</button><button id="csv" class="link">${d.csv}</button><button id="review-back" class="link push-right">${d.backInput}</button></div>
         ${needsEnglish || !canDraft(fields) ? `<p class="small gate">${needsEnglish ? d.englishRequired : d.gateShort}</p>` : ''}
       </section>
     </main>
-    ${state.generated ? `<section class="panel draft-panel" id="draft-panel" ${stage !== 2 ? 'hidden' : ''}><div class="panel-top"><h2>${d.types[kinds.indexOf(state.generatedKind)]}</h2><span class="draft-tag">ENGLISH · DRAFT</span></div><p class="caption">${d.draftShort}</p><label for="draft" class="sr-only">English draft</label><textarea id="draft" class="input draft" lang="en" spellcheck="true">${esc(state.draftText)}</textarea><div class="print-text" hidden lang="en">${esc(exportDraft())}</div><div class="actions"><button id="copy" class="primary" ${draftNeedsEnglish() ? 'disabled' : ''}>${d.copy}</button><button id="download" class="secondary" ${draftNeedsEnglish() ? 'disabled' : ''}>${d.download}</button><button id="print" class="ghost" ${draftNeedsEnglish() ? 'disabled' : ''}>${d.print}</button><button id="draft-back" class="link push-right">${d.backReview}</button></div><p class="error" id="draft-language-error" role="status">${draftNeedsEnglish() ? d.draftEnglishRequired : ''}</p><div class="success" role="status">${['copied', 'copyFail'].includes(state.message) ? d[state.message] : ''}</div></section>` : ''}
+    ${state.generated ? `<section class="panel draft-panel" id="draft-panel" ${stage !== 2 ? 'hidden' : ''}><div class="panel-top"><h2>${d.types[kinds.indexOf(state.generatedKind)]}</h2><span class="draft-tag">ENGLISH · DRAFT</span></div><p class="caption">${d.draftShort}</p><label for="draft" class="sr-only">English draft</label><textarea id="draft" class="input draft" lang="en" spellcheck="true">${esc(state.draftText)}</textarea><div class="print-text" hidden lang="en">${esc(exportDraft())}</div><div class="actions"><button id="copy" class="primary" ${draftNeedsEnglish() ? 'disabled' : ''}>${d.copy}</button><button id="download" class="secondary" ${draftNeedsEnglish() ? 'disabled' : ''}>${d.download}</button><button id="print" class="ghost" ${draftNeedsEnglish() ? 'disabled' : ''}>${d.print}</button>${state.caseId ? `<button id="save-artifact" class="secondary" ${draftNeedsEnglish() ? 'disabled' : ''}>${d.artifactSave}</button>` : ''}<button id="draft-back" class="link push-right">${d.backReview}</button></div><p class="error" id="draft-language-error" role="status">${draftNeedsEnglish() ? d.draftEnglishRequired : ''}</p><div class="success" role="status">${['copied', 'copyFail'].includes(state.message) ? d[state.message] : ''}</div></section>` : ''}
     <footer><span>${d.footerShort}</span><a href="https://www.hud.gov/helping-americans/housing-choice-vouchers-tenants" target="_blank" rel="noreferrer">${d.reference} ↗</a></footer>
   </div>`;
   bind();
@@ -447,6 +695,10 @@ function cancelProcessing() {
 function replaceText(text, source = '', sample = false) {
   state.caseEpoch++;
   state.stage = 0;
+  state.chatMessages = [];
+  state.conversationId = '';
+  state.artifacts = [];
+  state.readiness = null;
   state.workbook = null;
   cancelProcessing();
   clearReview();
@@ -505,11 +757,13 @@ async function importFile(file) {
   if ((isPdf || isWorkbook) && !state.authenticated) {state.settingsOpen = true; state.settingsError = 'errorAuth'; render(); return;}
   if (isPdf && !confirm(t().pdfConsent)) {render(); return;}
   if (isWorkbook && !confirm(t().workbookConsent)) {render(); return;}
+  const fileStart = performance.now();
   const {ticket, signal} = beginProcessing();
   try {
     let next;
     if (isWorkbook) {
-      const response = await fetch('/api/workbook', {method: 'POST', headers: requestHeaders({'Content-Type': /\.xlsx$/i.test(file.name) ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : 'application/vnd.ms-excel', 'X-Document-Consent': 'synthetic-or-deidentified'}), body: file, signal});
+      const response = await fetch('/api/workbook', {method: 'POST', headers: requestHeaders({...telemetryHeaders(), 'Content-Type': /\.xlsx$/i.test(file.name) ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : 'application/vnd.ms-excel', 'X-Document-Consent': 'synthetic-or-deidentified'}), body: file, signal});
+      noteBusinessResponse(response);
       const result = await response.json();
       if (ticket !== state.version) return;
       if (!response.ok) throw responseError(result, response.status === 413 ? 'errorSize' : 'errorWorkbook');
@@ -519,9 +773,11 @@ async function importFile(file) {
       state.rowIndex = result.sheets[state.sheetIndex].rows.length > 1 ? 1 : 0;
       state.mapping = Object.fromEntries(FIELDS.map(key => [key, null]));
       state.stage = 0;
+      track('input.file', 'success', {waitMs: Math.round(performance.now() - fileStart)});
       return;
     } else if (isPdf) {
-      const response = await fetch('/api/document', {method: 'POST', headers: requestHeaders({'Content-Type': 'application/pdf', 'X-Document-Consent': 'synthetic-or-deidentified'}), body: file, signal});
+      const response = await fetch('/api/document', {method: 'POST', headers: requestHeaders({...telemetryHeaders(), 'Content-Type': 'application/pdf', 'X-Document-Consent': 'synthetic-or-deidentified'}), body: file, signal});
+      noteBusinessResponse(response);
       const result = await response.json();
       if (!response.ok) {
         const codes = {OCR_REQUIRED: 'errorScanned', PDF_ENCRYPTED: 'errorEncrypted', TEXT_TOO_LARGE: 'errorTextSize', BUSY: 'errorBusy'};
@@ -536,6 +792,7 @@ async function importFile(file) {
     }
     if (ticket !== state.version) return;
     replaceText(next, file.name);
+    track('input.file', 'success', {waitMs: Math.round(performance.now() - fileStart)});
     state.message = 'loaded';
     render();
   } catch (error) {
@@ -550,7 +807,8 @@ async function extractLive() {
   if (!confirm(t().consent)) return;
   const {ticket, signal} = beginProcessing();
   try {
-    const response = await fetch('/api/extract', {method: 'POST', headers: requestHeaders({'Content-Type': 'application/json'}), body: JSON.stringify({text: state.text, consent: true}), signal});
+    const response = await fetch('/api/extract', {method: 'POST', headers: requestHeaders({...telemetryHeaders(), 'Content-Type': 'application/json'}), body: JSON.stringify({text: state.text, consent: true}), signal});
+    noteBusinessResponse(response);
     const result = await response.json();
     if (ticket !== state.version) return;
     if (!response.ok) throw responseError(result, result.code === 'SENSITIVE_DATA' ? 'errorSensitive' : result.code === 'BUSY' ? 'errorBusy' : 'errorLive');
@@ -561,6 +819,144 @@ async function extractLive() {
     state.stage = 1;
   } catch (error) {if (ticket === state.version) state.error = copy.en[error.message] ? error.message : 'errorLive';}
   finally {finishProcessing(ticket);}
+}
+
+
+/** Chat composer helpers — docs/chat-api.md v1. Real SSE only: no simulated
+    streaming, no reasoning fabrication. Partial replies stay marked incomplete. */
+function buildChatPayloadMessages() {
+  if (state.conversationId) {
+    const last = [...state.chatMessages].reverse().find(m => m.role === 'user' && !m.streaming);
+    return last ? [{role: 'user', content: last.content, ...(last.images && last.images.length ? {images: last.images.map(img => ({mimeType: img.mimeType, data: img.data}))} : {})}] : [];
+  }
+  const messages = state.chatMessages.filter(m => !m.streaming && !m.incomplete && typeof m.content === 'string');
+  const kept = [];
+  let total = 0;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i];
+    const next = total + m.content.length;
+    if (kept.length && (kept.length >= 11 || next > 24000)) break;
+    kept.unshift(m);
+    total = next;
+  }
+  return kept.map(m => ({role: m.role, content: m.content, ...(m.images && m.images.length ? {images: m.images.map(img => ({mimeType: img.mimeType, data: img.data}))} : {})}));
+}
+
+async function addChatImages(files) {
+  let changed = false;
+  for (const file of files) {
+    if (state.chatImages.length >= 2) {state.chatError = 'chatImageBad'; break;}
+    if (!/^image\/(png|jpeg)$/i.test(file.type) || file.size > 2097152) {state.chatError = 'chatImageBad'; continue;}
+    try {
+      const buffer = await file.arrayBuffer();
+      const bitmap = await createImageBitmap(new Blob([buffer]));
+      const tooBig = bitmap.width > 8192 || bitmap.height > 8192;
+      bitmap.close();
+      if (tooBig) {state.chatError = 'chatImageBad'; continue;}
+      const bytes = new Uint8Array(buffer);
+      let binary = '';
+      for (let i = 0; i < bytes.length; i += 8192) binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
+      state.chatImages.push({mimeType: file.type.toLowerCase() === 'image/jpg' ? 'image/jpeg' : file.type.toLowerCase(), data: btoa(binary), preview: URL.createObjectURL(file)});
+      state.chatError = '';
+      changed = true;
+    } catch {state.chatError = 'chatImageBad';}
+  }
+  if (changed || state.chatError) render();
+}
+
+async function sendChat(retry = false) {
+  if (state.chatBusy) return;
+  if (!retry) {
+    const text = state.text.trim();
+    if (!text && !state.chatImages.length) {state.chatError = 'errorEmpty'; render(); return;}
+    if (text.length > 8000) {state.chatError = 'chatTooLong'; render(); return;}
+    if (!state.authenticated) {state.settingsOpen = true; state.settingsError = 'errorAuth'; render(); return;}
+    if (!state.liveEnabled) {state.chatError = state.statusError ? 'errorBackend' : 'errorConfig'; state.settingsOpen = true; render(); return;}
+    if (!confirm(t().chatConsent)) return;
+    if (state.caseId && !state.conversationId) {
+      try {
+        const conv = await caseRequest(`/api/cases/${encodeURIComponent(state.caseId)}/conversations`, 'POST', {title: (text || t().chatImageOnly).slice(0, 30)});
+        if (conv.conversation?.id) {
+          state.conversationId = conv.conversation.id;
+          state.conversations = [conv.conversation, ...state.conversations];
+        }
+      } catch { /* fall back to transient chat */ }
+    }
+    state.chatMessages.push({role: 'user', content: text || t().chatImageOnly, images: state.chatImages});
+    state.chatImages = [];
+  } else {
+    const last = state.chatMessages[state.chatMessages.length - 1];
+    if (last && last.role === 'assistant') state.chatMessages.pop();
+    if (!state.chatMessages.length || state.chatMessages[state.chatMessages.length - 1].role !== 'user') return;
+  }
+  state.chatBusy = true;
+  state.chatError = '';
+  chatStopRequested = false;
+  state.chatMessages.push({role: 'assistant', content: '', streaming: true, incomplete: false});
+  render();
+  byId('chat-thread')?.scrollIntoView({behavior: 'smooth', block: 'end'});
+  chatController = new AbortController();
+  const assistant = state.chatMessages[state.chatMessages.length - 1];
+  try {
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: requestHeaders({...telemetryHeaders(), 'Content-Type': 'application/json'}),
+      body: JSON.stringify({locale: state.lang, consent: true, messages: buildChatPayloadMessages(), ...(state.caseId ? {caseId: state.caseId} : {}), ...(state.conversationId ? {conversationId: state.conversationId, clientMessageId: crypto.randomUUID()} : {})}),
+      signal: chatController.signal
+    });
+    noteBusinessResponse(response);
+    if (!response.ok) {
+      const result = await response.json().catch(() => ({}));
+      throw responseError(result, 'errorChat');
+    }
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let finished = false;
+    for (;;) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, {stream: true});
+      let cut;
+      while ((cut = buffer.indexOf('\n\n')) >= 0) {
+        const frame = buffer.slice(0, cut);
+        buffer = buffer.slice(cut + 2);
+        const eventName = frame.match(/^event: (.+)$/m)?.[1];
+        const dataText = frame.match(/^data: (.*)$/m)?.[1];
+        if (!eventName || !dataText) continue;
+        let data;
+        try { data = JSON.parse(dataText); } catch { continue; }
+        if (eventName === 'delta' && typeof data.text === 'string') {
+          assistant.content += data.text;
+          const el = byId('chat-streaming');
+          if (el) el.firstChild ? el.childNodes[0].textContent = assistant.content : el.textContent = assistant.content;
+        } else if (eventName === 'done') {
+          finished = true;
+          if (typeof data.assistantMessageId === 'string') assistant.serverId = data.assistantMessageId;
+        } else if (eventName === 'conversation') {
+          if (typeof data.conversationId === 'string' && !state.conversationId) state.conversationId = data.conversationId;
+        } else if (eventName === 'error') {
+          throw new Error('errorChat');
+        }
+      }
+    }
+    if (!finished && !chatStopRequested) assistant.incomplete = true;
+    if (chatStopRequested && !assistant.content) state.chatMessages.pop();
+    else if (chatStopRequested) assistant.incomplete = true;
+  } catch (error) {
+    if (error?.name === 'AbortError' || chatStopRequested) {
+      if (!assistant.content) state.chatMessages.pop();
+      else assistant.incomplete = true;
+    } else {
+      state.chatMessages.pop();
+      state.chatError = copy.en[error?.message] ? error.message : 'errorChat';
+    }
+  } finally {
+    for (const m of state.chatMessages) delete m.streaming;
+    state.chatBusy = false;
+    chatController = null;
+    render();
+  }
 }
 
 function bind() {
@@ -594,7 +990,7 @@ function bind() {
     let validationError = '';
     if (registering && !state.registrationEnabled) validationError = 'registrationUnavailable';
     else if (registering && (!/^[a-z0-9][a-z0-9_.-]{2,63}$/.test(state.loginUsername) || state.loginUsername === 'owner')) validationError = 'errorRegistration';
-    else if (input.value.length < 12 || input.value.length > 256 || /[\u0000-\u001f\u007f]/.test(input.value)) validationError = registering ? 'errorRegistration' : 'errorCredentials';
+    else if (input.value.length < 6 || input.value.length > 256 || /[\u0000-\u001f\u007f]/.test(input.value)) validationError = registering ? 'errorRegistration' : 'errorCredentials';
     else if (registering && input.value !== confirmation?.value) validationError = 'errorPasswordMismatch';
     if (validationError) {state.settingsError = validationError; byId('settings-error').textContent = t()[validationError]; return;}
     const payload = {username: state.loginUsername, password: input.value, ...(registering ? {passwordConfirmation: confirmation.value} : {})};
@@ -620,7 +1016,7 @@ function bind() {
   on('language', 'click', () => {state.lang = state.lang === 'zh' ? 'en' : 'zh'; render();});
   on('reset', 'click', () => {
     if ((state.text || state.fields.length || state.busy) && !confirm(t().resetAsk)) return;
-    replaceText(''); forgetCaseIdentity(); state.kind = 'followup'; render(); byId('input').focus();
+    replaceText(''); forgetCaseIdentity(); state.kind = 'followup'; resetTelemetry(); render(); byId('input').focus();
   });
   on('cancel', 'click', () => {cancelProcessing(); state.message = 'cancelled'; render();});
   on('input', 'input', event => {
@@ -651,15 +1047,47 @@ function bind() {
       replaceText(result.text, filename);
       state.fields = result.fields;
       state.stage = 1;
+      track('input.mapping', 'success');
       render();
     } catch {state.error = 'errorMapping'; render();}
   });
   on('extract', 'click', () => {
     if (!state.text.trim()) {state.error = 'errorEmpty'; render(); byId('input').focus(); return;}
-    clearReview(); state.fields = extract(state.text); state.stage = 1; render();
+    clearReview(); state.fields = extract(state.text); state.stage = 1; track('input.paste', 'success'); render();
     if (window.matchMedia('(max-width: 760px)').matches) byId('review-panel').scrollIntoView({behavior: 'smooth', block: 'start'});
   });
   on('live', 'click', extractLive);
+  on('customer-create', 'click', createCustomer);
+  on('customer-query', 'input', event => {state.customerQuery = event.target.value;});
+  on('customer-query', 'change', () => loadCustomers(state.customerQuery.trim()).then(render));
+  document.querySelectorAll('[data-customer]').forEach(button => button.addEventListener('click', () => {state.customerId = button.dataset.customer; state.customerQuery = button.dataset.name; render();}));
+  on('conversation-select', 'change', event => selectConversation(event.target.value));
+  on('conversation-new', 'click', () => {state.conversationId = ''; state.chatMessages = []; render();});
+  on('save-artifact', 'click', saveArtifact);
+  on('readiness-confirm', 'click', confirmReadiness);
+  on('chat-send', 'click', () => sendChat(false));
+  on('chat-retry', 'click', () => sendChat(true));
+  on('chat-stop', 'click', () => {chatStopRequested = true; chatController?.abort();});
+  on('chat-image', 'click', () => byId('image-file')?.click());
+  on('image-file', 'change', event => addChatImages([...event.target.files]));
+  document.querySelectorAll('[data-chip]').forEach(button => button.addEventListener('click', () => {state.chatImages.splice(Number(button.dataset.chip), 1); render();}));
+  on('input', 'paste', event => {
+    const images = [...(event.clipboardData?.files || [])].filter(file => /^image\/(png|jpeg)$/i.test(file.type));
+    if (images.length) addChatImages(images);
+  });
+  const inputPanel = byId('input-panel');
+  if (inputPanel) {
+    inputPanel.addEventListener('dragover', event => {event.preventDefault(); inputPanel.classList.add('drag-over');});
+    inputPanel.addEventListener('dragleave', () => inputPanel.classList.remove('drag-over'));
+    inputPanel.addEventListener('drop', event => {
+      event.preventDefault();
+      inputPanel.classList.remove('drag-over');
+      const files = [...(event.dataTransfer?.files || [])];
+      addChatImages(files.filter(file => /^image\/(png|jpeg)$/i.test(file.type)));
+      const document = files.find(file => /\.(txt|csv|pdf|xlsx|xls)$/i.test(file.name));
+      if (document) importFile(document);
+    });
+  }
   document.querySelectorAll('[data-field]').forEach(element => element.addEventListener('input', event => {
     if (event.isComposing) return;
     const field = state.fields[Number(element.dataset.field)];
@@ -672,6 +1100,7 @@ function bind() {
     render();
   }));
   document.querySelectorAll('[data-confirm]').forEach(element => element.addEventListener('change', () => {
+    if (element.checked) track('review.confirm', 'success');
     state.fields[Number(element.dataset.confirm)].confirmed = element.checked;
     state.draftText = ''; state.generated = false; state.message = '';
     render();
@@ -682,17 +1111,17 @@ function bind() {
     if (!canDraft(state.fields) || fieldsNeedEnglish()) return;
     state.draftText = draft(state.fields, state.kind).split('\n').filter(line => !['DRAFT — FOR HUMAN REVIEW', 'DE-IDENTIFIED WORKING COPY — NOT FOR SUBMISSION', 'Operator-prepared supplementary document; not an official government form', 'Supplementary correspondence; not an official government form'].includes(line)).join('\n').trimStart();
     state.generatedKind = state.kind;
-    state.generated = true; state.stage = 2; state.message = ''; render();
+    state.generated = true; state.stage = 2; state.message = ''; draftEditTracked = false; track('draft.generate', 'success'); render();
     byId('draft-panel').scrollIntoView({behavior: 'smooth', block: 'start'});
     byId('draft').focus({preventScroll: true});
   });
   on('csv', 'click', () => download(exportCSV(state.fields, {includeNotice: true}), 'nestlet-case-DRAFT.csv', 'text/csv;charset=utf-8'));
-  on('draft', 'input', event => {state.draftText = event.target.value; state.message = ''; document.querySelector('.print-text').textContent = exportDraft(); document.querySelector('#draft-panel .success').textContent = ''; const blocked = draftNeedsEnglish(); ['copy', 'download', 'print'].forEach(id => byId(id).disabled = blocked); byId('draft-language-error').textContent = blocked ? t().draftEnglishRequired : ''; updateCaseIndicator();});
-  on('download', 'click', () => download(exportDraft(), `nestlet-${state.generatedKind}-DRAFT.txt`, 'text/plain;charset=utf-8'));
-  on('print', 'click', () => window.print());
+  on('draft', 'input', event => {if (!draftEditTracked) {draftEditTracked = true; track('draft.edit', 'success');} state.draftText = event.target.value; state.message = ''; document.querySelector('.print-text').textContent = exportDraft(); document.querySelector('#draft-panel .success').textContent = ''; const blocked = draftNeedsEnglish(); ['copy', 'download', 'print'].forEach(id => byId(id).disabled = blocked); byId('draft-language-error').textContent = blocked ? t().draftEnglishRequired : ''; updateCaseIndicator();});
+  on('download', 'click', () => {download(exportDraft(), `nestlet-${state.generatedKind}-DRAFT.txt`, 'text/plain;charset=utf-8'); track('export.download', 'success');});
+  on('print', 'click', () => {window.print(); track('export.print', 'success');});
   on('copy', 'click', async () => {
-    try {await navigator.clipboard.writeText(exportDraft()); state.message = 'copied';}
-    catch {state.message = 'copyFail';}
+    try {await navigator.clipboard.writeText(exportDraft()); state.message = 'copied'; track('export.copy', 'success');}
+    catch {state.message = 'copyFail'; track('export.copy', 'failure', {errorCode: 'CLIPBOARD_FAILED'});}
     render();
   });
 }
