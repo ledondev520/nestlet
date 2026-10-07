@@ -3,7 +3,9 @@ export const AUTH_METHOD = 'email';
 export const MODEL = 'deepseek-flash';
 const failure = (code, field) => ({ ok: false, code, field });
 export function emailPayload(email) {
-  const normalized = typeof email === 'string' ? email.trim().toLowerCase() : '';
+  const trimmed = typeof email === 'string' ? email.trim() : '';
+  if (trimmed && !/^[\x21-\x7e]+$/u.test(trimmed)) return failure('AUTH_EMAIL_INVALID', 'email');
+  const normalized = trimmed.toLowerCase();
   if (!normalized) return failure('AUTH_EMAIL_REQUIRED', 'email');
   if (normalized.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(normalized)) return failure('AUTH_EMAIL_INVALID', 'email');
   return { ok: true, payload: { email: normalized } };

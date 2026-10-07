@@ -11,6 +11,7 @@ test('email login and old username compatibility preserve six-character password
   assert.deepEqual(authPayload('login',{email:' PERSON@example.invalid ',password:'123456'}).payload,{email:'person@example.invalid',password:'123456'});
 });
 test('registration is email-only, validates confirmation, and sends no selected role',()=>{
+  assert.equal(authPayload('register',{email:'K@example.invalid',password:'123456',passwordConfirmation:'123456'}).code,'AUTH_EMAIL_INVALID');
   assert.equal(authPayload('register',{username:'member',password:'123456',passwordConfirmation:'123456'}).code,'AUTH_EMAIL_REQUIRED');
   assert.equal(authPayload('register',{email:'member@example.invalid',password:'123456',passwordConfirmation:'654321'}).code,'PASSWORD_MISMATCH');
   assert.deepEqual(authPayload('register',{email:'member@example.invalid',password:'123456',passwordConfirmation:'123456',role:'owner',username:'owner'}).payload,{email:'member@example.invalid',password:'123456',passwordConfirmation:'123456'});
