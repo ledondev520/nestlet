@@ -1,6 +1,6 @@
 # Bounded library retrieval contract
 
-Implementation checkpoint: October 7, 2026. This document describes an isolated server-side module, not an integrated or deployed product feature. No authenticated or paid provider call is established by its tests.
+Implementation checkpoint: October 7, 2026. The module is now integrated into the opt-in chat path described in [chat-library-api.md](chat-library-api.md). Deployment, actual paid-provider tool calling and browser acceptance remain separate gates; local protocol fixtures do not establish them.
 
 ## Runtime choice
 

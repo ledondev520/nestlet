@@ -14,7 +14,8 @@ import { ASSET_LIMITS, ASSET_TYPES } from './asset-domain.js';
 import { CaseRecordsError, isCaseRecordsPath, handleCaseRecords } from './case-records.js';
 import { DocumentContextError } from './document-context.js';
 import { createTelemetry, TelemetryError, telemetryId, telemetryPageOptions } from './telemetry.js';
-import { CHAT_LIMITS, CHAT_IMAGE_TYPES, ChatError, validateChatRequest, conversationHistory, chatProviderMessages, openChatStream } from './chat.js';
+import { CHAT_LIMITS, CHAT_IMAGE_TYPES, ChatError, validateChatRequest, conversationHistory, chatProviderMessages, openChatStream, openLibraryChatStream, librarySourceEvent, libraryActivityEvent, LIBRARY_CHAT_ERRORS } from './chat.js';
+import { createLibraryToolSession, LIBRARY_AGENT_LIMITS } from './agent-library-tools.js';
 
 const root = new URL('./public/', import.meta.url);
 let publicOrigin = '';
@@ -110,6 +111,7 @@ function settingsStatus(request) {
     registrationEnabled: auth.configured && (auth.secure || auth.localTransportAllowed),
     assetStorageEnabled: true, assetLimits: ASSET_LIMITS, assetTypes: Object.keys(ASSET_TYPES),
     chatEnabled: true, chatImageTypes: CHAT_IMAGE_TYPES, chatLimits: CHAT_LIMITS,
+    libraryRetrievalEnabled:true, libraryLimits:{rounds:LIBRARY_AGENT_LIMITS.rounds,calls:LIBRARY_AGENT_LIMITS.calls,resultChars:LIBRARY_AGENT_LIMITS.resultChars,timeoutMs:CHAT_LIMITS.timeoutMs},
     ...(session ? { csrfToken: session.csrfToken, userId: session.userId, username: session.username } : {}) };
   if (!owner) return common;
   // Only the authenticated owner sees provider-configuration metadata; never credential bytes.
@@ -598,14 +600,24 @@ const server = http.createServer(async (request, response) => {
       const currentMessage = input.messages[0];
       if (conversation) input.messages = [...conversationHistory(history,body.messages[0].content.length),currentMessage];
       chatProviderMessages(input, record); // Validate bounded stored evidence before spending provider quota.
+      if(input.libraryConsent)response.setHeader('X-Library-Retrieval','enabled');
       if (!enabled) throw new RequestError(503, 'LIVE_DISABLED', 'Live AI is disabled. The administrator must configure the provider before chatting.');
       if (activeExtractions >= 2) throw new RequestError(429, 'BUSY', 'AI processing is busy. Try again shortly.');
       consumeTrialAiAllowance(session);
       activeExtractions++;
       if (conversationKey) activeConversations.add(conversationKey);
       const chatAbort = new AbortController();
-      const signal = AbortSignal.any([cancel.signal, chatAbort.signal, AbortSignal.timeout(CHAT_LIMITS.timeoutMs)]);
+      const remaining=input.libraryConsent?Math.max(1,Math.ceil(CHAT_LIMITS.timeoutMs-(performance.now()-requestStarted))):CHAT_LIMITS.timeoutMs;
+      const signal = AbortSignal.any([cancel.signal, chatAbort.signal, AbortSignal.timeout(remaining)]);
       let streaming = false, userMessage = null, assistantMessage = null, answer = '', completed = false;
+      let library=null;
+      let sourceEvent=null,sourceAppended=false,sourcesSent=false;
+      const appendSources=provided=>{
+        if(sourceAppended||!library)return sourceEvent;
+        const event=provided||librarySourceEvent(library,requestId,input.locale);
+        if(event){if(event.requestId!==requestId||answer.length+event.appendix.length>CHAT_LIMITS.outputChars)throw new ChatError('LIBRARY_RESULT_LIMIT',502);answer+=event.appendix;sourceEvent={requestId:event.requestId,items:event.items,appendix:event.appendix};sourceAppended=true;}
+        return sourceEvent;
+      };
       const saveAssistant = state => {
         if (!conversation || !userMessage || assistantMessage) return assistantMessage;
         try {
@@ -615,18 +627,21 @@ const server = http.createServer(async (request, response) => {
         } catch { throw new ChatError('CHAT_SAVE_FAILED',503); }
       };
       try {
+        library=input.libraryConsent?createLibraryToolSession({storage,userId:session.userId,libraryConsent:true,currentCaseId:caseId||null,signal}):null;
         if (conversation) {
           const original = body.messages[0];
           userMessage = storage.appendMessage(session.userId,conversation.id,{role:'user',content:original.content,state:'complete',requestId,clientMessageId:input.clientMessageId,
             imageMetadata:(original.images || []).map(image => ({mimeType:image.mimeType,byteCount:Buffer.byteLength(image.data,'base64'),retained:false}))});
           if (!userMessage) throw new ChatError('CONVERSATION_NOT_FOUND',404);
         }
-        const stream = await openChatStream({ apiKey, input, record, signal });
+        const stream = library?await openLibraryChatStream({apiKey,input,record,signal,library,requestId}):await openChatStream({ apiKey, input, record, signal });
         response.writeHead(200, { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-store', 'X-Accel-Buffering': 'no' });
         response.flushHeaders(); streaming = true;
         if (conversation) await writeChatEvent(response,signal,'conversation',{conversationId:conversation.id,userMessageId:userMessage.id});
         for await (const event of stream) {
           if (event.type === 'delta') { answer += event.text; await writeChatEvent(response, signal, 'delta', { text: event.text }); }
+          else if(event.type==='activity'){await writeChatEvent(response,signal,'activity',libraryActivityEvent(event));}
+          else if(event.type==='sources'){const sources=appendSources(event);if(sources&&!sourcesSent){sourcesSent=true;await writeChatEvent(response,signal,'sources',sources);}}
           else if (event.type === 'done') {
             saveAssistant('complete'); completed = true;
             await writeChatEvent(response, signal, 'done', { requestId,...(assistantMessage ? {assistantMessageId:assistantMessage.id,conversationId:conversation.id} : {}) });
@@ -636,13 +651,14 @@ const server = http.createServer(async (request, response) => {
         response.end();
       } catch (error) {
         let failure = error;
+        if(library&&!completed)try{appendSources();}catch(sourceError){failure=sourceError;}
         if (!completed) try { saveAssistant(cancel.signal.aborted || response.destroyed ? 'interrupted' : 'failed'); } catch (saveError) { failure = saveError; }
         recordTracking(streaming ? 200 : (cancel.signal.aborted || response.destroyed ? 499 : failure.status || 502),cancel.signal.aborted || response.destroyed ? 'REQUEST_CANCELLED' : failure.code,'failure');
         if (cancel.signal.aborted || response.destroyed) return;
         if (!streaming) throw failure instanceof ChatError || failure instanceof StorageError ? failure : new ChatError('CHAT_PROVIDER_FAILED', 502);
-        const allowed = new Set(['CHAT_STREAM_FAILED', 'CHAT_PROVIDER_FAILED', 'CHAT_INCOMPLETE', 'CHAT_UNSUPPORTED_OUTPUT', 'CHAT_TOO_LARGE','CHAT_SAVE_FAILED']);
+        const allowed = new Set(['CHAT_STREAM_FAILED', 'CHAT_PROVIDER_FAILED', 'CHAT_INCOMPLETE', 'CHAT_UNSUPPORTED_OUTPUT', 'CHAT_TOO_LARGE','CHAT_SAVE_FAILED',...LIBRARY_CHAT_ERRORS]);
         const code = allowed.has(failure.code) ? failure.code : 'CHAT_STREAM_FAILED';
-        try { await writeChatEvent(response, AbortSignal.any([cancel.signal, AbortSignal.timeout(2000)]), 'error', { code, requestId, retryable: true,...(assistantMessage ? {assistantMessageId:assistantMessage.id,conversationId:conversation.id} : {}) }); } catch {}
+        try { if(sourceEvent&&!sourcesSent){sourcesSent=true;await writeChatEvent(response,AbortSignal.any([cancel.signal,AbortSignal.timeout(2000)]),'sources',sourceEvent);} await writeChatEvent(response, AbortSignal.any([cancel.signal, AbortSignal.timeout(2000)]), 'error', { code, requestId, retryable: true,...(assistantMessage ? {assistantMessageId:assistantMessage.id,conversationId:conversation.id} : {}) }); } catch {}
         response.end();
       } finally { chatAbort.abort(); activeExtractions--; if (conversationKey) activeConversations.delete(conversationKey); }
       return;

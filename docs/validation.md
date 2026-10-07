@@ -230,3 +230,9 @@ No API/server/storage/package contracts changed in this follow-up. The separate 
 ### October 7, 2026 — atomic generic case-update draft preservation
 
 Isolated branch based on main `2fc15f216714d0331a82456edb1d97b9f76f8498`. New `test/legacy-draft-preservation.test.js` passes 9/9 using actual disposable SQLite files and authenticated HTTP, including concurrent writer processes, optimistic conflicts, cross-user denial, archive/update triggers that force rollback, capacity failure, exact text/provenance retention and response metadata. No provider doubles, paid calls or production records are used. On this isolated candidate, `npm run check` passed and the full default `npm test` passed 240/240 with 0 skipped. Pinned dependency installation succeeded with an explicit temporary npm cache after the default cache path was unavailable. These results are not a browser/deployment or real-provider acceptance claim.
+
+### October 7, 2026 — opt-in bounded chat retrieval
+
+Isolated candidate based on unified head `d3a762d05c1a3a12c9c567421ee18b0fb0e50651`, with the reviewed library helper. Pinned install completed with `npm ci --ignore-scripts` and a temporary npm cache. `npm run check` passed; the expanded default suite passed **287/287, 0 skipped**. This includes 12 real-SQLite helper tests and 11 explicitly isolated local-HTTP/provider-protocol fixture tests. The latter exercise actual authenticated chat HTTP, SQLite persistence, cancellation, rollback/error behavior and exact-once source appendices, but are not DeepSeek or paid-provider acceptance.
+
+Independent read-only review reproduced assistant-insert failure/deduplication and a shortened test deadline in an isolated copy, then reported no remaining blocker on the frozen runtime bytes. Live provider tool calling, actual retrieval UI/browser acceptance and deployment remain separate release gates. No production API credential or paid call was used for this work.

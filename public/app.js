@@ -4,6 +4,12 @@ import {AGENCY_OPTIONS, DEFAULT_GUIDANCE_AGENCY, GUIDANCE_COPY, getAgencyGuidanc
 const copy = {
   zh: {
     artifactEditsKept: '文书中的未保存编辑仍保留，请另存文书版本；已保存的历史版本不会被修改。',
+    errorLibraryPermission: '需要明确授权本次资料检索，才会将相关保存片段发送给 DeepSeek。',
+    errorLibraryUnavailable: '资料检索未完成。请检查当前案例，稍后重试；不会自动重复模型请求。',
+    errorLibraryLimit: '本次资料检索已达到范围或轮数限制。请缩小问题后重新发送。',
+    errorLibrarySensitive: '相关资料含可能的敏感标识，被拦截的片段未发送。请先去标识处理。',
+    errorLibraryCancelled: '资料检索已停止或超时。已收到的内容可能不完整，请查看保存状态。',
+    errorLibrarySource: '模型引用的资料编号无法核实，本次回答未标记为完成。请重新核对来源。',
     errorReadinessUnsaved: '请先保存案件或当前文书的修改，再补齐资料。你的输入仍保留。', errorReadinessChanged: '资料已在服务器保存，但等待期间工作区又有修改。你的本地输入未被覆盖；请先保留修改，再打开最新案件对照。',
     errorCaseIssueNotFound: '这条待办事项不存在或不属于当前案件，请刷新后重试。', artifactOpen: '打开', artifactArchived: '旧稿已保留在文档版本中', generateFinal: '生成完成版', customerCases: '客户案件', artifactHistory: '历史版本，请根据当前案件重新生成',
     workspaceTitle: '从材料到英文草稿', safeShort: '仅限虚构或去标识化资料', inputShort: '放入材料', sampleShort: '试用示例', pasteShort: '或在这里粘贴去标识化文本…', inputHelp: '支持格式与处理方式', nextReview: 'AI 提取并核对', reviewShort: '核对五项事实', sourceHint: '原文可展开查看', check: '确认', editedShort: '人工修改 · 查看出处', missingShort: '待补充：', missingScope: '仅表示本次材料未提供，并非机构缺件通知', nextHelp: '后续事项与导出说明', draftTypeShort: '草稿类型', backInput: '返回材料', backReview: '返回核对', gateShort: '请确认每一项；未知信息可保留空白', draftShort: '可直接编辑。辅助文书，非官方表格；请人工复核后使用。', footerShort: '仅生成草稿 · 不自动发送或提交',
@@ -55,6 +61,12 @@ const copy = {
   },
   en: {
     artifactEditsKept: 'Your unsaved document edits are retained. Save a document version; existing history is unchanged.',
+    errorLibraryPermission: 'Explicit permission is required before relevant saved excerpts are sent to DeepSeek for this lookup.',
+    errorLibraryUnavailable: 'Library retrieval did not complete. Check the current case and try again later; model requests are not retried automatically.',
+    errorLibraryLimit: 'This lookup reached its scope or round limit. Narrow the question before sending again.',
+    errorLibrarySensitive: 'Possible sensitive identifiers were found. Blocked excerpts were not sent; de-identify the material first.',
+    errorLibraryCancelled: 'Library retrieval stopped or timed out. Received text may be incomplete; check its saved state.',
+    errorLibrarySource: 'The model cited an unverified source label. This answer was not marked complete; review the sources.',
     errorReadinessUnsaved: 'Save your case or document edits before completing these details. Your input is preserved.', errorReadinessChanged: 'The details were saved on the server, but the workspace changed while waiting. Your local input was preserved. Keep those edits, then open the latest case to reconcile.',
     errorCaseIssueNotFound: 'This case issue is unavailable. Refresh the case and try again.', artifactOpen: 'Open', artifactArchived: 'The earlier draft is preserved in document versions', generateFinal: 'Generate final document', customerCases: 'Customer cases', artifactHistory: 'Historical version; regenerate from the current case',
     workspaceTitle: 'From document to English draft', safeShort: 'Synthetic or de-identified information only', inputShort: 'Add your document', sampleShort: 'Try sample', pasteShort: 'Or paste de-identified text here…', inputHelp: 'Formats and processing details', nextReview: 'Extract & review with AI', reviewShort: 'Review five facts', sourceHint: 'Expand a source to check it', check: 'Confirm', editedShort: 'Edited · View source', missingShort: 'To confirm:', missingScope: 'Not provided in this review, not an agency missing-document notice', nextHelp: 'Next steps and export details', draftTypeShort: 'Draft type', backInput: 'Back to document', backReview: 'Back to review', gateShort: 'Confirm every field. Unknown information can stay blank.', draftShort: 'Edit directly. Supplementary draft, not an official form. Review before use.', footerShort: 'Drafts only · Nothing is sent or submitted automatically',
@@ -304,6 +316,11 @@ function settingsMarkup() {
 }
 
 const authErrorKeys = {
+  LIBRARY_CONTEXT_INVALID: 'errorLibraryUnavailable', LIBRARY_CONSENT_REQUIRED: 'errorLibraryPermission',
+  LIBRARY_ARGUMENT_INVALID: 'errorLibraryUnavailable', LIBRARY_TOOL_UNKNOWN: 'errorLibraryUnavailable', LIBRARY_NOT_FOUND: 'errorLibraryUnavailable',
+  LIBRARY_SENSITIVE_DATA: 'errorLibrarySensitive', LIBRARY_UNAVAILABLE: 'errorLibraryUnavailable',
+  LIBRARY_RESULT_LIMIT: 'errorLibraryLimit', LIBRARY_TOOL_LIMIT: 'errorLibraryLimit',
+  LIBRARY_ABORTED: 'errorLibraryCancelled', LIBRARY_TIMEOUT: 'errorLibraryCancelled', LIBRARY_UNVERIFIED_CITATION: 'errorLibrarySource',
   REGISTRATION_INVALID: 'errorRegistration', USER_EXISTS: 'errorUsernameExists', USER_LIMIT_REACHED: 'registrationUnavailable', REGISTRATION_RATE_LIMITED: 'errorRegistrationRate',
   TRIAL_LIMIT_REACHED: 'errorTrialLimit', USER_INVALID: 'errorCredentials', OWNER_REQUIRED: 'errorOwnerRequired', AUTH_REQUIRED: 'errorAuth', CSRF_REJECTED: 'errorSession', OPERATOR_SETUP_REQUIRED: 'operatorSetupHelp', HTTPS_REQUIRED: 'errorHttps',
   INVALID_CREDENTIALS: 'errorCredentials', LOGIN_RATE_LIMITED: 'errorRateLimit', SETTINGS_RATE_LIMITED: 'errorRateLimit',
