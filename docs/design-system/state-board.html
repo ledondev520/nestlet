@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nestlet 组件状态板 · Component state board</title>
+  <link rel="stylesheet" href="tokens.css">
+  <style>
+    body{margin:0;background:var(--bg-canvas);color:var(--text-primary);font:var(--text-body);padding:40px}
+    h1{font:var(--text-display);margin:0 0 4px}
+    h2{font:var(--text-title);margin:36px 0 14px;padding-bottom:8px;border-bottom:2px solid var(--ink)}
+    .note{font:var(--text-small);color:var(--text-secondary);margin:0 0 24px}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:10px 0}
+    .card{background:var(--bg-surface);border:1px solid var(--border-default);border-radius:var(--radius-panel);box-shadow:var(--shadow-sheet);padding:24px 28px;margin:14px 0}
+    .label{font:var(--text-micro);color:var(--text-muted);letter-spacing:.06em;width:130px;flex-shrink:0}
+    .field-row{display:flex;flex-direction:column;gap:6px;max-width:420px;margin:10px 0}
+    .field-row label{font:var(--text-small);font-weight:600}
+    .demo-input{border:1px solid var(--input-border);border-radius:var(--radius-control);background:var(--input-bg);padding:10px 12px;font:var(--text-body)}
+    .demo-input:focus{outline:2px solid var(--focus-ring);outline-offset:2px;background:var(--input-bg-focus)}
+    .demo-input[aria-invalid="true"]{border-color:var(--status-error)}
+    .badge{font-size:10px;letter-spacing:.06em;border-radius:var(--radius-badge);padding:3px 8px;border:1px solid transparent}
+    .badge-reviewed{background:var(--status-success-bg);color:var(--status-success);border-color:#d3e0c2}
+    .badge-pending{background:var(--bg-recessed);color:var(--text-secondary)}
+    .badge-conflict{background:var(--status-error-bg);color:var(--status-error);border-color:#ecc9bd}
+    .badge-unknown{background:var(--bg-recessed);color:var(--text-secondary)}
+    .banner-error{padding:11px 14px;background:var(--status-error-bg);border-left:3px solid var(--accent);border-radius:0 8px 8px 0;color:var(--status-error);font:var(--text-small);max-width:520px}
+    .banner-success{color:var(--status-success);font:var(--text-small)}
+    .banner-warn{padding:11px 14px;background:var(--status-warning-bg);border:1px solid #eadfc3;border-radius:9px;color:var(--status-warning);font:var(--text-small);max-width:520px}
+    .banner-info{padding:11px 14px;background:var(--status-info-bg);border-radius:9px;color:var(--status-info);font:var(--text-small);max-width:520px}
+    .chat-demo{display:flex;flex-direction:column;gap:12px;max-width:560px}
+    .msg-user{align-self:flex-end;background:var(--bg-recessed);border:1px solid var(--border-default);border-radius:var(--radius-bubble-user);padding:10px 14px;max-width:88%}
+    .msg-assistant{align-self:flex-start;max-width:88%}
+    .msg-role{display:block;font-size:10px;letter-spacing:.08em;color:var(--text-muted);font-weight:600}
+    .caret{display:inline-block;color:var(--accent);animation:blink 1s steps(2) infinite}
+    @keyframes blink{50%{opacity:0}}
+    .interrupted{font-size:11px;color:var(--status-warning);margin-top:4px}
+    .stamp{font-size:10px;letter-spacing:.14em;color:var(--accent-deep);border:1.5px solid var(--accent);border-radius:4px;padding:5px 9px;font-weight:700;transform:rotate(-1.5deg);background:var(--accent-tint);display:inline-block}
+    .steps-demo{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border-bottom:1px solid var(--border-default);max-width:640px}
+    .step-demo{display:flex;gap:10px;align-items:center;border-bottom:2px solid transparent;margin-bottom:-1px;padding:0 4px 13px;font-size:13px;color:#7d8271}
+    .step-demo b{font-family:var(--font-display);border:1px solid var(--border-strong);border-radius:50%;width:26px;height:26px;display:grid;place-items:center;font-size:12px;color:#7d8271}
+    .step-demo.done{color:var(--ink)}.step-demo.done b{border-color:var(--ink);color:var(--ink)}
+    .step-demo.current{border-color:var(--accent);color:var(--ink)}.step-demo.current b{background:var(--accent);border-color:var(--accent);color:var(--sheet)}
+    .doc-demo{font:14px/1.85 Georgia,"Times New Roman",serif;background:#fff;border:1px solid var(--border-strong);border-radius:4px;box-shadow:inset 0 1px 4px rgba(88,74,43,.06);padding:26px 28px;max-width:var(--reading-max);white-space:pre-wrap}
+    .dir-row{display:flex;align-items:center;gap:10px;height:var(--directory-row-height);border-bottom:1px solid var(--border-default);font:var(--text-small);max-width:520px}
+    .dir-row .grow{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .dir-row .current{background:var(--accent-tint)}
+    @media(prefers-reduced-motion:reduce){.caret{animation:none}}
+    @media(max-width:760px){body{padding:18px}}
+  </style>
+</head>
+<body>
+  <h1>组件状态板</h1>
+  <p class="note">Nestlet "working paper" design system v1 · 每个组件：default / hover / focus-visible / pressed / disabled / busy / invalid / selected。悬停与按下态请在浏览器中实际交互查看。</p>
+
+  <h2>按钮 Buttons</h2>
+  <div class="card">
+    <div class="row"><span class="label">primary</span>
+      <button style="background:var(--ink);color:var(--paper);border:1px solid var(--ink);border-radius:8px;padding:11px 20px;font-weight:600">默认</button>
+      <button style="background:var(--accent);color:var(--paper);border:1px solid var(--accent);border-radius:8px;padding:11px 20px;font-weight:600">hover</button>
+      <button style="background:var(--ink);color:var(--paper);border:1px solid var(--ink);border-radius:8px;padding:11px 20px;font-weight:600;outline:2px solid var(--accent);outline-offset:2px">focus-visible</button>
+      <button style="background:var(--ink);color:var(--paper);border:1px solid var(--ink);border-radius:8px;padding:11px 20px;font-weight:600;transform:scale(.98)">pressed</button>
+      <button disabled style="background:var(--ink);color:var(--paper);border:1px solid var(--ink);border-radius:8px;padding:11px 20px;font-weight:600;opacity:.42;cursor:not-allowed">disabled</button>
+      <button style="background:var(--ink);color:var(--paper);border:1px solid var(--ink);border-radius:8px;padding:11px 20px;font-weight:600">正在处理…</button>
+    </div>
+    <div class="row"><span class="label">secondary</span>
+      <button style="background:var(--paper-deep);border:1px solid var(--hairline-strong);border-radius:8px;padding:11px 16px">默认</button>
+      <button style="background:#e8e0cb;border:1px solid var(--hairline-strong);border-radius:8px;padding:11px 16px">hover</button>
+      <button disabled style="background:var(--paper-deep);border:1px solid var(--hairline-strong);border-radius:8px;padding:11px 16px;opacity:.42">disabled</button>
+    </div>
+    <div class="row"><span class="label">ghost / link</span>
+      <button style="border:1px solid var(--hairline-strong);background:var(--sheet);border-radius:8px;padding:8px 13px;font-size:12px">ghost</button>
+      <button style="border:0;background:none;color:var(--accent-deep);font-size:12px;text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--hairline-strong)">link</button>
+      <button style="border:0;background:none;color:var(--accent);font-size:12px;text-decoration:underline;text-underline-offset:3px">link hover</button>
+    </div>
+  </div>
+
+  <h2>字段 Fields</h2>
+  <div class="card">
+    <div class="field-row"><label for="d1">默认 default</label><input id="d1" class="demo-input" value="128 Example Lane, Unit B"></div>
+    <div class="field-row"><label for="d2">focus-visible</label><input id="d2" class="demo-input" style="outline:2px solid var(--accent);outline-offset:2px;background:var(--sheet)" value="Example Property LLC"></div>
+    <div class="field-row"><label for="d3">invalid（错误文字关联，不清空输入）</label><input id="d3" class="demo-input" aria-invalid="true" aria-describedby="d3e" value="abc"><div class="banner-error" id="d3e">密码为 6–256 个字符</div></div>
+    <div class="field-row"><label for="d4">disabled</label><input id="d4" class="demo-input" disabled value="处理中锁定" style="opacity:.42"></div>
+  </div>
+
+  <h2>状态徽章与横幅 Badges & banners</h2>
+  <div class="card">
+    <div class="row"><span class="label">核对状态</span>
+      <span class="badge badge-reviewed">已核对</span>
+      <span class="badge badge-pending">待核对</span>
+      <span class="badge badge-conflict">有冲突</span>
+      <span class="badge badge-unknown">未提供</span>
+    </div>
+    <div class="banner-error">发现冲突。请对照原文，编辑为正确值或清空，再确认。</div>
+    <div style="height:10px"></div>
+    <div class="banner-warn">待补充：住房机构 PHA —— 仅表示本次材料未提供，并非机构缺件通知</div>
+    <div style="height:10px"></div>
+    <div class="banner-info">PDF 在服务器提取文本，不会自动发送至 DeepSeek。</div>
+    <div style="height:10px"></div>
+    <div class="banner-success">案例已保存</div>
+  </div>
+
+  <h2>步骤轨 Step rail</h2>
+  <div class="card">
+    <div class="steps-demo">
+      <span class="step-demo done"><b>1</b>放入材料</span>
+      <span class="step-demo current"><b>2</b>核对事实</span>
+      <span class="step-demo"><b>3</b>带走英文草稿</span>
+    </div>
+  </div>
+
+  <h2>会话 Conversation</h2>
+  <div class="card">
+    <div class="chat-demo">
+      <div class="msg-user"><span class="msg-role" style="text-align:right;color:var(--accent-deep)">你</span>请确认当前 RFTA 表格版本。</div>
+      <div class="msg-assistant"><span class="msg-role">巢小秘</span>请向机构核实当前受理版本；本回复仅为辅助参考…</div>
+      <div class="msg-assistant"><span class="msg-role">巢小秘 · 正在回复</span>正在生成<span class="caret">▍</span></div>
+      <div class="msg-assistant"><span class="msg-role">巢小秘</span>这部分回复因中断不完整。<div class="interrupted">回复中断，以上内容不完整。可重试。</div></div>
+    </div>
+  </div>
+
+  <h2>目录行 Directory rows（44px 触控目标）</h2>
+  <div class="card" style="padding:8px 28px">
+    <div class="dir-row"><span class="grow">Johnny · DEMO-104</span><span class="badge badge-reviewed">已保存</span><a href="#" onclick="return false" style="color:var(--accent-deep);font-size:12px">打开</a></div>
+    <div class="dir-row"><span class="grow">一个相当长的客户名称用来验证省略与完整查看 Demo Example</span><span class="badge badge-pending">草稿</span><a href="#" onclick="return false" style="color:var(--accent-deep);font-size:12px">打开</a></div>
+    <div class="dir-row"><span class="grow" style="color:var(--text-muted)">没有匹配「zhang」的客户</span><a href="#" onclick="return false" style="color:var(--accent-deep);font-size:12px">清除搜索</a></div>
+  </div>
+
+  <h2>文档阅读 Document</h2>
+  <div class="card">
+    <span class="stamp">ENGLISH · DRAFT</span>
+    <div style="height:14px"></div>
+    <div class="doc-demo">Date: [Insert date before sending]
+To: [Verify recipient and email/address]
+Subject: Request for lease-up instructions — DEMO-104
+
+Dear [Verified recipient name],</div>
+  </div>
+</body>
+</html>
