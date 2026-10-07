@@ -19,7 +19,7 @@ import { createHash } from 'node:crypto';
 import { preparePrivateDirectory, openAssetVault } from '../private-assets.js';
 import { assetId, ASSET_LIMITS } from '../asset-domain.js';
 const APPLICATION_ID = 0x4e53544c;
-const SUPPORTED_SCHEMAS = [1, 2, 3, 4, 5];
+const SUPPORTED_SCHEMAS = [1, 2, 3, 4, 5, 6];
 const schemaVersion = (db) => db.prepare('PRAGMA user_version').get().user_version;
 const fail = (message) => {
   throw new Error(message);
@@ -136,7 +136,7 @@ function openDatabase(filename) {
       db.prepare('PRAGMA application_id').get().application_id !== APPLICATION_ID ||
       !SUPPORTED_SCHEMAS.includes(schemaVersion(db))
     )
-      fail('Only a recognized Nestlet schema1–5 database is supported.');
+      fail('Only a recognized Nestlet schema1–6 database is supported.');
     if (
       db.prepare('PRAGMA integrity_check').get().integrity_check !== 'ok' ||
       db.prepare('PRAGMA foreign_key_check').all().length
