@@ -71,7 +71,14 @@ export async function watchEmailLeaks(page) {
   page.on('request', request => requests.push({ url: request.url(), referrer: request.headers().referer || '',
     telemetry: new URL(request.url()).pathname.includes('telemetry') ? request.postData() || '' : '' }));
   await page.addInitScript(() => {
-    const token = new URLSearchParams(location.hash.slice(1)).get('token') || '';
+    let token = new URLSearchParams(location.hash.slice(1)).get('token') || '';
+    // A link can arrive as a same-document fragment navigation. Observe the secret
+    // just before the app scrubs it, retaining it only in this test probe's closure.
+    const originalReplace = history.replaceState;
+    history.replaceState = function (...args) {
+      token = new URLSearchParams(location.hash.slice(1)).get('token') || token;
+      return originalReplace.apply(this, args);
+    };
     const probe = { effectsBeforeScrub: 0, tokenStorageWrites: 0, tokenConsoleWrites: 0 };
     window.__emailPrivacyProbe = probe;
     const originalFetch = window.fetch;

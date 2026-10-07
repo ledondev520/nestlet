@@ -141,7 +141,7 @@ test('invalid and privately aged expired verification/reset links fail without a
   await page.getByLabel('Confirm password', { exact: true }).press('Enter');
   expect((await denied).status()).toBe(400); await expect(page.getByRole('alert')).toBeVisible();
   expect((await post(app, '/api/login', { email: resetEmail, password: EMAIL_PASSWORD })).status).toBe(200);
-  const missing = { link: app.origin + '/#auth=verify&token=' + 'Z'.repeat(43), token: 'Z'.repeat(43) };
+  const missing = { link: app.origin + '/#auth=verify&token=' + 'A'.repeat(43), token: 'A'.repeat(43) };
   await openLink(page, missing);
   const invalid = page.waitForResponse(response => new URL(response.url()).pathname === '/api/auth/email/verify');
   await page.getByRole('button', { name: 'Confirm email verification', exact: true }).click();
