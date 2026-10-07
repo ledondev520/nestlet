@@ -38,3 +38,13 @@ Four additional customer/case scenarios are described in [the customer/case evid
 ## Explicitly not established
 
 The pre-existing product/parser journeys do not mock APIs or parsing. The new email journeys explicitly simulate the mail provider receipt only; no genuine delivery is established. Manual explicit-label organization and deterministic document templates do not establish AI acceptance. Live DeepSeek extraction, streamed chat, image understanding, provider errors/cancellation, genuine production email provider acceptance/delivery, production host/container restart or restore, production deployment, real device soft keyboard/safe-area behavior, and full accessibility conformance require separate evidence.
+
+## Dedicated official-reference panel scenario
+
+`agency-guidance.spec.js` adds one bounded scenario using the existing isolated synthetic customer fixture, real HTTP/SQLite and manually reviewed case facts. It does not alter fixtures, intercept responses or call a provider.
+
+The scenario checks chat, materials and documents in Chinese and English at 320, 390 and 1280 pixels. It opens and closes both native disclosures with Enter/Space, follows the actual Tab order through the reference selector and official links, changes SFHA → unknown → OHA → SFHA with native select keyboard keys, and checks focus plus document/control overflow. Expanded-state screenshots are labelled by viewport, language and page. Official links are inspected but never followed.
+
+Actual case/readiness reads before and after selection, plus a business-mutation request log, verify that references do not write facts, change readiness, or create documents/conversations. The fixture case keeps its separately confirmed synthetic housing authority. Browser error/CSP/model-request monitoring remains enabled; no source site is automatically fetched.
+
+Preparation checkpoint, 2026-10-07: discovery reports 18 total scenarios; build, syntax, existing real-HTTP fixture checks, 312 backend checks and 224 frontend checks pass. The new Chromium scenario has not been run in the authoring environment. Its first actual browser result must come from an authorized official CI run; discovery is not browser acceptance. This test adds engineering interaction/layout evidence, not a design approval, live-model/source-edition verification or full accessibility certification.
