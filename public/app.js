@@ -3,6 +3,8 @@ import {AGENCY_OPTIONS, DEFAULT_GUIDANCE_AGENCY, GUIDANCE_COPY, getAgencyGuidanc
 
 const copy = {
   zh: {
+    errorReadinessUnsaved: '请先保存案件或当前文书的修改，再补齐资料。你的输入仍保留。', errorReadinessChanged: '资料已在服务器保存，但等待期间工作区又有修改。你的本地输入未被覆盖；请先保留修改，再打开最新案件对照。',
+    errorCaseIssueNotFound: '这条待办事项不存在或不属于当前案件，请刷新后重试。', artifactOpen: '打开', artifactArchived: '旧稿已保留在文档版本中', generateFinal: '生成完成版', customerCases: '客户案件', artifactHistory: '历史版本，请根据当前案件重新生成',
     workspaceTitle: '从材料到英文草稿', safeShort: '仅限虚构或去标识化资料', inputShort: '放入材料', sampleShort: '试用示例', pasteShort: '或在这里粘贴去标识化文本…', inputHelp: '支持格式与处理方式', nextReview: 'AI 提取并核对', reviewShort: '核对五项事实', sourceHint: '原文可展开查看', check: '确认', editedShort: '人工修改 · 查看出处', missingShort: '待补充：', missingScope: '仅表示本次材料未提供，并非机构缺件通知', nextHelp: '后续事项与导出说明', draftTypeShort: '草稿类型', backInput: '返回材料', backReview: '返回核对', gateShort: '请确认每一项；未知信息可保留空白', draftShort: '可直接编辑。辅助文书，非官方表格；请人工复核后使用。', footerShort: '仅生成草稿 · 不自动发送或提交',
     chatEmpty: '可以直接提问下一步怎么走，或粘贴案例材料后发送。图片与材料也可以拖拽进来。', chatSend: '发送', chatStop: '停止', chatRetry: '重试', chatStreaming: '正在回复…', chatAttachImage: '添加图片', chatImageOnly: '请协助分析附图内容。', chatImageBad: '仅支持 PNG / JPEG 图片，最多 2 张，每张不超过 2 MB、边长不超过 8192 像素。', chatTooLong: '单次对话消息最长 8,000 字符；更长的材料请直接使用提取与核对流程。', chatIncomplete: '回复中断，以上内容不完整。可重试。', errorChat: '对话请求失败。可重试；已输入的内容不会丢失。', chatConsent: '继续会把对话内容、当前材料与所附图片发送给 DeepSeek。仅限虚构或去标识化资料。你是否已确认数据处理条款和授权，并同意发送？', chatYou: '你', chatAssistant: '巢小秘', chatRemoveImage: '移除图片',
     errorClientInvalid: '客户信息不符合要求，请检查后重试。', errorClientNotFound: '未找到该客户，可能已被删除。', errorClientConflict: '该客户记录已在别处更新。当前输入已保留，请刷新核对后再试。', errorConversationInvalid: '对话内容不符合要求。', errorConversationNotFound: '未找到该对话。', errorMessageInvalid: '消息格式无效。', errorChatBusy: '该对话正在处理上一条回复，请稍候。', errorChatTurnExists: '该轮回复已存在，请刷新查看。', errorChatSaveFailed: '对话保存失败；当前内容未丢失，可重试。', errorChatProvider: '模型服务暂时不可用，请稍后重试。', errorChatOutput: '回复格式不受支持，未显示。请重试。', errorDocContext: '文档上下文无效。', errorDocConflict: '文档信息已在别处更新。当前修改已保留，请刷新核对。', errorDocDetails: '文档信息不符合要求，请检查必填项。', errorDocRequired: '还有必填信息未完成，请先补齐。', errorDocContent: '文档内容无效。', errorDocPlaceholders: '文档仍含待填占位符，不能标记为完成。', errorArtifactInvalid: '文档产物无效。', errorArtifactNotFound: '未找到该文档产物。', errorArtifactSource: '生成依据不完整，请先补齐材料。', errorCapacity: '存储容量已满，请清理后再试。', errorArtifactStale: '该文档版本基于旧案例内容，已不可直接下载；请重新生成新版本。',
@@ -51,6 +53,8 @@ const copy = {
     fields: ['房源地址', '业主', '住房机构 PHA', '案例编号', '拟议租金']
   },
   en: {
+    errorReadinessUnsaved: 'Save your case or document edits before completing these details. Your input is preserved.', errorReadinessChanged: 'The details were saved on the server, but the workspace changed while waiting. Your local input was preserved. Keep those edits, then open the latest case to reconcile.',
+    errorCaseIssueNotFound: 'This case issue is unavailable. Refresh the case and try again.', artifactOpen: 'Open', artifactArchived: 'The earlier draft is preserved in document versions', generateFinal: 'Generate final document', customerCases: 'Customer cases', artifactHistory: 'Historical version; regenerate from the current case',
     workspaceTitle: 'From document to English draft', safeShort: 'Synthetic or de-identified information only', inputShort: 'Add your document', sampleShort: 'Try sample', pasteShort: 'Or paste de-identified text here…', inputHelp: 'Formats and processing details', nextReview: 'Extract & review with AI', reviewShort: 'Review five facts', sourceHint: 'Expand a source to check it', check: 'Confirm', editedShort: 'Edited · View source', missingShort: 'To confirm:', missingScope: 'Not provided in this review, not an agency missing-document notice', nextHelp: 'Next steps and export details', draftTypeShort: 'Draft type', backInput: 'Back to document', backReview: 'Back to review', gateShort: 'Confirm every field. Unknown information can stay blank.', draftShort: 'Edit directly. Supplementary draft, not an official form. Review before use.', footerShort: 'Drafts only · Nothing is sent or submitted automatically',
     chatEmpty: 'Ask what to do next, or paste case material and send it. You can also drop files or images here.', chatSend: 'Send', chatStop: 'Stop', chatRetry: 'Retry', chatStreaming: 'Replying…', chatAttachImage: 'Add image', chatImageOnly: 'Please help analyze the attached image(s).', chatImageBad: 'Only PNG / JPEG images, at most 2, each up to 2 MB and 8192 px per side.', chatTooLong: 'A chat message is limited to 8,000 characters. Use the extract & review flow for longer material.', chatIncomplete: 'The reply was interrupted; the content above is incomplete. You can retry.', errorChat: 'The conversation request failed. You can retry; your input is preserved.', chatConsent: 'This sends the conversation, current material and attached images to DeepSeek. Use only synthetic or de-identified information. Have you verified the data-processing terms and authorization, and do you agree to send?', chatYou: 'You', chatAssistant: 'Nestlet', chatRemoveImage: 'Remove image',
     errorClientInvalid: 'Customer details are invalid. Check and try again.', errorClientNotFound: 'Customer not found. It may have been deleted.', errorClientConflict: 'This customer record changed elsewhere. Your input is preserved; reload to reconcile and retry.', errorConversationInvalid: 'The conversation content is invalid.', errorConversationNotFound: 'Conversation not found.', errorMessageInvalid: 'The message is invalid.', errorChatBusy: 'This conversation is still processing the previous reply. Please wait.', errorChatTurnExists: 'That turn already exists. Reload to view it.', errorChatSaveFailed: 'Saving the conversation failed; your content is intact. You can retry.', errorChatProvider: 'The model provider is temporarily unavailable. Try again later.', errorChatOutput: 'The reply format is unsupported and was hidden. Please retry.', errorDocContext: 'The document context is invalid.', errorDocConflict: 'Document details changed elsewhere. Your edits are preserved; reload to reconcile.', errorDocDetails: 'Document details are invalid. Check the required items.', errorDocRequired: 'Required information is still missing. Complete it first.', errorDocContent: 'The document content is invalid.', errorDocPlaceholders: 'The document still contains placeholders and cannot be marked final.', errorArtifactInvalid: 'The artifact is invalid.', errorArtifactNotFound: 'Artifact not found.', errorArtifactSource: 'The source material is incomplete. Add it first.', errorCapacity: 'Storage capacity is reached. Free space and retry.', errorArtifactStale: 'This artifact version is based on older case content and cannot be downloaded directly; generate a fresh version.',
@@ -101,7 +105,9 @@ const copy = {
 };
 
 const kinds = DRAFT_TYPES;
-const state = {lang: 'zh', stage: 0, guidanceAgency: DEFAULT_GUIDANCE_AGENCY, guidanceOpen: false, text: '', fields: [], draftText: '', generated: false, error: '', message: '', busy: false, liveEnabled: false, pdfEnabled: false, workbookEnabled: false, workbook: null, sheetIndex: 0, rowIndex: 0, mapping: {}, settingsOpen: false, settingsBusy: false, settingsError: '', settingsMessage: '', authConfigured: false, authenticated: false, role: null, canManageSettings: false, userId: null, workspaceOwnerId: null, username: '', loginUsername: '', authForm: 'login', registrationEnabled: false, secureLogin: false, caseStorageEnabled: false, caseId: null, caseVersion: null, caseTitle: '', savedFingerprint: null, cases: [], selectedCaseId: '', casesOpen: false, caseBusy: false, caseError: '', caseMessage: '', caseEpoch: 0, secureSettings: false, configured: false, csrfToken: '', connectionVerifiedAt: null, keyStorage: 'none', statusChecked: false, statusError: false, model: 'deepseek-flash', providerEndpoint: 'https://api.deepseek.com/chat/completions', mode: 'demo', source: '', sample: false, namesVerified: false, kind: 'followup', generatedKind: 'followup', version: 0, controller: null, chatMessages: [], chatImages: [], chatBusy: false, chatError: '', chatIncomplete: false, customers: [], customerId: null, customerQuery: '', conversations: [], conversationId: '', artifacts: [], readiness: null, readinessBusy: false};
+const state = {lang: 'zh', stage: 0, guidanceAgency: DEFAULT_GUIDANCE_AGENCY, guidanceOpen: false, text: '', fields: [], draftText: '', generated: false, error: '', message: '', busy: false, liveEnabled: false, pdfEnabled: false, workbookEnabled: false, workbook: null, sheetIndex: 0, rowIndex: 0, mapping: {}, settingsOpen: false, settingsBusy: false, settingsError: '', settingsMessage: '', authConfigured: false, authenticated: false, role: null, canManageSettings: false, userId: null, workspaceOwnerId: null, username: '', loginUsername: '', authForm: 'login', registrationEnabled: false, secureLogin: false, caseStorageEnabled: false, caseId: null, caseVersion: null, caseTitle: '', savedFingerprint: null, cases: [], selectedCaseId: '', casesOpen: false, caseBusy: false, caseError: '', caseMessage: '', caseEpoch: 0, secureSettings: false, configured: false, csrfToken: '', connectionVerifiedAt: null, keyStorage: 'none', statusChecked: false, statusError: false, model: 'deepseek-flash', providerEndpoint: 'https://api.deepseek.com/chat/completions', mode: 'demo', source: '', sample: false, namesVerified: false, kind: 'followup', generatedKind: 'followup', version: 0, controller: null, chatInput: '', chatEpoch: 0, chatImagePending: 0, chatMessages: [], chatImages: [], chatBusy: false, chatError: '', chatIncomplete: false, customers: [], customerId: null, customerQuery: '', conversations: [], conversationId: '', artifacts: [], readiness: null, readinessBusy: false};
+Object.assign(state, {documentContext: {}, caseIssues: [], artifactId: null, artifactStatus: 'draft', artifactIsStale: false, artifactSavedContent: '', legacyDraftText: '', libraryBusy: false, readinessAnswers: {}});
+let customerSearchVersion = 0;
 let draftEditTracked = false;
 let chatController = null;
 let chatStopRequested = false;
@@ -243,6 +249,10 @@ function draftNeedsEnglish() {
   let body = state.draftText;
   if (state.namesVerified) {
     for (const field of nameFields()) body = body.split(field.value).join('');
+    for (const key of ['recipientName','recipientOrganization','recipientContact','senderName','senderOrganization','senderContact','nextActionOwner']) {
+      const entry = state.documentContext[key];
+      if (entry?.confirmed && entry.value && !entry.notApplicable) body = body.split(entry.value).join('');
+    }
   }
   return hasCJKText(body);
 }
@@ -307,17 +317,17 @@ const authErrorKeys = {
   DOCUMENT_PLACEHOLDERS_REMAIN: 'errorDocPlaceholders',
   ARTIFACT_INVALID: 'errorArtifactInvalid', ARTIFACT_NOT_FOUND: 'errorArtifactNotFound', ARTIFACT_SOURCE_INCOMPLETE: 'errorArtifactSource',
   DOCUMENT_NOT_READY: 'errorDocRequired', ARTIFACT_STALE: 'errorArtifactStale',
-  CAPACITY_REACHED: 'errorCapacity'
+  CAPACITY_REACHED: 'errorCapacity', CASE_ISSUE_NOT_FOUND: 'errorCaseIssueNotFound'
 };
 function responseError(result, fallback) {
   let key = authErrorKeys[result?.code] || fallback;
   if (state.role === 'trial' && ['errorConfig', 'errorKeyRequired', 'operatorSetupHelp', 'errorSettings'].includes(key)) key = 'errorTrialUnavailable';
   if (result?.code === 'OWNER_REQUIRED') {state.settingsOpen = true; state.settingsError = key;}
   if (['AUTH_REQUIRED', 'CSRF_REJECTED', 'OPERATOR_SETUP_REQUIRED', 'HTTPS_REQUIRED'].includes(result?.code)) {
-    state.authenticated = false;
+    resetChat(); resetLibraryState({preserveCaseAssociation:state.workspaceOwnerId === state.userId}); state.authenticated = false;
     state.csrfToken = '';
     state.settingsOpen = true;
-    state.settingsError = key;
+    state.settingsError = key; render();
   }
   return new Error(key);
 }
@@ -332,6 +342,7 @@ function applyStatus(status) {
   state.role = ['owner', 'trial'].includes(status.role) ? status.role : null;
   state.canManageSettings = state.role === 'owner' && status.canManageSettings === true;
   state.userId = typeof status.userId === 'string' ? status.userId : null;
+  if (state.userId !== previousUserId || !state.authenticated) {resetChat(); resetLibraryState({preserveCaseAssociation:Boolean(state.workspaceOwnerId && (!state.userId || state.userId === state.workspaceOwnerId))});}
   if (state.userId !== previousUserId) resetTelemetry();
   state.username = typeof status.username === 'string' ? status.username : '';
   if (state.userId && state.workspaceOwnerId && state.userId !== state.workspaceOwnerId) {replaceText(''); forgetCaseIdentity(); state.cases = []; state.selectedCaseId = '';}
@@ -395,14 +406,14 @@ async function settingsRequest(path, payload, successKey) {
 function casePayload() {
   return {
     title: state.caseTitle.trim(), sourceText: state.text, fields: state.fields,
-    draftType: state.generated ? state.generatedKind : state.kind, draftText: state.draftText,
+    draftType: state.kind, draftText: state.artifactId ? state.legacyDraftText : state.draftText,
     extractionMode: state.mode === 'live' ? 'live' : 'manual', namesVerified: state.namesVerified
   };
 }
 function caseFingerprint() {return JSON.stringify(casePayload());}
 function hasCaseContent() {return Boolean(state.text || state.fields.length || state.draftText);}
 function hasUnsavedChanges() {
-  return Boolean(hasCaseContent() || state.caseTitle) && caseFingerprint() !== state.savedFingerprint;
+  return Boolean(state.artifactId && state.draftText !== state.artifactSavedContent) || Boolean(hasCaseContent() || state.caseTitle) && caseFingerprint() !== state.savedFingerprint;
 }
 function caseStatusLabel() {
   return state.caseBusy ? t().busy : hasUnsavedChanges() ? t().unsavedChanges : state.caseId ? t().caseSaved : t().caseNotSaved;
@@ -412,35 +423,40 @@ function updateCaseIndicator() {
   if (byId('save-case')) byId('save-case').disabled = state.caseBusy || state.busy || !hasCaseContent();
 }
 function forgetCaseIdentity() {
+  resetChat();
   state.caseId = null; state.caseVersion = null; state.caseTitle = ''; state.savedFingerprint = null;
   state.caseError = ''; state.caseMessage = ''; state.caseEpoch++; state.customerId = null; state.customerQuery = ''; state.conversations = []; state.conversationId = ''; state.artifacts = []; state.readiness = null; state.chatMessages = [];
 }
 function caseControlsMarkup() {
   if (!state.authenticated || !state.caseStorageEnabled) return '';
   const d = t();
-  const disabled = state.caseBusy || state.busy ? 'disabled' : '';
-  return `<section class="case-controls" aria-label="${d.savedCases}"><div class="actions"><button id="save-case" class="secondary" ${disabled || !hasCaseContent() ? 'disabled' : ''}>${d.saveCase}</button><details id="case-manager" class="help-details" ${state.casesOpen ? 'open' : ''}><summary>${d.savedCases}</summary><div class="draft-choice"><label for="case-title">${d.caseName}</label><input id="case-title" class="input" maxlength="120" value="${esc(state.caseTitle)}" placeholder="${d.untitledCase}"></div><div class="draft-choice"><label for="saved-case">${d.savedCases}</label><select id="saved-case" ${disabled}><option value="">${d.chooseCase}</option>${state.cases.map(item => `<option value="${esc(item.id)}" ${state.selectedCaseId === item.id ? 'selected' : ''}>${esc(item.title)}</option>`).join('')}</select></div><div class="actions"><button id="open-case" class="secondary" ${disabled || !state.selectedCaseId ? 'disabled' : ''}>${d.openCase}</button><button id="delete-case" class="link" ${disabled || !state.selectedCaseId ? 'disabled' : ''}>${d.deleteCase}</button><button id="refresh-cases" class="link" ${disabled}>${d.refreshStatus}</button></div><p>${d.savedScope}</p></details><span id="case-save-status" class="small" role="status">${caseStatusLabel()}</span></div><div class="customer-row"><label for="customer-query">${d.customerLabel}</label><input id="customer-query" class="input" maxlength="120" placeholder="${d.customerSearch}" value="${esc(state.customerQuery)}" ${disabled}><button id="customer-create" class="link" ${disabled || !state.customerQuery.trim() ? 'disabled' : ''}>${d.customerCreate}</button>${state.customerId ? `<span class="small customer-linked">${d.customerLinked}${esc(state.customers.find(c => c.id === state.customerId)?.displayName || state.customerQuery)}</span>` : ''}${state.customers.length ? `<div class="customer-results">${state.customers.map(c => `<button type="button" class="link" data-customer="${esc(c.id)}" data-name="${esc(c.displayName)}">${esc(c.displayName)}</button>`).join('')}</div>` : ''}</div>${state.artifacts.length ? `<div class="artifact-list"><h3>${d.artifactList}</h3>${state.artifacts.map(a => `<div class="artifact-row"><span class="artifact-name">${esc(a.title || a.kind)} · v${a.version}</span><span class="field-status">${a.status === 'final' ? d.artifactStatusFinal : d.artifactStatusDraft}</span>${a.isStale ? `<span class="field-status warning">${d.artifactStaleBadge}</span>` : ''}<a class="link" href="/api/artifacts/${esc(a.id)}/download">${d.artifactDownload}</a></div>`).join('')}</div>` : ''}<div class="error" role="alert">${state.caseError ? d[state.caseError] || d.errorGeneric : ''}</div><div class="success" role="status">${state.caseMessage ? d[state.caseMessage] : ''}</div></section>`;
+  const disabled = state.caseBusy || state.busy || state.libraryBusy ? 'disabled' : '';
+  return `<section class="case-controls" aria-label="${d.savedCases}"><div class="actions"><button id="save-case" class="secondary" ${disabled || !hasCaseContent() ? 'disabled' : ''}>${d.saveCase}</button><details id="case-manager" class="help-details" ${state.casesOpen ? 'open' : ''}><summary>${d.savedCases}</summary><div class="draft-choice"><label for="case-title">${d.caseName}</label><input id="case-title" class="input" maxlength="120" value="${esc(state.caseTitle)}" placeholder="${d.untitledCase}"></div><div class="draft-choice"><label for="saved-case">${d.savedCases}</label><select id="saved-case" ${disabled}><option value="">${d.chooseCase}</option>${state.cases.map(item => `<option value="${esc(item.id)}" ${state.selectedCaseId === item.id ? 'selected' : ''}>${esc(item.title)}</option>`).join('')}</select></div><div class="actions"><button id="open-case" class="secondary" ${disabled || !state.selectedCaseId ? 'disabled' : ''}>${d.openCase}</button><button id="delete-case" class="link" ${disabled || !state.selectedCaseId ? 'disabled' : ''}>${d.deleteCase}</button><button id="refresh-cases" class="link" ${disabled}>${d.refreshStatus}</button></div><p>${d.savedScope}</p></details><span id="case-save-status" class="small" role="status">${caseStatusLabel()}</span></div><div class="customer-row"><label for="customer-query">${d.customerLabel}</label><input id="customer-query" class="input" maxlength="120" placeholder="${d.customerSearch}" value="${esc(state.customerQuery)}" ${disabled}><button id="customer-create" class="link" ${disabled || !state.customerQuery.trim() ? 'disabled' : ''}>${d.customerCreate}</button>${state.customerId ? `<span class="small customer-linked">${d.customerLinked}${esc(state.customers.find(c => c.id === state.customerId)?.displayName || state.customerQuery)}</span>` : ''}${state.customers.length ? `<div class="customer-results">${state.customers.map(c => `<button type="button" class="link" data-customer="${esc(c.id)}" data-name="${esc(c.displayName)}">${esc(c.displayName)}</button>`).join('')}</div>` : ''}</div>${state.customerId && state.cases.length ? `<div class="customer-cases"><h3>${d.customerCases}</h3>${state.cases.map(item => `<button class="link" data-case-open="${esc(item.id)}" ${disabled}>${esc(item.title)}</button>`).join('')}</div>` : ''}${state.caseId ? `<button class="secondary" id="generate-final" ${disabled}>${d.generateFinal}</button>` : ''}${readinessMarkup()}${state.artifacts.length ? `<div class="artifact-list"><h3>${d.artifactList}</h3>${state.artifacts.map(a => `<div class="artifact-row"><span class="artifact-name">${esc(a.title || a.kind)} · v${a.version}</span><span class="field-status">${a.status === 'final' ? d.artifactStatusFinal : d.artifactStatusDraft}</span>${a.isStale ? `<span class="field-status warning">${d.artifactStaleBadge}</span>` : ''}<button class="link" data-artifact-open="${esc(a.id)}" ${disabled}>${d.artifactOpen}</button><button class="link" data-artifact-download="${esc(a.id)}" ${disabled}>${d.artifactDownload}</button></div>`).join('')}</div>` : ''}<div class="error" role="alert">${state.caseError ? d[state.caseError] || d.errorGeneric : ''}</div><div class="success" role="status">${state.caseMessage ? d[state.caseMessage] : ''}</div></section>`;
 }
 const caseErrorKeys = {CASE_LIMIT_REACHED: 'errorCaseLimit', CASE_NOT_FOUND: 'errorCaseNotFound', CASE_INVALID: 'errorCaseInvalid', CASE_TOO_LARGE: 'errorCaseTooLarge', CASE_CONFLICT: 'errorCaseConflict', CASE_STORAGE_UNAVAILABLE: 'errorCaseStorage'};
 async function caseRequest(path, method = 'GET', payload) {
+  const requestUserId = state.userId, requestCsrf = state.csrfToken;
   const response = await fetch(path, {method, cache: 'no-store', headers: requestHeaders({...telemetryHeaders(), ...(payload ? {'Content-Type': 'application/json'} : {})}), ...(payload ? {body: JSON.stringify(payload)} : {})});
   noteBusinessResponse(response);
   const result = await response.json();
+  if (requestUserId !== state.userId || requestCsrf !== state.csrfToken) throw new Error('errorCaseChanged');
   if (!response.ok) throw responseError(result, caseErrorKeys[result.code] || 'errorCaseStorage');
   return result;
 }
 async function refreshCaseList(shouldRender = true) {
   if (!state.authenticated || !state.caseStorageEnabled) return;
-  const userId = state.userId;
+  const scope = captureLibraryScope();
   try {
-    const result = await caseRequest('/api/cases');
-    if (userId !== state.userId || !state.authenticated) return;
-    if (!Array.isArray(result.cases) || result.cases.some(item => typeof item.id !== 'string' || typeof item.title !== 'string' || !Number.isInteger(item.version))) throw new Error('errorCaseStorage');
+    const path = scope.customerId ? `/api/clients/${encodeURIComponent(scope.customerId)}/cases` : '/api/cases';
+    const result = await caseRequest(path);
+    if (!libraryScopeCurrent(scope)) return;
+    if (!Array.isArray(result.cases)) throw new Error('errorCaseStorage');
     state.cases = result.cases;
     if (!state.cases.some(item => item.id === state.selectedCaseId)) state.selectedCaseId = '';
-  } catch (error) {if (userId === state.userId) state.caseError = copy.en[error.message] ? error.message : 'errorCaseStorage';}
-  if (shouldRender) render();
+  } catch (error) {if (libraryScopeCurrent(scope)) state.caseError = copy.en[error.message] ? error.message : 'errorCaseStorage';}
+  if (shouldRender && libraryScopeCurrent(scope)) render();
 }
+
 function validCaseRecord(record) {
   return record && typeof record.id === 'string' && Number.isInteger(record.version) && record.version > 0 &&
     typeof record.title === 'string' && typeof record.sourceText === 'string' && typeof record.draftText === 'string' &&
@@ -461,7 +477,7 @@ async function saveCurrentCase() {
     const result = await caseRequest(id ? `/api/cases/${encodeURIComponent(id)}` : '/api/cases', id ? 'PUT' : 'POST', {...payload, clientId: state.customerId || null, ...(id ? {expectedVersion: state.caseVersion} : {})});
     if (!validCaseRecord(result.case)) throw new Error('errorCaseStorage');
     if (userId === state.userId && epoch === state.caseEpoch) {
-      state.caseId = result.case.id; state.caseVersion = result.case.version; state.savedFingerprint = fingerprint;
+      state.caseId = result.case.id; state.caseVersion = result.case.version; state.savedFingerprint = fingerprint; state.legacyDraftText = result.case.draftText; state.documentContext = result.case.documentContext || {}; state.caseIssues = result.case.caseIssues || [];
       state.selectedCaseId = result.case.id; state.caseMessage = 'caseSaveSuccess';
       track('case.save', 'success', {waitMs: Math.round(performance.now() - saveStart)});
       await loadCaseExtras();
@@ -470,34 +486,31 @@ async function saveCurrentCase() {
   } catch (error) {if (userId === state.userId && epoch === state.caseEpoch) {state.caseError = copy.en[error.message] ? error.message : 'errorCaseStorage'; track('case.save', 'failure', {errorCode: 'UNKNOWN_CLIENT_ERROR'});}}
   finally {state.caseBusy = false; render();}
 }
-async function openSavedCase() {
-  if (!state.selectedCaseId || state.caseBusy || state.busy) return;
-  if (hasUnsavedChanges() && !confirm(t().unsavedOpen)) return;
+async function openSavedCase({discardConfirmed = false} = {}) {
+  if (!state.selectedCaseId || state.caseBusy || state.busy) return null;
+  if (!discardConfirmed && hasUnsavedChanges() && !confirm(t().unsavedOpen)) return null;
   const selected = state.selectedCaseId;
-  const before = caseFingerprint();
-  const epoch = state.caseEpoch;
-  const userId = state.userId;
+  resetChat(); state.caseEpoch++;
+  const before = caseFingerprint(), epoch = state.caseEpoch, userId = state.userId;
+  let appliedEpoch = epoch;
   state.caseBusy = true; state.caseError = ''; state.caseMessage = ''; render();
   try {
     const openStart = performance.now();
     const result = await caseRequest(`/api/cases/${encodeURIComponent(selected)}`);
+    if (userId !== state.userId || !state.authenticated || epoch !== state.caseEpoch) return null;
+    if (before !== caseFingerprint()) throw new Error('errorCaseChanged');
     if (!validCaseRecord(result.case)) throw new Error('errorCaseStorage');
-    if (userId !== state.userId || epoch !== state.caseEpoch || before !== caseFingerprint()) throw new Error('errorCaseChanged');
-    const record = result.case;
-    replaceText(record.sourceText, record.title);
-    state.fields = record.fields.length ? FIELDS.map(key => record.fields.find(field => field.key === key)) : []; state.draftText = record.draftText; state.generated = Boolean(record.draftText);
-    state.kind = record.draftType; state.generatedKind = record.draftType; state.namesVerified = record.namesVerified === true;
-    state.mode = record.extractionMode === 'live' ? 'live' : 'demo';
-    state.caseId = record.id; state.caseVersion = record.version; state.caseTitle = record.title;
-    state.savedFingerprint = caseFingerprint(); state.stage = state.generated ? 2 : state.fields.length ? 1 : 0;
-    state.customerId = typeof record.clientId === 'string' ? record.clientId : null;
-    state.customerQuery = '';
-    state.caseMessage = 'caseOpened';
-    track('case.open', 'success', {waitMs: Math.round(performance.now() - openStart)});
+    replaceText(result.case.sourceText, result.case.title); appliedEpoch = state.caseEpoch;
+    applyLoadedCase(result.case);
+    state.stage = state.generated ? 2 : state.fields.length ? 1 : 0;
+    state.customerQuery = state.customers.find(item => item.id === state.customerId)?.displayName || state.customerQuery;
+    state.caseMessage = 'caseOpened'; track('case.open', 'success', {waitMs: Math.round(performance.now() - openStart)});
     await loadCaseExtras();
-  } catch (error) {if (userId === state.userId) {state.caseError = copy.en[error.message] ? error.message : 'errorCaseStorage'; track('case.open', 'failure', {errorCode: 'UNKNOWN_CLIENT_ERROR'});}}
-  finally {state.caseBusy = false; render();}
+    return userId === state.userId && appliedEpoch === state.caseEpoch && state.caseId === selected ? {userId, caseEpoch: appliedEpoch, caseId: selected} : null;
+  } catch (error) {if (userId === state.userId && appliedEpoch === state.caseEpoch) state.caseError = copy.en[error.message] ? error.message : 'errorCaseStorage'; return null;}
+  finally {if (userId === state.userId && appliedEpoch === state.caseEpoch) {state.caseBusy = false; render();}}
 }
+
 async function deleteSavedCase() {
   const item = state.cases.find(record => record.id === state.selectedCaseId);
   if (!item || state.caseBusy || state.busy || !confirm(t().deleteCaseConfirm + '\n' + item.title)) return;
@@ -519,83 +532,219 @@ async function deleteSavedCase() {
 /** Customer library, durable conversations, artifacts and document readiness —
     docs/customer-case-api.md v1. All routes go through caseRequest (session,
     CSRF, telemetry headers, mapped bilingual errors). */
+function captureLibraryScope() {
+  return {userId: state.userId, caseEpoch: state.caseEpoch, caseId: state.caseId, customerId: state.customerId};
+}
+function resetLibraryState({preserveCaseAssociation = false} = {}) {
+  customerSearchVersion++;
+  state.customers = []; state.cases = []; state.selectedCaseId = '';
+  if (!preserveCaseAssociation) {state.customerId = null; state.customerQuery = '';}
+  state.artifacts = []; state.readiness = null; state.readinessAnswers = {}; state.caseError = ''; state.caseMessage = '';
+  state.libraryBusy = false; state.readinessBusy = false; state.caseBusy = false;
+}
+function libraryScopeCurrent(scope) {
+  return state.authenticated && scope.userId === state.userId && scope.caseEpoch === state.caseEpoch && scope.caseId === state.caseId && scope.customerId === state.customerId;
+}
 async function loadCustomers(search = '') {
   if (!state.authenticated || !state.caseStorageEnabled) return;
+  const scope = captureLibraryScope(), sequence = ++customerSearchVersion;
   try {
     const result = await caseRequest('/api/clients?limit=50' + (search ? `&search=${encodeURIComponent(search)}` : ''));
-    if (Array.isArray(result.clients)) state.customers = result.clients;
-  } catch { /* listing failure keeps current state */ }
+    if (libraryScopeCurrent(scope) && sequence === customerSearchVersion && Array.isArray(result.clients)) state.customers = result.clients;
+  } catch (error) {if (libraryScopeCurrent(scope) && sequence === customerSearchVersion) state.caseError = copy.en[error.message] ? error.message : 'errorClientInvalid';}
 }
+async function selectCustomer(id, name) {
+  if (!id || !state.authenticated || state.caseBusy || state.libraryBusy) return;
+  if (hasUnsavedChanges() && !confirm(t().unsavedOpen)) return;
+  resetChat(); replaceText(''); forgetCaseIdentity();
+  state.customerId = id; state.customerQuery = name || ''; state.cases = []; state.selectedCaseId = ''; state.casesOpen = true;
+  state.artifacts = []; state.libraryBusy = true; state.caseError = '';
+  const scope = captureLibraryScope(); render();
+  try {
+    const [cases, artifacts] = await Promise.all([
+      caseRequest(`/api/clients/${encodeURIComponent(id)}/cases`),
+      caseRequest(`/api/clients/${encodeURIComponent(id)}/artifacts`)
+    ]);
+    if (!libraryScopeCurrent(scope)) return;
+    state.cases = Array.isArray(cases.cases) ? cases.cases : [];
+    state.artifacts = Array.isArray(artifacts.artifacts) ? artifacts.artifacts : [];
+  } catch (error) {if (libraryScopeCurrent(scope)) state.caseError = copy.en[error.message] ? error.message : 'errorCaseStorage';}
+  finally {if (libraryScopeCurrent(scope)) {state.libraryBusy = false; render();}}
+}
+
 async function createCustomer() {
   const name = state.customerQuery.trim();
-  if (!name || state.caseBusy) return;
+  if (!name || state.caseBusy || state.libraryBusy || !state.authenticated) return;
+  const scope = captureLibraryScope();
   try {
     const result = await caseRequest('/api/clients', 'POST', {displayName: name});
+    if (!libraryScopeCurrent(scope)) return;
     if (result.client?.id) {
-      state.customerId = result.client.id;
-      state.customerQuery = result.client.displayName;
+      state.customerId = result.client.id; state.customerQuery = result.client.displayName;
       await loadCustomers();
     }
-  } catch (error) {state.caseError = copy.en[error.message] ? error.message : 'errorClientInvalid';}
-  render();
+  } catch (error) {if (libraryScopeCurrent(scope)) state.caseError = copy.en[error.message] ? error.message : 'errorClientInvalid';}
+  if (scope.userId === state.userId && scope.caseEpoch === state.caseEpoch) render();
 }
+
 async function selectConversation(id) {
-  state.conversationId = id;
-  if (!id) {state.chatMessages = []; render(); return;}
+  resetChat(); state.conversationId=id; const scope=chatScope(); state.chatBusy=Boolean(id); render();
+  if (!id) return;
+  const controller=new AbortController(); chatController=controller;
   try {
-    const result = await caseRequest(`/api/conversations/${encodeURIComponent(id)}`);
-    state.chatMessages = (result.messages || []).map(m => ({role: m.role, content: m.content, incomplete: m.state !== 'complete'}));
-  } catch { /* keep current thread */ }
-  render();
+    const result=await chatJson(`/api/conversations/${encodeURIComponent(id)}`,'GET',undefined,scope,controller.signal);
+    if (result.conversation?.caseId!==scope.caseId || !Array.isArray(result.messages)) throw new Error('errorConversationInvalid');
+    state.chatMessages=storedChatMessages(result.messages);
+  } catch (error) {if (sameChat(scope)) state.chatError=copy.en[error.message]?error.message:'errorChat';}
+  finally {if (sameChat(scope)) {state.chatBusy=false; chatController=null; render();}}
 }
+
 async function loadReadiness() {
   if (!state.caseId) {state.readiness = null; return;}
+  const scope = captureLibraryScope(), kind = state.kind, locale = state.lang;
   try {
-    state.readiness = await caseRequest(`/api/cases/${encodeURIComponent(state.caseId)}/readiness?kind=${state.kind}&locale=${state.lang}`);
-  } catch { state.readiness = null; }
+    const result = await caseRequest(`/api/cases/${encodeURIComponent(scope.caseId)}/readiness?kind=${encodeURIComponent(kind)}&locale=${locale}`);
+    if (libraryScopeCurrent(scope) && kind === state.kind && locale === state.lang) state.readiness = result;
+  } catch (error) {if (libraryScopeCurrent(scope) && kind === state.kind && locale === state.lang) {state.readiness = null; state.caseError = copy.en[error.message] ? error.message : 'errorDocDetails';}}
 }
+
 async function loadCaseExtras() {
   if (!state.caseId) return;
+  const scope = captureLibraryScope();
   try {
-    const result = await caseRequest(`/api/cases/${encodeURIComponent(state.caseId)}/conversations`);
-    state.conversations = Array.isArray(result.conversations) ? result.conversations : [];
+    const [conversations, artifacts] = await Promise.all([
+      caseRequest(`/api/cases/${encodeURIComponent(scope.caseId)}/conversations`),
+      caseRequest(`/api/cases/${encodeURIComponent(scope.caseId)}/artifacts`)
+    ]);
+    if (!libraryScopeCurrent(scope)) return;
+    state.conversations = Array.isArray(conversations.conversations) ? conversations.conversations : [];
+    state.artifacts = Array.isArray(artifacts.artifacts) ? artifacts.artifacts : [];
+    const displayedArtifact = state.artifacts.find(item => item.id === state.artifactId);
+    if (displayedArtifact) state.artifactIsStale = Boolean(displayedArtifact.isStale);
     if (!state.conversationId && state.conversations.length) await selectConversation(state.conversations[0].id);
-  } catch { /* conversations unavailable */ }
-  try {
-    const result = await caseRequest(`/api/cases/${encodeURIComponent(state.caseId)}/artifacts`);
-    state.artifacts = Array.isArray(result.artifacts) ? result.artifacts : [];
-  } catch { /* artifacts unavailable */ }
-  await loadReadiness();
+    if (!libraryScopeCurrent(scope)) return;
+    await loadReadiness();
+  } catch (error) {if (libraryScopeCurrent(scope)) state.caseError = copy.en[error.message] ? error.message : 'errorCaseStorage';}
 }
-async function saveArtifact() {
-  if (!state.caseId || !state.generated || draftNeedsEnglish()) return;
+function applyLoadedCase(record) {
+  if (!validCaseRecord(record)) throw new Error('errorCaseStorage');
+  state.text = record.sourceText; state.fields = record.fields.length ? FIELDS.map(key => ({...record.fields.find(field => field.key === key)})) : [];
+  state.draftText = record.draftText; state.legacyDraftText = record.draftText; state.generated = Boolean(record.draftText);
+  state.kind = record.draftType; state.generatedKind = record.draftType; state.namesVerified = record.namesVerified === true;
+  state.documentContext = record.documentContext || {}; state.caseIssues = record.caseIssues || [];
+  state.mode = record.extractionMode === 'live' ? 'live' : 'demo'; state.caseId = record.id; state.caseVersion = record.version; state.caseTitle = record.title;
+  state.customerId = typeof record.clientId === 'string' ? record.clientId : null;
+  state.artifactId = null; state.artifactStatus = 'draft'; state.artifactIsStale = false; state.artifactSavedContent = '';
+  state.savedFingerprint = caseFingerprint(); state.selectedCaseId = record.id;
+  state.stage = state.generated ? 2 : state.fields.length ? 1 : 0;
+  state.readinessAnswers = {};
+}
+function showArtifact(artifact) {
+  if (!artifact || typeof artifact.content !== 'string' || !kinds.includes(artifact.kind) || !['draft', 'final'].includes(artifact.status)) throw new Error('errorArtifactInvalid');
+  state.artifactId = artifact.id; state.artifactStatus = artifact.status; state.artifactIsStale = Boolean(artifact.isStale);
+  state.artifactSavedContent = artifact.content; state.draftText = artifact.content; state.generatedKind = artifact.kind; state.generated = true; state.stage = 2;
+}
+async function openArtifact(id) {
+  if (!id || !state.authenticated || state.caseBusy || state.libraryBusy) return;
+  if (hasUnsavedChanges() && !confirm(t().unsavedOpen)) return;
+  const scope = captureLibraryScope();
+  let errorScope = scope;
   try {
-    const result = await caseRequest(`/api/cases/${encodeURIComponent(state.caseId)}/artifacts`, 'POST',
-      {kind: state.generatedKind, status: 'draft', content: exportDraft(), expectedCaseVersion: state.caseVersion});
-    if (result.artifact?.id) {
-      state.artifacts = [result.artifact, ...state.artifacts];
-      state.message = 'artifactSavedOk';
+    const result = await caseRequest(`/api/artifacts/${encodeURIComponent(id)}`);
+    if (!libraryScopeCurrent(scope)) return;
+    const artifact = result.artifact;
+    if (!artifact?.caseId) throw new Error('errorArtifactInvalid');
+    if (artifact.caseId !== state.caseId) {
+      state.selectedCaseId = artifact.caseId;
+      const opened = await openSavedCase({discardConfirmed: true});
+      if (!opened || state.userId !== opened.userId || state.caseEpoch !== opened.caseEpoch || state.caseId !== artifact.caseId) return;
+      errorScope = captureLibraryScope();
     }
-  } catch (error) {state.caseError = copy.en[error.message] ? error.message : 'errorArtifactInvalid';}
-  render();
+    showArtifact(artifact); state.caseError = ''; render();
+  } catch (error) {if (libraryScopeCurrent(errorScope)) {state.caseError = copy.en[error.message] ? error.message : 'errorArtifactInvalid'; render();}}
 }
+async function downloadArtifact(id) {
+  const scope = captureLibraryScope();
+  try {
+    const response = await fetch(`/api/artifacts/${encodeURIComponent(id)}/download`, {cache: 'no-store', headers: requestHeaders()});
+    if (!libraryScopeCurrent(scope)) return;
+    if (!response.ok) {
+      const errorBody = await response.json();
+      if (!libraryScopeCurrent(scope)) return;
+      throw responseError(errorBody, 'errorArtifactInvalid');
+    }
+    const content = await response.text();
+    if (!libraryScopeCurrent(scope)) return;
+    const metadata = state.artifacts.find(item => item.id === id);
+    download(content, `nestlet-${metadata?.kind || 'document'}-${metadata?.status || 'document'}-v${metadata?.version || 1}.txt`, 'text/plain;charset=utf-8');
+  } catch (error) {if (libraryScopeCurrent(scope)) {state.caseError = copy.en[error.message] ? error.message : 'errorArtifactInvalid'; render();}}
+}
+
+async function saveArtifact() {
+  if (!state.caseId || !state.generated || draftNeedsEnglish() || state.libraryBusy) return;
+  const scope = captureLibraryScope(); state.libraryBusy = true; render();
+  try {
+    const result = await caseRequest(`/api/cases/${encodeURIComponent(scope.caseId)}/artifacts`, 'POST',
+      {kind: state.generatedKind, status: state.artifactStatus, content: exportDraft(), expectedCaseVersion: state.caseVersion});
+    if (!libraryScopeCurrent(scope)) return;
+    if (result.artifact?.id) {state.artifacts = [result.artifact, ...state.artifacts]; showArtifact(result.artifact); state.caseMessage = 'artifactSavedOk';}
+  } catch (error) {if (libraryScopeCurrent(scope)) state.caseError = copy.en[error.message] ? error.message : 'errorArtifactInvalid';}
+  finally {if (libraryScopeCurrent(scope)) {state.libraryBusy = false; render();}}
+}
+async function generateFinalArtifact() {
+  if (state.libraryBusy || state.caseBusy || state.readinessBusy || !state.authenticated) return;
+  if (!state.caseId || caseFingerprint() !== state.savedFingerprint) await saveCurrentCase();
+  if (!state.caseId || caseFingerprint() !== state.savedFingerprint) return;
+  const scope = captureLibraryScope(); state.libraryBusy = true; state.caseError = ''; render();
+  try {
+    await loadReadiness();
+    if (!libraryScopeCurrent(scope)) return;
+    if (!state.readiness?.ready) {state.stage = 1; return;}
+    const result = await caseRequest(`/api/cases/${encodeURIComponent(scope.caseId)}/artifacts/generate`, 'POST',
+      {kind: state.kind, status: 'final', expectedCaseVersion: state.caseVersion});
+    if (!libraryScopeCurrent(scope)) return;
+    state.artifacts = [result.artifact, ...state.artifacts]; showArtifact(result.artifact); state.caseMessage = 'artifactSavedOk';
+    track('draft.generate', 'success');
+  } catch (error) {if (libraryScopeCurrent(scope)) state.caseError = copy.en[error.message] ? error.message : 'errorArtifactInvalid';}
+  finally {if (libraryScopeCurrent(scope)) {state.libraryBusy = false; render();}}
+}
+
 async function confirmReadiness() {
   if (!state.caseId || state.readinessBusy) return;
-  const changes = {};
+  const changes = {}, factChanges = {};
   document.querySelectorAll('[data-readiness]').forEach(el => {
-    const value = el.value.trim();
-    if (value) changes[el.dataset.readiness] = {value};
+    const key = el.dataset.readiness, value = el.value.trim();
+    state.readinessAnswers[key] = el.value;
+    if (value) (FIELDS.includes(key) ? factChanges : changes)[key] = {value};
   });
-  if (!Object.keys(changes).length) return;
-  state.readinessBusy = true; render();
+  if (!Object.keys(changes).length && !Object.keys(factChanges).length) return;
+  // Confirmation may archive/clear the legacy draft. Do not discard edits that
+  // were never saved, or overwrite edits made while the PATCH is in flight.
+  if (hasUnsavedChanges()) {state.caseError = 'errorReadinessUnsaved'; render(); return;}
+  const workspaceFingerprint = () => JSON.stringify({case: caseFingerprint(), artifactId: state.artifactId, artifactStatus: state.artifactStatus, draftText: state.draftText});
+  const submittedWorkspace = workspaceFingerprint(), submittedAnswers = {...state.readinessAnswers};
+  const scope = captureLibraryScope(); state.readinessBusy = true; render();
   try {
-    const result = await caseRequest(`/api/cases/${encodeURIComponent(state.caseId)}/document-context`, 'PATCH',
-      {changes, confirm: true, expectedVersion: state.caseVersion});
-    if (result.case && Number.isInteger(result.case.version)) state.caseVersion = result.case.version;
+    const result = await caseRequest(`/api/cases/${encodeURIComponent(scope.caseId)}/document-context`, 'PATCH',
+      {changes, ...(Object.keys(factChanges).length ? {factChanges} : {}), confirm: true, expectedVersion: state.caseVersion});
+    if (!libraryScopeCurrent(scope)) return;
+    if (workspaceFingerprint() !== submittedWorkspace) {
+      state.readinessAnswers = {...submittedAnswers, ...state.readinessAnswers};
+      state.caseError = 'errorReadinessChanged'; state.caseMessage = '';
+      return;
+    }
+    applyLoadedCase(result.case);
     state.readiness = result.readiness || null;
-    state.caseMessage = 'caseSaveSuccess';
-  } catch (error) {state.caseError = copy.en[error.message] ? error.message : 'errorDocDetails';}
-  finally {state.readinessBusy = false; render();}
+    state.caseMessage = result.archivedLegacyDraft ? 'artifactArchived' : 'caseSaveSuccess';
+    await loadCaseExtras();
+  } catch (error) {if (libraryScopeCurrent(scope)) state.caseError = copy.en[error.message] ? error.message : 'errorDocDetails';}
+  finally {if (libraryScopeCurrent(scope)) {state.readinessBusy = false; render();}}
+}
+function readinessMarkup() {
+  if (!state.caseId || !state.readiness) return '';
+  const d = t();
+  const missing = Array.isArray(state.readiness.missing) ? state.readiness.missing : [];
+  return missing.length ? `<div class="readiness"><p class="readiness-title">${d.readinessMissing}</p>${missing.map(item => `<label class="readiness-item"><span>${esc(item.question || item.key)}</span><input class="input" data-readiness="${esc(item.key)}" value="${esc(state.readinessAnswers[item.key] || '')}" placeholder="${d.readinessAnswer}" ${state.readinessBusy ? 'disabled' : ''}></label>`).join('')}<button id="readiness-confirm" class="secondary" ${state.readinessBusy ? 'disabled' : ''}>${d.readinessConfirmAll}</button></div>` : `<p class="small readiness-ready">${d.readinessReady}</p>`;
 }
 
 function agencyMarkup() {
@@ -647,9 +796,10 @@ function render() {
         <details class="help-details" id="sample-downloads"><summary>${d.sampleDownloads}</summary><div class="actions">${['txt', 'csv', 'pdf', 'xlsx', 'xls'].map(extension => `<a href="/samples/nestlet-synthetic-case.${extension}" download="nestlet-synthetic-case.${extension}">${extension.toUpperCase()}</a>`).join('')}</div><p>${d.sampleDownloadHint}</p><p>${d.sampleWorkbookHint}</p></details>
         ${state.workbook || state.source ? `<div class="document-name">${esc(state.workbook?.filename || state.source)}</div>` : ''}
         ${state.workbook ? workbookMarkup() : `
-        ${chatChips}<label class="sr-only" for="input">${d.input}</label><textarea class="input" id="input" maxlength="50000" placeholder="${d.pasteShort}" ${busy || state.chatBusy ? 'disabled' : ''}>${esc(state.text)}</textarea>
+        ${chatChips}<label class="sr-only" for="input">${d.input}</label><textarea class="input" id="input" maxlength="8000" placeholder="${d.pasteShort}" ${busy || state.chatBusy ? 'disabled' : ''}>${esc(state.chatInput)}</textarea>
+        <details class="help-details"><summary>${state.lang === 'zh' ? '案例材料（用于提取）' : 'Case source material (for extraction)'}</summary><textarea class="input" id="material-input" maxlength="50000" ${busy || state.chatBusy ? 'disabled' : ''}>${esc(state.text)}</textarea></details>
         <div class="input-meta"><details class="help-details"><summary>${d.inputHelp}</summary><p>${d.inputHint}</p><p>${state.pdfEnabled ? d.pdfHint : d.noPdfHint}</p><p>${state.workbookEnabled ? d.workbookHint : ''}</p><p>${d.localHint}</p><p class="label-list">Property: · Owner: · PHA: · Case reference: · Proposed rent:</p><p>${d.privacy}</p></details><span class="small char-count" id="char-count">${state.text.length.toLocaleString()} / 50,000</span></div>
-        <div class="actions"><button class="primary" id="chat-send" ${busy || state.chatBusy ? 'disabled' : ''}>${state.chatBusy ? d.chatStreaming : d.chatSend + ' →'}</button><button class="ghost" id="chat-image" ${busy || state.chatBusy ? 'disabled' : ''}>${d.chatAttachImage}</button><input type="file" id="image-file" accept="image/png,image/jpeg" multiple class="sr-only" ${busy || state.chatBusy ? 'disabled' : ''}><button class="secondary" id="live" ${busy || state.chatBusy ? 'disabled' : ''}>${d.nextReview}</button><button class="link" id="extract" ${busy || state.chatBusy ? 'disabled' : ''}>${d.manualAction}</button>${state.chatBusy ? `<button class="secondary" id="chat-stop">${d.chatStop}</button>` : ''}${busy ? `<button class="secondary" id="cancel">${d.cancel}</button>` : ''}<button class="link push-right" id="reset">${d.reset}</button></div>
+        <div class="actions"><button class="primary" id="chat-send" ${busy || state.chatBusy || state.chatImagePending ? 'disabled' : ''}>${state.chatBusy ? d.chatStreaming : d.chatSend + ' →'}</button><button class="ghost" id="chat-image" ${busy || state.chatBusy ? 'disabled' : ''}>${d.chatAttachImage}</button><input type="file" id="image-file" accept="image/png,image/jpeg" multiple class="sr-only" ${busy || state.chatBusy ? 'disabled' : ''}><button class="secondary" id="live" ${busy || state.chatBusy ? 'disabled' : ''}>${d.nextReview}</button><button class="link" id="extract" ${busy || state.chatBusy ? 'disabled' : ''}>${d.manualAction}</button>${state.chatBusy ? `<button class="secondary" id="chat-stop">${d.chatStop}</button>` : ''}${busy ? `<button class="secondary" id="cancel">${d.cancel}</button>` : ''}<button class="link push-right" id="reset">${d.reset}</button></div>
         `}
         <div class="error" role="alert">${state.error ? d[state.error] || d.errorGeneric : ''}</div><div class="success" role="status">${busy ? d.busy : ['loaded', 'cancelled'].includes(state.message) ? d[state.message] : ''}</div>
       </section>
@@ -662,12 +812,11 @@ function render() {
         ${agencyMarkup()}
         ${nameFields().length ? `<label class="confirm name-preflight"><input type="checkbox" id="names-verified" ${state.namesVerified ? 'checked' : ''} ${busy ? 'disabled' : ''}>${d.nameReview}</label>` : ''}
         <div class="draft-choice"><label for="draft-type">${d.draftTypeShort}</label><select id="draft-type" ${busy ? 'disabled' : ''}>${kinds.map((kind, index) => `<option value="${kind}" ${state.kind === kind ? 'selected' : ''}>${d.types[index]}</option>`).join('')}</select></div>
-        ${state.caseId && state.readiness ? (Array.isArray(state.readiness.missing) && state.readiness.missing.length ? `<div class="readiness"><p class="readiness-title">${d.readinessMissing}</p>${state.readiness.missing.map(m => `<label class="readiness-item"><span>${esc(m.question || m.key)}</span><input class="input" data-readiness="${esc(m.key)}" placeholder="${d.readinessAnswer}" ${state.readinessBusy ? 'disabled' : ''}></label>`).join('')}<button id="readiness-confirm" class="secondary" ${state.readinessBusy ? 'disabled' : ''}>${d.readinessConfirmAll}</button></div>` : `<p class="small readiness-ready">${d.readinessReady}</p>`) : ''}
-        <div class="actions"><button id="generate" class="primary" ${canDraft(fields) && !needsEnglish && !busy ? '' : 'disabled'}>${d.generate} →</button><button id="csv" class="link">${d.csv}</button><button id="review-back" class="link push-right">${d.backInput}</button></div>
+        <div class="actions"><button id="generate" class="primary" ${state.authenticated && !busy && !state.caseBusy && !state.libraryBusy ? '' : 'disabled'}>${d.generateFinal} →</button><button id="csv" class="link">${d.csv}</button><button id="review-back" class="link push-right">${d.backInput}</button></div>
         ${needsEnglish || !canDraft(fields) ? `<p class="small gate">${needsEnglish ? d.englishRequired : d.gateShort}</p>` : ''}
       </section>
     </main>
-    ${state.generated ? `<section class="panel draft-panel" id="draft-panel" ${stage !== 2 ? 'hidden' : ''}><div class="panel-top"><h2>${d.types[kinds.indexOf(state.generatedKind)]}</h2><span class="draft-tag">ENGLISH · DRAFT</span></div><p class="caption">${d.draftShort}</p><label for="draft" class="sr-only">English draft</label><textarea id="draft" class="input draft" lang="en" spellcheck="true">${esc(state.draftText)}</textarea><div class="print-text" hidden lang="en">${esc(exportDraft())}</div><div class="actions"><button id="copy" class="primary" ${draftNeedsEnglish() ? 'disabled' : ''}>${d.copy}</button><button id="download" class="secondary" ${draftNeedsEnglish() ? 'disabled' : ''}>${d.download}</button><button id="print" class="ghost" ${draftNeedsEnglish() ? 'disabled' : ''}>${d.print}</button>${state.caseId ? `<button id="save-artifact" class="secondary" ${draftNeedsEnglish() ? 'disabled' : ''}>${d.artifactSave}</button>` : ''}<button id="draft-back" class="link push-right">${d.backReview}</button></div><p class="error" id="draft-language-error" role="status">${draftNeedsEnglish() ? d.draftEnglishRequired : ''}</p><div class="success" role="status">${['copied', 'copyFail'].includes(state.message) ? d[state.message] : ''}</div></section>` : ''}
+    ${state.generated ? `<section class="panel draft-panel" id="draft-panel" ${stage !== 2 ? 'hidden' : ''}><div class="panel-top"><h2>${d.types[kinds.indexOf(state.generatedKind)]}</h2><span class="draft-tag">ENGLISH · ${state.artifactStatus === 'final' ? 'FINAL' : 'DRAFT'}</span></div><p class="caption">${state.artifactIsStale ? d.artifactHistory : state.artifactStatus === 'final' ? 'Supplementary correspondence; not an official agency form.' : d.draftShort}</p><label for="draft" class="sr-only">English draft</label><textarea id="draft" class="input draft" lang="en" spellcheck="true">${esc(state.draftText)}</textarea><div class="print-text" hidden lang="en">${esc(exportDraft())}</div><div class="actions"><button id="copy" class="primary" ${draftNeedsEnglish() ? 'disabled' : ''}>${d.copy}</button><button id="download" class="secondary" ${draftNeedsEnglish() ? 'disabled' : ''}>${d.download}</button><button id="print" class="ghost" ${draftNeedsEnglish() ? 'disabled' : ''}>${d.print}</button>${state.caseId ? `<button id="save-artifact" class="secondary" ${draftNeedsEnglish() ? 'disabled' : ''}>${d.artifactSave}</button>` : ''}<button id="draft-back" class="link push-right">${d.backReview}</button></div><p class="error" id="draft-language-error" role="status">${draftNeedsEnglish() ? d.draftEnglishRequired : ''}</p><div class="success" role="status">${['copied', 'copyFail'].includes(state.message) ? d[state.message] : ''}</div></section>` : ''}
     <footer><span>${d.footerShort}</span><a href="https://www.hud.gov/helping-americans/housing-choice-vouchers-tenants" target="_blank" rel="noreferrer">${d.reference} ↗</a></footer>
   </div>`;
   bind();
@@ -678,6 +827,7 @@ function render() {
 }
 
 function clearReview() {
+  state.artifactId = null; state.artifactStatus = 'draft'; state.artifactIsStale = false; state.artifactSavedContent = ''; state.legacyDraftText = ''; state.documentContext = {}; state.caseIssues = []; state.readinessAnswers = {}; state.libraryBusy = false; state.readinessBusy = false;
   state.fields = [];
   state.namesVerified = false;
   state.draftText = '';
@@ -693,6 +843,7 @@ function cancelProcessing() {
   state.busy = false;
 }
 function replaceText(text, source = '', sample = false) {
+  resetChat();
   state.caseEpoch++;
   state.stage = 0;
   state.chatMessages = [];
@@ -707,15 +858,9 @@ function replaceText(text, source = '', sample = false) {
   state.sample = sample;
 }
 function exportDraft() {
-  if (draftNeedsEnglish()) return 'DRAFT EXPORT UNAVAILABLE\nVerify English renderings of the CJK text before exporting this document.';
-  const notices = [
-    'DRAFT — FOR HUMAN REVIEW',
-    'DE-IDENTIFIED WORKING COPY — NOT FOR SUBMISSION',
-    'Operator-prepared supplementary document; not an official government form'
-  ];
-  // Export notices are immutable even if the editable body is cleared or changed.
-  const body = state.draftText.split('\n').filter(line => !notices.includes(line) && line !== 'Supplementary correspondence; not an official government form').join('\n').trimStart();
-  return notices.join('\n') + '\n\n' + body;
+  if (draftNeedsEnglish()) return 'EXPORT UNAVAILABLE\nVerify the document language before exporting.';
+  if (state.artifactStatus === 'final') return state.draftText;
+  return /^DRAFT[ —-]/u.test(state.draftText) ? state.draftText : 'DRAFT — FOR HUMAN REVIEW\n\n' + state.draftText;
 }
 
 function download(content, name, type) {
@@ -822,140 +967,139 @@ async function extractLive() {
 }
 
 
-/** Chat composer helpers — docs/chat-api.md v1. Real SSE only: no simulated
-    streaming, no reasoning fabrication. Partial replies stay marked incomplete. */
-function buildChatPayloadMessages() {
-  if (state.conversationId) {
-    const last = [...state.chatMessages].reverse().find(m => m.role === 'user' && !m.streaming);
-    return last ? [{role: 'user', content: last.content, ...(last.images && last.images.length ? {images: last.images.map(img => ({mimeType: img.mimeType, data: img.data}))} : {})}] : [];
-  }
-  const messages = state.chatMessages.filter(m => !m.streaming && !m.incomplete && typeof m.content === 'string');
-  const kept = [];
-  let total = 0;
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const m = messages[i];
-    const next = total + m.content.length;
-    if (kept.length && (kept.length >= 11 || next > 24000)) break;
-    kept.unshift(m);
-    total = next;
-  }
-  return kept.map(m => ({role: m.role, content: m.content, ...(m.images && m.images.length ? {images: m.images.map(img => ({mimeType: img.mimeType, data: img.data}))} : {})}));
+/** Isolated chat lifecycle. Source material and reviewed case state are never composer state. */
+function revokeChatImages(images = []) { for (const image of images) if (image.preview) URL.revokeObjectURL(image.preview); }
+function resetChat() {
+  state.chatEpoch = (state.chatEpoch || 0) + 1;
+  chatController?.abort(); chatController = null;
+  revokeChatImages(state.chatImages);
+  for (const message of state.chatMessages) revokeChatImages(message.images);
+  state.chatImages = []; state.chatMessages = []; state.chatInput = ''; state.chatBusy = false; state.chatImagePending = 0;
+  state.chatError = ''; state.chatIncomplete = false; state.conversationId = ''; chatStopRequested = false;
 }
-
+function chatScope() { return {userId:state.userId,caseEpoch:state.caseEpoch,caseId:state.caseId,conversationId:state.conversationId,epoch:state.chatEpoch}; }
+function sameChat(scope) { return state.authenticated && scope.userId === state.userId && scope.caseEpoch === state.caseEpoch && scope.caseId === state.caseId && scope.conversationId === state.conversationId && scope.epoch === state.chatEpoch; }
+function requireChatScope(scope) { if (!sameChat(scope)) throw new DOMException('Chat context changed','AbortError'); }
+async function chatJson(path, method, body, scope, signal) {
+  requireChatScope(scope);
+  const response = await fetch(path,{method,cache:'no-store',headers:requestHeaders({...telemetryHeaders(),...(body ? {'Content-Type':'application/json'} : {})}),...(body ? {body:JSON.stringify(body)} : {}),signal:AbortSignal.any([signal || new AbortController().signal,AbortSignal.timeout(15000)])});
+  requireChatScope(scope);
+  const result = await response.json(); requireChatScope(scope); noteBusinessResponse(response);
+  if (!response.ok) throw responseError(result,'errorChat');
+  return result;
+}
+function storedChatMessages(messages) {
+  return messages.map(message => ({role:message.role,content:message.content,serverId:message.id,clientMessageId:message.clientMessageId,incomplete:message.state !== 'complete',imageMetadata:message.imageMetadata || []}));
+}
 async function addChatImages(files) {
-  let changed = false;
+  if (!files.length) return;
+  if (!state.authenticated) {state.settingsOpen=true; state.settingsError='errorAuth'; render(); return;}
+  const scope = chatScope(); state.chatImagePending++; render();
+  try {
   for (const file of files) {
+    if (!sameChat(scope) || state.chatBusy) return;
     if (state.chatImages.length >= 2) {state.chatError = 'chatImageBad'; break;}
     if (!/^image\/(png|jpeg)$/i.test(file.type) || file.size > 2097152) {state.chatError = 'chatImageBad'; continue;}
     try {
-      const buffer = await file.arrayBuffer();
+      const buffer = await file.arrayBuffer(); requireChatScope(scope);
       const bitmap = await createImageBitmap(new Blob([buffer]));
-      const tooBig = bitmap.width > 8192 || bitmap.height > 8192;
-      bitmap.close();
-      if (tooBig) {state.chatError = 'chatImageBad'; continue;}
-      const bytes = new Uint8Array(buffer);
-      let binary = '';
-      for (let i = 0; i < bytes.length; i += 8192) binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
-      state.chatImages.push({mimeType: file.type.toLowerCase() === 'image/jpg' ? 'image/jpeg' : file.type.toLowerCase(), data: btoa(binary), preview: URL.createObjectURL(file)});
-      state.chatError = '';
-      changed = true;
-    } catch {state.chatError = 'chatImageBad';}
+      const tooBig = !bitmap.width || !bitmap.height || bitmap.width > 8192 || bitmap.height > 8192;
+      bitmap.close(); requireChatScope(scope);
+      if (state.chatBusy) return;
+      if (tooBig || state.chatImages.length >= 2) {state.chatError = 'chatImageBad'; continue;}
+      const bytes = new Uint8Array(buffer); let binary = '';
+      for (let i=0;i<bytes.length;i+=8192) binary += String.fromCharCode(...bytes.subarray(i,i+8192));
+      const preview = URL.createObjectURL(file);
+      if (!sameChat(scope)) {URL.revokeObjectURL(preview); return;}
+      state.chatImages.push({mimeType:file.type.toLowerCase(),data:btoa(binary),preview}); state.chatError = '';
+    } catch (error) {if (!sameChat(scope)) return; state.chatError = 'chatImageBad';}
   }
-  if (changed || state.chatError) render();
+  } finally {if (sameChat(scope)) {state.chatImagePending=Math.max(0,state.chatImagePending-1); render();}}
 }
-
 async function sendChat(retry = false) {
-  if (state.chatBusy) return;
-  if (!retry) {
-    const text = state.text.trim();
-    if (!text && !state.chatImages.length) {state.chatError = 'errorEmpty'; render(); return;}
-    if (text.length > 8000) {state.chatError = 'chatTooLong'; render(); return;}
-    if (!state.authenticated) {state.settingsOpen = true; state.settingsError = 'errorAuth'; render(); return;}
-    if (!state.liveEnabled) {state.chatError = state.statusError ? 'errorBackend' : 'errorConfig'; state.settingsOpen = true; render(); return;}
-    if (!confirm(t().chatConsent)) return;
-    if (state.caseId && !state.conversationId) {
-      try {
-        const conv = await caseRequest(`/api/cases/${encodeURIComponent(state.caseId)}/conversations`, 'POST', {title: (text || t().chatImageOnly).slice(0, 30)});
-        if (conv.conversation?.id) {
-          state.conversationId = conv.conversation.id;
-          state.conversations = [conv.conversation, ...state.conversations];
-        }
-      } catch { /* fall back to transient chat */ }
-    }
-    state.chatMessages.push({role: 'user', content: text || t().chatImageOnly, images: state.chatImages});
-    state.chatImages = [];
-  } else {
-    const last = state.chatMessages[state.chatMessages.length - 1];
-    if (last && last.role === 'assistant') state.chatMessages.pop();
-    if (!state.chatMessages.length || state.chatMessages[state.chatMessages.length - 1].role !== 'user') return;
-  }
-  state.chatBusy = true;
-  state.chatError = '';
-  chatStopRequested = false;
-  state.chatMessages.push({role: 'assistant', content: '', streaming: true, incomplete: false});
-  render();
-  byId('chat-thread')?.scrollIntoView({behavior: 'smooth', block: 'end'});
-  chatController = new AbortController();
-  const assistant = state.chatMessages[state.chatMessages.length - 1];
+  if (state.chatBusy || state.caseBusy || state.busy || state.chatImagePending) return;
+  if (!state.authenticated) {state.settingsOpen=true; state.settingsError='errorAuth'; render(); return;}
+  if (!state.liveEnabled) {state.chatError=state.statusError?'errorBackend':'errorConfig'; state.settingsOpen=true; render(); return;}
+  const prior = retry ? [...state.chatMessages].reverse().find(message=>message.role==='user') : null;
+  const text = retry ? prior?.content || '' : state.chatInput.trim();
+  const images = retry ? prior?.images || [] : state.chatImages;
+  if ((!text && !images.length) || text.length>8000) {state.chatError=text.length>8000?'chatTooLong':'errorEmpty'; render(); return;}
+  if (retry && prior?.imageMetadata?.length && !images.length) {state.chatError='chatImageBad'; render(); return;}
+  if (!confirm(t().chatConsent)) return;
+  const scope=chatScope(), controller=new AbortController(); chatController=controller; chatStopRequested=false;
+  state.chatBusy=true; state.chatError=''; render();
+  let assistant=null, userMessage=null, completed=false;
   try {
-    const response = await fetch('/api/chat', {
-      method: 'POST',
-      headers: requestHeaders({...telemetryHeaders(), 'Content-Type': 'application/json'}),
-      body: JSON.stringify({locale: state.lang, consent: true, messages: buildChatPayloadMessages(), ...(state.caseId ? {caseId: state.caseId} : {}), ...(state.conversationId ? {conversationId: state.conversationId, clientMessageId: crypto.randomUUID()} : {})}),
-      signal: chatController.signal
-    });
-    noteBusinessResponse(response);
-    if (!response.ok) {
-      const result = await response.json().catch(() => ({}));
-      throw responseError(result, 'errorChat');
+    if (!state.caseId || hasUnsavedChanges()) {
+      const before=caseFingerprint(), existingId=state.caseId;
+      const payload={...casePayload(),title:state.caseTitle.trim() || t().untitledCase,clientId:state.customerId || null};
+      const result=await chatJson(existingId ? `/api/cases/${encodeURIComponent(existingId)}` : '/api/cases',existingId ? 'PUT' : 'POST',{...payload,...(existingId ? {expectedVersion:state.caseVersion} : {})},scope,controller.signal);
+      if (!validCaseRecord(result.case)) throw new Error('errorCaseStorage');
+      if (before!==caseFingerprint()) throw new Error('errorCaseChanged');
+      state.caseId=result.case.id; scope.caseId=result.case.id; state.caseVersion=result.case.version;
+      state.caseTitle=result.case.title; state.savedFingerprint=caseFingerprint(); state.selectedCaseId=result.case.id;
+      state.cases=[result.case,...state.cases.filter(item=>item.id!==result.case.id)];
     }
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-    let finished = false;
+    if (!state.conversationId) {
+      const result=await chatJson(`/api/cases/${encodeURIComponent(state.caseId)}/conversations`,'POST',{title:(text || t().chatImageOnly).slice(0,120)},scope,controller.signal);
+      if (!result.conversation?.id || result.conversation.caseId!==scope.caseId) throw new Error('errorConversationInvalid');
+      state.conversationId=result.conversation.id; scope.conversationId=result.conversation.id;
+      state.conversations=[result.conversation,...state.conversations];
+    }
+    requireChatScope(scope);
+    userMessage={role:'user',content:text,images,clientMessageId:crypto.randomUUID()};
+    state.chatMessages.push(userMessage); state.chatImages=[]; state.chatInput='';
+    assistant={role:'assistant',content:'',streaming:true,incomplete:true}; state.chatMessages.push(assistant); render();
+    const response=await fetch('/api/chat',{method:'POST',headers:requestHeaders({...telemetryHeaders(),'Content-Type':'application/json'}),signal:controller.signal,
+      body:JSON.stringify({locale:state.lang,consent:true,caseId:scope.caseId,conversationId:scope.conversationId,clientMessageId:userMessage.clientMessageId,messages:[{role:'user',content:text,...(images.length?{images:images.map(image=>({mimeType:image.mimeType,data:image.data}))}:{})}]})});
+    requireChatScope(scope); noteBusinessResponse(response);
+    if (!response.ok) {const result=await response.json(); requireChatScope(scope); throw responseError(result,'errorChat');}
+    if (!response.body || !(response.headers.get('content-type') || '').includes('text/event-stream')) throw new Error('errorChat');
+    const reader=response.body.getReader(), decoder=new TextDecoder(); let buffer='';
     for (;;) {
-      const {done, value} = await reader.read();
+      const {done,value}=await reader.read(); requireChatScope(scope);
       if (done) break;
-      buffer += decoder.decode(value, {stream: true});
-      let cut;
-      while ((cut = buffer.indexOf('\n\n')) >= 0) {
-        const frame = buffer.slice(0, cut);
-        buffer = buffer.slice(cut + 2);
-        const eventName = frame.match(/^event: (.+)$/m)?.[1];
-        const dataText = frame.match(/^data: (.*)$/m)?.[1];
+      buffer+=decoder.decode(value,{stream:true}); let match;
+      while ((match=/\r?\n\r?\n/.exec(buffer))) {
+        const frame=buffer.slice(0,match.index); buffer=buffer.slice(match.index+match[0].length);
+        const eventName=frame.match(/^event: ?(.+)$/m)?.[1];
+        const dataText=frame.split(/\r?\n/).filter(line=>line.startsWith('data:')).map(line=>line.slice(5).trimStart()).join('\n');
         if (!eventName || !dataText) continue;
-        let data;
-        try { data = JSON.parse(dataText); } catch { continue; }
-        if (eventName === 'delta' && typeof data.text === 'string') {
-          assistant.content += data.text;
-          const el = byId('chat-streaming');
-          if (el) el.firstChild ? el.childNodes[0].textContent = assistant.content : el.textContent = assistant.content;
-        } else if (eventName === 'done') {
-          finished = true;
-          if (typeof data.assistantMessageId === 'string') assistant.serverId = data.assistantMessageId;
-        } else if (eventName === 'conversation') {
-          if (typeof data.conversationId === 'string' && !state.conversationId) state.conversationId = data.conversationId;
-        } else if (eventName === 'error') {
-          throw new Error('errorChat');
-        }
+        let data; try {data=JSON.parse(dataText);} catch {throw new Error('chatIncomplete');}
+        requireChatScope(scope);
+        if (eventName==='delta' && typeof data.text==='string') {
+          assistant.content+=data.text;
+          if (assistant.content.length>64000) {controller.abort(); throw new Error('chatTooLong');}
+          const element=byId('chat-streaming'); if (element) element.textContent=assistant.content;
+        } else if (eventName==='done') {completed=true; assistant.incomplete=false; assistant.serverId=data.assistantMessageId;}
+        else if (eventName==='conversation' && data.conversationId!==scope.conversationId) throw new Error('errorConversationInvalid');
+        else if (eventName==='error') throw responseError(data,'chatIncomplete');
       }
+      if (buffer.length>100000) throw new Error('chatIncomplete');
     }
-    if (!finished && !chatStopRequested) assistant.incomplete = true;
-    if (chatStopRequested && !assistant.content) state.chatMessages.pop();
-    else if (chatStopRequested) assistant.incomplete = true;
+    if (!completed) throw new Error('chatIncomplete');
   } catch (error) {
-    if (error?.name === 'AbortError' || chatStopRequested) {
-      if (!assistant.content) state.chatMessages.pop();
-      else assistant.incomplete = true;
-    } else {
-      state.chatMessages.pop();
-      state.chatError = copy.en[error?.message] ? error.message : 'errorChat';
-    }
+    if (!sameChat(scope)) return;
+    if (assistant) assistant.incomplete=!completed;
+    state.chatError=error?.name==='AbortError'||chatStopRequested?'chatIncomplete':copy.en[error?.message]?error.message:'errorChat';
+    if (!userMessage) state.chatInput=text;
   } finally {
-    for (const m of state.chatMessages) delete m.streaming;
-    state.chatBusy = false;
-    chatController = null;
-    render();
+    if (sameChat(scope)) {
+      if (assistant) delete assistant.streaming;
+      // Refresh durable state after errors too. Keep a local partial until the server has retained it.
+      if (userMessage && scope.conversationId) try {
+        const refresh=new AbortController(); chatController=refresh;
+        const result=await chatJson(`/api/conversations/${encodeURIComponent(scope.conversationId)}`,'GET',undefined,scope,refresh.signal);
+        if (!Array.isArray(result.messages)) throw new Error('errorChat');
+        const stored=storedChatMessages(result.messages);
+        if (stored.some(message=>message.clientMessageId===userMessage.clientMessageId)) {
+          for (const message of state.chatMessages) revokeChatImages(message.images);
+          if (assistant?.content && !stored.some(message=>message.role==='assistant' && message.content===assistant.content)) stored.push({...assistant,incomplete:true});
+          state.chatMessages=stored;
+        }
+      } catch {}
+      if (sameChat(scope)) {state.chatBusy=false; chatController=null; render();}
+    }
   }
 }
 
@@ -1009,17 +1153,18 @@ function bind() {
   });
   on('test-connection', 'click', () => settingsRequest('/api/settings/test', {}, 'connectionSuccess'));
   on('logout', 'click', () => {
-    if ((state.text || state.generated) && !confirm(t().logoutConfirm)) return;
-    cancelProcessing();
+    if ((state.text || state.generated || state.chatInput || state.chatMessages.length || state.chatImages.length) && !confirm(t().logoutConfirm)) return;
+    resetChat(); resetLibraryState(); cancelProcessing();
     settingsRequest('/api/logout', {}, 'logoutSuccess');
   });
   on('language', 'click', () => {state.lang = state.lang === 'zh' ? 'en' : 'zh'; render();});
   on('reset', 'click', () => {
-    if ((state.text || state.fields.length || state.busy) && !confirm(t().resetAsk)) return;
+    if ((state.text || state.fields.length || state.busy || state.chatInput || state.chatMessages.length || state.chatImages.length) && !confirm(t().resetAsk)) return;
     replaceText(''); forgetCaseIdentity(); state.kind = 'followup'; resetTelemetry(); render(); byId('input').focus();
   });
   on('cancel', 'click', () => {cancelProcessing(); state.message = 'cancelled'; render();});
-  on('input', 'input', event => {
+  on('input', 'input', event => {state.chatInput = event.target.value;});
+  on('material-input', 'input', event => {
     state.text = event.target.value;
     const wasSample = state.sample;
     state.sample = false;
@@ -1060,9 +1205,13 @@ function bind() {
   on('customer-create', 'click', createCustomer);
   on('customer-query', 'input', event => {state.customerQuery = event.target.value;});
   on('customer-query', 'change', () => loadCustomers(state.customerQuery.trim()).then(render));
-  document.querySelectorAll('[data-customer]').forEach(button => button.addEventListener('click', () => {state.customerId = button.dataset.customer; state.customerQuery = button.dataset.name; render();}));
+  document.querySelectorAll('[data-customer]').forEach(button => button.addEventListener('click', () => selectCustomer(button.dataset.customer, button.dataset.name)));
+  document.querySelectorAll('[data-case-open]').forEach(button => button.addEventListener('click', () => {state.selectedCaseId = button.dataset.caseOpen; openSavedCase();}));
+  document.querySelectorAll('[data-artifact-open]').forEach(button => button.addEventListener('click', () => openArtifact(button.dataset.artifactOpen)));
+  document.querySelectorAll('[data-artifact-download]').forEach(button => button.addEventListener('click', () => downloadArtifact(button.dataset.artifactDownload)));
+  document.querySelectorAll('[data-readiness]').forEach(input => input.addEventListener('input', () => {state.readinessAnswers[input.dataset.readiness] = input.value;}));
   on('conversation-select', 'change', event => selectConversation(event.target.value));
-  on('conversation-new', 'click', () => {state.conversationId = ''; state.chatMessages = []; render();});
+  on('conversation-new', 'click', () => {resetChat(); render();});
   on('save-artifact', 'click', saveArtifact);
   on('readiness-confirm', 'click', confirmReadiness);
   on('chat-send', 'click', () => sendChat(false));
@@ -1070,10 +1219,10 @@ function bind() {
   on('chat-stop', 'click', () => {chatStopRequested = true; chatController?.abort();});
   on('chat-image', 'click', () => byId('image-file')?.click());
   on('image-file', 'change', event => addChatImages([...event.target.files]));
-  document.querySelectorAll('[data-chip]').forEach(button => button.addEventListener('click', () => {state.chatImages.splice(Number(button.dataset.chip), 1); render();}));
+  document.querySelectorAll('[data-chip]').forEach(button => button.addEventListener('click', () => {revokeChatImages(state.chatImages.splice(Number(button.dataset.chip), 1)); render();}));
   on('input', 'paste', event => {
     const images = [...(event.clipboardData?.files || [])].filter(file => /^image\/(png|jpeg)$/i.test(file.type));
-    if (images.length) addChatImages(images);
+    if (images.length) {event.preventDefault(); const text=event.clipboardData?.getData('text/plain') || ''; if (text) {state.chatInput=(state.chatInput+text).slice(0,8000); event.target.value=state.chatInput;} addChatImages(images);}
   });
   const inputPanel = byId('input-panel');
   if (inputPanel) {
@@ -1106,19 +1255,13 @@ function bind() {
     render();
   }));
   on('names-verified', 'change', event => {state.namesVerified = event.target.checked; state.draftText = ''; state.generated = false; render();});
-  on('draft-type', 'change', event => {state.kind = event.target.value; updateCaseIndicator();});
-  on('generate', 'click', () => {
-    if (!canDraft(state.fields) || fieldsNeedEnglish()) return;
-    state.draftText = draft(state.fields, state.kind).split('\n').filter(line => !['DRAFT — FOR HUMAN REVIEW', 'DE-IDENTIFIED WORKING COPY — NOT FOR SUBMISSION', 'Operator-prepared supplementary document; not an official government form', 'Supplementary correspondence; not an official government form'].includes(line)).join('\n').trimStart();
-    state.generatedKind = state.kind;
-    state.generated = true; state.stage = 2; state.message = ''; draftEditTracked = false; track('draft.generate', 'success'); render();
-    byId('draft-panel').scrollIntoView({behavior: 'smooth', block: 'start'});
-    byId('draft').focus({preventScroll: true});
-  });
+  on('draft-type', 'change', event => {state.kind = event.target.value; state.readinessAnswers = {}; loadReadiness().then(render); updateCaseIndicator();});
+  on('generate', 'click', generateFinalArtifact);
+  on('generate-final', 'click', generateFinalArtifact);
   on('csv', 'click', () => download(exportCSV(state.fields, {includeNotice: true}), 'nestlet-case-DRAFT.csv', 'text/csv;charset=utf-8'));
-  on('draft', 'input', event => {if (!draftEditTracked) {draftEditTracked = true; track('draft.edit', 'success');} state.draftText = event.target.value; state.message = ''; document.querySelector('.print-text').textContent = exportDraft(); document.querySelector('#draft-panel .success').textContent = ''; const blocked = draftNeedsEnglish(); ['copy', 'download', 'print'].forEach(id => byId(id).disabled = blocked); byId('draft-language-error').textContent = blocked ? t().draftEnglishRequired : ''; updateCaseIndicator();});
-  on('download', 'click', () => {download(exportDraft(), `nestlet-${state.generatedKind}-DRAFT.txt`, 'text/plain;charset=utf-8'); track('export.download', 'success');});
-  on('print', 'click', () => {window.print(); track('export.print', 'success');});
+  on('draft', 'input', event => {if (!draftEditTracked) {draftEditTracked = true; track('draft.edit', 'success');} state.draftText = event.target.value; state.artifactStatus = 'draft'; state.artifactIsStale = false; state.message = ''; document.querySelector('#draft-panel .draft-tag').textContent = 'ENGLISH · DRAFT'; document.querySelector('.print-text').textContent = exportDraft(); document.querySelector('#draft-panel .success').textContent = ''; const blocked = draftNeedsEnglish(); ['copy', 'download', 'print'].forEach(id => byId(id).disabled = blocked); byId('draft-language-error').textContent = blocked ? t().draftEnglishRequired : ''; updateCaseIndicator();});
+  on('download', 'click', () => {if (state.artifactId && state.draftText === state.artifactSavedContent) {downloadArtifact(state.artifactId); return;} download(exportDraft(), `nestlet-${state.generatedKind}-${state.artifactStatus}.txt`, 'text/plain;charset=utf-8'); track('export.download', 'success');});
+  on('print', 'click', () => {if (state.artifactIsStale && state.artifactStatus === 'final') {state.caseError = 'errorArtifactStale'; render(); return;} window.print(); track('export.print', 'success');});
   on('copy', 'click', async () => {
     try {await navigator.clipboard.writeText(exportDraft()); state.message = 'copied'; track('export.copy', 'success');}
     catch {state.message = 'copyFail'; track('export.copy', 'failure', {errorCode: 'CLIPBOARD_FAILED'});}
@@ -1132,4 +1275,4 @@ refreshStatus();
 window.addEventListener('beforeprint', () => {document.title = `Nestlet - ${copy.en.types[kinds.indexOf(state.generatedKind)]} - DRAFT`;});
 window.addEventListener('afterprint', () => {document.title = 'Nestlet · 巢小秘';});
 
-window.addEventListener('beforeunload', event => {if (hasUnsavedChanges()) {event.preventDefault(); event.returnValue = '';}});
+window.addEventListener('beforeunload', event => {if (hasUnsavedChanges() || state.chatInput || state.chatImages.length || state.chatBusy) {event.preventDefault(); event.returnValue = '';}});

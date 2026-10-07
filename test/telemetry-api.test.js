@@ -248,3 +248,27 @@ test('actual no-key chat telemetry binds only its own case and records failure w
   for (const sentinel of ['CHAT_PRIVATE_CASE_TITLE', 'CHAT_PRIVATE_MESSAGE_SENTINEL', 'PRIVATE_SYNTHETIC_DOCUMENT_SENTINEL']) assert.ok(!JSON.stringify(page).includes(sentinel));
   assert.equal((await site.request(`/api/cases/${record.id}/events`, { session: site.sessions['telemetry-b'] })).status, 404);
 });
+
+test('first-action real case/chat requests adopt server-created workflow headers and keep case/request associations without a setup roundtrip', async t => {
+  const site = await app(t), session = site.sessions['telemetry-a'];
+  const created = await site.request('/api/cases', { method: 'POST', session, body: payload('FIRST_ACTION_PRIVATE_SENTINEL') });
+  assert.equal(created.status, 201);
+  const workflowId = created.headers.get('x-workflow-id'); assert.match(workflowId, uuid);
+  const firstRequest = created.headers.get('x-request-id'); assert.match(firstRequest, uuid);
+  assert.equal(created.headers.get('x-telemetry-status'), 'active');
+  const record = (await created.json()).case;
+  const conversation = await site.request(`/api/cases/${record.id}/conversations`, { method: 'POST', session, extra: { 'X-Workflow-Id': workflowId }, body: { title: 'Private first conversation' } });
+  assert.equal(conversation.status, 201);
+  const thread = (await conversation.json()).conversation;
+  const chat = await site.request('/api/chat', { method: 'POST', session, extra: { 'X-Workflow-Id': workflowId }, body: { caseId: record.id, conversationId: thread.id, clientMessageId: randomUUID(), locale: 'en', consent: true, messages: [{ role: 'user', content: 'FIRST_ACTION_MESSAGE_SENTINEL' }] } });
+  assert.equal(chat.status, 503); assert.equal((await chat.json()).code, 'LIVE_DISABLED');
+  assert.equal(chat.headers.get('x-workflow-id'), workflowId);
+  const chatRequest = chat.headers.get('x-request-id'); assert.match(chatRequest, uuid); assert.notEqual(chatRequest, firstRequest);
+  const page = await (await site.request(`/api/workflows/${workflowId}/events`, { session })).json();
+  const initial = page.events.find(item => item.requestId === firstRequest), subsequent = page.events.find(item => item.requestId === chatRequest);
+  assert.equal(initial.event, 'request.case_create'); assert.equal(subsequent.event, 'request.chat');
+  for (const event of [initial, subsequent]) { assert.equal(event.caseId, record.id); assert.equal(event.workflowId, workflowId); }
+  assert.equal(subsequent.outcome, 'failure');
+  for (const marker of ['FIRST_ACTION_PRIVATE_SENTINEL', 'FIRST_ACTION_MESSAGE_SENTINEL', 'Private first conversation']) assert.ok(!JSON.stringify(page).includes(marker));
+  assert.equal((await site.request(`/api/workflows/${workflowId}/events`, { session: site.sessions['telemetry-b'] })).status, 404);
+});
