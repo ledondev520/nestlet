@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test('built JavaScript preview keeps Kimi tokens, bilingual text and escaped input', async ({ page }) => {
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
-  await page.goto('/next/');
+  await page.goto('/next/#components');
   await expect(page.getByLabel('组件测试名称')).toBeVisible();
   const palette = await page.evaluate(() => ({
     paper: getComputedStyle(document.documentElement).getPropertyValue('--paper').trim(),
@@ -22,7 +22,7 @@ test('real shadcn dialog traps focus, closes with Escape and returns focus under
     window.__cspViolations = [];
     document.addEventListener('securitypolicyviolation', event => window.__cspViolations.push(event.violatedDirective));
   });
-  await page.goto('/next/');
+  await page.goto('/next/#components');
   const trigger = page.getByRole('button', { name: '检查对话框' });
   await trigger.click();
   const dialog = page.getByRole('dialog');

@@ -8,7 +8,7 @@ const identity={userId:randomUUID(),authenticated:true,role:'trial',csrfToken:'p
 const response=(body,status=200,headers={})=>new Response(JSON.stringify(body),{status,headers:{'Content-Type':'application/json',...headers}});
 const deferred=()=>{let resolve;const promise=new Promise(done=>resolve=done);return{promise,resolve};};
 const tick=()=>new Promise(resolve=>setTimeout(resolve,0));
-async function mount({caseId=null,fetchHandler,status=identity}={}){
+async function mount({caseId=null,fetchHandler,status=identity,recovery=null}={}){
   const dom=new JSDOM('<!doctype html><div id="root"></div>',{url:'http://localhost/next/',pretendToBeVisual:true});
   const original=new Map(); const set=(key,value)=>{original.set(key,Object.getOwnPropertyDescriptor(globalThis,key));Object.defineProperty(globalThis,key,{configurable:true,writable:true,value});};
   for(const key of ['window','document','navigator','HTMLElement','Element','Node','MutationObserver','Event','MouseEvent'])set(key,dom.window[key]);
@@ -17,12 +17,16 @@ async function mount({caseId=null,fetchHandler,status=identity}={}){
   dom.window.confirm=()=>true;dom.window.HTMLElement.prototype.scrollIntoView=function(){};
   const requests=[];
   set('fetch',async(path,options={})=>{requests.push({path,options});if(path==='/api/status')return response(status);return fetchHandler(path,options);});
-  const vite=await createServer({server:{middlewareMode:true,hmr:false},logLevel:'error'});
+  const vite=await createServer({server:{middlewareMode:true,hmr:false,ws:false,watch:null},logLevel:'error'});
   const React=await import('react');const {createRoot}=await import('react-dom/client');
-  const {SessionProvider}=await vite.ssrLoadModule('/lib/session.jsx');const {ChatPage}=await vite.ssrLoadModule('/features/chat/index.jsx');
+  const {SessionProvider,useSession}=await vite.ssrLoadModule('/lib/session.jsx');const {ChatPage}=await vite.ssrLoadModule('/features/chat/index.jsx');
+  const {DraftWorkspaceProvider}=await vite.ssrLoadModule('/lib/suspended-draft.jsx');
+  const {draftVault}=await vite.ssrLoadModule('/lib/draft-vault.js');const workspaceKey=randomUUID();
+  if(recovery){draftVault.verifyUser(status.userId);assert.equal(draftVault.write({userId:status.userId,workspaceKey,feature:'chat'},recovery),true);draftVault.suspend(status.userId);}
   const root=createRoot(dom.window.document.getElementById('root'));
   let selected=caseId;
-  const render=()=>React.createElement(SessionProvider,null,React.createElement(ChatPage,{lang:'en',caseId:selected,onCaseChange:id=>{selected=id;root.render(render());}}));
+  function Workspace(){const session=useSession();return session.status.authenticated?React.createElement(DraftWorkspaceProvider,{userId:session.status.userId,workspaceKey},React.createElement(ChatPage,{lang:'en',caseId:selected,onCaseChange:id=>{selected=id;root.render(render());}})):null;}
+  const render=()=>React.createElement(SessionProvider,null,React.createElement(Workspace));
   await React.act(async()=>{root.render(render());await tick();});
   const flush=async()=>{await React.act(async()=>{await tick();});};
   const setCase=async id=>{selected=id;await React.act(async()=>{root.render(render());await tick();});};
@@ -30,7 +34,7 @@ async function mount({caseId=null,fetchHandler,status=identity}={}){
   const click=async element=>{assert.ok(element,'Expected control');await React.act(async()=>{element.click();await tick();});};
   const type=async text=>{const input=dom.window.document.querySelector('textarea');assert.ok(input);await React.act(async()=>{Object.getOwnPropertyDescriptor(dom.window.HTMLTextAreaElement.prototype,'value').set.call(input,text);input.dispatchEvent(new dom.window.Event('input',{bubbles:true}));await tick();});};
   const close=async()=>{await React.act(async()=>root.unmount());await vite.close();dom.window.close();for(const[key,descriptor]of original){if(descriptor)Object.defineProperty(globalThis,key,descriptor);else delete globalThis[key];}};
-  return{dom,requests,flush,setCase,button,click,type,close};
+  return{dom,requests,flush,setCase,button,click,type,close,readDraft:()=>draftVault.read({userId:status.userId,workspaceKey,feature:'chat'})};
 }
 
 test('development React: failed case creation retains composer and cannot fall back to transient chat',async context=>{
@@ -100,4 +104,15 @@ test('development React: stream errors keep received text visibly incomplete aft
   await app.flush();await app.type('Question before interrupted fixture');await app.click(app.dom.window.document.querySelector('[role="checkbox"]'));await app.click(app.button('Send to DeepSeek'));await app.flush();
   assert.match(app.dom.window.document.body.textContent,/Retained partial fixture/);assert.match(app.dom.window.document.body.textContent,/This reply is incomplete/);
   assert.equal(app.requests.filter(item=>item.path==='/api/chat').length,1);assert.ok(app.button('Edit this question again'));
+});
+
+
+test('development React: verified same-user recovery restores only text and keeps live edits recoverable',async context=>{
+  const app=await mount({recovery:{input:'Unsent synthetic question recovered'},fetchHandler:async()=>response({},500)});context.after(app.close);
+  assert.equal(app.dom.window.document.querySelector('textarea').value,'Unsent synthetic question recovered');
+  assert.match(app.dom.window.document.body.textContent,/Reattach images/);
+  assert.equal(app.dom.window.document.querySelectorAll('img').length,0);
+  assert.equal(app.dom.window.document.querySelector('[role="checkbox"]').getAttribute('data-state'),'unchecked');
+  await app.type('A revised question that is still unsent');
+  assert.deepEqual(app.readDraft(),{input:'A revised question that is still unsent'});
 });

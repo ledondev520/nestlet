@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { useSession } from '@/lib/session';
+import { useSuspendedDraft } from '@/lib/suspended-draft';
 import { CHAT_BOUNDS, ChatClientError, buildChatTurn, newCasePayload, normalizeMessages, readChatEvents, restoredMessages, validateImageFile, imageDimensions } from './logic.js';
 import { chatCopy, chatErrorText } from './copy.js';
 
@@ -17,6 +18,7 @@ const timeoutSignal = (signal, milliseconds=15000) => AbortSignal.any([signal,Ab
 /** Durable conversation UI. Case facts and document/source buffers have separate owners. */
 export function ChatPage({ lang='zh', caseId=null, onCaseChange, onDirtyChange, onImportFiles }) {
   const { status, api, refresh } = useSession();
+  const {restored,saveDraft,clearDraft,cacheStatus}=useSuspendedDraft('chat');
   const words = chatCopy[lang] || chatCopy.zh;
   const inputId = useId(), fileId = useId(), consentId = useId(), threadId = useId();
   const [input,setInput] = useState('');
@@ -32,9 +34,11 @@ export function ChatPage({ lang='zh', caseId=null, onCaseChange, onDirtyChange, 
   const [notice,setNotice] = useState('');
   const [dragging,setDragging] = useState(false);
   const [reloadVersion,setReloadVersion] = useState(0);
+  const restoredApplied=useRef(false), restoreConversation=useRef(null), pendingSendText=useRef('');
   const mounted = useRef(true), epoch = useRef(0), controller = useRef(null), controllers = useRef(new Set());
   const caseRef = useRef(caseId), conversationRef = useRef(null), ownerRef = useRef(status.userId);
   const statusRef = useRef(status), incomingCase = useRef(caseId), adoption = useRef(null), initialized = useRef(false);
+  const decodeBusy = useRef(false);
   const imageRef = useRef([]), messageRef = useRef([]), inputRef = useRef(''), previewUrls = useRef(new Set());
   const stopRequested = useRef(false), workflowRef = useRef(null), lastTurn = useRef(null), phaseRef = useRef('idle');
   const fileInput = useRef(null), composer = useRef(null), endOfThread = useRef(null);
@@ -57,7 +61,7 @@ export function ChatPage({ lang='zh', caseId=null, onCaseChange, onDirtyChange, 
     for (const active of controllers.current) active.abort(); controllers.current.clear(); controller.current=null;
     for (const preview of previewUrls.current) URL.revokeObjectURL(preview); previewUrls.current.clear();
     caseRef.current=nextCaseId; conversationRef.current=null; adoption.current=null; stopRequested.current=false;
-    workflowRef.current=null; lastTurn.current=null; imageRef.current=[]; messageRef.current=[]; inputRef.current=''; phaseRef.current='idle';
+    workflowRef.current=null; lastTurn.current=null; pendingSendText.current=''; decodeBusy.current=false; imageRef.current=[]; messageRef.current=[]; inputRef.current=''; phaseRef.current='idle';
     if (render && mounted.current) {setInput('');setImages([]);setMessages([]);setConversationId(null);setConversations([]);setTitle('');setPhase('idle');setImagePending(0);setConsent(false);setError(null);setNotice('');setDragging(false);}
   },[]);
 
@@ -72,14 +76,20 @@ export function ChatPage({ lang='zh', caseId=null, onCaseChange, onDirtyChange, 
     window.addEventListener('beforeunload',guard);return()=>window.removeEventListener('beforeunload',guard);
   },[dirty]);
 
+  function restoreComposer(){
+    if(restoredApplied.current)return;restoredApplied.current=true;
+    if(typeof restored?.input==='string'&&restored.input.length<=CHAT_BOUNDS.text){inputRef.current=restored.input;setInput(restored.input);if(restored.input)setNotice('draftRestored');}
+    if(idValid(restored?.conversationId))restoreConversation.current=restored.conversationId;
+  }
   async function readConversation(id,scope,signal,{preserveLocal=false}={}) {
     const result=await api.get(`/api/conversations/${encodeURIComponent(id)}`,{signal});requireCurrent(scope);
     if (result.conversation?.id!==id || result.conversation.caseId!==scope.caseId) throw new ChatClientError('INVALID_RESPONSE');
     let rows=normalizeMessages(result.messages);
     if (preserveLocal && lastTurn.current) {
       rows=restoredMessages(result.messages,lastTurn.current.user,lastTurn.current.assistant);
-      if (!rows) {setNotice('refreshFailed');return false;}
+      if (!rows) {if(pendingSendText.current){setInput(pendingSendText.current);inputRef.current=pendingSendText.current;}setNotice('refreshFailed');return false;}
     }
+    if(preserveLocal&&lastTurn.current&&rows.some(message=>message.clientMessageId===lastTurn.current.user?.clientMessageId)){pendingSendText.current='';if(!inputRef.current)clearDraft();}
     revokeMessages();updateMessages(rows);return true;
   }
 
@@ -93,8 +103,9 @@ export function ChatPage({ lang='zh', caseId=null, onCaseChange, onDirtyChange, 
     if(preserveComposition){
       // App remounts true case switches. A null→ID binding here is the same workspace saved by Intake.
       epoch.current++;for(const active of controllers.current)active.abort();controllers.current.clear();controller.current=null;
-      caseRef.current=nextCase;adoption.current=null;workflowRef.current=null;lastTurn.current=null;setImagePending(0);setConsent(false);setError(null);setNotice('');
+      caseRef.current=nextCase;adoption.current=null;workflowRef.current=null;lastTurn.current=null;decodeBusy.current=false;setImagePending(0);setConsent(false);setError(null);setNotice('');
     } else invalidate(nextCase);
+    restoreComposer();
     if (!nextCase) return;
     const scope=scoped(), load=managedController();updatePhase('loading');
     (async()=>{
@@ -104,7 +115,7 @@ export function ChatPage({ lang='zh', caseId=null, onCaseChange, onDirtyChange, 
         if (record.case?.id!==nextCase || !Array.isArray(result.conversations) || result.conversations.length>10 || result.conversations.some(item=>!idValid(item.id)||item.caseId!==nextCase)) throw new ChatClientError('INVALID_RESPONSE');
         setTitle(record.case.title);setConversations(result.conversations);
         if (result.conversations.length) {
-          const id=result.conversations[0].id;conversationRef.current=id;scope.conversationId=id;setConversationId(id);
+          const id=result.conversations.find(item=>item.id===restoreConversation.current)?.id || result.conversations[0].id;restoreConversation.current=null;conversationRef.current=id;scope.conversationId=id;setConversationId(id);
           await readConversation(id,scope,timeoutSignal(load.signal));
         }
       } catch (failure) {if (current(scope) && failure.name!=='AbortError') setError(failure);}
@@ -112,6 +123,12 @@ export function ChatPage({ lang='zh', caseId=null, onCaseChange, onDirtyChange, 
     })();
     // Identity/case transitions own invalidation; unrelated capability refreshes do not reset drafts.
   },[caseId,status.userId,status.authenticated,reloadVersion,api,invalidate]);
+
+  useEffect(()=>{
+    if(!restoredApplied.current||!status.authenticated)return;
+    const text=inputRef.current||pendingSendText.current;
+    if(text)saveDraft({input:text,...(conversationRef.current?{conversationId:conversationRef.current}:{})});else clearDraft();
+  },[input,conversationId,status.authenticated,saveDraft,clearDraft]);
 
   async function chooseConversation(id) {
     if (dirty && !window.confirm(words.resetAsk)) return;
@@ -128,6 +145,7 @@ export function ChatPage({ lang='zh', caseId=null, onCaseChange, onDirtyChange, 
   async function addImages(files) {
     if (!statusRef.current.authenticated || phaseRef.current!=='idle') return;
     const all=Array.from(files || []);if(!all.length)return;
+    if(decodeBusy.current){setError(new ChatClientError('CHAT_IMAGE_BUSY'));return;}decodeBusy.current=true;
     const scope=scoped(), decode=managedController();setImagePending(count=>count+1);setError(null);
     try {
       for(const file of all){
@@ -144,11 +162,12 @@ export function ChatPage({ lang='zh', caseId=null, onCaseChange, onDirtyChange, 
         updateImages([...imageRef.current,{id:crypto.randomUUID(),mimeType:file.type,data:btoa(binary),preview}]);
       }
     } catch(failure){if(current(scope))setError(failure instanceof ChatClientError?failure:new ChatClientError('CHAT_IMAGE_INVALID'));}
-    finally{controllers.current.delete(decode);if(current(scope))setImagePending(count=>Math.max(0,count-1));}
+    finally{controllers.current.delete(decode);if(current(scope)){decodeBusy.current=false;setImagePending(count=>Math.max(0,count-1));}}
   }
   function removeImage(id){const removed=imageRef.current.find(image=>image.id===id);if(removed)revoke(removed.preview);updateImages(imageRef.current.filter(image=>image.id!==id));}
   function receiveFiles(files){
-    if(!statusRef.current.authenticated||phaseRef.current!=='idle')return;
+    if(!statusRef.current.authenticated){setError(new ChatClientError('AUTH_REQUIRED'));return;}
+    if(phaseRef.current!=='idle'){setError(new ChatClientError('CHAT_CONVERSATION_BUSY'));return;}
     const all=Array.from(files||[]), accepted=all.filter(file=>['image/png','image/jpeg'].includes(file.type));
     const documents=all.filter(file=>!accepted.includes(file)&&/\.(pdf|txt|csv|xlsx|xls)$/iu.test(file.name));
     if(all.length!==accepted.length+documents.length)setNotice('unsupportedFile');
@@ -192,7 +211,7 @@ export function ChatPage({ lang='zh', caseId=null, onCaseChange, onDirtyChange, 
       const payload=buildChatTurn({caseId:scope.caseId,conversationId:scope.conversationId,clientMessageId,text,images:attached,lang});
       user={id:crypto.randomUUID(),clientMessageId,role:'user',content:text,images:attached,state:'complete',localOnly:true};
       assistant={id:crypto.randomUUID(),role:'assistant',content:'',state:'interrupted',streaming:true,localOnly:true};
-      lastTurn.current={user,assistant};updateMessages([...messageRef.current,user,assistant]);updateImages([]);setInput('');inputRef.current='';updatePhase('streaming');
+      lastTurn.current={user,assistant};pendingSendText.current=text;saveDraft({input:text,conversationId:scope.conversationId});updateMessages([...messageRef.current,user,assistant]);updateImages([]);setInput('');inputRef.current='';updatePhase('streaming');
       const signal=timeoutSignal(active.signal,95000);
       const response=await fetch('/api/chat',{method:'POST',credentials:'same-origin',cache:'no-store',signal,
         headers:{'Content-Type':'application/json',Accept:'text/event-stream','X-CSRF-Token':statusRef.current.csrfToken,...(workflowRef.current?{'X-Workflow-Id':workflowRef.current}:{})},body:JSON.stringify(payload)});
@@ -204,7 +223,7 @@ export function ChatPage({ lang='zh', caseId=null, onCaseChange, onDirtyChange, 
         requireCurrent(scope);
         if(packet.type==='delta'){assistant.content+=packet.text;updateMessages([...messageRef.current]);}
         else if(packet.type==='conversation'){if(packet.conversationId!==scope.conversationId)throw new ChatClientError('CHAT_STREAM_FAILED');user.id=packet.userMessageId;}
-        else if(packet.type==='done'){completed=true;assistant.id=packet.assistantMessageId;assistant.state='complete';assistant.localOnly=false;assistant.streaming=false;user.localOnly=false;updateMessages([...messageRef.current]);}
+        else if(packet.type==='done'){completed=true;pendingSendText.current='';clearDraft();assistant.id=packet.assistantMessageId;assistant.state='complete';assistant.localOnly=false;assistant.streaming=false;user.localOnly=false;updateMessages([...messageRef.current]);}
         else if(packet.type==='error')throw new ChatClientError(packet.code);
       }
       if(!completed)throw new ChatClientError('CHAT_INCOMPLETE');
@@ -236,9 +255,9 @@ export function ChatPage({ lang='zh', caseId=null, onCaseChange, onDirtyChange, 
   return <section className="space-y-5" aria-label={words.title} data-feature="chat">
     <div className="space-y-2"><h1 className="paper-title text-2xl font-semibold">{words.title}</h1><p className="text-sm text-muted-foreground">{words.subtitle}</p></div>
     <Card className="paper-card">
-      <CardHeader className="gap-3"><CardTitle className="paper-title">{title||words.untitledCase}</CardTitle><CardDescription>{caseRef.current?words.saved:words.subtitle}</CardDescription>
+      <CardHeader className="gap-3"><CardTitle className="paper-title break-words">{title||words.untitledCase}</CardTitle><CardDescription>{caseRef.current?words.saved:words.subtitle}</CardDescription>
         <div className="flex flex-wrap items-center gap-3"><Label htmlFor={`${inputId}-conversation`}>{words.conversation}</Label>
-          <NativeSelect id={`${inputId}-conversation`} value={conversationId||''} onChange={event=>chooseConversation(event.target.value)} disabled={phase==='loading'} className="min-w-48">
+          <NativeSelect id={`${inputId}-conversation`} value={conversationId||''} onChange={event=>chooseConversation(event.target.value)} disabled={phase==='loading'} className="w-48 max-w-full">
             <NativeSelectOption value="">{words.newConversation}</NativeSelectOption>{conversations.map(item=><NativeSelectOption key={item.id} value={item.id}>{item.title}</NativeSelectOption>)}
           </NativeSelect><Button variant="outline" size="sm" type="button" onClick={()=>chooseConversation('')}>{words.newConversation}</Button>
           <Button variant="ghost" size="sm" type="button" disabled={busy} onClick={reloadConversation}>{words.reload}</Button>
@@ -259,6 +278,7 @@ export function ChatPage({ lang='zh', caseId=null, onCaseChange, onDirtyChange, 
           <div ref={endOfThread}/>
         </div>
         {error&&<Alert variant="destructive"><AlertDescription>{chatErrorText(error,lang)}</AlertDescription></Alert>}
+        {cacheStatus==='unavailable'&&<p role="status" className="text-sm text-destructive">{words.cacheUnavailable}</p>}
         {notice&&<p role="status" className="paper-note rounded px-3 py-2 text-sm">{words[notice]}</p>}
         {(error||notice==='stopped')&&messages.some(message=>message.role==='user')&&<Button variant="outline" type="button" disabled={busy} onClick={retry}>{words.retry}</Button>}
         <form className="space-y-3 border-t pt-5" onSubmit={send} onDragOver={event=>{event.preventDefault();setDragging(true);}} onDragLeave={()=>setDragging(false)} onDrop={event=>{event.preventDefault();setDragging(false);receiveFiles(event.dataTransfer.files);}}>
@@ -270,7 +290,7 @@ export function ChatPage({ lang='zh', caseId=null, onCaseChange, onDirtyChange, 
           {!!images.length&&<div className="flex flex-wrap gap-3">{images.map(image=><div key={image.id} className="flex items-center gap-2 rounded border p-2"><img src={image.preview} alt={words.imageOnly} className="h-16 w-16 object-contain"/><Button type="button" variant="ghost" size="sm" disabled={busy} onClick={()=>removeImage(image.id)} aria-label={words.remove}>{words.remove}</Button></div>)}</div>}
           <div className="flex items-start gap-2"><Checkbox id={consentId} checked={consent} disabled={busy} onCheckedChange={value=>setConsent(value===true)}/><Label htmlFor={consentId} className="text-xs leading-relaxed">{words.consent}</Label></div>
           <div className="flex flex-wrap items-center gap-2"><Button type="submit" disabled={busy||imagePending>0||!consent||!status.liveEnabled||(!input.trim()&&!images.length)}>{words.send}</Button>
-            <Button type="button" variant="outline" disabled={busy} onClick={()=>fileInput.current?.click()}>{words.attach}</Button>
+            <Button type="button" variant="outline" disabled={busy||imagePending>0} onClick={()=>fileInput.current?.click()}>{words.attach}</Button>
             {busy&&phase!=='loading'&&<Button type="button" variant="secondary" onClick={stop}>{words.stop}</Button>}
             <input id={fileId} ref={fileInput} className="sr-only" type="file" accept="image/png,image/jpeg,.pdf,.txt,.csv,.xlsx,.xls" multiple onChange={event=>{receiveFiles(event.target.files);event.target.value='';}}/>
           </div>

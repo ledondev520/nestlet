@@ -67,3 +67,22 @@ test('an aborted read or delayed old-session 401 cannot invalidate the new accou
   await assert.rejects(api.get('/api/clients', { signal: controller.signal }), { name: 'AbortError' });
   assert.equal(expired, 0);
 });
+
+test('authorized private uploads send exact bytes, MIME, encoded filename and explicit consent', async () => {
+  const calls = [];
+  const api = createApiClient({ getCsrfToken: () => 'test-csrf', fetchImpl: async (...args) => { calls.push(args); return { ok: true, status: 201, json: async () => ({ asset: { id: 'synthetic-asset' } }) }; } });
+  const file = new Blob(['Synthetic text'], { type: 'text/plain' });
+  await api.upload('/api/assets?caseId=synthetic-case', file, { contentType: 'text/plain', filename: '虚构 示例.txt', assetConsent: true });
+  assert.equal(calls[0][1].body, file);
+  assert.equal(calls[0][1].headers['Content-Type'], 'text/plain');
+  assert.equal(calls[0][1].headers['X-Asset-Filename'], encodeURIComponent('虚构 示例.txt'));
+  assert.equal(calls[0][1].headers['X-Asset-Consent'], 'persist-private');
+  assert.equal(calls[0][1].headers['X-CSRF-Token'], 'test-csrf');
+  assert.equal(calls[0][1].credentials, 'same-origin');
+  await api.upload('/api/document', file, { contentType: 'application/pdf', documentConsent: true });
+  assert.equal(calls[1][1].headers['X-Document-Consent'], 'synthetic-or-deidentified');
+  assert.equal(calls[1][1].headers['X-Asset-Consent'], undefined);
+  await assert.rejects(api.upload('/api/settings', file, { contentType: 'text/plain' }), { code: 'INVALID_UPLOAD_PATH' });
+  await assert.rejects(api.upload('/api/assets', file, { contentType: 'text/html' }), { code: 'INVALID_UPLOAD_TYPE' });
+  assert.equal(calls.length, 2);
+});

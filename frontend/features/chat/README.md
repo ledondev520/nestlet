@@ -19,3 +19,11 @@ PNG/JPEG headers are bounded before actual browser pixel decoding; pixel dimensi
 `node --test frontend/features/chat/logic.test.js` covers pure payload, bounded image-header, saved-history, SSE-byte parser and bilingual-error contracts. Authored SSE fixtures test a parser and are not a real model response or provider-access acceptance.
 
 The feature transforms/imports through the actual Vite pipeline. Full production-CSP browser and paid-provider acceptance must be recorded separately after App integration. No sample chat history or provider fallback is shipped.
+
+## Suspended-session text recovery
+
+`useSuspendedDraft('chat')` stores only `{input,conversationId?}` in the current tab's bounded memory vault. The Session provider alone verifies identities; reads/writes are sealed during suspension. Only the same server-verified user may recover within 30 minutes. Logout, another account, expiry, or a backward clock clears recovery data. No images, blob URLs, consent, model history, passwords or API keys enter this cache.
+
+Question text remains recoverable while a send is awaiting confirmation, then clears when a done event or server history confirms the user turn. Recovery never resends automatically; the user must inspect saved history and explicitly send again. Image attachments must be added again after expiry. Oversized or encoded/forbidden snapshots fail without silently evicting another draft, and the UI warns that temporary recovery is unavailable.
+
+`component.development.test.js` uses actual React/Radix in a DOM emulator with controlled HTTP/SSE fixtures. It tests lifecycle behavior, not a browser layout engine or real provider. `frontend/lib/draft-vault.test.js` separately covers identity sealing, expiry, strict JSON rejection, limits and detached clones.

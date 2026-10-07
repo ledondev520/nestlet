@@ -1,9 +1,9 @@
-import { MessageSquare, Users, FileText, Globe, ArrowLeft } from 'lucide-react';
+import { MessageSquare, Users, FileText, Files, Globe, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const navigation = {
-  zh: [['chat', '对话', MessageSquare], ['customers', '客户库', Users], ['documents', '文档', FileText]],
-  en: [['chat', 'Conversation', MessageSquare], ['customers', 'Customers', Users], ['documents', 'Documents', FileText]]
+  zh: [['chat', '对话', MessageSquare], ['intake', '材料与事实', Files], ['customers', '客户库', Users], ['documents', '文档', FileText]],
+  en: [['chat', 'Conversation', MessageSquare], ['intake', 'Materials & facts', Files], ['customers', 'Customers', Users], ['documents', 'Documents', FileText]]
 };
 
 export function ApplicationShell({ children, lang = 'zh', onLanguageChange, view = 'chat', onNavigate, account, migrationNotice }) {
@@ -20,7 +20,7 @@ export function ApplicationShell({ children, lang = 'zh', onLanguageChange, view
       </div>
     </header>
     {migrationNotice && <p className="paper-note mt-7 rounded-r-lg px-4 py-3 text-sm leading-relaxed">{migrationNotice}</p>}
-    {onNavigate && <nav aria-label={lang === 'zh' ? '工作区导航' : 'Workspace navigation'} className="mt-8 mb-7 flex gap-1 border-b border-border pb-3">
+    {onNavigate && <nav aria-label={lang === 'zh' ? '工作区导航' : 'Workspace navigation'} className="mt-8 mb-7 flex flex-wrap gap-1 border-b border-border pb-3">
       {navigation[lang].map(([id, label, Icon]) => <Button key={id} variant={view === id ? 'secondary' : 'ghost'} onClick={() => onNavigate(id)} aria-current={view === id ? 'page' : undefined}><Icon aria-hidden="true" />{label}</Button>)}
     </nav>}
     <main id="workspace" tabIndex={-1} className="mt-8 outline-none">{children}</main>

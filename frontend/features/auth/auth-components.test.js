@@ -12,7 +12,7 @@ globalThis.ResizeObserver=class {observe(){} unobserve(){} disconnect(){}};
 globalThis.IS_REACT_ACT_ENVIRONMENT=true;
 before(async()=>{
   React=await import('react');({createRoot}=await import('react-dom/client'));
-  server=await createServer({configFile:'vite.config.js',server:{middlewareMode:true},appType:'custom'});
+  server=await createServer({configFile:'vite.config.js',server:{middlewareMode:true,hmr:false,watch:null,ws:false},appType:'custom'});
   ({SessionProvider}=await server.ssrLoadModule('/lib/session.jsx'));
   ({SettingsPage,AccountControls,AuthPanel}=await server.ssrLoadModule('/features/auth/index.js'));
 });

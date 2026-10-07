@@ -10,20 +10,28 @@ export class ApiError extends Error {
 }
 
 export function createApiClient({ fetchImpl = (...args) => fetch(...args), getCsrfToken = () => '', onUnauthorized = () => {} } = {}) {
-  async function request(path, { method = 'GET', body, signal } = {}) {
+  async function request(path, { method = 'GET', body, signal, rawBody, contentType, filename, assetConsent, documentConsent } = {}) {
     if (typeof path !== 'string' || !path.startsWith('/api/') || path.includes('\\') || /[\r\n]/.test(path)) {
       throw new ApiError('INVALID_API_PATH');
     }
     if (!new URL(path, 'https://nestlet.invalid').pathname.startsWith('/api/')) throw new ApiError('INVALID_API_PATH');
     const headers = { Accept: 'application/json' };
     const requestCsrf = getCsrfToken();
-    if (body !== undefined) headers['Content-Type'] = 'application/json';
+    if (rawBody !== undefined) {
+      const pathname = new URL(path, 'https://nestlet.invalid').pathname;
+      if (method !== 'POST' || !['/api/assets', '/api/document', '/api/workbook'].includes(pathname)) throw new ApiError('INVALID_UPLOAD_PATH');
+      if (!['application/pdf', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel', 'text/plain', 'text/csv', 'image/png', 'image/jpeg'].includes(contentType)) throw new ApiError('INVALID_UPLOAD_TYPE');
+      headers['Content-Type'] = contentType;
+      if (filename) headers['X-Asset-Filename'] = encodeURIComponent(filename);
+      if (assetConsent === true) headers['X-Asset-Consent'] = 'persist-private';
+      if (documentConsent === true) headers['X-Document-Consent'] = 'synthetic-or-deidentified';
+    } else if (body !== undefined) headers['Content-Type'] = 'application/json';
     if (!['GET', 'HEAD'].includes(method)) headers['X-CSRF-Token'] = requestCsrf;
     let response;
     try {
       response = await fetchImpl(path, {
         method, headers, credentials: 'same-origin', cache: 'no-store', signal,
-        ...(body === undefined ? {} : { body: JSON.stringify(body) })
+        ...(rawBody !== undefined ? { body: rawBody } : body === undefined ? {} : { body: JSON.stringify(body) })
       });
     } catch (error) {
       if (error.name === 'AbortError') throw error;
@@ -46,6 +54,7 @@ export function createApiClient({ fetchImpl = (...args) => fetch(...args), getCs
   }
   return {
     request,
+    upload: (path, file, options) => request(path, { ...options, method: 'POST', rawBody: file }),
     get: (path, options) => request(path, options),
     post: (path, body, options) => request(path, { ...options, method: 'POST', body }),
     put: (path, body, options) => request(path, { ...options, method: 'PUT', body }),

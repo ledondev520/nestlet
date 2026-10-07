@@ -13,7 +13,7 @@
     "setup-trial-user": "node scripts/setup-trial-user.js",
     "dev:frontend": "vite",
     "build": "vite build",
-    "test:frontend": "node --test test/frontend-api.test.js test/frontend-build.test.js",
+    "test:frontend": "node --test test/frontend-*.test.js frontend/lib/*.test.js frontend/features/*/*.test.js",
     "test:browser:frontend": "playwright test --config=playwright.frontend.config.js"
   },
   "engines": {

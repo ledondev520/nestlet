@@ -1,6 +1,27 @@
 # JavaScript / shadcn migration checkpoint
 
-## Scope at the foundation checkpoint, 2026-10-07 09:33 UTC
+## Integrated candidate, 2026-10-07 10:18 UTC
+
+The React entry at `/next/` now contains real business modules:
+
+| Module | Implemented migration |
+| --- | --- |
+| Account | Login, registration, explicitly confirmed logout, ordinary/owner role boundaries, owner-only settings |
+| Conversation | Persisted case/conversation lifecycle, one new turn per send, streaming/stop/incomplete states, image validation, document handoff |
+| Customers | Own-user search/create/rename, saved cases/artifacts, private original-material listing/search/preview/download |
+| Materials and facts | Private original save, UTF-8/CSV/PDF/Excel handling, explicit workbook mapping, separately consented AI extraction, source-linked review, optimistic save/reconcile |
+| Documents | Readiness questions, reviewed details, case issues, immutable artifact versions, English preview/edit/copy/download/print |
+| Session recovery | Current-tab bounded text-only cache, no browser storage; sealed on expiry, released only after same-user server verification, discarded on different-user login or explicit logout |
+
+Kimi's canonical design tokens are copied exactly from `2154dd95e70027b8319586ba71359542cb7cec93`, with semantic adapters rather than a replacement palette. The state-board reference has been inspected. The old `/` entry remains available while exact-build acceptance is pending.
+
+**Remaining gates:** supported real-browser / mobile / keyboard / CSP / clipboard / print / provider acceptance, the final integrated Docker image, and deployment. A generic case save that changes facts while carrying a legacy edited draft is currently explicitly blocked until the coordinated atomic backend archival contract is integrated; it is not claimed successful. Original-file routes require the separately developed assets backend, which must be merged and tested with this candidate.
+
+The frontend unit/DOM/HTTP suites are aggregated by `npm run test:frontend`. Controlled-response development tests are labeled in their sources; they do not establish real-browser or live-provider behavior. The single output bundle is approximately 541 kB / 171 kB gzip and produces Vite's 500 kB advisory; the threshold was not raised to conceal it.
+
+## Historical foundation evidence
+
+### Scope at the foundation checkpoint, 2026-10-07 09:33 UTC
 
 Implemented: React 19 / Vite 8 / Tailwind 4 build, JavaScript/JSX component sources, `components.json` with `tsx:false`, aliases, same-origin API/session helpers, preserved Working Paper tokens, explicit static-asset allowlisting, Docker frontend build, and frontend CI checks.
 
