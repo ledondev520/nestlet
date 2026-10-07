@@ -7,7 +7,7 @@
 - Claiming account/person: Local Codex, authorized by owner ledondev520
 - Base commit: `826202ee7da2b072d544c716cba19ac9cf38d6bf`; synchronized documentation from `6678aeaa57c666fcf77b2700653ed391c2034f0d` (runtime unchanged)
 - Branch: `test/local-codex-acceptance`
-- PR URL: pending publication
+- PR URL: https://github.com/ledondev520/nestlet/pull/2
 - Coordination issue: https://github.com/ledondev520/nestlet/issues/1
 - Evidence: [local acceptance report](../local-acceptance.md); live provider and PDF import not run, final-contract/authentication blockers recorded
 
