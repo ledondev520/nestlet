@@ -105,6 +105,7 @@ let workflowId = null;
 let correlationRequestId = null;
 let creating = null;
 let disabled = false;
+let telemetryEpoch = 0;
 let activeMs = 0;
 let activeSince = null;
 let hooks = { isAuthenticated: () => false, getCsrf: () => '' };
@@ -138,9 +139,12 @@ function configureTelemetry(options) {
 
 /** Start a fresh journey: next event lazily creates a new workflow. */
 function resetTelemetry() {
+  telemetryEpoch++;
   workflowId = null;
   correlationRequestId = null;
   disabled = false;
+  // Any in-flight creation belongs to the previous identity/journey and is
+  // ignored when it resolves (see the epoch check inside ensureWorkflow).
 }
 
 /** Headers for business requests that support workflow correlation. */
@@ -164,18 +168,22 @@ function noteBusinessResponse(response) {
 }
 
 async function ensureWorkflow() {
-  if (workflowId || disabled || !hooks.isAuthenticated()) return null;
+  if (workflowId) return workflowId;
+  if (disabled || !hooks.isAuthenticated()) return null;
   if (!creating) {
+    const epoch = telemetryEpoch;
     creating = (async () => {
       try {
         const response = await fetch('/api/workflows', { method: 'POST', headers: { 'X-CSRF-Token': hooks.getCsrf() } });
+        if (epoch !== telemetryEpoch) return null; // identity/journey changed mid-flight
         if (!response.ok) { disabled = true; return null; }
         const result = await response.json();
+        if (epoch !== telemetryEpoch) return null;
         workflowId = typeof result.workflowId === 'string' ? result.workflowId : null;
         if (!workflowId) disabled = true;
-      } catch { disabled = true; }
+      } catch { if (epoch === telemetryEpoch) disabled = true; }
       return workflowId;
-    })().finally(() => { creating = null; });
+    })().finally(() => { if (telemetryEpoch === epoch) creating = null; });
   }
   return creating;
 }
@@ -189,7 +197,7 @@ function track(event, outcome, extra = {}) {
   if (typeof extra.errorCode === 'string') payload.errorCode = extra.errorCode;
   void (async () => {
     const id = await ensureWorkflow();
-    if (!id) return;
+    if (!id || !hooks.isAuthenticated()) return;
     try {
       await fetch(`/api/workflows/${encodeURIComponent(id)}/events`, {
         method: 'POST',
@@ -616,11 +624,11 @@ async function importFile(file) {
   if ((isPdf || isWorkbook) && !state.authenticated) {state.settingsOpen = true; state.settingsError = 'errorAuth'; render(); return;}
   if (isPdf && !confirm(t().pdfConsent)) {render(); return;}
   if (isWorkbook && !confirm(t().workbookConsent)) {render(); return;}
+  const fileStart = performance.now();
   const {ticket, signal} = beginProcessing();
   try {
     let next;
     if (isWorkbook) {
-      const fileStart = performance.now();
       const response = await fetch('/api/workbook', {method: 'POST', headers: requestHeaders({...telemetryHeaders(), 'Content-Type': /\.xlsx$/i.test(file.name) ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : 'application/vnd.ms-excel', 'X-Document-Consent': 'synthetic-or-deidentified'}), body: file, signal});
       noteBusinessResponse(response);
       const result = await response.json();
@@ -711,7 +719,7 @@ function bind() {
     let validationError = '';
     if (registering && !state.registrationEnabled) validationError = 'registrationUnavailable';
     else if (registering && (!/^[a-z0-9][a-z0-9_.-]{2,63}$/.test(state.loginUsername) || state.loginUsername === 'owner')) validationError = 'errorRegistration';
-    else if (input.value.length < 12 || input.value.length > 256 || /[\u0000-\u001f\u007f]/.test(input.value)) validationError = registering ? 'errorRegistration' : 'errorCredentials';
+    else if (input.value.length < 6 || input.value.length > 256 || /[\u0000-\u001f\u007f]/.test(input.value)) validationError = registering ? 'errorRegistration' : 'errorCredentials';
     else if (registering && input.value !== confirmation?.value) validationError = 'errorPasswordMismatch';
     if (validationError) {state.settingsError = validationError; byId('settings-error').textContent = t()[validationError]; return;}
     const payload = {username: state.loginUsername, password: input.value, ...(registering ? {passwordConfirmation: confirmation.value} : {})};
