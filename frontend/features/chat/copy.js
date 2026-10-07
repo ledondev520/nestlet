@@ -8,6 +8,19 @@ export const chatCopy = {
     attach:'添加图片或文档', remove:'移除图片', you:'你', assistant:'助手', incomplete:'回复未完成；不能把它当作已完成的文书。',
     localOnly:'这段内容暂只保留在当前页面，尚未确认已保存。', oldImage:'原图片未保留；需要重新查看时请再次添加。',
     consent:'我有权将本会话的去标识文字、所附图片及已保存案例上下文在点击发送后交给 DeepSeek。',
+    libraryConsent:'仅本次发送：允许 AI 检索我保存的资料库，并将相关记录摘录发送给 DeepSeek。',
+    libraryUnavailable:'当前服务器不支持资料库检索；普通聊天仍可使用。检索不会静默降级。',
+    libraryBoundary:'可检索本人保存的客户、案例、文件和文书。检索不代表完整审阅；只读取，不会修改资料或自动提交。',
+    libraryActivity:'本次资料检索', librarySources:'本次引用来源', librarySourcesNote:'下列状态区分仅找到记录、读取摘录和正文不可读。完整引用随回复保存；不是完整资料库审查。',
+    librarySearchingStarted:'已开始搜索保存的记录', librarySearchingCompleted:'记录搜索已结束', librarySearchingError:'记录搜索未完成',
+    libraryReadingStarted:'已开始读取相关摘录', libraryReadingCompleted:'摘录读取已结束', libraryReadingError:'摘录读取未完成',
+    libraryRetrievingStarted:'已开始资料检索', libraryRetrievingCompleted:'资料检索已结束', libraryRetrievingError:'资料检索未完成',
+    libraryCount:'记录数', libraryMetadata:'仅记录信息，未读取正文', libraryRead:'已读取部分摘录', libraryUnreadable:'正文不可读',
+    libraryClient:'客户', libraryCase:'案例', libraryAsset:'文件', libraryArtifact:'文书', libraryVersion:'版本', libraryStale:'历史版本，需重新核对', libraryDraft:'草稿', libraryFinal:'终稿', libraryTitleTruncated:'标题已截短', libraryExcerptTruncated:'仅读取了受限摘录',
+    libraryConsentError:'本次检索需要明确授权，请重新选择后发送。', libraryRequestError:'资料检索请求未能完成，不能据此声称已检查资料。',
+    librarySensitive:'相关记录可能含敏感标识，检索已阻止；请先检查并去标识。', libraryMissing:'相关记录不可用或不属于此账号。',
+    libraryLimit:'本次检索已到达读取限制；结果可能不完整。', libraryStopped:'资料检索已停止或超时；已收到内容仍需核对。',
+    libraryCitation:'模型给出了未核实的来源引用，不能把本次结果当作已核实结论。',
     privacy:'请勿发送 SSN、银行、税务或身份证件信息。图片最多 2 张，每张 2 MiB、边长不超过 8192 像素，仅 PNG / JPEG。图片本体不留存。',
     openingDocuments:'文档已交给材料与事实页面处理；聊天内容没有覆盖案例材料。',
     documents:'PDF、CSV、XLS 和 XLSX 请到「文书」页面导入并核对；这里不会把文件内容冒充图片发送。',
@@ -37,6 +50,19 @@ export const chatCopy = {
     attach:'Add images or documents', remove:'Remove image', you:'You', assistant:'Assistant', incomplete:'This reply is incomplete and must not be treated as a completed document.',
     localOnly:'This text is currently retained only on this page; its saved state is not yet confirmed.', oldImage:'The original image was not retained. Attach it again if it needs to be inspected.',
     consent:'I am authorized to send this conversation’s de-identified text, attached images, and saved case context to DeepSeek when I click Send.',
+    libraryConsent:'For this send only: allow AI to search my saved library and send relevant record excerpts to DeepSeek.',
+    libraryUnavailable:'This server does not support library retrieval. Ordinary chat remains available; retrieval will not silently fall back.',
+    libraryBoundary:'Searches your saved customers, cases, files, and documents. Retrieval is not an exhaustive review. It only reads; it does not change records or submit anything.',
+    libraryActivity:'Retrieval for this request', librarySources:'Sources for this request', librarySourcesNote:'These states distinguish found metadata, read excerpts, and unavailable text. Full references are saved with the reply; this is not a full-library review.',
+    librarySearchingStarted:'Saved-record search started', librarySearchingCompleted:'Saved-record search finished', librarySearchingError:'Saved-record search did not complete',
+    libraryReadingStarted:'Relevant excerpt reading started', libraryReadingCompleted:'Excerpt reading finished', libraryReadingError:'Excerpt reading did not complete',
+    libraryRetrievingStarted:'Library retrieval started', libraryRetrievingCompleted:'Library retrieval finished', libraryRetrievingError:'Library retrieval did not complete',
+    libraryCount:'Records', libraryMetadata:'Metadata only; body not read', libraryRead:'Partial excerpts read', libraryUnreadable:'Body unavailable',
+    libraryClient:'Customer', libraryCase:'Case', libraryAsset:'File', libraryArtifact:'Document', libraryVersion:'Version', libraryStale:'Historical version; review again', libraryDraft:'Draft', libraryFinal:'Final', libraryTitleTruncated:'Title shortened', libraryExcerptTruncated:'Excerpt window limited',
+    libraryConsentError:'Library retrieval needs explicit consent for this send. Select it again before sending.', libraryRequestError:'Library retrieval could not complete. Do not treat this as confirmation that records were checked.',
+    librarySensitive:'A relevant record may contain sensitive identifiers. Retrieval was blocked; review and de-identify it first.', libraryMissing:'A relevant record is unavailable or does not belong to this account.',
+    libraryLimit:'This request reached a retrieval limit. Results may be incomplete.', libraryStopped:'Library retrieval stopped or timed out. Review any received content.',
+    libraryCitation:'The model supplied an unverified source reference. Do not treat this result as verified.',
     privacy:'Do not send SSNs, banking, tax, or identity-document information. Up to 2 PNG / JPEG images, 2 MiB each, with sides no larger than 8192 pixels. Image bytes are not retained.',
     openingDocuments:'Documents were handed to Materials and Facts. Chat did not replace the case source.',
     documents:'Import and review PDF, CSV, XLS, and XLSX files on the Documents page. Files are never disguised as images here.',
@@ -59,6 +85,10 @@ export const chatCopy = {
   }
 };
 const errorKeys = {
+  LIBRARY_UNAVAILABLE:'libraryUnavailable', LIBRARY_CONSENT_REQUIRED:'libraryConsentError', LIBRARY_CONTEXT_INVALID:'libraryRequestError',
+  LIBRARY_ARGUMENT_INVALID:'libraryRequestError', LIBRARY_TOOL_UNKNOWN:'libraryRequestError', LIBRARY_NOT_FOUND:'libraryMissing',
+  LIBRARY_SENSITIVE_DATA:'librarySensitive', LIBRARY_RESULT_LIMIT:'libraryLimit', LIBRARY_TOOL_LIMIT:'libraryLimit',
+  LIBRARY_ABORTED:'libraryStopped', LIBRARY_TIMEOUT:'libraryStopped', LIBRARY_UNVERIFIED_CITATION:'libraryCitation',
   CHAT_EMPTY:'emptyError', CHAT_TOO_LARGE:'tooLarge', INPUT_TOO_LARGE:'tooLarge', CHAT_IMAGE_INVALID:'imageError', CHAT_IMAGE_UNSUPPORTED:'imageError', CHAT_IMAGE_BUSY:'imageBusy',
   AUTH_REQUIRED:'authError', CSRF_REJECTED:'authError', OPERATOR_SETUP_REQUIRED:'authError', HTTPS_REQUIRED:'authError', ORIGIN_REJECTED:'authError',
   LIVE_DISABLED:'unavailable', API_KEY_REQUIRED:'unavailable', CASE_INVALID:'storageError', CONVERSATION_INVALID:'storageError', INVALID_RESPONSE:'storageError',
@@ -67,3 +97,13 @@ const errorKeys = {
   CHAT_SAVE_FAILED:'saveError', CHAT_TURN_EXISTS:'duplicate', CAPACITY_REACHED:'capacity', CASE_LIMIT_REACHED:'capacity', NETWORK_ERROR:'network'
 };
 export function chatErrorText(error, lang='zh') { const words=chatCopy[lang] || chatCopy.zh; return words[errorKeys[error?.code] || 'generic']; }
+
+const activityKeys = {
+  searching:{started:'librarySearchingStarted',completed:'librarySearchingCompleted',error:'librarySearchingError'},
+  reading:{started:'libraryReadingStarted',completed:'libraryReadingCompleted',error:'libraryReadingError'},
+  retrieving:{started:'libraryRetrievingStarted',completed:'libraryRetrievingCompleted',error:'libraryRetrievingError'}
+};
+export function libraryActivityText(activity,lang='zh') {
+  const words=chatCopy[lang]||chatCopy.zh;
+  return words[activityKeys[activity?.phase]?.[activity?.state]] || words.libraryRequestError;
+}

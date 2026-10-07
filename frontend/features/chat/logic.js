@@ -1,3 +1,4 @@
+import { normalizeLibraryActivity, normalizeLibrarySources } from './retrieval.js';
 /** Bounded chat protocol helpers. No provider simulation or browser persistence. */
 export const CHAT_BOUNDS = Object.freeze({ text: 8000, output: 64000, images: 2, imageBytes: 2 * 1024 * 1024, imageSide: 8192 });
 export class ChatClientError extends Error {
@@ -33,15 +34,15 @@ export function imageDimensions(bytes, mimeType) {
   if(!width||!height||width>CHAT_BOUNDS.imageSide||height>CHAT_BOUNDS.imageSide)fail('CHAT_IMAGE_INVALID');
   return {width,height};
 }
-export function buildChatTurn({ caseId, conversationId, clientMessageId, text, images = [], lang = 'zh' }) {
-  if (!uuid(caseId) || !uuid(conversationId) || !uuid(clientMessageId) || !['zh', 'en'].includes(lang) || typeof text !== 'string' || /\u0000/u.test(text)) fail('CHAT_INVALID');
+export function buildChatTurn({ caseId, conversationId, clientMessageId, text, images = [], lang = 'zh', libraryConsent = false }) {
+  if (typeof libraryConsent !== 'boolean' || !uuid(caseId) || !uuid(conversationId) || !uuid(clientMessageId) || !['zh', 'en'].includes(lang) || typeof text !== 'string' || /\u0000/u.test(text)) fail('CHAT_INVALID');
   if (text.length > CHAT_BOUNDS.text || !Array.isArray(images) || images.length > CHAT_BOUNDS.images) fail('CHAT_TOO_LARGE');
   if (!text.trim() && !images.length) fail('CHAT_EMPTY');
   const cleanImages = images.map(image => {
     if (!['image/png', 'image/jpeg'].includes(image.mimeType) || typeof image.data !== 'string' || !image.data || image.data.length > Math.ceil(CHAT_BOUNDS.imageBytes / 3) * 4 || !/^[A-Za-z0-9+/]+={0,2}$/u.test(image.data)) fail('CHAT_IMAGE_INVALID');
     return { mimeType: image.mimeType, data: image.data };
   });
-  return { caseId, conversationId, clientMessageId, locale: lang, consent: true,
+  return { caseId, conversationId, clientMessageId, locale: lang, consent: true, ...(libraryConsent ? {libraryConsent:true} : {}),
     messages: [{ role: 'user', content: text, ...(cleanImages.length ? { images: cleanImages } : {}) }] };
 }
 export function normalizeMessages(messages) {
@@ -68,7 +69,7 @@ export function restoredMessages(stored, localUser, localAssistant) {
 export async function* readChatEvents(body, signal) {
   if (!body?.getReader) fail('CHAT_STREAM_FAILED');
   const reader = body.getReader(), decoder = new TextDecoder('utf-8', {fatal:true});
-  let buffer = '', doneSeen = false, outputLength = 0, bytes = 0;
+  let buffer = '', doneSeen = false, sourcesRequestId = null, outputLength = 0, bytes = 0;
   const abort = () => { reader.cancel().catch(() => {}); };
   signal?.addEventListener('abort', abort, {once:true});
   const check = () => { if (signal?.aborted) throw new DOMException('Request aborted','AbortError'); };
@@ -86,16 +87,25 @@ export async function* readChatEvents(body, signal) {
         if (!name || !data) continue;
         let value; try {value = JSON.parse(data);} catch {fail('CHAT_STREAM_FAILED');}
         if (name === 'delta') {
-          if (doneSeen || typeof value.text !== 'string') fail('CHAT_STREAM_FAILED');
+          if (doneSeen || sourcesRequestId || typeof value.text !== 'string') fail('CHAT_STREAM_FAILED');
           outputLength += value.text.length; if (outputLength > CHAT_BOUNDS.output) fail('CHAT_TOO_LARGE');
           yield {type:'delta',text:value.text};
+        } else if (name === 'activity') {
+          if (doneSeen || sourcesRequestId) fail('CHAT_STREAM_FAILED');
+          yield {type:'activity',...normalizeLibraryActivity(value)};
+        } else if (name === 'sources') {
+          if (doneSeen || sourcesRequestId) fail('CHAT_STREAM_FAILED');
+          const sources=normalizeLibrarySources(value); sourcesRequestId=sources.requestId;
+          outputLength+=sources.appendix.length; if(outputLength>CHAT_BOUNDS.output)fail('CHAT_TOO_LARGE');
+          yield {type:'sources',...sources};
         } else if (name === 'conversation') {
           if (!uuid(value.conversationId) || !uuid(value.userMessageId)) fail('CHAT_STREAM_FAILED');
           yield {...value,type:'conversation'};
         } else if (name === 'done') {
-          if (doneSeen || !uuid(value.requestId) || !uuid(value.assistantMessageId)) fail('CHAT_STREAM_FAILED');
+          if (doneSeen || sourcesRequestId && sourcesRequestId !== value.requestId || !uuid(value.requestId) || !uuid(value.assistantMessageId)) fail('CHAT_STREAM_FAILED');
           doneSeen = true; yield {...value,type:'done'};
         } else if (name === 'error') {
+          if (doneSeen || sourcesRequestId && sourcesRequestId !== value.requestId) fail('CHAT_STREAM_FAILED');
           yield {type:'error',code:typeof value.code === 'string' ? value.code : 'CHAT_STREAM_FAILED'};
           return;
         }
