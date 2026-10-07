@@ -86,7 +86,8 @@ test('development React: first send persists case and conversation, then sends o
     return response({},500);
   }});context.after(app.close);
   await app.type('Only this new question');await app.click(app.dom.window.document.querySelector('[role="checkbox"]'));await app.click(app.button('Send to DeepSeek'));await app.flush();
-  const calls=app.requests.filter(item=>item.options.method==='POST');assert.deepEqual(calls.map(item=>item.path),['/api/cases',`/api/cases/${caseId}/conversations`,'/api/chat']);
+  const posts=app.requests.filter(item=>item.options.method==='POST');assert.equal(posts.filter(item=>item.path==='/api/workflows').length,1,'Case observation starts at most one metadata workflow');
+  const calls=posts.filter(item=>item.path!=='/api/workflows');assert.deepEqual(calls.map(item=>item.path),['/api/cases',`/api/cases/${caseId}/conversations`,'/api/chat']);
   const payload=JSON.parse(calls.at(-1).options.body);assert.equal(payload.caseId,caseId);assert.equal(payload.conversationId,conversationId);assert.deepEqual(payload.messages,[{role:'user',content:'Only this new question'}]);assert.ok(payload.clientMessageId);
   assert.equal(app.dom.window.document.querySelector('textarea').value,'');assert.match(app.dom.window.document.body.textContent,/Authored stream fixture; not a live provider result/);
   assert.equal(app.requests.some(item=>item.options.method==='PUT'),false);

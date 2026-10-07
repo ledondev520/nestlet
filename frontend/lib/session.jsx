@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useMemo, useRef, useState, useEffect } from 'react';
 import { createApiClient } from './api.js';
 import { draftVault } from './draft-vault.js';
+import { createJourneyTelemetry } from './journey-telemetry.js';
 
 const SessionContext = createContext(null);
 const emptySession = { authenticated: false, userId: null, role: null, csrfToken: '' };
@@ -12,6 +13,7 @@ export function SessionProvider({ children }) {
   const [error, setError] = useState(null);
   const [recovery, setRecovery] = useState(null);
   const statusRef = useRef(emptySession);
+  const journey = useMemo(() => createJourneyTelemetry({ getSession: () => statusRef.current }), []);
   const generation = useRef(0);
   const update = useCallback(next => {
     if (next.authenticated && typeof next.userId === 'string' && next.userId) {
@@ -19,8 +21,9 @@ export function SessionProvider({ children }) {
       setRecovery(previous => resumed ? 'restored' : previous === 'suspended' ? null : previous);
     }
     statusRef.current = next;
+    try { journey.syncIdentity(); } catch { /* Metadata cannot interrupt authentication. */ }
     setStatus(next);
-  }, []);
+  }, [journey]);
   const expire = useCallback(() => {
     const previous = statusRef.current;
     if (previous.authenticated && previous.userId) {
@@ -34,8 +37,9 @@ export function SessionProvider({ children }) {
   }, [update]);
   const api = useMemo(() => createApiClient({
     getCsrfToken: () => statusRef.current.csrfToken || '',
-    onUnauthorized: expire
-  }), [expire]);
+    onUnauthorized: expire,
+    getJourney: () => journey
+  }), [expire, journey]);
 
   const refresh = useCallback(async ({ signal } = {}) => {
     const current = ++generation.current;
@@ -53,6 +57,11 @@ export function SessionProvider({ children }) {
       if (current === generation.current) setLoading(false);
     }
   }, [api, expire, update]);
+
+  useEffect(() => {
+    try { journey.connect(); } catch { /* Observation is optional. */ }
+    return () => { try { journey.dispose(); } catch {} };
+  }, [journey]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -76,13 +85,14 @@ export function SessionProvider({ children }) {
     // uncertain network result must not retain a user-requested discard cache.
     draftVault.clear();
     setRecovery(null);
+    try { journey.reset(); } catch { /* Sign-out remains authoritative. */ }
     await api.post('/api/logout', {});
     generation.current++;
     update(emptySession);
     await refresh().catch(() => {});
-  }, [api, refresh, update]);
+  }, [api, refresh, update, journey]);
 
-  const value = useMemo(() => ({ status, loading, error, recovery, api, refresh, login, register, logout }), [status, loading, error, recovery, api, refresh, login, register, logout]);
+  const value = useMemo(() => ({ status, loading, error, recovery, api, journey, refresh, login, register, logout }), [status, loading, error, recovery, api, journey, refresh, login, register, logout]);
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }
 
