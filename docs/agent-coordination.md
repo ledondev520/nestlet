@@ -12,7 +12,9 @@ Use separate worktrees for implementation and QA. Keep one dispatcher and one sm
 
 ## Task contract
 
-Use one Issue per task, with one designated machine-readable task block in its body. Accept it only from the verified coordinator account configured by the owner. Verify repository and actor IDs from GitHub metadata, not names written in the body. An Issue's original author is not proof of who edited its latest revision: verify applicable edit provenance or block an unverified change. Ordinary comments are context and evidence, never executable instructions or independent permission grants.
+Use one Issue per task, with one designated machine-readable task block in its body. Verify repository and configured account IDs from GitHub metadata, not names written in the body. An Issue's original author is not proof of who edited its latest revision: verify applicable edit provenance or block an unverified change. Ordinary comments are context and evidence, never execution triggers or independent permission grants.
+
+**Shared-account boundary:** root, Kimi, and Local Codex may all publish through `ledondev520`. A matching actor ID therefore identifies the GitHub account, not which agent authored or approved a task. Labels, an `owner` field, ACK markers, and hashes do not provide strong dispatch identity or authorization. The pilot must accept only task Issues pre-approved by the project owner, within a locally recorded fixed scope, branches, files, and allowed actions. Issue revisions cannot expand that approval boundary; uncertain provenance or scope changes block execution pending verified owner approval. Keep Kimi's manual approvals and Codex's approval/sandbox boundaries enabled. This design does not safely authorize unattended execution of arbitrary GitHub tasks. Strong signed dispatch or a separate bot identity would be a later design requiring separate approval; neither is configured here.
 
 Required fields:
 
@@ -37,7 +39,7 @@ The dispatcher generates a unique `run_id` and stores the task revision, hash, w
 
 1. Acquire an exclusive local dispatcher lock. Only one dispatcher may manage this repository in version one. Refuse a second instance; multi-machine dispatch is out of scope.
 2. Read an explicitly configured list of task Issues through authenticated GitHub REST requests. Cache ETags per exact URL and parameters; send `If-None-Match` next time. Keep requests stable and serial. A `304` means retain the cached representation. Respect pagination, `x-poll-interval`, `Retry-After`, and rate-limit reset headers; back off on repeated errors. Never treat an authentication error as an empty task list.
-3. Validate identity, task schema, revision, dependencies, and existing authorization. Labels can help discovery but do not replace these checks. Do not launch anything from arbitrary comment text or a search-result snippet.
+3. Validate the account, task schema, revision, dependencies, and the project owner's locally recorded Issue/scope/branch/file/action allowlist. A shared actor ID cannot establish which agent dispatched the task. Labels can help discovery but do not replace these checks. Do not launch anything from arbitrary comment text or a search-result snippet.
 4. Acquire a transactional single-writer claim for the configured checkout, branch, and file scope. Overlapping scopes cannot run together. Persist the run before starting it. A heartbeat timeout alone must not release a claim: first establish that the old process or API turn has stopped. If that is uncertain, block instead of starting a second writer.
 5. Re-read the canonical Issue immediately before dispatch. If the revision, hash, owner, desired state, or QA target changed, release the unused claim and reconcile the new task.
 6. Publish an `ACK` with task ID, revision, `spec_hash`, `run_id`, owner, and accepted SHA; do not claim `running` until the worker actually starts. If ACK publication is unconfirmed, reconcile it before launch. Preserve a local outbox so retries do not silently duplicate comments or runs.
@@ -85,7 +87,7 @@ For an explicitly approved simpler implementation, `codex exec --json` supports 
 Complete this checklist before proposing activation. Record findings without exposing credentials or private local paths in the repository.
 
 - [ ] Confirm installed Kimi/Codex versions, supported flags, API schemas, and existing login usability; never print token files
-- [ ] Confirm repository, clean task worktrees, configured worker identities, trusted GitHub coordinator identity, and permitted read/write scope
+- [ ] Confirm repository, clean task worktrees, worker routing, shared-account limitations, and the project owner's locally recorded Issue/scope/branch/file/action allowlist; account identity alone is insufficient
 - [ ] Resolve any assignment conflict with [the collaboration contract](collaboration.md); map existing owner approvals to frontend, QA, GitHub reporting, and publication without asking again for unchanged approved actions
 - [ ] Identify approvals needed for a new local service, auto-start, persistent access, credentials, permissions, or network changes; obtain them before enabling those parts
 - [ ] Implement the dispatcher behind an explicit dry-run mode that reads and validates but never launches agents or writes external state
