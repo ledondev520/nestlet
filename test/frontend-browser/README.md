@@ -11,6 +11,7 @@ npm ci --ignore-scripts
 npx --no-install playwright install --with-deps chromium
 npm run build
 node test/frontend-browser/fixture.check.mjs
+node test/frontend-browser/customer-cases-fixture.check.mjs
 npm run test:browser:frontend
 ```
 
@@ -18,7 +19,7 @@ The browser install uses the version already pinned in the repository lockfile. 
 
 The dedicated `Nestlet browser acceptance` workflow runs these steps at the promoted `/` homepage for pull requests, main pushes, and manual dispatch. It retains the HTML/JUnit report, labelled screenshots from successful synthetic journeys, and synthetic-only failure traces/screenshots for seven days. Read the job's exact commit and individual test results before claiming a pass.
 
-Four additional customer/case scenarios are described in [the customer/case evidence boundary](CUSTOMER-CASES.md): linked cases and document versions, a real private-fixture server restart, empty-conversation selection, two-tab conflicts, offline-save recovery and owner/ordinary isolation. Their local HTTP contract check passed; the new Chromium scenarios remain unrun until exact-commit CI evidence is reviewed.
+Four additional customer/case scenarios are described in [the customer/case evidence boundary](CUSTOMER-CASES.md): linked cases and document versions, a real private-fixture server restart, empty-conversation selection, two-tab conflicts, offline-save recovery and owner/ordinary isolation. Their local HTTP contract check passed. The first official Chromium run passed 17/17 tests on the exact tree recorded there; later integrations require fresh CI rather than inheriting that result.
 
 ## Coverage
 
@@ -36,4 +37,4 @@ Four additional customer/case scenarios are described in [the customer/case evid
 
 ## Explicitly not established
 
-The pre-existing product/parser journeys do not mock APIs or parsing. The new email journeys explicitly simulate the mail provider receipt only; no genuine delivery is established. Manual explicit-label organization and deterministic document templates do not establish AI acceptance. Live DeepSeek extraction, streamed chat, image understanding, provider errors/cancellation, genuine production email provider acceptance/delivery, browser recovery across service restart, production deployment, real device soft keyboard/safe-area behavior, and full accessibility conformance require separate evidence.
+The pre-existing product/parser journeys do not mock APIs or parsing. The new email journeys explicitly simulate the mail provider receipt only; no genuine delivery is established. Manual explicit-label organization and deterministic document templates do not establish AI acceptance. Live DeepSeek extraction, streamed chat, image understanding, provider errors/cancellation, genuine production email provider acceptance/delivery, production host/container restart or restore, production deployment, real device soft keyboard/safe-area behavior, and full accessibility conformance require separate evidence.

@@ -2,6 +2,18 @@
 
 Checkpoint: 2026-10-07. This is a development checkpoint, not final acceptance. Deployment and real-browser integration remain separate; rerun after the final source freeze.
 
+## Official-reference React migration regression, 2026-10-07
+
+Based on exact main `73255d90826e4934b1f0f489d3ed836e076096ed`, the existing official-source registry was previously reachable only in the legacy UI. The promoted React root now exposes a compact bilingual reference disclosure in chat/materials/documents, separate from case facts. Chat sends an allowlisted reference ID; the server supplies bounded registry observations and explicit case-applicability/version uncertainty to both ordinary and library-assisted requests. No new source assertions, official-form mapping, model, network tool, schema or authorization behavior is added. The registry's recorded check dates are reused, not a claim of fresh source verification in this change.
+
+- `npm run check`: passed
+- `npm run build`: passed; existing single-bundle size advisory remains
+- `npm test`: **312/312 passed**, zero failed/skipped
+- `npm run test:frontend`: **224/224 passed**, zero failed/skipped
+- Root React-DOM plus real HTTP/SQLite regression verifies reference availability, both interface languages, unchanged case/readiness on selection, English supplementary generation without invented agency facts, and case-switch reset. The ordinary/library HTTP protocol test verifies server-owned guidance reaches the upstream request; that upstream is an authored local fixture, not DeepSeek
+- `npm ci --ignore-scripts --offline` could not complete because one package was absent from the local cache. Checks reused the existing dependency tree from an isolated worktree with the identical lockfile SHA-256, and `npm ls --depth=0` passed. No dependency/lockfile changes or install scripts were run
+- No browser, live provider, email, production service, push, merge or deployment was used for this candidate. Real-browser visual/keyboard/mobile review and real-provider source fidelity remain separate acceptance gates. Generated final correspondence remains supplementary and does not certify an official packet or agency acceptance
+
 React/shadcn foundation checkpoint (09:33 UTC): production build and seven API/build contracts pass. This is a component preview, not a completed business-page migration. The combined baseline has one legacy localization failure; supported-browser and Docker validation remain pending. See [exact migration evidence](shadcn-migration.md).
 ## Artifact invalidation regression, 10:29 UTC
 
@@ -288,3 +300,9 @@ An extra run of the old sample-driven `test/app.test.js` reports three failures.
 Added four provider-free Chromium scenarios on base `73255d90826e4934b1f0f489d3ed836e076096ed`; see [the precise customer/case evidence boundary](../test/frontend-browser/CUSTOMER-CASES.md). The candidate covers UI-created linked customers/cases, reviewed facts, a resolved question, final/edited-draft versions, exact original bytes, real private-fixture server restart and fresh login, empty-conversation selection, role isolation, two-tab conflicts, offline save retention and explicit retry. Two trial identities are privately seeded legacy fixtures; three empty conversations use normal authenticated HTTP, with no fabricated messages or provider responses.
 
 Local results: the new real HTTP/SQLite restart and isolation contract passed repeatedly; existing product/email/format fixture checks passed; syntax and production build passed; backend **311/311** and frontend **223/223** passed. Playwright discovers **17 scenarios in six files**. Independent static review found no definite selector/flow blocker. **The four new Chromium scenarios have not run here**: the executor does not support standalone browser execution and no bypass was attempted. Exact-commit official CI must establish their actual browser result. Existing bundle-size warning remains. No production navigation, live provider/email call, UI/backend product change, push, merge or deployment occurred in this local candidate task.
+
+### Customer/case official CI and main integration, 2026-10-07 15:33 UTC
+
+[Official browser run 37643281521](https://github.com/ledondev520/nestlet/actions/runs/37643281521) passed **17/17 Chromium scenarios**, with zero failures/errors/skips in downloaded JUnit, including all four new customer/case tests. PR head `dbdfcbb44bdfaf4f612ecebe93fe3332bd8a42dc` and actual PR checkout `37bc10b2f51e1c8de7664ea8a12d00dfb097b857` have the identical verified source tree `cbc0b25b60a61adf9fa8e82f11be6ae59582cbe8`. This proves the exercised isolated Node/SQLite/assets restart with fresh sign-in, customer/case/version recovery, conflicts and offline retention. Empty conversations remain API-created; live chat/provider, genuine mail and production host/container restart or restore remain untested by this suite.
+
+Merged official-guidance main `6b357266ff5548785479d08c5d219dafa6b277a2` into the browser candidate without conflicts, preserving both prior evidence sections. Combined local verification passed: syntax, production build, **312/312 backend**, **224/224 frontend**, **53/53 explicitly simulated email contracts**, **1/1 real HTTP/DOM artifact lifecycle**, all four standalone product/email/format/customer fixture checks, and browser discovery of 17 scenarios. Workflow YAML verification confirms the only workflow changes add the customer fixture command and correct the evidence-summary wording; permissions, triggers, environment and existing gates remain unchanged. Fresh official CI is required for the integrated head; the earlier Chromium pass is not inherited. No PR merge or deployment was performed by this test task.

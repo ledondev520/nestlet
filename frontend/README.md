@@ -25,6 +25,12 @@ This directory is the JavaScript/JSX frontend. No TypeScript application source 
 
 ## Feature boundaries
 
+### Official-source references
+
+The authenticated root workspace mounts `components/agency-guidance.jsx` above Conversation, Materials & facts, and Documents. It uses the existing bilingual `public/agency-guidance.js` registry in a collapsed native disclosure with shadcn Label/NativeSelect and existing design tokens. Official titles remain in their source language. Edition metadata, source-check date, conditional preparation notes and the printed OMB caution remain available inside the disclosure; applicability is visibly unconfirmed even while collapsed.
+
+App owns the transient reference selector, initially SFHA for research. This is separate from the saved `pha` fact: it never writes case data, changes document readiness, or inserts an agency into a generated document. It survives view/language changes in the workspace and resets when another case/account opens or the page reloads. The choice is not a persisted case setting. Chat receives the selected ID for subsequent requests; only server-owned registry text can become reference context. Source observations are not fetched or reverified for each request.
+
 Each feature owns only its directory and tests. Foundation owner integrates App/navigation after modules are ready.
 
 | Directory | Public component |

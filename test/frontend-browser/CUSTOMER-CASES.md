@@ -68,9 +68,32 @@ temporary database/assets after the test.
 - Chromium execution: **not run here**, because standalone browser execution is
   unavailable in this executor. No attempt to bypass that restriction was made
 
-The new browser tests have not earned a pass until the authorized CI runner tests
-the exact candidate commit and its individual results are reviewed. A successful
-HTTP fixture check or test discovery must never be called a browser pass.
+A successful HTTP fixture check or test discovery must never be called a browser
+pass. The local-only evidence above is distinct from the official run below.
+
+## First official Chromium confirmation, 2026-10-07 15:24 UTC
+
+[Browser run 37643281521](https://github.com/ledondev520/nestlet/actions/runs/37643281521)
+passed all **17/17** scenarios at the root product entry, including these four new
+tests. Downloaded JUnit independently confirms 17 tests and zero failures, errors
+or skips; the customer suite contains four passed tests. Reviewed the two-case
+directory, restored resolved question/edited draft, and reconciled-source
+screenshots. This is actual Chromium evidence from GitHub Actions, not local
+browser execution.
+
+- PR head: `dbdfcbb44bdfaf4f612ecebe93fe3332bd8a42dc`
+- Actual PR checkout: `37bc10b2f51e1c8de7664ea8a12d00dfb097b857`
+- Parents: base `73255d90826e4934b1f0f489d3ed836e076096ed` and that PR head
+- Verified identical checkout/head tree: `cbc0b25b60a61adf9fa8e82f11be6ae59582cbe8`
+- Browser artifact ID: `11492749318`, retained for seven days by the workflow
+- [Checks](https://github.com/ledondev520/nestlet/actions/runs/37643281438) and
+  [container smoke](https://github.com/ledondev520/nestlet/actions/runs/37643281466)
+  also passed for the same head
+
+This pass belongs to that exact tree. Integration of subsequent main changes,
+including official-guidance main `6b357266ff5548785479d08c5d219dafa6b277a2`, requires
+fresh exact-head CI. No subsequent pass is inferred here. The conversation,
+provider, mail and deployment limits above remain unchanged.
 
 ## Reproduce
 
@@ -88,12 +111,25 @@ NESTLET_BROWSER_ENTRY_PATH=/ npm run test:browser:frontend -- customer-cases.spe
 NESTLET_BROWSER_ENTRY_PATH=/ npm run test:browser:frontend
 ```
 
-The normal browser workflow discovers the new `.spec.js` automatically. Run the
-standalone customer fixture check explicitly as well when reviewing fixture
-lifecycle changes. Screenshots and traces produced by a future run contain only
-these synthetic records.
+The normal browser workflow runs the standalone customer fixture check and
+discovers the new `.spec.js` automatically. Run that fixture check locally as
+well when reviewing lifecycle changes. Screenshots and traces contain only these
+synthetic records.
 
 Still separate: live extraction/chat/vision and actual streaming cancellation;
 genuine email delivery; customer-facing accessibility/device acceptance; all
 three final-document kinds and native print; stale-final regeneration; production
 deployment/private preflight. These tests add no UI/backend product code.
+
+## Main integration checkpoint, 2026-10-07 15:33 UTC
+
+Integrated official-guidance main `6b357266ff5548785479d08c5d219dafa6b277a2`
+without conflicts, preserving both validation sections. Combined local checks
+passed: syntax/build, backend 312/312, frontend 224/224, explicitly simulated
+email contracts 53/53, real HTTP/DOM artifact lifecycle 1/1, and the product,
+email, formats and customer fixture checks. Discovery remains 17 browser tests.
+The workflow now runs the customer fixture check and accurately distinguishes
+isolated Node restart coverage from untested production host/container recovery.
+YAML comparison verified that triggers, permissions, environment and all existing
+gates are unchanged. The integrated head still needs its own official CI result;
+the earlier exact-tree pass above does not certify this new combination.

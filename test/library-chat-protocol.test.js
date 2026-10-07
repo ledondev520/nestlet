@@ -91,6 +91,10 @@ test('actual chat HTTP integration persists the server appendix exactly once and
   try{
     const own=f.storage.createCase('owner',payload('Johnny owner fixture')),conversation=f.storage.createConversation('owner',own.id,{});
     upstream=await provider((body,_round,_req,res)=>{
+      assert.match(body.messages[0].content,/Official-source reference context:/);
+      assert.match(body.messages[0].content,/"id":"oha"/);
+      assert.match(body.messages[0].content,/https:\/\/www\.oakha\.org/);
+      assert.match(body.messages[0].content,/"acceptanceStatus":"unconfirmed"/);
       if(!body.tools)return answer('Ordinary authored protocol response.');
       const toolResults=body.messages.filter(message=>message.role==='tool');
       if(!toolResults.length)return tool('owner_lookup','search_library',{kind:'case',query:'Johnny',clientId:null,caseId:null});
@@ -110,7 +114,7 @@ test('actual chat HTTP integration persists the server appendix exactly once and
     const login=await fetch(url+'/api/login',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify({password})});assert.equal(login.status,200);const cookie=login.headers.get('set-cookie').split(';')[0],session=await login.json();
     const headers={Origin:origin,Cookie:cookie,'X-CSRF-Token':session.csrfToken,'Content-Type':'application/json'};
     const status=await(await fetch(url+'/api/status',{headers})).json();assert.equal(status.libraryRetrievalEnabled,true);
-    const send=(libraryConsent,content=libraryConsent?'Find the saved Johnny case.':'An ordinary next question.',clientMessageId=randomUUID())=>fetch(url+'/api/chat',{method:'POST',headers,body:JSON.stringify({locale:'en',consent:true,libraryConsent,caseId:own.id,conversationId:conversation.id,clientMessageId,messages:[{role:'user',content}]})});
+    const send=(libraryConsent,content=libraryConsent?'Find the saved Johnny case.':'An ordinary next question.',clientMessageId=randomUUID())=>fetch(url+'/api/chat',{method:'POST',headers,body:JSON.stringify({locale:'en',consent:true,libraryConsent,guidanceAgency:'oha',caseId:own.id,conversationId:conversation.id,clientMessageId,messages:[{role:'user',content}]})});
     const response=await send(true);assert.equal(response.status,200);assert.equal(response.headers.get('x-library-retrieval'),'enabled');const text=await response.text();
     const frames=text.trim().split(/\n\n/u).map(frame=>({event:frame.match(/^event: (.+)$/mu)?.[1],data:JSON.parse(frame.match(/^data: (.+)$/mu)[1])}));
     const sourceFrames=frames.filter(frame=>frame.event==='sources');assert.equal(sourceFrames.length,1);const source=sourceFrames[0].data;

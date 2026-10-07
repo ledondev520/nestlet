@@ -11,6 +11,8 @@ import { useSession } from '@/lib/session';
 import { draftVault } from '@/lib/draft-vault';
 import { captureAuthFragment } from '@/features/auth/auth-route';
 import { DraftWorkspaceProvider } from '@/lib/suspended-draft';
+import { AgencyGuidance } from '@/components/agency-guidance';
+import { DEFAULT_GUIDANCE_AGENCY } from '../public/agency-guidance.js';
 
 // Bundled modules let migration lanes land independently. Missing lanes remain
 // explicitly labeled; never substitute samples or claim an unfinished page works.
@@ -29,6 +31,8 @@ function AccountWorkspace({ lang, view, navigate }) {
   const [workspaceKey, setWorkspaceKey] = useState(() => recoveredWorkspace?.workspaceKey || crypto.randomUUID());
   const [caseId, setCaseId] = useState(() => recoveredWorkspace?.caseId || null);
   const [workspaceEpoch, setWorkspaceEpoch] = useState(0);
+  // Reference selection is transient and cannot write or confirm the case's PHA.
+  const [guidanceAgency, setGuidanceAgency] = useState(DEFAULT_GUIDANCE_AGENCY);
   const [visited, setVisited] = useState(() => new Set([view]));
   const [importRequest, setImportRequest] = useState(null);
   const dirty = useRef({ chat: false, documents: false, intake: false });
@@ -57,6 +61,7 @@ function AccountWorkspace({ lang, view, navigate }) {
       setWorkspaceKey(crypto.randomUUID());
       setImportRequest(null);
       setWorkspaceEpoch(value => value + 1);
+      setGuidanceAgency(DEFAULT_GUIDANCE_AGENCY);
       setCaseId(nextId);
     }
     navigate('chat');
@@ -78,13 +83,15 @@ function AccountWorkspace({ lang, view, navigate }) {
   const openIntake = useCallback(() => navigate('intake'), [navigate]);
   const openDocuments = useCallback(() => navigate('documents'), [navigate]);
   const slots = {
-    chat: [modules.chat?.ChatPage, { caseId, onCaseChange: bindCurrentCase, onDirtyChange: markChatDirty, onImportFiles: importFiles }],
+    chat: [modules.chat?.ChatPage, { caseId, guidanceAgency, onCaseChange: bindCurrentCase, onDirtyChange: markChatDirty, onImportFiles: importFiles }],
     intake: [modules.intake?.IntakePage, { caseId, onCaseChange: bindCurrentCase, onDirtyChange: markIntakeDirty, importRequest, onImportHandled: imported, onOpenDocuments: openDocuments, active: view === 'intake' }],
     customers: [modules.customers?.CustomersPage, { onOpenCase: openCase, active: view === 'customers' }],
     documents: [modules.documents?.DocumentsPage, { caseId, onDirtyChange: markDocumentsDirty, onOpenIntake: openIntake, active: view === 'documents' }],
     settings: [modules.auth?.SettingsPage, { active: view === 'settings' }]
   };
-  return <DraftWorkspaceProvider userId={status.userId} workspaceKey={workspaceKey}>{views.filter(id => visited.has(id) || id === view).map(id => {
+  return <DraftWorkspaceProvider userId={status.userId} workspaceKey={workspaceKey}>
+    {['chat', 'intake', 'documents'].includes(view) && <AgencyGuidance key={workspaceEpoch} lang={lang} agency={guidanceAgency} onAgencyChange={setGuidanceAgency} />}
+    {views.filter(id => visited.has(id) || id === view).map(id => {
     const [Page, props] = slots[id];
     // Explicit case switches remount after the dirty guard. First-save binding
     // keeps the current chat composer mounted, including prepared image previews.
