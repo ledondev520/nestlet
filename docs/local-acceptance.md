@@ -195,3 +195,41 @@ On unchanged runtime `8b42962e55305e3cc70b7c20ce5d7e4d74ed13c7`, Node 24.19.0 co
 The test genuinely signed in to an isolated loopback server, confirmed authenticated settings access (HTTP 200), made no session requests for at least 30 minutes, and then received HTTP **401** with **`AUTH_REQUIRED`**. No accelerated clock, mocked authentication or provider was used. The test's cleanup terminated its own server and the runner exited.
 
 This closes the server-side idle-expiry observation only. It does not certify an eight-hour absolute timeout, the timed-expiry browser interaction, trusted HTTPS key entry or real DeepSeek behavior. LC-04/LC-05 remain pending main-owner coordination; no additional runtime revision or review response was present at this check.
+
+## Follow-up to PR #6 — 2026-10-07 13:35 Asia/Shanghai
+
+Fixed tested revision: **`8715b0d78a8cff0b5ebbbb5ea6db0bacd8137342`**, tested in a detached temporary worktree after that head's test/container CI succeeded. PR #6 subsequently merged as **`b431ea59405cbbf9ab6ec9945010f66f655b1781`**; `git diff` between those two commits is empty (identical tree). This follow-up branch starts from that merged main. Runtime and shared tests were not edited by Local Codex.
+
+- **LC-04 closed for authentication setup prose:** README now describes implemented single-operator authentication, operator hash setup and protected routes; deployment docs separate implementation from production configuration and public HTTPS/provider gates. We did not repeat or certify the reported remote deployment. Minor newly stale prose remains: README still says the helper release PR is unpublished / container checks pending, although #6 is now merged with passing CI; asked the docs owner to refresh that release checkpoint.
+- **LC-05 closed:** actual authenticated upload of the original 35,717-byte `large-text.pdf` shows the dedicated **50,000 extracted characters** error in both Chinese and English, distinguishes it from byte size, and suggests split/fewer pages/shorter pasted text. Existing source remains unchanged. A subsequent valid text PDF imports successfully. [Chinese error screenshot](../test/local-acceptance-evidence/pdf-limit-zh.png), [English error screenshot](../test/local-acceptance-evidence/pdf-limit-en.png).
+- No model credential, paid request, actual private runtime.env, production account setup or deployment was used. The browser server had a disposable synthetic operator session. The settings-helper tests used only their disposable synthetic files.
+
+### Verification and new LC-06 (P2, shared test owner)
+
+Node 24.19.0, Poppler 26.09.0, macOS 26.4.1:
+
+| Command / condition | Observed result |
+| --- | --- |
+| Pinned `npm ci` | Pass, 40 packages, 0 reported vulnerabilities |
+| `npm run check` | Pass |
+| `npm test`, default macOS temporary directory | **96 pass, 6 fail**, 0 skip |
+| `npm test`, process-only canonical temporary-directory path | **102 pass, 0 fail**, 0 skip |
+| `node --test test/local-acceptance.test.js` | **5 pass, 0 fail**, 0 skip |
+| Actual browser PDF limit/error recovery | Pass in both locales, as above |
+
+LC-06 reproduction: run the default suite on macOS when `os.tmpdir()` contains a symlinked ancestor. `test/operator-setup.test.js` constructs its private fixtures under that uncanonicalized root. The helper intentionally rejects symlinked ancestors; six tests that expect to reach a valid file or a later safeguard fail early with:
+
+```text
+Error: The target path must not contain symlinks or non-directory parents.
+  at readTarget (scripts/operator-setup.js:22)
+```
+
+Failing tests concern add/replace operator hash, BOM preservation, confirmation/stale-version guards, public-permission/hard-link guards, and a writable ancestor above a private child. This is a **test-fixture portability problem**; it does not establish that the helper accepted an unsafe production path. All six pass when only the test process receives the canonical existing temporary root. No symlink or writable-parent protection was disabled, and no global environment setting was changed. Reproduction workaround (Node 24 already on PATH):
+
+```sh
+env TMPDIR="$(node --input-type=module -e 'import {realpathSync} from "node:fs"; import {tmpdir} from "node:os"; console.log(realpathSync(tmpdir()))')" npm test
+```
+
+Suggested owner action: canonicalize the fixture root (`realpath(tmpdir())`) before creating test files or document the safe test-root prerequisite; retain all helper path protections. Shared test changes require their owner's coordination. Findings were posted to [PR #6](https://github.com/ledondev520/nestlet/pull/6#issuecomment-6031674966). The original default-environment failure is retained here rather than replaced by a blanket green claim.
+
+Trusted HTTPS browser settings, live DeepSeek and previously listed unrun checks remain unverified; this narrow follow-up does not cover the pending frontend redesign.
