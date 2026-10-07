@@ -46,3 +46,10 @@ This is development DOM plus real API/SQLite evidence. It is not real-browser la
 The same integration mounts the actual App root against those HTTP routes to verify reference availability in Documents and Materials, Chinese/English labels, collapsed default, official links/cautions, unchanged saved case/readiness after changing references, English-only generated correspondence without invented reference-agency facts, and reset on opening another case. This catches root migration omissions that registry-only unit tests cannot.
 
 Session-expiry restoration uses the shared suspended-draft interface when integrated; the feature must never create a separate browser-storage cache or restore another user's inputs.
+
+The desktop browser scenario is `test/frontend-browser/document-exports.spec.js`.
+It is intended for the supported Playwright gate after a production build, with
+real synthetic HTTP/SQLite data and no model calls. See the dated validation
+entry for whether that scenario actually ran; discovery alone is not browser
+acceptance. Its PDF capture checks Chromium rendering, not native dialog or
+physical printing completion.

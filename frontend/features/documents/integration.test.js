@@ -93,12 +93,24 @@ test('realHTTP + controlledDOM: documents and promoted root preserve case facts,
   await click('Copy text');await waitFor(()=>clipboard.length===1);assert.equal(clipboard[0],finalBody);
   await click('Download TXT');await waitFor(()=>downloads.length===1);assert.equal(await downloads[0].blob.text(),finalBody);
   await click('Print / Save PDF');await waitFor(()=>prints.length===1);assert.equal(prints[0],finalBody);
+  // Repeated exports retain byte-for-byte correspondence with the preview and
+  // do not create extra saved versions. Browser side effects remain captured.
+  await click('Copy text');await waitFor(()=>clipboard.length===2);assert.equal(clipboard[1],finalBody);
+  await click('Download TXT');await waitFor(()=>downloads.length===2);assert.equal(await downloads[1].blob.text(),finalBody);
+  await click('Print / Save PDF');await waitFor(()=>prints.length===2);assert.equal(prints[1],finalBody);
+  assert.equal((await (await request(`/api/cases/${record.id}/artifacts`)).json()).artifacts.length,2);
+  await enter('document-body',finalBody+'\nPending local edit.');
+  assert.equal(button('Download TXT').disabled,true);
+  assert.equal(button('Print / Save PDF').disabled,true);
+  assert.equal(button('Generate final document').disabled,true);
+  await enter('document-body',finalBody);
+
   await click('Add a question');await enter('document-issue-question','Which secure channel should be used?');await enter('document-issue-resolution','Confirmed the example agency secure channel.');
   await React.act(async()=>{const select=dom.window.document.getElementById('document-issue-status');select.value='resolved';select.dispatchEvent(new dom.window.Event('change',{bubbles:true}));});
   await click('Save question');await waitFor(()=>!dom.window.document.getElementById('document-issue-question'));
   const updated=(await(await request(`/api/cases/${record.id}`)).json()).case;assert.equal(updated.caseIssues[0].status,'resolved');
   await click('Download TXT');await waitFor(()=>dom.window.document.body.textContent.includes('Generate a fresh final before downloading or printing.'));
-  assert.equal(downloads.length,1);assert.equal(dom.window.document.getElementById('document-body').value,finalBody);
+  assert.equal(downloads.length,2);assert.equal(dom.window.document.getElementById('document-body').value,finalBody);
   await enter('document-body',finalBody+'\nAn unsaved human edit.');
   const changed=await request(`/api/cases/${record.id}/issues`,'PATCH',{changes:[{question:'Separate update',status:'pending',resolution:''}],expectedVersion:updated.version});assert.equal(changed.status,200);
   await click('Save new version');await waitFor(()=>dom.window.document.body.textContent.includes('The case changed elsewhere.'));
