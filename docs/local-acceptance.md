@@ -233,3 +233,20 @@ env TMPDIR="$(node --input-type=module -e 'import {realpathSync} from "node:fs";
 Suggested owner action: canonicalize the fixture root (`realpath(tmpdir())`) before creating test files or document the safe test-root prerequisite; retain all helper path protections. Shared test changes require their owner's coordination. Findings were posted to [PR #6](https://github.com/ledondev520/nestlet/pull/6#issuecomment-6031674966). The original default-environment failure is retained here rather than replaced by a blanket green claim.
 
 Trusted HTTPS browser settings, live DeepSeek and previously listed unrun checks remain unverified; this narrow follow-up does not cover the pending frontend redesign.
+
+## LC-06 fixed-head macOS verification — 2026-10-07 14:00 Asia/Shanghai
+
+At the coordinator's request, tested PR #8 exact head **`55548513d6a5d66c8920d0fa1882ca0065bc3128`** in a separate detached worktree. Its GitHub test/container checks were SUCCESS when inspected. The only functional test change canonicalizes the fixture root and adds a real symlink-root regression; production path guards are unchanged.
+
+**LC-06 is closed on this tested revision.** Original macOS failure and process-only workaround above are retained as historical evidence. This rerun used the ordinary/default macOS `TMPDIR`, with **no temporary-root environment override**. A read-only check confirmed `tmpdir() !== realpathSync(tmpdir())` is still true, so the system alias that triggered the original failure was still present.
+
+| Command | Actual result |
+| --- | --- |
+| `npm ci --ignore-scripts` | Pass; 40 packages installed, 0 reported vulnerabilities |
+| `npm run check` | Pass on Node 24.19.0 |
+| `npm test` | **103 pass, 0 fail, 0 skip**, default macOS temporary directory |
+| `node --test test/local-acceptance.test.js` | **5 pass, 0 fail, 0 skip** |
+
+The new regression creates an actual directory symlink, successfully places fixtures under its canonical physical root, and still rejects an aliased production target. No filesystem mocks, weakened security conditions or actual operator configuration was used. No production credential, provider request or deployment was involved. The 30-minute idle observation was not repeated because runtime authentication is unchanged.
+
+Release documentation in this head also refreshes the previously stale helper publication/CI wording. Local verification does not independently certify remote staging, public TLS or live-provider operation. Those gates, and any future case-persistence/redesign acceptance, require their own explicit fixed-revision evidence.
