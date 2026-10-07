@@ -79,3 +79,5 @@ Finish only when the reviewable draft PR exists, or report the exact permission/
 07:50 UTC composite2b983da (PR12 3bfcaa3 + PR4 7b74b227): actual six-character signup still rejected by old frontend guard; longer synthetic signup and real XLSX selected mapping→review→draft→save plus admin-alias settings succeed. Seven requested UI screenshots added; 179/179 composite suite. Kimi owns four reported blockers; final integrated journey remains incomplete.
 
 08:08 UTC composite93caef8 (backend d1bcbdd + frontend ace9222): real-browser5reject/6register/relogin passes; nativeChromePDF593/TXT470/CSV197character imports succeed. P1-1 and positive-pathP1-2 closed atthiscomposite;187/187 suite. Telemetry and chat/newpersistence remain separate.
+
+08:15 UTC composite200a58d (b68e857 + 5381f13): real browser→SQLite one workflow/9 sequential client events, save request correlation and bounded content-marker exclusion pass. Sanitized JSON+UI evidence added. Stale business-response identity race remains open; full timing/failure coverage not claimed.
