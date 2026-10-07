@@ -173,9 +173,19 @@ test('email pages retain keyboard/mobile usability, preserve address, and clear 
     await screenshot(page, testInfo, `simulated-mail-mobile-${width}-recovery-form`);
   }
   await openLink(page, mail);
+  await expect(page.getByRole('button', { name: 'Confirm email verification', exact: true })).toBeVisible();
+  // Scrubbing a hash can create adjacent identical '/' history entries. Traverse
+  // while the secret is LIVE: closing first would hide a navigation-clearing bug.
+  await page.goBack();
+  await expect(page.getByRole('button', { name: 'Confirm email verification', exact: true })).toHaveCount(0);
+  await page.goForward(); await english(page);
+  await expect(page.getByRole('button', { name: 'Confirm email verification', exact: true })).toHaveCount(0);
+  expect(new URL(page.url()).hash).toBe('');
+  expect(claims).toHaveLength(0);
+  // A deliberate fresh opening can be closed explicitly without claiming it.
+  await openLink(page, mail);
   await page.getByRole('button', { name: 'Close link page', exact: true }).press('Enter');
   await expect(page.getByLabel('Email or existing username', { exact: true })).toBeVisible();
-  await page.goBack(); await page.goForward(); await english(page);
   await expect(page.getByRole('button', { name: 'Confirm email verification', exact: true })).toHaveCount(0);
   expect(claims).toHaveLength(0);
   await privateState(app, [mail.token]);
