@@ -86,3 +86,16 @@ test('authorized private uploads send exact bytes, MIME, encoded filename and ex
   await assert.rejects(api.upload('/api/assets', file, { contentType: 'text/html' }), { code: 'INVALID_UPLOAD_TYPE' });
   assert.equal(calls.length, 2);
 });
+
+test('email binding wrong password preserves the session; expired binding still invalidates it', async () => {
+  let expired = 0, code = 'INVALID_CREDENTIALS';
+  const api = createApiClient({ onUnauthorized: () => expired++, fetchImpl: async () => ({ ok: false, status: 401, json: async () => ({ code }) }) });
+  await assert.rejects(api.post('/api/auth/email/bind', {}), { code: 'INVALID_CREDENTIALS' });
+  assert.equal(expired, 0);
+  code = 'AUTH_REQUIRED';
+  await assert.rejects(api.post('/api/auth/email/bind', {}), { code: 'AUTH_REQUIRED' });
+  assert.equal(expired, 1);
+  code = 'INVALID_CREDENTIALS';
+  await assert.rejects(api.post('/api/auth/email/verify', {}));
+  assert.equal(expired, 2);
+});

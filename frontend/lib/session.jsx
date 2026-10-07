@@ -32,7 +32,7 @@ export function SessionProvider({ children }) {
     }
     generation.current++;
     // Only public sign-in capabilities survive expiry, never account/provider data.
-    const capabilities = Object.fromEntries(['authConfigured', 'secureLogin', 'registrationEnabled'].filter(key => Object.hasOwn(previous, key)).map(key => [key, previous[key]]));
+    const capabilities = Object.fromEntries(['authConfigured', 'secureLogin', 'registrationEnabled', 'emailDeliveryConfigured'].filter(key => Object.hasOwn(previous, key)).map(key => [key, previous[key]]));
     update({ ...emptySession, ...capabilities });
   }, [update]);
   const api = useMemo(() => createApiClient({
@@ -69,17 +69,18 @@ export function SessionProvider({ children }) {
     return () => controller.abort();
   }, [refresh]);
 
-  const authenticate = useCallback(async (path, credentials) => {
+  const authenticate = useCallback(async (path, credentials, options) => {
     const current = ++generation.current;
-    const result = await api.post(path, credentials);
+    const result = await api.post(path, credentials, options);
     if (current !== generation.current) return result;
     update({ ...emptySession, ...result });
     // Login succeeded even if a later capability refresh is unavailable.
     await refresh().catch(() => {});
     return result;
   }, [api, refresh, update]);
-  const login = useCallback(credentials => authenticate('/api/login', credentials), [authenticate]);
-  const register = useCallback(credentials => authenticate('/api/register', credentials), [authenticate]);
+  const login = useCallback((credentials, options) => authenticate('/api/login', credentials, options), [authenticate]);
+  // Registration only requests verification. A 202 never creates a browser session.
+  const register = useCallback((credentials, options) => api.post('/api/register', credentials, options), [api]);
   const logout = useCallback(async () => {
     // This method is called only after explicit sign-out confirmation. Even an
     // uncertain network result must not retain a user-requested discard cache.

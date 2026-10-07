@@ -11,6 +11,7 @@ export function useOperation() {
   return useMemo(() => ({
     start() { if (active.current) return null; const operation = { controller:new AbortController() }; active.current = operation; return operation; },
     current(operation) { return mounted.current && active.current === operation; },
+    cancel() { active.current?.controller.abort(); active.current = null; },
     finish(operation) { if (active.current === operation) active.current = null; },
   }), []);
 }

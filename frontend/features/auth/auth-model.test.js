@@ -4,18 +4,16 @@ import assert from 'node:assert/strict';
 import { authPayload, settingsPayload, providerStatus, canManageProvider } from './auth-model.js';
 import { authErrorMessage, COPY } from './copy.js';
 
-test('real username/password contract keeps six-character passwords and rejects invalid bounds', () => {
-  assert.equal(authPayload('login',{username:'member',password:'12345'}).code,'PASSWORD_LENGTH');
-  assert.equal(authPayload('login',{username:'member',password:'x'.repeat(257)}).code,'PASSWORD_LENGTH');
-  const valid=authPayload('login',{username:' Owner ',password:' 1234 '});
-  assert.deepEqual(valid.payload,{username:'Owner',password:' 1234 '});
-  assert.equal(authPayload('login',{username:'person@example.invalid',password:'123456'}).code,'AUTH_USERNAME_INVALID');
+test('email login and old username compatibility preserve six-character passwords', () => {
+  assert.equal(authPayload('login',{email:'member@example.invalid',password:'12345'}).code,'PASSWORD_LENGTH');
+  assert.equal(authPayload('login',{email:'member@example.invalid',password:'x'.repeat(257)}).code,'PASSWORD_LENGTH');
+  assert.deepEqual(authPayload('login',{username:' Owner ',password:' 1234 '}).payload,{username:'Owner',password:' 1234 '});
+  assert.deepEqual(authPayload('login',{email:' PERSON@example.invalid ',password:'123456'}).payload,{email:'person@example.invalid',password:'123456'});
 });
-
-test('registration validates confirmation and sends no client-selected role',()=>{
-  assert.equal(authPayload('register',{username:'member',password:'123456',passwordConfirmation:'654321'}).code,'PASSWORD_MISMATCH');
-  assert.equal(authPayload('register',{username:'owner',password:'123456',passwordConfirmation:'123456'}).code,'AUTH_USERNAME_RESERVED');
-  assert.deepEqual(authPayload('register',{username:'member',password:'123456',passwordConfirmation:'123456',role:'owner'}).payload,{username:'member',password:'123456',passwordConfirmation:'123456'});
+test('registration is email-only, validates confirmation, and sends no selected role',()=>{
+  assert.equal(authPayload('register',{username:'member',password:'123456',passwordConfirmation:'123456'}).code,'AUTH_EMAIL_REQUIRED');
+  assert.equal(authPayload('register',{email:'member@example.invalid',password:'123456',passwordConfirmation:'654321'}).code,'PASSWORD_MISMATCH');
+  assert.deepEqual(authPayload('register',{email:'member@example.invalid',password:'123456',passwordConfirmation:'123456',role:'owner',username:'owner'}).payload,{email:'member@example.invalid',password:'123456',passwordConfirmation:'123456'});
 });
 
 test('provider settings are unavailable without an authenticated authorized owner',()=>{

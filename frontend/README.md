@@ -13,11 +13,11 @@ This directory is the JavaScript/JSX frontend. No TypeScript application source 
 
 `useSession()` returns `{status, loading, error, recovery, api, journey, refresh, login, register, logout}`.
 
-- `status` is the `/api/status` body, including `authenticated`, `userId`, `username`, `role`, `canManageSettings`, `authConfigured`, `registrationEnabled`, `secureLogin`, `secureSettings`, and provider capabilities
+- `status` is the `/api/status` body, including `authenticated`, `userId`, `username`, `role`, `canManageSettings`, `authConfigured`, `registrationEnabled`, `emailDeliveryConfigured`, `email`, `emailVerified`, `emailBindingRequired`, `passwordRecoveryMethod`, `secureLogin`, `secureSettings`, and provider capabilities
 - `api.get(path, {signal})`; `api.post/put/patch/delete(path, body, {signal})`; `api.request(path, {method, body, signal})`
 - Responses are parsed JSON, not `Response` objects. Cookie/CSRF handling is automatic. An aborted read rejects with `AbortError`; other failures are `ApiError`
-- `login({username,password})`; `register({username,password,passwordConfirmation})`; `logout()`; `refresh({signal})`
-- The session stores only current account/capability state in memory. Do not write passwords, keys, or CSRF tokens to local/session storage
+- `login({email,password,rememberMe})` or existing-account `login({username,password,rememberMe})`; `register({email,password,passwordConfirmation})` returns an accepted verification request and never creates a session; `logout()`; `refresh({signal})`
+- The session stores only current account/capability state in memory. Do not write passwords, keys, email-link tokens, or CSRF tokens to local/session storage. The existing explicit remember-me option may store only a validated legacy username; email identifiers are not persisted by this implementation
 - Settings updates use `api.post('/api/settings', payload)` then `refresh()`
 - Raw local files use `api.upload(path, file, {contentType, filename, assetConsent: true, signal})`; `/api/assets` persists the original only after the feature's explicit save action. The helper URL-encodes `filename`, sends exact raw bytes/MIME and adds `X-Asset-Consent: persist-private`. Legacy PDF/workbook parser routes use `documentConsent: true` instead. This does not imply AI transmission consent
 - `journey` is the optional bounded, current-tab first-party action observer. See `docs/react-journey-observability.md`; it accepts fixed metadata only. Shared API observes exact parser/case writes. Background reads are omitted; an explicit case-open read may use `{telemetry: true}`. Feature-owned operations use `{telemetry: false}` to avoid duplicates. Observer failure never changes business success
@@ -66,3 +66,13 @@ The shadcn CLI is not a build/runtime dependency: checked-in official JSX source
 Each built React HTML response at `/`, `/next`, or `/next/` receives a fresh cryptographically random 144-bit style nonce and `Cache-Control: no-store`. The matching meta value is passed to the supported `get-nonce` API before rendering. Radix scroll locking can then attach its trusted style element with that nonce. Script policy remains `script-src 'self'`; style attributes and arbitrary inline styles/scripts are not permitted. `/legacy/` retains its previous strict policy without a nonce. No build or partially missing JS/CSS produces an explicit bilingual 503.
 
 The production root browser gate covers product journeys and responsive navigation, while `/next/#components` separately exercises repeated modal focus, dismissal, scroll-lock restoration and zero CSP violations. HTTP nonce/route tests are distinct from the browser gate; neither certifies live-provider calls.
+
+## Email account release boundary
+
+The email UI requires the schema5 API in the same release. Registration is email-only and returns202 without authenticating. Existing usernames remain supported for login. Email delivery status is supplied by `/api/status`; absent configuration keeps registration and email-request actions unavailable and never implies delivery. Request success is deliberately generic and does not establish eligibility, account existence, inbox receipt, or live mail-provider acceptance.
+
+`main.jsx` captures trusted root `/#auth=verify&token=...` or `/#auth=reset&token=...` fragments before React effects, removes the fragment with `replaceState`, and keeps the token in a clearable memory closure. Neither opening a link nor a GET consumes it. Verification requires an explicit button; reset requires matching passwords. Submission removes the local token even if the network result is uncertain. Reopen the email or request a fresh link to retry. Link tokens never enter route telemetry, markup, localStorage, sessionStorage, or logs. Navigation, closing the link, pagehide, and account changes discard the token. Server expiration remains authoritative.
+
+Authenticated existing accounts bind email with their current password and the current CSRF token. They remain pending until explicit inbox verification and status refresh. Wrong binding passwords do not expire an otherwise valid session; genuine AUTH_REQUIRED does. Password reset invalidates previous sessions on the server. Administrator/bootstrap recovery is explicitly unavailable by email in this release and must be performed by the administrator personally in the private server setup flow.
+
+See `features/auth/README.md` for test scope. Real browser, DirectMail delivery, and deployment acceptance remain separate gates.

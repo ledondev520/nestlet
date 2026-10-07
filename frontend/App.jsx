@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSession } from '@/lib/session';
 import { draftVault } from '@/lib/draft-vault';
+import { captureAuthFragment } from '@/features/auth/auth-route';
 import { DraftWorkspaceProvider } from '@/lib/suspended-draft';
 
 // Bundled modules let migration lanes land independently. Missing lanes remain
@@ -81,7 +82,7 @@ function AccountWorkspace({ lang, view, navigate }) {
     intake: [modules.intake?.IntakePage, { caseId, onCaseChange: bindCurrentCase, onDirtyChange: markIntakeDirty, importRequest, onImportHandled: imported, onOpenDocuments: openDocuments, active: view === 'intake' }],
     customers: [modules.customers?.CustomersPage, { onOpenCase: openCase, active: view === 'customers' }],
     documents: [modules.documents?.DocumentsPage, { caseId, onDirtyChange: markDocumentsDirty, onOpenIntake: openIntake, active: view === 'documents' }],
-    settings: [modules.auth?.SettingsPage, {}]
+    settings: [modules.auth?.SettingsPage, { active: view === 'settings' }]
   };
   return <DraftWorkspaceProvider userId={status.userId} workspaceKey={workspaceKey}>{views.filter(id => visited.has(id) || id === view).map(id => {
     const [Page, props] = slots[id];
@@ -92,35 +93,55 @@ function AccountWorkspace({ lang, view, navigate }) {
   })}</DraftWorkspaceProvider>;
 }
 
-export default function App() {
+export default function App({ initialAuthLink = null }) {
+  const [authLink, setAuthLink] = useState(initialAuthLink);
+  const authLinkRef = useRef(initialAuthLink);
+  const handledUrl = useRef(window.location.href);
+  const replaceAuthLink = useCallback(next => { authLinkRef.current?.clear(); authLinkRef.current = next; setAuthLink(next); }, []);
   const [lang, setLang] = useState('zh');
   const [view, setView] = useState(currentView);
   const { status, loading, error, recovery, refresh } = useSession();
   const navigate = useCallback(next => {
     if (!views.includes(next)) return;
+    replaceAuthLink(null);
     setView(next);
     if (window.location.hash !== `#${next}`) window.history.pushState({}, '', `#${next}`);
-  }, []);
+    handledUrl.current = window.location.href;
+  }, [replaceAuthLink]);
   useEffect(() => {
-    const followHistory = () => setView(currentView());
+    const followHistory = () => {
+      // A history traversal may dispatch both popstate and hashchange. Capture once.
+      if (window.location.href === handledUrl.current) return;
+      const next = captureAuthFragment(window);
+      handledUrl.current = window.location.href;
+      replaceAuthLink(next); setView(currentView());
+    };
+    const clearSecret = () => { authLinkRef.current?.clear(); };
+    window.addEventListener('pagehide', clearSecret);
     window.addEventListener('popstate', followHistory);
     window.addEventListener('hashchange', followHistory);
-    return () => { window.removeEventListener('popstate', followHistory); window.removeEventListener('hashchange', followHistory); };
-  }, []);
+    return () => { window.removeEventListener('popstate', followHistory); window.removeEventListener('hashchange', followHistory); window.removeEventListener('pagehide', clearSecret); };
+  }, [replaceAuthLink]);
   useEffect(() => { document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en'; document.title = lang === 'zh' ? '巢小秘 · Nestlet' : 'Nestlet'; }, [lang]);
-  if (window.location.hash === '#components') return <ComponentPreview />;
   const AuthPanel = modules.auth?.AuthPanel;
+  const EmailLinkPanel = modules.auth?.EmailLinkPanel;
   const AccountControls = modules.auth?.AccountControls;
+  const previousIdentity = useRef(status.userId);
+  useEffect(() => {
+    if (previousIdentity.current && previousIdentity.current !== status.userId) replaceAuthLink(null);
+    previousIdentity.current = status.userId;
+  }, [status.userId, replaceAuthLink]);
   const authenticated = result => {
     const workspace = result?.userId ? draftVault.read({ userId: result.userId, workspaceKey: 'active', feature: 'workspace' }) : null;
     navigate(workspace?.view || 'chat');
   };
+  if (window.location.hash === '#components') return <ComponentPreview />;
   return <ApplicationShell lang={lang} view={view} onNavigate={status.authenticated ? navigate : undefined}
     onLanguageChange={() => setLang(value => value === 'zh' ? 'en' : 'zh')}
     account={status.authenticated ? <><Button variant="outline" size="sm" onClick={() => navigate('settings')} aria-label={lang === 'zh' ? '账户与设置' : 'Account and settings'}><Settings aria-hidden="true" /></Button>{AccountControls && <AccountControls lang={lang} />}</> : null}>
     {recovery === 'suspended' && <Alert className="mb-5"><AlertDescription>{lang === 'zh' ? '登录已过期。可恢复的未提交文字仅在当前标签页暂存最多 30 分钟；关闭或刷新页面后无法恢复。请用同一账户重新登录。图片和待上传文件需要重新添加，文字尚未保存到服务器。' : 'Your session expired. Recoverable unsaved text is held only in this tab for up to 30 minutes; closing or refreshing the page clears it. Sign in with the same account to recover it. Re-add images and pending files. This text is not saved to the server.'}</AlertDescription></Alert>}
     {recovery === 'restored' && <Alert className="mb-5"><AlertDescription>{lang === 'zh' ? '已重新验证账户并恢复可用的未提交文字。请核对最新案例内容，再明确保存；图片和待上传文件需要重新添加。' : 'Your account was verified and available unsaved text restored. Review the latest case before saving explicitly. Re-add images and pending files.'}</AlertDescription></Alert>}
     {error && <Alert variant="destructive" className="mb-5"><AlertDescription>{lang === 'zh' ? '连接状态未能刷新，请重试。' : 'Connection status could not be refreshed. Try again.'}<Button variant="outline" size="sm" onClick={() => refresh().catch(() => {})}>{lang === 'zh' ? '重试' : 'Retry'}</Button></AlertDescription></Alert>}
-    {loading ? <div role="status" aria-label={lang === 'zh' ? '正在连接' : 'Connecting'} className="space-y-4"><Skeleton className="h-8 w-48" /><Skeleton className="h-60 w-full" /></div> : status.authenticated && status.userId ? <AccountWorkspace key={status.userId} lang={lang} view={view} navigate={navigate} /> : AuthPanel ? <AuthPanel lang={lang} onAuthenticated={authenticated} /> : <Card><CardHeader><CardTitle>{lang === 'zh' ? '登录后继续' : 'Sign in to continue'}</CardTitle></CardHeader><CardContent><MigrationPending lang={lang} /></CardContent></Card>}
+    {loading ? <div role="status" aria-label={lang === 'zh' ? '正在连接' : 'Connecting'} className="space-y-4"><Skeleton className="h-8 w-48" /><Skeleton className="h-60 w-full" /></div> : authLink && EmailLinkPanel ? <EmailLinkPanel key={authLink.id} link={authLink} lang={lang} onClose={() => replaceAuthLink(null)} /> : status.authenticated && status.userId ? <AccountWorkspace key={status.userId} lang={lang} view={view} navigate={navigate} /> : AuthPanel ? <AuthPanel lang={lang} onAuthenticated={authenticated} /> : <Card><CardHeader><CardTitle>{lang === 'zh' ? '登录后继续' : 'Sign in to continue'}</CardTitle></CardHeader><CardContent><MigrationPending lang={lang} /></CardContent></Card>}
   </ApplicationShell>;
 }
