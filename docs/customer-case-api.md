@@ -49,7 +49,7 @@ External letters require a reviewed property and confirmed recipient name or org
 
 Message shape: `{id,conversationId,role,content,state,requestId,clientMessageId,createdAt}`. Roles are user/assistant; states are complete/interrupted/failed. Raw image base64 and uploaded binary files are never retained. A message may contain bounded image-presence metadata only, clearly marked not retained; reopening cannot pretend that those pixels are still available.
 
-`POST /api/chat` gains optional conversationId and clientMessageId(UUID). With conversationId, send exactly one new user message in the existing messages array. The server resolves its own stored history and case; a supplied caseId must match. The new user message is saved once before starting the provider, and the assistant's completed or interrupted/failed text is retained with its truthful state. Reusing clientMessageId returns409 rather than silently paying for another response.
+`POST /api/chat` gains optional conversationId; when supplied, clientMessageId(UUID) is required. With conversationId, send exactly one new user message in the existing messages array. The server resolves its own stored history and case; a supplied caseId must match. The new user message is saved once before starting the provider, and the assistant's completed or interrupted/failed text is retained with its truthful state. Reusing clientMessageId returns409 rather than silently paying for another response.
 
 An SSE `conversation` event may identify `{conversationId,userMessageId}` before answer deltas. The final done/error identifies the persisted assistantMessageId when available. A completed result is not announced as durably saved if the database write failed. Disconnects preserve available partial text as interrupted; a process crash may leave the saved user turn unanswered, which is shown as incomplete on resume rather than fabricated as complete.
 
@@ -74,3 +74,7 @@ All mutation routes use the existing session, CSRF and exact-origin checks. IDs 
 Limits and stable error codes will be supplied with the storage implementation before frontend freeze. Expected families: CLIENT_INVALID/CLIENT_NOT_FOUND/CLIENT_CONFLICT, CONVERSATION_INVALID/CONVERSATION_NOT_FOUND, MESSAGE_INVALID/CHAT_TURN_EXISTS/CHAT_SAVE_FAILED, DOCUMENT_NOT_READY, ARTIFACT_INVALID/ARTIFACT_NOT_FOUND/ARTIFACT_SOURCE_INCOMPLETE, CAPACITY_REACHED; existing authentication/case errors continue.
 
 No production records or credentials are created during implementation tests. Actual SQLite migration, ownership isolation, restart recovery and concurrency are verified with disposable real databases; parser/stream fixtures must not be presented as paid-provider acceptance.
+
+## Current versus historical artifact versions
+
+Artifact reads/list metadata include currentCaseVersion, isStale, and needsRegeneration. A final artifact based on an older case version remains immutable and readable as history, but its normal download returns409 ARTIFACT_STALE. Generate a fresh version after changing case facts/context. A draft history artifact remains downloadable with its draft status. No old text is silently rewritten or represented as a fresh final.

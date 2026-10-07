@@ -25,7 +25,7 @@ const client = (overrides = {}) => validateClientBatch({ events: [{ event: 'revi
 const backend = (overrides = {}) => serverTelemetryEvent({ event: 'request.case_read', requestId: randomUUID(), httpStatus: 200, serverElapsedMs: 7, ...overrides });
 const code = expected => error => error.code === expected;
 
-test('real schema1 to schema2 migration preserves every user/case column and credential hash', t => {
+test('real schema1 to schema3 migration preserves every original user/case column and credential hash', t => {
   const directory = mkdtempSync(join(realpathSync(tmpdir()), 'nestlet-migrate-'));
   const filename = join(directory, 'v1.sqlite');
   t.after(() => rmSync(directory, { recursive: true, force: true }));
@@ -47,9 +47,10 @@ test('real schema1 to schema2 migration preserves every user/case column and cre
   storage.close();
   db = new DatabaseSync(filename);
   try {
-    assert.equal(db.prepare('PRAGMA user_version').get().user_version, 2);
+    assert.equal(db.prepare('PRAGMA user_version').get().user_version, 3);
     assert.deepEqual(db.prepare('SELECT * FROM users ORDER BY id').all(), users);
-    assert.deepEqual(db.prepare('SELECT * FROM cases ORDER BY id').all(), cases);
+    assert.deepEqual(db.prepare('SELECT id,user_id,title,payload_json,version,created_at,updated_at FROM cases ORDER BY id').all(), cases);
+    assert.equal(db.prepare('SELECT client_id FROM cases WHERE id=?').get(cid).client_id, null);
     assert.equal(db.prepare('PRAGMA quick_check').get().quick_check, 'ok');
     assert.equal(statSync(filename).mode & 0o777, 0o600);
   } finally { db.close(); }
@@ -171,4 +172,20 @@ test('actual per-user and global event caps prune oldest metadata across workflo
   storage.telemetryAppendEvents(extra.id, workflow.workflowId, [backend()]);
   assert.equal(db.prepare('SELECT count(*) n FROM telemetry_events').get().n, 20000);
   assert.equal(db.prepare('SELECT count(*) n FROM telemetry_events WHERE id=?').get(oldest).n, 0);
+});
+
+test('chat stream outcome remains failure despite HTTP200 and roundtrips actual SQLite canonical metadata', t => {
+  // This checks metadata semantics, not an upstream stream or a model request.
+  const { storage, a } = fixture(t);
+  const workflow = storage.telemetryCreateWorkflow(a.id);
+  const requestId = randomUUID();
+  const failed = serverTelemetryEvent({ event: 'request.chat', requestId, httpStatus: 200, serverElapsedMs: 42, outcome: 'failure', errorCode: 'CHAT_INCOMPLETE' });
+  assert.equal(failed.outcome, 'failure'); assert.equal(failed.httpStatus, 200);
+  storage.telemetryAppendEvents(a.id, workflow.workflowId, [failed]);
+  const events = storage.telemetryReadEvents(a.id, { workflowId: workflow.workflowId }).events;
+  assert.equal(events.length, 1);
+  assert.equal(events[0].outcome, 'failure'); assert.equal(events[0].httpStatus, 200);
+  assert.equal(events[0].serverElapsedMs, 42); assert.equal(events[0].clientWaitMs, null);
+  assert.equal(events[0].requestId, requestId);
+  assert.ok(!Object.hasOwn(events[0], 'content'));
 });

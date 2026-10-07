@@ -229,3 +229,22 @@ test('workflow creation requires an explicit JSON object and succeeds when the c
   assert.equal(response.status, 201);
   assert.match((await response.json()).workflowId, uuid);
 });
+
+test('actual no-key chat telemetry binds only its own case and records failure without message or document content', async t => {
+  const site = await app(t), session = site.sessions['telemetry-a'];
+  const workflowId = await site.workflow(session);
+  const created = await site.request('/api/cases', { method: 'POST', session, body: payload('CHAT_PRIVATE_CASE_TITLE') });
+  const record = (await created.json()).case;
+  const response = await site.request('/api/chat', { method: 'POST', session, extra: { 'X-Workflow-Id': workflowId }, body: {
+    caseId: record.id, locale: 'en', consent: true, messages: [{ role: 'user', content: 'CHAT_PRIVATE_MESSAGE_SENTINEL' }],
+  } });
+  assert.equal(response.status, 503); assert.equal((await response.json()).code, 'LIVE_DISABLED');
+  const requestId = response.headers.get('x-request-id'); assert.match(requestId, uuid);
+  const page = await (await site.request(`/api/workflows/${workflowId}/events`, { session })).json();
+  const event = page.events.find(item => item.requestId === requestId);
+  assert.ok(event); assert.equal(event.event, 'request.chat'); assert.equal(event.outcome, 'failure');
+  assert.equal(event.caseId, record.id); assert.equal(event.httpStatus, 503);
+  assert.ok(Number.isInteger(event.serverElapsedMs)); assert.equal(event.clientWaitMs, null);
+  for (const sentinel of ['CHAT_PRIVATE_CASE_TITLE', 'CHAT_PRIVATE_MESSAGE_SENTINEL', 'PRIVATE_SYNTHETIC_DOCUMENT_SENTINEL']) assert.ok(!JSON.stringify(page).includes(sentinel));
+  assert.equal((await site.request(`/api/cases/${record.id}/events`, { session: site.sessions['telemetry-b'] })).status, 404);
+});

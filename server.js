@@ -7,8 +7,10 @@ import { spawn, spawnSync } from 'node:child_process';
 import { validateSuggestions } from './public/core.js';
 import { createOperatorAuth } from './auth.js';
 import { openStorage, StorageError } from './storage.js';
+import { CaseRecordsError, isCaseRecordsPath, handleCaseRecords } from './case-records.js';
+import { DocumentContextError } from './document-context.js';
 import { createTelemetry, TelemetryError, telemetryId, telemetryPageOptions } from './telemetry.js';
-import { CHAT_LIMITS, CHAT_IMAGE_TYPES, ChatError, validateChatRequest, chatProviderMessages, openChatStream } from './chat.js';
+import { CHAT_LIMITS, CHAT_IMAGE_TYPES, ChatError, validateChatRequest, conversationHistory, chatProviderMessages, openChatStream } from './chat.js';
 
 const root = new URL('./public/', import.meta.url);
 let publicOrigin = '';
@@ -314,6 +316,7 @@ function telemetryOperation(request) {
   const path = request.url;
   if (request.method === 'POST' && path === '/api/document') return { event: 'request.pdf_parse' };
   if (request.method === 'POST' && path === '/api/workbook') return { event: 'request.workbook_parse' };
+  if (request.method === 'POST' && path === '/api/chat') return { event: 'request.chat' };
   if (request.method === 'POST' && path === '/api/extract') return { event: 'request.extract' };
   if (path === '/api/cases' && request.method === 'POST') return { event: 'request.case_create' };
   if (path === '/api/cases' && request.method === 'GET') return { event: 'request.case_list' };
@@ -322,6 +325,7 @@ function telemetryOperation(request) {
   return caseId && events[request.method] ? { event: events[request.method], caseId } : null;
 }
 
+const activeConversations = new Set();
 const server = http.createServer(async (request, response) => {
   const requestStarted = performance.now();
   const requestId = randomUUID();
@@ -351,11 +355,11 @@ const server = http.createServer(async (request, response) => {
       }
     } catch { if (trackingSession) response.setHeader('X-Telemetry-Status', 'unavailable'); }
   }
-  const recordTracking = (status, code) => {
+  const recordTracking = (status, code, outcome) => {
     if (trackingRecorded || !trackingSession || !trackingWorkflow) return;
     trackingRecorded = true;
     const written = telemetry.recordRequest(trackingSession, trackingWorkflow.workflowId, {
-      event: operation.event, requestId, httpStatus: status, errorCode: code,
+      event: operation.event, requestId, httpStatus: status, errorCode: code, outcome,
       serverElapsedMs: Math.min(300000, Math.max(0, Math.round(performance.now() - requestStarted))),
     });
     if (!written) trackingStatus = 'unavailable';
@@ -371,7 +375,7 @@ const server = http.createServer(async (request, response) => {
     response.end(JSON.stringify(data));
   };
   const cancel = new AbortController();
-  response.on('close', () => { if (!response.writableEnded) { cancel.abort(); recordTracking(499, 'REQUEST_CANCELLED'); } });
+  response.on('close', () => { if (!response.writableEnded) { cancel.abort(); recordTracking(response.headersSent ? response.statusCode : 499, 'REQUEST_CANCELLED', 'failure'); } });
   try {
     if (request.url === '/api/health' && request.method === 'GET') return json(200, { ok: true });
     if (request.url === '/api/status' && request.method === 'GET') {
@@ -478,6 +482,12 @@ const server = http.createServer(async (request, response) => {
         throw new TelemetryError('TELEMETRY_UNAVAILABLE', 503);
       }
     }
+    if (isCaseRecordsPath(telemetryUrl.pathname)) {
+      const mutation = request.method !== 'GET';
+      if (mutation) verifyOrigin(request);
+      const session = requireSession(request, mutation);
+      return await handleCaseRecords({request,response,url:telemetryUrl,session,storage,readJson,json});
+    }
     if (request.url === '/api/cases' || request.url.startsWith('/api/cases/')) {
       const mutation = request.method !== 'GET';
       if (mutation) verifyOrigin(request);
@@ -493,6 +503,7 @@ const server = http.createServer(async (request, response) => {
         let body;
         try { body = await readJson(request, 300000); }
         catch (error) { if (error.status === 413) throw new RequestError(413, 'CASE_TOO_LARGE', 'This case exceeds the saved-case size limit.'); throw error; }
+        if (Object.hasOwn(body,'documentContext') || Object.hasOwn(body,'caseIssues')) throw new RequestError(400,'CASE_INVALID','Use the dedicated confirmation or issue update action.');
         if (request.method === 'POST') {
           const record = storage.createCase(session.userId, body);
           bindTrackingCase(record.id);
@@ -550,33 +561,70 @@ const server = http.createServer(async (request, response) => {
       try { body = await readJson(request, CHAT_LIMITS.requestBytes); }
       catch (error) { if (error.status === 413) throw new ChatError('CHAT_TOO_LARGE', 413); throw error; }
       const input = validateChatRequest(body);
-      const record = input.caseId ? storage.getCase(session.userId, input.caseId) : null;
-      if (input.caseId && !record) throw new RequestError(404, 'CASE_NOT_FOUND', 'The case was not found in your account.');
-      chatProviderMessages(input, record); // Validate the bounded case context before spending provider quota.
+      const conversation = input.conversationId ? storage.getConversation(session.userId,input.conversationId) : null;
+      if (input.conversationId && !conversation) throw new ChatError('CONVERSATION_NOT_FOUND',404);
+      if (conversation && input.caseId && input.caseId !== conversation.caseId) throw new ChatError('CONVERSATION_NOT_FOUND',404);
+      const caseId = conversation?.caseId || input.caseId;
+      const record = caseId ? storage.getCase(session.userId,caseId) : null;
+      if (caseId && !record) throw new RequestError(404, 'CASE_NOT_FOUND', 'The case was not found in your account.');
+      if (caseId && trackingWorkflow) {
+        if (trackingWorkflow.caseId && trackingWorkflow.caseId !== caseId) { trackingWorkflow = null; trackingStatus = 'ignored-invalid-workflow'; response.removeHeader('X-Workflow-Id'); response.setHeader('X-Telemetry-Status',trackingStatus); }
+        else bindTrackingCase(caseId);
+      }
+      const conversationKey = conversation ? `${session.userId}:${conversation.id}` : null;
+      if (conversationKey && activeConversations.has(conversationKey)) throw new ChatError('CHAT_CONVERSATION_BUSY',409);
+      const history = conversation ? storage.listMessages(session.userId,conversation.id) : [];
+      if (history.some(message => message.role === 'user' && message.clientMessageId === input.clientMessageId)) throw new ChatError('CHAT_TURN_EXISTS',409);
+      const currentMessage = input.messages[0];
+      if (conversation) input.messages = [...conversationHistory(history,body.messages[0].content.length),currentMessage];
+      chatProviderMessages(input, record); // Validate bounded stored evidence before spending provider quota.
       if (!enabled) throw new RequestError(503, 'LIVE_DISABLED', 'Live AI is disabled. The administrator must configure the provider before chatting.');
       if (activeExtractions >= 2) throw new RequestError(429, 'BUSY', 'AI processing is busy. Try again shortly.');
       consumeTrialAiAllowance(session);
       activeExtractions++;
+      if (conversationKey) activeConversations.add(conversationKey);
       const chatAbort = new AbortController();
       const signal = AbortSignal.any([cancel.signal, chatAbort.signal, AbortSignal.timeout(CHAT_LIMITS.timeoutMs)]);
-      let streaming = false;
+      let streaming = false, userMessage = null, assistantMessage = null, answer = '', completed = false;
+      const saveAssistant = state => {
+        if (!conversation || !userMessage || assistantMessage) return assistantMessage;
+        try {
+          assistantMessage = storage.appendMessage(session.userId,conversation.id,{role:'assistant',content:answer,state,requestId});
+          if (!assistantMessage) throw new Error('Conversation no longer exists');
+          return assistantMessage;
+        } catch { throw new ChatError('CHAT_SAVE_FAILED',503); }
+      };
       try {
+        if (conversation) {
+          const original = body.messages[0];
+          userMessage = storage.appendMessage(session.userId,conversation.id,{role:'user',content:original.content,state:'complete',requestId,clientMessageId:input.clientMessageId,
+            imageMetadata:(original.images || []).map(image => ({mimeType:image.mimeType,byteCount:Buffer.byteLength(image.data,'base64'),retained:false}))});
+          if (!userMessage) throw new ChatError('CONVERSATION_NOT_FOUND',404);
+        }
         const stream = await openChatStream({ apiKey, input, record, signal });
         response.writeHead(200, { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-store', 'X-Accel-Buffering': 'no' });
         response.flushHeaders(); streaming = true;
+        if (conversation) await writeChatEvent(response,signal,'conversation',{conversationId:conversation.id,userMessageId:userMessage.id});
         for await (const event of stream) {
-          if (event.type === 'delta') await writeChatEvent(response, signal, 'delta', { text: event.text });
-          else if (event.type === 'done') await writeChatEvent(response, signal, 'done', { requestId });
+          if (event.type === 'delta') { answer += event.text; await writeChatEvent(response, signal, 'delta', { text: event.text }); }
+          else if (event.type === 'done') {
+            saveAssistant('complete'); completed = true;
+            await writeChatEvent(response, signal, 'done', { requestId,...(assistantMessage ? {assistantMessageId:assistantMessage.id,conversationId:conversation.id} : {}) });
+            recordTracking(200,undefined,'success');
+          }
         }
         response.end();
       } catch (error) {
+        let failure = error;
+        if (!completed) try { saveAssistant(cancel.signal.aborted || response.destroyed ? 'interrupted' : 'failed'); } catch (saveError) { failure = saveError; }
+        recordTracking(streaming ? 200 : (cancel.signal.aborted || response.destroyed ? 499 : failure.status || 502),cancel.signal.aborted || response.destroyed ? 'REQUEST_CANCELLED' : failure.code,'failure');
         if (cancel.signal.aborted || response.destroyed) return;
-        if (!streaming) throw error instanceof ChatError ? error : new ChatError('CHAT_PROVIDER_FAILED', 502);
-        const allowed = new Set(['CHAT_STREAM_FAILED', 'CHAT_PROVIDER_FAILED', 'CHAT_INCOMPLETE', 'CHAT_UNSUPPORTED_OUTPUT', 'CHAT_TOO_LARGE']);
-        const code = allowed.has(error.code) ? error.code : 'CHAT_STREAM_FAILED';
-        try { await writeChatEvent(response, AbortSignal.any([cancel.signal, AbortSignal.timeout(2000)]), 'error', { code, requestId, retryable: true }); } catch {}
+        if (!streaming) throw failure instanceof ChatError || failure instanceof StorageError ? failure : new ChatError('CHAT_PROVIDER_FAILED', 502);
+        const allowed = new Set(['CHAT_STREAM_FAILED', 'CHAT_PROVIDER_FAILED', 'CHAT_INCOMPLETE', 'CHAT_UNSUPPORTED_OUTPUT', 'CHAT_TOO_LARGE','CHAT_SAVE_FAILED']);
+        const code = allowed.has(failure.code) ? failure.code : 'CHAT_STREAM_FAILED';
+        try { await writeChatEvent(response, AbortSignal.any([cancel.signal, AbortSignal.timeout(2000)]), 'error', { code, requestId, retryable: true,...(assistantMessage ? {assistantMessageId:assistantMessage.id,conversationId:conversation.id} : {}) }); } catch {}
         response.end();
-      } finally { chatAbort.abort(); activeExtractions--; }
+      } finally { chatAbort.abort(); activeExtractions--; if (conversationKey) activeConversations.delete(conversationKey); }
       return;
       } finally { activeChatRequests--; }
     }
@@ -610,7 +658,7 @@ const server = http.createServer(async (request, response) => {
     if (file.startsWith('samples/')) response.setHeader('Content-Disposition', `attachment; filename="${file.slice('samples/'.length)}"`);
     response.end(await readFile(new URL(file, root)));
   } catch (error) {
-    if (error instanceof RequestError || error instanceof StorageError || error instanceof TelemetryError || error instanceof ChatError) return json(error.status, { error: error.message, code: error.code });
+    if (error instanceof RequestError || error instanceof StorageError || error instanceof TelemetryError || error instanceof ChatError || error instanceof CaseRecordsError || error instanceof DocumentContextError) return json(error.status, { error: error.message, code: error.code, ...(error.details ? {details:error.details} : {}) });
     return json(500, { error: 'Request could not be completed', code: 'INTERNAL_ERROR' });
   }
 });

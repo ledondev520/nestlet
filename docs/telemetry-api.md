@@ -91,7 +91,7 @@ Client `errorCode` is optional and limited to: `CLIENT_CANCELLED`, `CLIENT_VALID
 }
 ```
 
-Server event names are fixed: `request.pdf_parse`, `request.workbook_parse`, `request.extract`, `request.case_create`, `request.case_read`, `request.case_update`, `request.case_delete`, `request.case_list`.
+Server event names are fixed: `request.pdf_parse`, `request.workbook_parse`, `request.extract`, `request.chat`, `request.case_create`, `request.case_read`, `request.case_update`, `request.case_delete`, `request.case_list`.
 
 `serverElapsedMs` is measured by the server from handling the request to response preparation or abort (excluding the final network flush and the telemetry write itself). It includes body receipt, parsing and upstream waits where applicable; it is not CPU time. Only the server writes this field and the authoritative HTTP/error result. Client observations are explicitly marked `source:"client"` and cannot overwrite server results. Active dwell time alone is never described as a stall or performance failure.
 
@@ -113,3 +113,7 @@ Errors: `TELEMETRY_INVALID`400, `WORKFLOW_NOT_FOUND`404, `CASE_NOT_FOUND`404, `W
 6. Explicit logout or identity changes discard browser workflow IDs along with prior-user work buffers
 
 Frontend instrumentation may ship later. Existing parsing, review, drafting and persistence remain functional without it.
+
+## Schema3 chat extension
+
+Native streaming chat records request.chat using the same owned workflow and case binding rules. Server elapsed time includes upstream waiting and stream/backpressure time. HTTP200 streams that fail after headers retain httpStatus:200 and outcome:failure with a fixed errorCode; this is distinct from a successful completion. Text, image pixels, saved conversation content and reasoning are never event metadata. Client active dwell, client wait and server elapsed remain separate measurements. Schema2 events are retained transactionally during the CHECK-constraint migration.

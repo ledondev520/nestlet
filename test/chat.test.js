@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { validateChatRequest, chatProviderMessages, parseProviderStream, CHAT_LIMITS } from '../chat.js';
+import { validateChatRequest, chatProviderMessages, conversationHistory, parseProviderStream, CHAT_LIMITS } from '../chat.js';
 const valid = overrides => ({ locale: 'zh', consent: true, messages: [{ role: 'user', content: 'Explain the next administrative step.' }], ...overrides });
 const code = expected => error => error.code === expected;
 const frame = data => 'data: ' + (typeof data === 'string' ? data : JSON.stringify(data)) + '\n\n';
@@ -74,4 +74,28 @@ test('SSE parser rejects explicit system or tool delta roles before yielding any
   }
   const supported = frame({ choices: [{ delta: { role: 'assistant', content: 'Supported role' } }] }) + frame(stop) + frame('[DONE]');
   assert.deepEqual(await parse([Buffer.from(supported)]), [{ type: 'delta', text: 'Supported role' }, { type: 'done' }]);
+});
+
+test('stored history excludes incomplete answers, bounds recent excerpts including markers and labels unavailable earlier images', () => {
+  const rows = Array.from({ length: 15 }, (_, i) => ({ role: i % 2 ? 'assistant' : 'user', content: `Stored complete message ${i}`, state: 'complete' }));
+  rows.push({ role: 'assistant', content: 'INTERRUPTED_MUST_NOT_BECOME_CONTEXT', state: 'interrupted' });
+  rows.push({ role: 'assistant', content: 'FAILED_MUST_NOT_BECOME_CONTEXT', state: 'failed' });
+  const original = JSON.stringify(rows);
+  const recent = conversationHistory(rows, 100);
+  assert.equal(recent.length, 11);
+  assert.equal(recent[0].content, 'Stored complete message 4');
+  assert.equal(recent.at(-1).content, 'Stored complete message 14');
+  assert.doesNotMatch(JSON.stringify(recent), /INTERRUPTED_MUST|FAILED_MUST/);
+  assert.equal(JSON.stringify(rows), original);
+  const large = conversationHistory(Array.from({ length: 5 }, (_, i) => ({ role: 'user', content: `Row ${i}: ` + 'x'.repeat(9000), state: 'complete' })), 8000);
+  assert.ok(large.reduce((sum, item) => sum + item.content.length, 0) <= 16000);
+  assert.ok(large.every(item => item.content.length <= 8000));
+  assert.ok(large.some(item => /Stored message excerpt/.test(item.content)));
+  assert.deepEqual(conversationHistory(rows, 24000), []);
+  const imageOnly = conversationHistory([{ role: 'user', content: '', state: 'complete', imageMetadata: [{ mimeType: 'image/png', byteCount: 100, retained: false }] }]);
+  assert.equal(imageOnly.length, 1);
+  assert.match(imageOnly[0].content, /not retained.*unavailable/);
+  const imageAndLongText = conversationHistory([{ role: 'user', content: 'x'.repeat(8000), state: 'complete', imageMetadata: [{ mimeType: 'image/png', byteCount: 100, retained: false }] }]);
+  assert.ok(imageAndLongText[0].content.length <= 8000);
+  assert.ok(/not retained.*unavailable/.test(imageAndLongText[0].content), 'Excerpt must retain the image-unavailable notice');
 });

@@ -24,7 +24,7 @@ jobs:
           persist-credentials: false
       - name: Reproduce private-permission release checkout
         run: |
-          chmod 600 Dockerfile .dockerignore package.json package-lock.json server.js auth.js storage.js telemetry.js chat.js workbook-worker.js
+          chmod 600 Dockerfile .dockerignore package.json package-lock.json server.js auth.js storage.js telemetry.js chat.js document-context.js case-records.js workbook-worker.js
           find public scripts ops -type d -exec chmod 700 {} +
           find public scripts ops -type f -exec chmod 600 {} +
       - name: Validate Compose and build actual image

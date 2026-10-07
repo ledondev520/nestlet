@@ -1,8 +1,8 @@
 /** Bounded first-party operational metadata. Never accepts document text or arbitrary metadata. */
 export const CLIENT_EVENTS = Object.freeze(['input.paste', 'input.file', 'input.mapping', 'review.confirm', 'draft.generate', 'draft.edit', 'export.copy', 'export.download', 'export.print', 'case.open', 'case.save', 'case.delete']);
-export const SERVER_EVENTS = Object.freeze(['request.pdf_parse', 'request.workbook_parse', 'request.extract', 'request.case_create', 'request.case_read', 'request.case_update', 'request.case_delete', 'request.case_list']);
+export const SERVER_EVENTS = Object.freeze(['request.pdf_parse', 'request.workbook_parse', 'request.extract', 'request.chat', 'request.case_create', 'request.case_read', 'request.case_update', 'request.case_delete', 'request.case_list']);
 export const CLIENT_ERRORS = Object.freeze(['CLIENT_CANCELLED', 'CLIENT_VALIDATION', 'CLIPBOARD_FAILED', 'DOWNLOAD_FAILED', 'PRINT_FAILED', 'UNKNOWN_CLIENT_ERROR']);
-const SERVER_ERRORS = new Set(['ORIGIN_REJECTED', 'OPERATOR_SETUP_REQUIRED', 'AUTH_REQUIRED', 'CSRF_REJECTED', 'OWNER_REQUIRED', 'HTTPS_REQUIRED', 'INVALID_JSON', 'UNSUPPORTED_MEDIA_TYPE', 'INPUT_TOO_LARGE', 'INVALID_INPUT', 'SENSITIVE_DATA', 'LIVE_DISABLED', 'TRIAL_LIMIT_REACHED', 'BUSY', 'PROVIDER_ERROR', 'EXTRACTION_FAILED', 'REQUEST_CANCELLED', 'PDF_UNAVAILABLE', 'DOCUMENT_CONSENT_REQUIRED', 'INVALID_PDF', 'PDF_ENCRYPTED', 'PDF_TIMEOUT', 'OCR_REQUIRED', 'TEXT_TOO_LARGE', 'WORKBOOK_UNAVAILABLE', 'INVALID_WORKBOOK', 'WORKBOOK_TOO_COMPLEX', 'WORKBOOK_ENCRYPTED', 'WORKBOOK_TIMEOUT', 'CASE_NOT_FOUND', 'CASE_INVALID', 'CASE_TOO_LARGE', 'CASE_CONFLICT', 'CASE_LIMIT_REACHED', 'USER_INVALID', 'INTERNAL_ERROR', 'UNCLASSIFIED_ERROR']);
+const SERVER_ERRORS = new Set(['ORIGIN_REJECTED', 'OPERATOR_SETUP_REQUIRED', 'AUTH_REQUIRED', 'CSRF_REJECTED', 'OWNER_REQUIRED', 'HTTPS_REQUIRED', 'INVALID_JSON', 'UNSUPPORTED_MEDIA_TYPE', 'INPUT_TOO_LARGE', 'INVALID_INPUT', 'SENSITIVE_DATA', 'LIVE_DISABLED', 'TRIAL_LIMIT_REACHED', 'BUSY', 'PROVIDER_ERROR', 'EXTRACTION_FAILED', 'REQUEST_CANCELLED', 'PDF_UNAVAILABLE', 'DOCUMENT_CONSENT_REQUIRED', 'INVALID_PDF', 'PDF_ENCRYPTED', 'PDF_TIMEOUT', 'OCR_REQUIRED', 'TEXT_TOO_LARGE', 'WORKBOOK_UNAVAILABLE', 'INVALID_WORKBOOK', 'WORKBOOK_TOO_COMPLEX', 'WORKBOOK_ENCRYPTED', 'WORKBOOK_TIMEOUT', 'CASE_NOT_FOUND', 'CASE_INVALID', 'CASE_TOO_LARGE', 'CASE_CONFLICT', 'CASE_LIMIT_REACHED', 'USER_INVALID', 'INTERNAL_ERROR', 'UNCLASSIFIED_ERROR','CHAT_INVALID','CHAT_TOO_LARGE','CHAT_IMAGE_INVALID','CHAT_IMAGE_UNSUPPORTED','CHAT_PROVIDER_FAILED','CHAT_STREAM_FAILED','CHAT_INCOMPLETE','CHAT_UNSUPPORTED_OUTPUT','CHAT_SAVE_FAILED','CHAT_TURN_EXISTS','CHAT_CONVERSATION_BUSY','CONVERSATION_NOT_FOUND','CAPACITY_REACHED']);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 export const TELEMETRY_LIMITS = Object.freeze({ retentionDays: 30, eventsPerWorkflow: 200, eventsPerUser: 2000, eventsGlobal: 20000, workflowsPerUser: 100, batch: 10, clientPerMinute: 60, workflowsPerMinute: 20 });
 export class TelemetryError extends Error {
@@ -33,10 +33,11 @@ export function validateClientBatch(body) {
   });
 }
 
-export function serverTelemetryEvent({ event, requestId, httpStatus, errorCode, serverElapsedMs }) {
+export function serverTelemetryEvent({ event, requestId, httpStatus, errorCode, serverElapsedMs, outcome }) {
   if (!SERVER_EVENTS.includes(event) || !Number.isSafeInteger(httpStatus) || httpStatus < 100 || httpStatus > 599) invalid();
-  return { source: 'server', event, requestId: telemetryId(requestId), outcome: httpStatus >= 400 ? 'failure' : 'success', httpStatus,
-    errorCode: httpStatus < 400 ? null : SERVER_ERRORS.has(errorCode) ? errorCode : 'UNCLASSIFIED_ERROR',
+  const failed = httpStatus >= 400 || (event === 'request.chat' && outcome === 'failure');
+  return { source: 'server', event, requestId: telemetryId(requestId), outcome: failed ? 'failure' : 'success', httpStatus,
+    errorCode: !failed ? null : SERVER_ERRORS.has(errorCode) ? errorCode : 'UNCLASSIFIED_ERROR',
     serverElapsedMs: duration(serverElapsedMs, 300000), clientActiveMs: null, clientWaitMs: null };
 }
 
