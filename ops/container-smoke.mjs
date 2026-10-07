@@ -35,8 +35,12 @@ assert.equal(status.authenticated, false);
 assert.equal(status.liveEnabled, false);
 assert.equal(status.pdfEnabled, true);
 assert.equal(status.workbookEnabled, true);
+assert.equal(status.libraryRetrievalEnabled, true);
+assert.deepEqual(status.libraryLimits, { rounds: 3, calls: 6, resultChars: 24000, timeoutMs: 90000 });
+await access('/app/agent-library-tools.js', constants.R_OK);
+assert.equal(spawnSync(process.execPath, ['--check', '/app/agent-library-tools.js']).status, 0);
 assert.equal(status.csrfToken, undefined);
-for (const [path, method] of [['/api/register', 'POST'], ['/api/workflows', 'POST'], ['/api/admin/telemetry', 'GET'], ['/api/cases', 'GET'], ['/api/cases', 'POST'], ['/api/settings', 'GET'], ['/api/settings', 'POST'], ['/api/settings/test', 'POST'], ['/api/extract', 'POST'], ['/api/document', 'POST'], ['/api/workbook', 'POST']]) {
+for (const [path, method] of [['/api/register', 'POST'], ['/api/workflows', 'POST'], ['/api/admin/telemetry', 'GET'], ['/api/cases', 'GET'], ['/api/cases', 'POST'], ['/api/settings', 'GET'], ['/api/settings', 'POST'], ['/api/settings/test', 'POST'], ['/api/extract', 'POST'], ['/api/chat', 'POST'], ['/api/document', 'POST'], ['/api/workbook', 'POST']]) {
   const response = await fetch(base + path, {
     method,
     headers: { Origin: 'https://nestlet.invalid', 'Content-Type': 'application/json' },

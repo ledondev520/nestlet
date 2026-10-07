@@ -23,13 +23,15 @@ test('real HTTP: ordinary chat payload stays compatible and unsupported or uncon
   assert.equal(login.status,200);const session=await login.json(),cookie=login.headers.get('set-cookie').split(';')[0];
   const request=(path,body)=>fetch(base+path,{method:body?'POST':'GET',headers:{Origin:base,Cookie:cookie,'X-CSRF-Token':session.csrfToken,...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{})});
   const status=await (await request('/api/status')).json();assert.equal(status.authenticated,true);assert.equal(status.liveEnabled,false);
+  assert.equal(status.libraryRetrievalEnabled,true);
+  assert.deepEqual(status.libraryLimits,{rounds:3,calls:6,resultChars:24000,timeoutMs:90000});
   const record=await (await request('/api/cases',newCasePayload('Synthetic chat capability case'))).json();assert.ok(record.case.id);
   const thread=await (await request(`/api/cases/${record.case.id}/conversations`,{title:'Synthetic capability thread'})).json();assert.ok(thread.conversation.id);
   const args={caseId:record.case.id,conversationId:thread.conversation.id,clientMessageId:randomUUID(),text:'Explain an administrative next step.',lang:'en'};
   const ordinary=await request('/api/chat',buildChatTurn(args));assert.equal(ordinary.status,503);assert.equal((await ordinary.json()).code,'LIVE_DISABLED');
   const retrieval=await request('/api/chat',buildChatTurn({...args,clientMessageId:randomUUID(),libraryConsent:true}));
   assert.equal(retrieval.ok,false);const error=await retrieval.json();
-  if(status.libraryRetrievalEnabled===true){assert.equal(retrieval.status,503);assert.equal(error.code,'LIVE_DISABLED');}
-  else {assert.equal(retrieval.status,400);assert.equal(error.code,'CHAT_INVALID');}
+  assert.equal(retrieval.status,503);assert.equal(error.code,'LIVE_DISABLED');
+  assert.equal(retrieval.headers.get('x-library-retrieval'),'enabled');
   const saved=await (await request(`/api/conversations/${thread.conversation.id}`)).json();assert.deepEqual(saved.messages,[]);
 });
