@@ -10,11 +10,11 @@ export function ApplicationShell({ children, lang = 'zh', onLanguageChange, view
   return <div className="paper-shell">
     <a href="#workspace" className="sr-only focus:not-sr-only focus:block focus:py-2">{lang === 'zh' ? '跳到工作区' : 'Skip to workspace'}</a>
     <header className="paper-masthead">
-      <a href="/next/" className="flex shrink-0 items-center gap-3 text-inherit no-underline" aria-label="Nestlet">
+      <a href="/next/" className="paper-brand flex min-w-0 items-center gap-3 text-inherit no-underline" aria-label="Nestlet">
         <img src="/logo.svg" alt="" width="40" height="40" />
-        <div className="paper-title text-[23px] font-bold leading-tight">{lang === 'zh' ? '巢小秘' : 'Nestlet'}<span className="mt-1 block font-sans text-[10px] font-normal tracking-[.14em] text-muted-foreground">{lang === 'zh' ? 'NESTLET' : 'ONE DOCUMENT. ONE STEP FORWARD.'}</span></div>
+        <div className="paper-title min-w-0 text-[23px] font-bold leading-tight">{lang === 'zh' ? '巢小秘' : 'Nestlet'}<span className="paper-tagline mt-1 block font-sans text-[10px] font-normal tracking-[.14em] text-muted-foreground">{lang === 'zh' ? 'NESTLET' : 'ONE DOCUMENT. ONE STEP FORWARD.'}</span></div>
       </a>
-      <div className="flex flex-wrap items-center justify-end gap-2">
+      <div className="paper-tools flex min-w-0 flex-wrap items-center justify-end gap-2">
         {account}
         <Button variant="outline" size="sm" onClick={onLanguageChange} aria-label={lang === 'zh' ? 'Switch interface to English' : '切换界面为中文'}><Globe aria-hidden="true" /><span lang={lang === 'zh' ? 'en' : 'zh-CN'}>{lang === 'zh' ? 'English' : '中文'}</span></Button>
       </div>
