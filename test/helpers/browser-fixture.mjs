@@ -47,36 +47,53 @@ export async function startBrowserFixture({ port, simulatedMail = false, legacyU
       ALIBABA_CLOUD_SECURITY_TOKEN: '', NESTLET_EMAIL_FROM: 'sender@example.invalid'
     } : {})
   };
-  const child = spawn(process.execPath, [
+  const launch = () => spawn(process.execPath, [
     ...(simulatedMail ? ['--import', './test/helpers/simulated-email-bootstrap.mjs'] : []), 'server.js'
   ], { cwd: new URL('../../', import.meta.url), env, stdio: ['ignore', 'pipe', 'pipe', 'ipc'] });
   const messages = [];
   let output = '', stopped = false;
-  child.stdout.on('data', value => { output += value; });
-  child.stderr.on('data', value => { output += value; });
-  child.on('message', message => { if (message?.type === 'synthetic-mail-accepted') messages.push(message); });
+  const observe = process => {
+    process.stdout.on('data', value => { output += value; });
+    process.stderr.on('data', value => { output += value; });
+    process.on('message', message => { if (message?.type === 'synthetic-mail-accepted') messages.push(message); });
+    return process;
+  };
+  let child = observe(launch());
   const withDatabase = operation => {
     const db = new DatabaseSync(database); db.exec('PRAGMA busy_timeout=5000');
     try { return operation(db); } finally { db.close(); }
   };
-  async function stop() {
-    if (stopped) return; stopped = true;
+  async function stopChild() {
     if (child.exitCode === null && child.signalCode === null) {
       const exited = new Promise(resolve => child.once('exit', resolve)); child.kill('SIGTERM'); await exited;
     }
-    messages.length = 0;
-    await rm(directory, { recursive: true, force: true });
   }
-  try {
+  async function ready(outputStart = 0) {
     const deadline = Date.now() + 15000;
-    while (!output.includes('Nestlet available')) {
+    while (!output.slice(outputStart).includes('Nestlet available')) {
       if (child.exitCode !== null || child.signalCode !== null || Date.now() >= deadline) throw new Error('Disposable server did not start');
       await delay(20);
     }
     if (!(await fetch(origin + '/api/health')).ok) throw new Error('Disposable server health failed');
-  } catch (error) { await stop(); throw error; }
+  }
+  async function stop() {
+    if (stopped) return; stopped = true;
+    await stopChild();
+    messages.length = 0;
+    await rm(directory, { recursive: true, force: true });
+  }
+  try { await ready(); } catch (error) { await stop(); throw error; }
   return {
-    origin, child, stop, withDatabase,
+    origin, get child() { return child; }, stop, withDatabase,
+    // Private test-process lifecycle only: retain the same real SQLite/assets
+    // directories and credentials. RAM sessions are deliberately NOT restored.
+    async restart() {
+      if (stopped) throw new Error('Cannot restart a stopped browser fixture');
+      await stopChild();
+      const outputStart = output.length;
+      child = observe(launch());
+      try { await ready(outputStart); } catch (error) { await stop(); throw error; }
+    },
     logs: () => output,
     mailCount: (email, purpose) => messages.filter(mail => mail.email === email && (!purpose || mail.purpose === purpose)).length,
     async mailFor(email, purpose, index = 0) {

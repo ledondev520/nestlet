@@ -18,6 +18,8 @@ The browser install uses the version already pinned in the repository lockfile. 
 
 The dedicated `Nestlet browser acceptance` workflow runs these steps at the promoted `/` homepage for pull requests, main pushes, and manual dispatch. It retains the HTML/JUnit report, labelled screenshots from successful synthetic journeys, and synthetic-only failure traces/screenshots for seven days. Read the job's exact commit and individual test results before claiming a pass.
 
+Four additional customer/case scenarios are described in [the customer/case evidence boundary](CUSTOMER-CASES.md): linked cases and document versions, a real private-fixture server restart, empty-conversation selection, two-tab conflicts, offline-save recovery and owner/ordinary isolation. Their local HTTP contract check passed; the new Chromium scenarios remain unrun until exact-commit CI evidence is reviewed.
+
 ## Coverage
 
 - Existing component palette, bilingual text, escaped input, repeated Radix modal keyboard/focus/scroll-lock lifecycles, static allowlist, strict production CSP, and fresh style-only document nonces matching the official injected modal styles
