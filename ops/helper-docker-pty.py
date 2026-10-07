@@ -9,6 +9,7 @@ import pty
 import re
 import select
 import signal
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -20,7 +21,13 @@ PASSWORD = 'ci-disposable-operator-password'
 INITIAL = b'# Public test fixture only\nNESTLET_OPERATOR_PASSWORD_HASH=\nDEEPSEEK_API_KEY=\nENABLE_LIVE_AI=false\n'
 
 
-def exercise(directory, cancel=False):
+def exercise(directory, cancel=False, trial_username=None):
+    password = 'ci-disposable-trial-password' if trial_username else PASSWORD
+    first = b'Trial password' if trial_username else b'New operator password'
+    second = b'Confirm trial password' if trial_username else b'Confirm operator password'
+    confirmation = b'SET TRIAL USER' if trial_username else b'SET OPERATOR'
+    success = b'Trial credential updated privately' if trial_username else b'Operator password updated privately'
+    cancelled = b'Cancelled; no credential was changed.' if trial_username else b'Cancelled; no file was changed.'
     name = 'nestlet-helper-ci-' + uuid.uuid4().hex
     command = [
         'docker', 'run', '--rm', '-it', '--pull', 'never', '--init', '--name', name,
@@ -29,8 +36,9 @@ def exercise(directory, cancel=False):
         '--pids-limit', '32', '--memory', '256m', '--cpus', '1',
         '--user', f'{os.geteuid()}:{os.getegid()}',
         '--mount', f'type=bind,src={directory},dst=/runtime',
-        IMAGE, 'node', 'scripts/setup-operator.js', '/runtime/runtime.env',
+        IMAGE, 'node',
     ]
+    command += ['scripts/setup-trial-user.js', '/runtime/nestlet.sqlite', trial_username] if trial_username else ['scripts/setup-operator.js', '/runtime/runtime.env']
     child, master = pty.fork()
     if child == 0:
         os.execvp(command[0], command)
@@ -61,13 +69,13 @@ def exercise(directory, cancel=False):
                     raise AssertionError('Docker helper exited before expected prompt')
 
     try:
-        read_until(b'New operator password')
-        os.write(master, PASSWORD.encode() + b'\r')
-        read_until(b'Confirm operator password')
-        os.write(master, PASSWORD.encode() + b'\r')
-        read_until(b'Type SET OPERATOR')
-        os.write(master, b'\x03' if cancel else b'SET OPERATOR\r')
-        read_until(b'Cancelled; no file was changed.' if cancel else b'Operator password updated privately')
+        read_until(first)
+        os.write(master, password.encode() + b'\r')
+        read_until(second)
+        os.write(master, password.encode() + b'\r')
+        read_until(b'Type ' + confirmation)
+        os.write(master, b'\x03' if cancel else confirmation + b'\r')
+        read_until(cancelled if cancel else success)
         while child_status is None:
             if time.monotonic() >= deadline:
                 raise AssertionError('Docker helper did not exit after confirmation/cancellation')
@@ -83,7 +91,7 @@ def exercise(directory, cancel=False):
                         if error.errno != errno.EIO:
                             raise
         assert os.waitstatus_to_exitcode(child_status) == (1 if cancel else 0)
-        assert PASSWORD.encode() not in transcript, 'Public test password appeared in terminal output'
+        assert password.encode() not in transcript, 'Public test password appeared in terminal output'
         assert b'scrypt$' not in transcript, 'Generated test hash appeared in terminal output'
     finally:
         os.close(master)
@@ -124,4 +132,33 @@ with tempfile.TemporaryDirectory(prefix='nestlet-helper-private-') as directory:
     before = target.stat().st_ino
     exercise(directory, cancel=True)
     assert target.read_bytes() == INITIAL and target.stat().st_ino == before
-print('Actual Docker/PTY helper passed: hidden entry, cryptographic verification, atomic owner-only update, and cancellation with no mutation. Only disposable public test credentials were used.')
+print('Actual Docker/PTY owner helper passed: hidden entry, cryptographic verification, atomic owner-only update, and cancellation with no mutation. Only disposable public test credentials were used.')
+
+
+with tempfile.TemporaryDirectory(prefix='nestlet-trial-private-') as directory:
+    os.chmod(directory, 0o700)
+    # Initialize only a disposable isolated schema; no running application volume.
+    init = ['docker', 'run', '--rm', '--pull', 'never', '--network', 'none',
+            '--read-only', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges:true',
+            '--log-driver', 'none', '--user', f'{os.geteuid()}:{os.getegid()}',
+            '--mount', f'type=bind,src={directory},dst=/runtime', IMAGE, 'node',
+            '--input-type=module', '-e',
+            'import {openStorage} from "./storage.js"; const store=openStorage({filename:"/runtime/nestlet.sqlite"}); store.close();']
+    subprocess.run(init, check=True, timeout=30, stdout=subprocess.DEVNULL)
+    target = Path(directory) / 'nestlet.sqlite'
+    exercise(directory, trial_username='ci-trial')
+    assert target.stat().st_mode & 0o777 == 0o600 and target.stat().st_uid == os.geteuid()
+    with sqlite3.connect(f'file:{target}?mode=ro', uri=True) as database:
+        row = database.execute('SELECT id,role,password_hash FROM users WHERE username=?', ('ci-trial',)).fetchone()
+        assert row and row[1] == 'trial'
+        kind, salt, expected = row[2].split('$')
+        assert kind == 'scrypt'
+        actual = hashlib.scrypt(b'ci-disposable-trial-password', salt=base64.urlsafe_b64decode(salt+'=='), n=16384, r=8, p=1, dklen=32, maxmem=64*1024*1024)
+        assert actual == base64.urlsafe_b64decode(expected+'=')
+    database.close()
+    exercise(directory, cancel=True, trial_username='ci-cancelled')
+    with sqlite3.connect(f'file:{target}?mode=ro', uri=True) as database:
+        assert database.execute('SELECT count(*) FROM users WHERE username=?', ('ci-cancelled',)).fetchone()[0] == 0
+        assert database.execute('SELECT id,role,password_hash FROM users WHERE username=?', ('ci-trial',)).fetchone() == row
+    database.close()
+print('Actual Docker/PTY named-trial helper passed: hidden input, real SQLite/scrypt credential, own role, and cancellation without user creation. Disposable public test credentials only.')

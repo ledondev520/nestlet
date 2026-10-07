@@ -4,17 +4,22 @@ import { after, before, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomBytes, scryptSync } from 'node:crypto';
 import { spawn } from 'node:child_process';
-import { readFile } from 'node:fs/promises';
+import { readFile, mkdtemp, realpath, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import net from 'node:net';
 
 const password = 'public-test-only-operator-password';
 const salt = randomBytes(16);
 const hash = `scrypt$${salt.toString('base64url')}$${scryptSync(password, salt, 32, { N: 16384, r: 8, p: 1 }).toString('base64url')}`;
 const processes = [];
+const dataDirectories = [];
 let secure, local, insecurePublic;
 let session;
 
 async function start(publicOrigin, passwordHash = hash) {
+  const dataDirectory = await mkdtemp(join(await realpath(tmpdir()), 'nestlet-auth-db-'));
+  dataDirectories.push(dataDirectory);
   const reservation = net.createServer();
   await new Promise(resolve => reservation.listen(0, '127.0.0.1', resolve));
   const port = reservation.address().port;
@@ -22,7 +27,7 @@ async function start(publicOrigin, passwordHash = hash) {
   const child = spawn(process.execPath, ['server.js'], {
     cwd: new URL('../', import.meta.url),
     env: { ...process.env, PORT: String(port), HOST: '127.0.0.1', PUBLIC_ORIGIN: publicOrigin,
-      NESTLET_OPERATOR_PASSWORD_HASH: passwordHash, ENABLE_LIVE_AI: 'false', DEEPSEEK_API_KEY: '' },
+      NESTLET_OPERATOR_PASSWORD_HASH: passwordHash, NESTLET_DB_PATH: join(dataDirectory, 'nestlet.sqlite'), ENABLE_LIVE_AI: 'false', DEEPSEEK_API_KEY: '' },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   processes.push(child);
@@ -58,7 +63,7 @@ before(async () => {
   insecurePublic = await start('http://nestlet-acceptance.invalid');
   session = await login(secure);
 });
-after(async () => { await Promise.all(processes.map(child => new Promise(resolve => { if (child.exitCode !== null) return resolve(); child.once('exit', resolve); child.kill('SIGTERM'); }))); });
+after(async () => { await Promise.all(processes.map(child => new Promise(resolve => { if (child.exitCode !== null) return resolve(); child.once('exit', resolve); child.kill('SIGTERM'); }))); await Promise.all(dataDirectories.map(directory => rm(directory, { recursive: true, force: true }))); });
 
 test('real password verification issues a protected session and status exposes CSRF only to that session', async () => {
   assert.match(session.setCookie, /HttpOnly/);
@@ -189,7 +194,7 @@ test('unconfigured and malformed operator setups fail closed for all server-side
     const status = await (await fetch(server.url + '/api/status')).json();
     assert.equal(status.authConfigured, false);
     assert.equal(status.authenticated, false);
-    assert.equal(status.operatorSetupInvalid, Boolean(passwordHash));
+    assert.equal('operatorSetupInvalid' in status, false, 'Unauthenticated status must not expose owner setup diagnostics');
   }
 });
 

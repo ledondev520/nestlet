@@ -6,13 +6,16 @@ import { spawn, spawnSync } from 'node:child_process';
 import { once } from 'node:events';
 import net from 'node:net';
 import { randomBytes, scryptSync } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
+import { readFile, mkdtemp, realpath, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
-let child, base, sessionHeaders;
+let child, base, sessionHeaders, dataDirectory;
 const password = 'public-test-only-local-acceptance';
 const salt = randomBytes(16);
 const passwordHash = `scrypt$${salt.toString('base64url')}$${scryptSync(password, salt, 32).toString('base64url')}`;
 before(async () => {
+  dataDirectory = await mkdtemp(join(await realpath(tmpdir()), 'nestlet-independent-db-'));
   const reservation = net.createServer();
   await new Promise(resolve => reservation.listen(0, '127.0.0.1', resolve));
   const port = reservation.address().port;
@@ -21,7 +24,7 @@ before(async () => {
   child = spawn(process.execPath, ['server.js'], {
     cwd: new URL('../', import.meta.url),
     env: { ...process.env, HOST: '127.0.0.1', PORT: String(port), ENABLE_LIVE_AI: 'false',
-      DEEPSEEK_API_KEY: '', DEEPSEEK_MODEL: 'deepseek-flash', PUBLIC_ORIGIN: '', NESTLET_OPERATOR_PASSWORD_HASH: passwordHash },
+      DEEPSEEK_API_KEY: '', DEEPSEEK_MODEL: 'deepseek-flash', PUBLIC_ORIGIN: '', NESTLET_OPERATOR_PASSWORD_HASH: passwordHash, NESTLET_DB_PATH: join(dataDirectory, 'nestlet.sqlite') },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   await new Promise((resolve, reject) => {
@@ -40,6 +43,7 @@ before(async () => {
 });
 after(async () => {
   if (child && child.exitCode === null) { const exited = once(child, 'exit'); child.kill(); await exited; }
+  if (dataDirectory) await rm(dataDirectory, { recursive: true, force: true });
 });
 const workbook = (bytes, extraHeaders = {}, authenticated = true) => fetch(base + '/api/workbook', {
   method: 'POST', headers: { 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -74,7 +78,7 @@ test('legacy model configuration fails at startup without a provider call', () =
   const result = spawnSync(process.execPath, ['server.js'], {
     cwd: new URL('../', import.meta.url), encoding: 'utf8', timeout: 3000,
     env: { ...process.env, HOST: '127.0.0.1', PORT: '0', PUBLIC_ORIGIN: '',
-      ENABLE_LIVE_AI: 'false', DEEPSEEK_API_KEY: '', DEEPSEEK_MODEL: 'deepseek-chat', NESTLET_OPERATOR_PASSWORD_HASH: '' },
+      ENABLE_LIVE_AI: 'false', DEEPSEEK_API_KEY: '', DEEPSEEK_MODEL: 'deepseek-chat', NESTLET_OPERATOR_PASSWORD_HASH: '', NESTLET_DB_PATH: join(dataDirectory, 'legacy-refusal.sqlite') },
   });
   assert.equal(result.status, 1);
   assert.match(result.stderr, /Only DEEPSEEK_MODEL=deepseek-flash is supported/);

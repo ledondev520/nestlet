@@ -14,6 +14,7 @@ services:
       NODE_ENV: production
       HOST: 0.0.0.0
       PORT: "4173"
+      NESTLET_DB_PATH: /data/nestlet.sqlite
       PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-http://127.0.0.1:4173}
       # Single-quote the scrypt hash in .env to preserve literal dollar signs.
       # Empty means authentication is unconfigured: paid AI and settings stay disabled.
@@ -23,6 +24,8 @@ services:
       # Optional server-provided key. Prefer the authenticated, RAM-only settings flow.
       # Never bake keys into this file or an image; do not share rendered Compose config.
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+    volumes:
+      - case_data:/data
     read_only: true
     tmpfs:
       - /tmp:rw,noexec,nosuid,nodev,size=64m,mode=1777
@@ -44,3 +47,9 @@ services:
       options:
         max-size: "5m"
         max-file: "2"
+
+# Project-scoped, dedicated storage. Production: never use `down --volumes` or prune.
+volumes:
+  case_data:
+    labels:
+      com.nestlet.purpose: private-case-storage

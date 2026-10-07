@@ -15,9 +15,11 @@ Private infrastructure addresses, access details and credentials remain outside 
 
 Nestlet's JavaScript frontend and backend belong to the same repository. Sites is temporary preview hosting, not an API dependency, production backend or prerequisite for VPS operation.
 
+**SQLite/trial extension, working-tree checkpoint:** the repository now adds Node 24 SQLite storage, private named-trial identities, case-isolation routes and one dedicated data volume. This extension still needs its own final CI, browser and deployment evidence. The deployed `b431ea5` checkpoint above is the earlier stateless release. [SQLite runtime and user-run trial setup](sqlite-runtime.md)
+
 ## Runtime requirements
 
-- Node.js 24 (the container runtime); install locked dependencies with `npm ci`
+- Node.js 24 or newer for built-in SQLite (container uses Node 24); install locked dependencies with `npm ci`
 - Poppler `pdftotext` for real text-PDF extraction
 - SheetJS dependency and `workbook-worker.js` for XLSX/XLS parsing
 - Outbound HTTPS to the configured DeepSeek API; only `deepseek-flash` is supported
@@ -25,7 +27,7 @@ Nestlet's JavaScript frontend and backend belong to the same repository. Sites i
 - Exact `PUBLIC_ORIGIN` when a trusted HTTPS reverse proxy fronts the loopback server
 - Authenticated/private access in front of the service before it can be reached remotely
 
-Direct local launch uses loopback by default. Docker requires the explicit container-internal bind contract described below. It implements single-operator authentication, but has no durable case audit trail or multi-user tenant isolation. Do not open its port directly or assume CORS/origin checks are authentication. Public access to a configured model endpoint creates cost and abuse risks.
+Direct local launch uses loopback by default. Docker requires the explicit container-internal bind contract described below. The new extension implements an owner role and named trial users with user-scoped saved cases. It is not a complete case audit trail, independently certified multi-tenant system or production privacy assurance. Do not open its port directly or assume CORS/origin checks are authentication. Public access to a configured model endpoint creates cost and abuse risks.
 
 ## Native process option
 
@@ -40,7 +42,8 @@ The repository now includes `Dockerfile`, `compose.yaml`, `.dockerignore`, `ops/
 - Node 24 Bookworm slim; two-stage build with `npm ci --omit=dev --ignore-scripts`
 - Poppler and Linux resource-limiting tools included
 - Non-root runtime, narrow source-copy allowlist and no secrets embedded in the image
-- Read-only filesystem, bounded `/tmp`, process/CPU/memory limits and dropped capabilities
+- Read-only root filesystem, bounded `/tmp`, process/CPU/memory limits and dropped capabilities
+- Dedicated project-scoped `case_data` volume at `/data`; application database mode 0600 inside runtime-owned 0700 directory; no persisted raw upload binaries
 - Compose publishes the application on the **host's loopback** `127.0.0.1:4173`, not all interfaces
 - Container-internal `HOST=0.0.0.0` and `/api/health` are implemented backend interfaces; verify them in the built container before calling deployment functional
 
@@ -63,7 +66,7 @@ This documentation task did not execute these commands. The deployment coordinat
 
 A containerized proxy needs a different upstream; its `127.0.0.1` means that proxy container, not the app or host. Do not copy this example blindly to another topology. Host-network mode is not used by the shipped Compose file. [Docker networking distinction](https://docs.docker.com/engine/network/drivers/host/)
 
-The selected security design is single-operator backend authentication, an operator-provided password hash, HttpOnly SameSite=Strict session cookies and CSRF checks. Paid/settings routes must fail closed; proxy identity headers are not authentication. The implementation uses `NESTLET_OPERATOR_PASSWORD_HASH`, with backend/UI authentication and protected-route behavior present. Local real-browser retake evidence covers login and file/export flows against `8b429`; production credential/HTTPS configuration and live-provider checks remain separate.
+The owner credential remains an operator-provided password hash. The SQLite extension adds named trial credentials in the dedicated database, user-scoped saved cases, and an owner-only provider settings boundary. Sessions use HttpOnly SameSite=Strict cookies and CSRF checks. Paid/settings routes must fail closed; proxy identity headers are not authentication. The implementation uses `NESTLET_OPERATOR_PASSWORD_HASH`, with backend/UI authentication and protected-route behavior present. Local real-browser retake evidence covers login and file/export flows against `8b429`; production credential/HTTPS configuration and live-provider checks remain separate.
 
 Authenticated HTTPS browser key setup is implemented. The operator personally enters and submits a key in Settings; the backend holds it in process memory and does not return it. The key is not saved in browser storage and disappears on restart unless independently supplied by server environment. This feature is blocked without a configured trusted HTTPS origin and operator session/CSRF. It is not yet verified with a real production key.
 
@@ -77,6 +80,7 @@ Authenticated HTTPS browser key setup is implemented. The operator personally en
 | `PORT` | App port; default 4173 |
 | `HOST` | Loopback for direct local launch; `0.0.0.0` only inside the reviewed container topology |
 | `NESTLET_IMAGE_TAG` | Reviewed deployment tag, linked to the exact commit/image |
+| `NESTLET_DB_PATH` | Private file-backed SQLite path; Compose fixes it to `/data/nestlet.sqlite` |
 | `NESTLET_OPERATOR_PASSWORD_HASH` | Operator-provided scrypt hash; see format and quoting below |
 | `PUBLIC_ORIGIN` | Exact selected HTTPS origin, without an arbitrary wildcard |
 
@@ -101,7 +105,7 @@ The password-hash contract is `scrypt$<base64url16bytesalt>$<base64url32bytehash
 
 ## Rollback and limits
 
-Preserve the previous reviewed image/commit and its non-secret configuration reference. Revert the service to that artifact if the new release fails; never overwrite private settings or delete unrelated host data as cleanup. Because no database is currently used, there is no schema migration to roll back, but operator downloads and external provider transmissions cannot be recalled by restarting the app.
+Preserve the previous reviewed image/commit and its non-secret configuration reference. Revert the service to that artifact if the new release fails; never overwrite private settings or delete unrelated host data as cleanup. For the SQLite extension, preserve the dedicated `nestlet_case_data` volume. Never use `down --volumes`, remove the volume, or prune it during production rollback. Returning to the older stateless release does not erase the volume, but that release cannot display saved cases. The first-persistence rollout creates only this task-owned storage and rejects unrelated/incompatible databases; later schema changes need a separate migration/backup plan. Operator downloads and external provider transmissions cannot be recalled by restarting the app. No automated production backup is configured by this package.
 
 Initial private container deployment is reported in the checkpoint above. Public proxy/DNS/trusted TLS, production operator setup, real provider calls and production load tests remain unverified here. Report these layers separately rather than describing either all deployment as unrun or the entire service as production-ready.
 

@@ -5,8 +5,12 @@ import assert from 'node:assert/strict';
 import { randomBytes, scryptSync } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import net from 'node:net';
+import { mkdtemp, realpath, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 test('operator session expires after 30 real idle minutes', { timeout: 31 * 60 * 1000 }, async context => {
+  const dataDirectory = await mkdtemp(join(await realpath(tmpdir()), 'nestlet-idle-db-'));
   const password = 'public-test-only-idle-password';
   const salt = randomBytes(16);
   const hash = `scrypt$${salt.toString('base64url')}$${scryptSync(password, salt, 32, { N: 16384, r: 8, p: 1 }).toString('base64url')}`;
@@ -17,11 +21,12 @@ test('operator session expires after 30 real idle minutes', { timeout: 31 * 60 *
   const url = `http://127.0.0.1:${port}`;
   const child = spawn(process.execPath, ['server.js'], {
     cwd: new URL('../', import.meta.url),
-    env: { ...process.env, PORT: String(port), HOST: '127.0.0.1', PUBLIC_ORIGIN: '', NESTLET_OPERATOR_PASSWORD_HASH: hash, ENABLE_LIVE_AI: 'false', DEEPSEEK_API_KEY: '' },
+    env: { ...process.env, PORT: String(port), HOST: '127.0.0.1', PUBLIC_ORIGIN: '', NESTLET_OPERATOR_PASSWORD_HASH: hash, NESTLET_DB_PATH: join(dataDirectory, 'nestlet.sqlite'), ENABLE_LIVE_AI: 'false', DEEPSEEK_API_KEY: '' },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   context.after(async () => {
     if (child.exitCode === null) await new Promise(resolve => { child.once('exit', resolve); child.kill('SIGTERM'); });
+    await rm(dataDirectory, { recursive: true, force: true });
   });
   await new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('Server did not start')), 5000);

@@ -4,3 +4,14 @@
 node_modules/
 artifacts/
 *.log
+
+# Runtime case/account storage must never enter the public repository.
+/data/
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.sqlite3-*
+*.db
+*.db-wal
+*.db-shm
+*.db-journal
