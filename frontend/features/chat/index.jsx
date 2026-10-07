@@ -2,10 +2,10 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
+import { ArrowUp, Paperclip, Plus, RefreshCw, MessageSquare, Square } from 'lucide-react';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { useSession } from '@/lib/session';
 import { useSuspendedDraft } from '@/lib/suspended-draft';
@@ -20,7 +20,7 @@ export function ChatPage({ lang='zh', caseId=null, onCaseChange, onDirtyChange, 
   const { status, api, refresh } = useSession();
   const {restored,saveDraft,clearDraft,cacheStatus}=useSuspendedDraft('chat');
   const words = chatCopy[lang] || chatCopy.zh;
-  const inputId = useId(), fileId = useId(), consentId = useId(), threadId = useId();
+  const inputId = useId(), fileId = useId(), threadId = useId();
   const [input,setInput] = useState('');
   const [images,setImages] = useState([]);
   const [messages,setMessages] = useState([]);
@@ -29,7 +29,6 @@ export function ChatPage({ lang='zh', caseId=null, onCaseChange, onDirtyChange, 
   const [title,setTitle] = useState('');
   const [phase,setPhase] = useState('idle');
   const [imagePending,setImagePending] = useState(0);
-  const [consent,setConsent] = useState(false);
   const [error,setError] = useState(null);
   const [notice,setNotice] = useState('');
   const [dragging,setDragging] = useState(false);
@@ -62,7 +61,7 @@ export function ChatPage({ lang='zh', caseId=null, onCaseChange, onDirtyChange, 
     for (const preview of previewUrls.current) URL.revokeObjectURL(preview); previewUrls.current.clear();
     caseRef.current=nextCaseId; conversationRef.current=null; adoption.current=null; stopRequested.current=false;
     workflowRef.current=null; lastTurn.current=null; pendingSendText.current=''; decodeBusy.current=false; imageRef.current=[]; messageRef.current=[]; inputRef.current=''; phaseRef.current='idle';
-    if (render && mounted.current) {setInput('');setImages([]);setMessages([]);setConversationId(null);setConversations([]);setTitle('');setPhase('idle');setImagePending(0);setConsent(false);setError(null);setNotice('');setDragging(false);}
+    if (render && mounted.current) {setInput('');setImages([]);setMessages([]);setConversationId(null);setConversations([]);setTitle('');setPhase('idle');setImagePending(0);setError(null);setNotice('');setDragging(false);}
   },[]);
 
   useEffect(() => {
@@ -103,7 +102,7 @@ export function ChatPage({ lang='zh', caseId=null, onCaseChange, onDirtyChange, 
     if(preserveComposition){
       // App remounts true case switches. A null→ID binding here is the same workspace saved by Intake.
       epoch.current++;for(const active of controllers.current)active.abort();controllers.current.clear();controller.current=null;
-      caseRef.current=nextCase;adoption.current=null;workflowRef.current=null;lastTurn.current=null;decodeBusy.current=false;setImagePending(0);setConsent(false);setError(null);setNotice('');
+      caseRef.current=nextCase;adoption.current=null;workflowRef.current=null;lastTurn.current=null;decodeBusy.current=false;setImagePending(0);setError(null);setNotice('');
     } else invalidate(nextCase);
     restoreComposer();
     if (!nextCase) return;
@@ -189,7 +188,6 @@ export function ChatPage({ lang='zh', caseId=null, onCaseChange, onDirtyChange, 
     if(phaseRef.current!=='idle'||imagePending)return;
     if(!statusRef.current.authenticated){setError(new ChatClientError('AUTH_REQUIRED'));return;}
     if(!statusRef.current.liveEnabled){setError(new ChatClientError('LIVE_DISABLED'));return;}
-    if(!consent)return;
     const text=inputRef.current.trim(), attached=[...imageRef.current];
     if(!text&&!attached.length){setError(new ChatClientError('CHAT_EMPTY'));return;}
     if(text.length>CHAT_BOUNDS.text){setError(new ChatClientError('CHAT_TOO_LARGE'));return;}
@@ -252,22 +250,21 @@ export function ChatPage({ lang='zh', caseId=null, onCaseChange, onDirtyChange, 
   const stop=()=>{stopRequested.current=true;controller.current?.abort();};
 
   if(!status.authenticated)return <Card className="paper-card"><CardContent><p>{words.signIn}</p></CardContent></Card>;
-  return <section className="space-y-5" aria-label={words.title} data-feature="chat">
-    <div className="space-y-2"><h1 className="paper-title text-2xl font-semibold">{words.title}</h1><p className="text-sm text-muted-foreground">{words.subtitle}</p></div>
-    <Card className="paper-card">
-      <CardHeader className="gap-3"><CardTitle className="paper-title break-words">{title||words.untitledCase}</CardTitle><CardDescription>{caseRef.current?words.saved:words.subtitle}</CardDescription>
-        <div className="flex flex-wrap items-center gap-3"><Label htmlFor={`${inputId}-conversation`}>{words.conversation}</Label>
+  return <section className="chat-workspace" aria-label={words.title} data-feature="chat">
+    <Card className="chat-surface">
+      <CardHeader className="chat-toolbar"><CardTitle className="truncate text-base">{title||words.title}</CardTitle>
+        <div className="flex flex-wrap items-center gap-3"><Label className="sr-only" htmlFor={`${inputId}-conversation`}>{words.conversation}</Label>
           <NativeSelect id={`${inputId}-conversation`} value={conversationId||''} onChange={event=>chooseConversation(event.target.value)} disabled={phase==='loading'} className="w-48 max-w-full">
             <NativeSelectOption value="">{words.newConversation}</NativeSelectOption>{conversations.map(item=><NativeSelectOption key={item.id} value={item.id}>{item.title}</NativeSelectOption>)}
-          </NativeSelect><Button variant="outline" size="sm" type="button" onClick={()=>chooseConversation('')}>{words.newConversation}</Button>
-          <Button variant="ghost" size="sm" type="button" disabled={busy} onClick={reloadConversation}>{words.reload}</Button>
+          </NativeSelect><Button variant="outline" size="sm" type="button" onClick={()=>chooseConversation('')}><Plus aria-hidden="true" />{words.newConversation}</Button>
+          <Button variant="ghost" size="sm" type="button" disabled={busy} onClick={reloadConversation} aria-label={words.reload} title={words.reload}><RefreshCw aria-hidden="true" /></Button>
         </div>
       </CardHeader>
-      <CardContent className="space-y-5">
+      <CardContent className="chat-body">
         {phase==='loading'&&<p role="status" className="text-sm text-muted-foreground">{words.loading}</p>}
-        <div id={threadId} className="space-y-4" aria-live="polite" aria-relevant="additions text">
-          {!messages.length&&phase!=='loading'&&<p className="py-8 text-sm text-muted-foreground">{words.empty}</p>}
-          {messages.map(message=><article key={message.id} className={`rounded-lg border p-4 ${message.role==='user'?'bg-muted/40':'bg-card'}`} aria-label={message.role==='user'?words.you:words.assistant}>
+        <div id={threadId} className="chat-messages" role="log" aria-label={words.conversation} aria-live="polite" aria-relevant="additions text">
+          {!messages.length&&phase!=='loading'&&<div className="chat-empty"><MessageSquare className="size-9" aria-hidden="true" /><h1>{words.empty}</h1></div>}
+          {messages.map(message=><article key={message.id} className={`chat-message chat-message--${message.role}`} aria-label={message.role==='user'?words.you:words.assistant}>
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2"><span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{message.role==='user'?words.you:words.assistant}</span>{message.role==='assistant'&&message.content&&<Button type="button" variant="ghost" size="xs" onClick={()=>copyMessage(message.content)}>{words.copy}</Button>}</div>
             {!!message.images?.length&&<div className="mb-3 flex flex-wrap gap-2">{message.images.map(image=><img key={image.id} src={image.preview} alt={words.imageOnly} className="h-24 w-24 rounded border object-contain" />)}</div>}
             {!!message.imageMetadata?.length&&<p className="mb-2 text-xs text-muted-foreground">{words.oldImage}</p>}
@@ -281,22 +278,22 @@ export function ChatPage({ lang='zh', caseId=null, onCaseChange, onDirtyChange, 
         {cacheStatus==='unavailable'&&<p role="status" className="text-sm text-destructive">{words.cacheUnavailable}</p>}
         {notice&&<p role="status" className="paper-note rounded px-3 py-2 text-sm">{words[notice]}</p>}
         {(error||notice==='stopped')&&messages.some(message=>message.role==='user')&&<Button variant="outline" type="button" disabled={busy} onClick={retry}>{words.retry}</Button>}
-        <form className="space-y-3 border-t pt-5" onSubmit={send} onDragOver={event=>{event.preventDefault();setDragging(true);}} onDragLeave={()=>setDragging(false)} onDrop={event=>{event.preventDefault();setDragging(false);receiveFiles(event.dataTransfer.files);}}>
-          <Label htmlFor={inputId}>{words.composer}</Label>
-          <Textarea ref={composer} id={inputId} value={input} maxLength={CHAT_BOUNDS.text} disabled={busy} className={`min-h-32 resize-y ${dragging?'ring-2 ring-ring':''}`} placeholder={words.placeholder}
+        <form className="chat-composer" onSubmit={send} onDragOver={event=>{event.preventDefault();setDragging(true);}} onDragLeave={()=>setDragging(false)} onDrop={event=>{event.preventDefault();setDragging(false);receiveFiles(event.dataTransfer.files);}}>
+          <Label className="sr-only" htmlFor={inputId}>{words.composer}</Label>
+          <Textarea ref={composer} id={inputId} value={input} maxLength={CHAT_BOUNDS.text} disabled={busy} className={`chat-input ${dragging?'ring-2 ring-ring':''}`} placeholder={words.placeholder}
+            onKeyDown={event=>{if(event.key==='Enter'&&!event.shiftKey&&!event.nativeEvent.isComposing&&event.keyCode!==229){event.preventDefault();send(event);}}}
             onChange={event=>{inputRef.current=event.target.value;setInput(event.target.value);}}
             onPaste={event=>{const files=Array.from(event.clipboardData.files||[]);if(files.length){event.preventDefault();const text=event.clipboardData.getData('text/plain');if(text){const next=(inputRef.current+text).slice(0,CHAT_BOUNDS.text);inputRef.current=next;setInput(next);}receiveFiles(files);}}}/>
-          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground"><span>{input.length.toLocaleString(lang==='zh'?'zh-CN':'en-US')} / 8,000</span>{imagePending>0&&<span role="status">{words.decoding}</span>}</div>
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">{input.length>7000&&<span>{input.length.toLocaleString()} / 8,000</span>}{imagePending>0&&<span role="status">{words.decoding}</span>}</div>
           {!!images.length&&<div className="flex flex-wrap gap-3">{images.map(image=><div key={image.id} className="flex items-center gap-2 rounded border p-2"><img src={image.preview} alt={words.imageOnly} className="h-16 w-16 object-contain"/><Button type="button" variant="ghost" size="sm" disabled={busy} onClick={()=>removeImage(image.id)} aria-label={words.remove}>{words.remove}</Button></div>)}</div>}
-          <div className="flex items-start gap-2"><Checkbox id={consentId} checked={consent} disabled={busy} onCheckedChange={value=>setConsent(value===true)}/><Label htmlFor={consentId} className="text-xs leading-relaxed">{words.consent}</Label></div>
-          <div className="flex flex-wrap items-center gap-2"><Button type="submit" disabled={busy||imagePending>0||!consent||!status.liveEnabled||(!input.trim()&&!images.length)}>{words.send}</Button>
-            <Button type="button" variant="outline" disabled={busy||imagePending>0} onClick={()=>fileInput.current?.click()}>{words.attach}</Button>
-            {busy&&phase!=='loading'&&<Button type="button" variant="secondary" onClick={stop}>{words.stop}</Button>}
+          <div className="chat-composer-actions">
+            <Button type="button" variant="ghost" size="sm" disabled={busy||imagePending>0} onClick={()=>fileInput.current?.click()} title={words.attach}><Paperclip aria-hidden="true" />{words.attach}</Button>
+            <div className="flex items-center gap-2"><span className="chat-keyboard-hint">{words.keyboardHint}</span>
+            {busy&&phase!=='loading'?<Button type="button" aria-label={words.stop} onClick={stop}><Square aria-hidden="true" />{words.stop}</Button>:<Button type="submit" aria-label={words.send} disabled={busy||imagePending>0||!status.liveEnabled||(!input.trim()&&!images.length)}><ArrowUp aria-hidden="true" />{words.send}</Button>}</div>
             <input id={fileId} ref={fileInput} className="sr-only" type="file" accept="image/png,image/jpeg,.pdf,.txt,.csv,.xlsx,.xls" multiple onChange={event=>{receiveFiles(event.target.files);event.target.value='';}}/>
           </div>
           {['saving','streaming','refreshing'].includes(phase)&&<p role="status" className="text-xs text-muted-foreground">{phase==='saving'?words.saving:phase==='streaming'?words.sending:words.loading}</p>}
           {!status.liveEnabled&&<p className="text-sm text-destructive">{words.unavailable}</p>}
-          <p className="text-xs leading-relaxed text-muted-foreground">{words.privacy}</p><p className="text-xs leading-relaxed text-muted-foreground">{words.documents}</p>
         </form>
       </CardContent>
     </Card>

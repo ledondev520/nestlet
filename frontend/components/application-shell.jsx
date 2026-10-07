@@ -1,4 +1,4 @@
-import { MessageSquare, Users, FileText, Files, Globe, ArrowLeft } from 'lucide-react';
+import { MessageSquare, Users, FileText, Files, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const navigation = {
@@ -24,9 +24,6 @@ export function ApplicationShell({ children, lang = 'zh', onLanguageChange, view
       {navigation[lang].map(([id, label, Icon]) => <Button key={id} variant={view === id ? 'secondary' : 'ghost'} onClick={() => onNavigate(id)} aria-current={view === id ? 'page' : undefined}><Icon aria-hidden="true" />{label}</Button>)}
     </nav>}
     <main id="workspace" tabIndex={-1} className="mt-8 outline-none">{children}</main>
-    <footer className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-5 text-xs leading-relaxed text-muted-foreground">
-      <p>{lang === 'zh' ? '仅限虚构或去标识化资料 · 不自动发送或提交' : 'Synthetic or de-identified material only · No automatic sending or submission'}</p>
-      <a href="/legacy/" className="inline-flex items-center gap-1 underline underline-offset-4"><ArrowLeft size={13} aria-hidden="true" />{lang === 'zh' ? '旧版工作区' : 'Legacy workspace'}</a>
-    </footer>
+
   </div>;
 }

@@ -40,8 +40,8 @@ async function mount({caseId=null,fetchHandler,status=identity,recovery=null}={}
 test('development React: failed case creation retains composer and cannot fall back to transient chat',async context=>{
   const app=await mount({fetchHandler:async(path)=>path==='/api/cases'?response({code:'CASE_CONFLICT'},409):response({},500)});context.after(app.close);
   await app.type('Synthetic question retained after failed creation');
-  await app.click(app.dom.window.document.querySelector('[role="checkbox"]'));
-  await app.click(app.button('Send to DeepSeek'));await app.flush();
+  
+  await app.click(app.button('Send'));await app.flush();
   assert.equal(app.requests.filter(item=>item.path==='/api/cases'&&item.options.method==='POST').length,1);
   assert.equal(app.requests.some(item=>item.path==='/api/chat'),false);
   assert.equal(app.dom.window.document.querySelector('textarea').value,'Synthetic question retained after failed creation');
@@ -85,7 +85,7 @@ test('development React: first send persists case and conversation, then sends o
     if(path===`/api/conversations/${conversationId}`)return response({conversation:{id:conversationId,caseId},messages:[{id:userMessageId,clientMessageId,requestId,role:'user',content:'Only this new question',state:'complete'},{id:assistantMessageId,requestId,role:'assistant',content:'Authored stream fixture; not a live provider result.',state:'complete'}]});
     return response({},500);
   }});context.after(app.close);
-  await app.type('Only this new question');await app.click(app.dom.window.document.querySelector('[role="checkbox"]'));await app.click(app.button('Send to DeepSeek'));await app.flush();
+  await app.type('Only this new question');await app.click(app.button('Send'));await app.flush();
   const calls=app.requests.filter(item=>item.options.method==='POST');assert.deepEqual(calls.map(item=>item.path),['/api/cases',`/api/cases/${caseId}/conversations`,'/api/chat']);
   const payload=JSON.parse(calls.at(-1).options.body);assert.equal(payload.caseId,caseId);assert.equal(payload.conversationId,conversationId);assert.deepEqual(payload.messages,[{role:'user',content:'Only this new question'}]);assert.ok(payload.clientMessageId);
   assert.equal(app.dom.window.document.querySelector('textarea').value,'');assert.match(app.dom.window.document.body.textContent,/Authored stream fixture; not a live provider result/);
@@ -101,7 +101,7 @@ test('development React: stream errors keep received text visibly incomplete aft
     if(path==='/api/chat'){sent=true;clientMessageId=JSON.parse(options.body).clientMessageId;return new Response('event: delta\ndata: {"text":"Retained partial fixture"}\n\nevent: error\ndata: {"code":"CHAT_INCOMPLETE"}\n\n',{headers:{'Content-Type':'text/event-stream'}});}
     return response({},500);
   }});context.after(app.close);
-  await app.flush();await app.type('Question before interrupted fixture');await app.click(app.dom.window.document.querySelector('[role="checkbox"]'));await app.click(app.button('Send to DeepSeek'));await app.flush();
+  await app.flush();await app.type('Question before interrupted fixture');await app.click(app.button('Send'));await app.flush();
   assert.match(app.dom.window.document.body.textContent,/Retained partial fixture/);assert.match(app.dom.window.document.body.textContent,/This reply is incomplete/);
   assert.equal(app.requests.filter(item=>item.path==='/api/chat').length,1);assert.ok(app.button('Edit this question again'));
 });
@@ -112,7 +112,18 @@ test('development React: verified same-user recovery restores only text and keep
   assert.equal(app.dom.window.document.querySelector('textarea').value,'Unsent synthetic question recovered');
   assert.match(app.dom.window.document.body.textContent,/Reattach images/);
   assert.equal(app.dom.window.document.querySelectorAll('img').length,0);
-  assert.equal(app.dom.window.document.querySelector('[role="checkbox"]').getAttribute('data-state'),'unchecked');
+  assert.equal(app.dom.window.document.querySelector('[role="checkbox"]'),null);
   await app.type('A revised question that is still unsent');
   assert.deepEqual(app.readDraft(),{input:'A revised question that is still unsent'});
+});
+
+test('Enter sends once, while Shift+Enter and IME confirmation never send',async context=>{
+  const app=await mount({fetchHandler:async()=>response({code:'CASE_CONFLICT'},409)});context.after(app.close);
+  await app.type('Synthetic keyboard message');
+  const React=await import('react'), input=app.dom.window.document.querySelector('textarea');
+  const press=async options=>{await React.act(async()=>input.dispatchEvent(new app.dom.window.KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true,...options})));await app.flush();};
+  await press({shiftKey:true});await press({isComposing:true});await press({keyCode:229});
+  assert.equal(app.requests.filter(item=>item.options.method==='POST').length,0);
+  await press({});
+  assert.equal(app.requests.filter(item=>item.path==='/api/cases'&&item.options.method==='POST').length,1);
 });
