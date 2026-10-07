@@ -35,7 +35,11 @@ try {
       });
     if (command === 'verify') {
       const checked = verifyPrivateBackup({ input: values['--input'] });
-      result = { verified: checked.verified, assetCount: checked.assetCount };
+      result = {
+        verified: checked.verified,
+        schemaVersion: checked.schemaVersion,
+        assetCount: checked.assetCount
+      };
     }
     if (command === 'restore')
       result = await restorePrivateBackup({ input: values['--input'], output: values['--output'] });
@@ -49,7 +53,13 @@ try {
   } finally {
     process.umask(oldMask);
   }
-  process.stdout.write(JSON.stringify(result) + '\n');
+  // CLI output may be captured by deployment logs: no private paths, filenames, IDs or manifest contents.
+  const summary = Object.fromEntries(
+    ['verified', 'schemaVersion', 'assetCount', 'unreferencedFiles']
+      .filter((key) => Object.hasOwn(result, key))
+      .map((key) => [key, result[key]])
+  );
+  process.stdout.write(JSON.stringify(summary) + '\n');
 } catch (error) {
   process.stderr.write(
     'Private data operation failed: ' + (error?.code || error.message || 'Unknown failure') + '\n'

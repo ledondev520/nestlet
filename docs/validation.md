@@ -203,3 +203,14 @@ On the dedicated private-assets feature branch based on 8a7f5de:
 - Skills `orbit:software-engineering`, upstream implement/TDD/code-review guidance were read; targeted real-interface tests and an independent security review were used. A complete test-first workflow or full two-axis upstream review ritual is not claimed
 
 This is local backend evidence. The standalone feature branch does not include the separately owned Docker allowlist/COPY or React changes. Integrated image startup, real-browser PDF/image preview/CSP, end-to-end UI, exact-SHA release CI and deployment remain separate verification. No production files, credentials or database were read or modified; no backup job was scheduled and no deployment was performed.
+
+### Private-assets integration follow-up — October 7, 2026, 10:22 UTC
+
+- Merged main `2fc15f2` into the asset branch without conflict; its legacy bilingual fallback fix removed the prior failure. Final local `npm run check` and `npm test`: **254/254 passed**
+- Added actual interrupted HTTP-stream checks: two held uploads exhaust the processing slots, cancellation releases both, no partial original is retained, and a later complete upload downloads correctly
+- Added a checked-in live-write SQLite backup/restore test with another real connection committing originals during the backup
+- Independent read-only review separately exercised 7,805 original files (including five concurrent uploads), an 8.57 MB inventory manifest, full verification and new-directory restore successfully. The original 8 MiB metadata ceiling was increased to 64 MiB to fit the full bounded account inventory
+- Pre-upgrade schema3 backup now remains schema3, creates no source assets directory and leaves the entire source SQLite file byte-identical. Restore into a separate directory remains schema3; a subsequent real schema4 migration rehearsal there preserves the old case/version. CLI output is redacted verification/schema/count metadata only, suitable for deployment logs; source paths, filenames, user IDs and manifest contents are not printed
+- Restore output must be outside its source snapshot and cannot already exist; backup/export output cannot be nested under source originals
+
+No API/server/storage/package contracts changed in this follow-up. The separate runtime/frontend integration and exact release checks remain required. Timeout/decompression-bomb adversarial tests and non-Linux/no-prlimit equivalent native-memory enforcement remain unverified; no cross-platform hard-resource-limit claim is made.
