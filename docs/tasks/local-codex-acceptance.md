@@ -73,3 +73,5 @@ Finish only when the reviewable draft PR exists, or report the exact permission/
 
 
 07:08 UTC browser checkpoint on main `443675c`: ordinary registration → manual review → edited draft → explicit save → actual server restart → login/open restores draft; logout clears workspace and a second account has an empty case list. Evidence and remaining Not run branches are in docs/local-acceptance.md. Six-character backend fix remains pending; owner reconfirmed the requirement. No provider call or production change in this acceptance run.
+
+07:34 UTC: independently tested PR #12 `3bfcaa3`: npm ci/check pass, 179/179 default and 5/5 independent HTTP acceptance pass. Six-character backend/private-helper boundaries and admin alias contract pass; LC-07 backend resolved. Final integrated browser and actual production admin setup remain unverified. Coordinator completed the bounded provider probe separately; no duplicate paid call needed.
