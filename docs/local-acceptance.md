@@ -250,3 +250,33 @@ At the coordinator's request, tested PR #8 exact head **`55548513d6a5d66c8920d0f
 The new regression creates an actual directory symlink, successfully places fixtures under its canonical physical root, and still rejects an aliased production target. No filesystem mocks, weakened security conditions or actual operator configuration was used. No production credential, provider request or deployment was involved. The 30-minute idle observation was not repeated because runtime authentication is unchanged.
 
 Release documentation in this head also refreshes the previously stale helper publication/CI wording. Local verification does not independently certify remote staging, public TLS or live-provider operation. Those gates, and any future case-persistence/redesign acceptance, require their own explicit fixed-revision evidence.
+
+## Independent visual user-story pass — PR #4 `e4179b1`, 2026-10-07
+
+**Exact runtime/design tested:** `e4179b14ae8b2c8051b64d0fad5035d55351d074`, using an independent detached worktree and Node 24.19.0 / Poppler 26.09.0. This was the CI-passed head supplied when the pass started. PR #4 advanced to `289401a` during the work; these observations do **not** certify that later head or its requested follow-up fixes. No design/runtime files were edited in this lane, and the other contributor's checkout was not touched.
+
+`npm ci --ignore-scripts` and syntax checks passed. The full suite passed **102/102** with the previously documented **process-only canonical TMPDIR** workaround because this design snapshot predates the fixture fix. This is not a new default-macOS pass; the default-environment **103/103** result above belongs to PR #8's separate exact revision. No 30-minute test was repeated.
+
+### Actual browser coverage
+
+Both native Google Chrome UI and the managed Chrome browser surface were used. The managed surface's file-chooser upload required an extension file-URL permission; that permission was **not changed**. Actual file uploads were completed through Chrome's native OS file chooser instead. Every selected file came from the repository's synthetic fixture directory; no unrelated files were opened/uploaded.
+
+| User-story portion | Observed result |
+| --- | --- |
+| Empty bilingual work surface / operator sign-in | Pass: empty Chinese source, real disposable operator login, no real key. Local login explanation and HTTPS-only API-key boundary retained. Password-save prompt dismissed. |
+| Actual PDF | Pass: native file picker → consent → real `pdftotext` import, six expected synthetic source lines visible. |
+| Actual XLSX | Pass: native file picker → consent → `Case`, row 2, A–E mapping → all five expected values with fresh confirmations. Generation blocked until all five reviewed. |
+| Actual legacy XLS | Pass for parsing/preview: native picker and consent produced actual `case.xls` worksheet/row/column selectors. Full second mapping/export cycle not repeated for XLS in this visual pass. |
+| Conflict / unknowns | Pass: both conflicting property lines visible; confirmation/generation blocked. Editing resolved conflict. Unknown PHA remained blank and appeared as `[To be confirmed]` in the English draft. |
+| Locale preservation | Pass: confirmed field values and review state preserved across zh→en. An edited English follow-up body survived locale change. |
+| Invalidation | Pass: editing a reviewed address unconfirmed it, removed the old draft and disabled generation. |
+| English follow-up edit/copy/TXT | Pass: edited visible body; actual copy reported success; actual native TXT download inspected for body plus immutable notices. Clipboard bytes not independently read. |
+| Native Print / Save PDF | Pass: Chrome's actual print preview and native Save dialog produced a one-page PDF, inspected with pypdf. Browser headers/footers were disabled for this export so only English document/notices remained; the original header/footer setting was restored afterward. No real printer used. |
+| Mobile / focus | Pass, bounded: managed browser at 390×844 had scroll width 390 for draft/review; actions remained visible and usable. Tab from draft reached Copy with a visible 2px cinnabar focus outline. Temporary viewport override reset. |
+| Other draft types | Selector presence confirmed. Information-request/status-summary end-to-end downloads not completed again in this snapshot: managed download-event observation timed out and the managed tab was closed during tool reset. Earlier first-round type coverage is retained but not promoted to a fresh pass. |
+
+Native PDF and TXT contain `Subject: Synthetic visual acceptance`, the edited English sentence and the three immutable English notices, with no app navigation, internal Chinese text or settings. Native browser UI included unrelated chrome outside the page, so only managed page-only screenshots and the actual generated document artifacts are committed.
+
+Evidence: [Chinese conflict state](../test/local-acceptance-evidence/design-conflict.png), [390px English draft](../test/local-acceptance-evidence/design-mobile-draft.png), [390px invalidated review](../test/local-acceptance-evidence/design-mobile-review.png), [actual native TXT download](../test/local-acceptance-evidence/design-native-export.txt), [actual native print-dialog PDF](../test/local-acceptance-evidence/design-native-print.pdf). The draft screenshot shows a focused textarea; the separate reported Tab focus on Copy was read from actual browser DOM/computed style, not attributed to that screenshot.
+
+No new functional blocker was observed in these paths. This is **not a visual-release approval**: the coordinator's [later review](https://github.com/ledondev520/nestlet/pull/4#issuecomment-6032214779) requests source/metadata contrast changes, wrapping for incoming saved-case controls and a corrected focus screenshot. Those later changes and named-trial/SQLite persistence require combined-build acceptance on a newly supplied exact SHA. Real DeepSeek, trusted HTTPS API-key entry and provider failures remain Not run without separate secure authorization. HTTPS/server activation remains the other coordinator's lane.
