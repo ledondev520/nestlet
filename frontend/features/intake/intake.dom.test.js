@@ -59,7 +59,7 @@ after(async () => { await vite?.close(); dom?.window.close(); });
 
 test('empty bilingual intake uses official shadcn primitives and has no fabricated content', async () => {
   const api = apiFor(); await render(api); assert.equal(api.calls.length, 0); assert.equal(labeled('Case source text').value, ''); assert.match(text(), /0 \/ 5 Reviewed/); assert.equal(host.querySelectorAll('[data-slot=checkbox]').length, 5); assert.ok(host.querySelector('[data-slot=card]')); assert.doesNotMatch(text(), /128 Example|DEMO-104/);
-  await render(api, { lang: 'zh' }); assert.match(text(), /让每个事实，都有出处/); assert.match(text(), /保存到私有档案并处理/);
+  await render(api, { lang: 'zh' }); assert.match(text(), /材料与事实/); assert.match(text(), /保存到私有档案并处理/);
 });
 test('private TXT save is explicit, appends stored text, preserves reviewed evidence, and never calls AI', async () => {
   const api = apiFor(({ method, path }) => method === 'UPLOAD' ? { asset: asset({ caseId: A }) } : path === '/api/cases/' + A ? { case: blank({ sourceText: 'Earlier text', fields: extract('Owner: Reviewed owner').map(field => ({ ...field, confirmed: true })) }) } : undefined);

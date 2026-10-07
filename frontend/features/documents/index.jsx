@@ -101,7 +101,7 @@ export function DocumentsPage({lang = 'zh', caseId, onDirtyChange, onOpenIntake,
   if (!caseId) return <Card className="paper-card"><CardHeader><CardTitle className="paper-title">{d.title}</CardTitle><CardDescription>{d.selectCase}</CardDescription></CardHeader></Card>;
   return <div className="space-y-6" data-testid="documents-page">
     <header className="flex flex-wrap items-start justify-between gap-3">
-      <div className="space-y-2"><p className="text-xs tracking-widest text-muted-foreground">{d.eyebrow}</p><h1 className="paper-title text-3xl">{record?.title || d.title}</h1><p className="max-w-2xl text-sm text-muted-foreground">{d.subtitle}</p></div>
+      <div className="space-y-2"><h1 className="paper-title text-3xl">{record?.title || d.title}</h1><p className="max-w-2xl text-sm text-muted-foreground">{d.subtitle}</p></div>
       <div className="flex flex-wrap gap-2">{onOpenIntake && <Button variant="outline" size="sm" onClick={onOpenIntake}><ArrowUpRight aria-hidden="true" />{d.material}</Button>}<Button variant="ghost" size="sm" disabled={busy} onClick={() => page.reload(true)}><RefreshCw aria-hidden="true" />{d.reload}</Button></div>
     </header>
     {state.error && <Alert variant="destructive" role="alert"><AlertTitle>{conflict ? d.conflict : documentErrorText(state.error, lang)}</AlertTitle>{conflict && <AlertDescription className="space-y-2"><p>{documentErrorText(state.error, lang)}</p><Button size="sm" variant="outline" disabled={busy} onClick={() => page.reload(true)}>{d.reload}</Button></AlertDescription>}</Alert>}

@@ -695,7 +695,7 @@ export function IntakeWorkspace({
   const reviewed = work.fields.filter(field => field.confirmed && !field.conflict).length;
   const hasLegacyChange = Boolean(work.draftText && changedFacts(base, work));
   return <section className="space-y-7 py-8" aria-labelledby={`${id}-title`}>
-    <header className="space-y-3"><p className="font-mono text-xs tracking-widest text-muted-foreground">{words.eyebrow}</p><div className="flex flex-wrap items-center justify-between gap-3"><h1 id={`${id}-title`} className="paper-title text-3xl font-bold tracking-tight">{words.title}</h1><Badge variant="outline">{base ? `${words.version} ${base.version}` : words.notSaved}</Badge></div><p className="max-w-2xl text-sm leading-7 text-muted-foreground">{words.intro}</p></header>
+    <header className="space-y-3"><div className="flex flex-wrap items-center justify-between gap-3"><h1 id={`${id}-title`} className="paper-title text-3xl font-bold tracking-tight">{words.title}</h1><Badge variant="outline">{base ? `${words.version} ${base.version}` : words.notSaved}</Badge></div><p className="max-w-2xl text-sm leading-7 text-muted-foreground">{words.intro}</p></header>
     {error && <Alert variant="destructive"><AlertDescription>{errorText(error, words)}</AlertDescription></Alert>}
     {notice && <Alert><Check className="size-4" aria-hidden="true" /><AlertDescription>{words[notice] || notice}</AlertDescription></Alert>}
     {cacheStatus === 'unavailable' && <p role="status" className="text-sm text-destructive">{words.cacheUnavailable}</p>}
