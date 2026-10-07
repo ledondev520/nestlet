@@ -110,3 +110,14 @@ Support one explicitly selected tenant-based HCV PHA pack at a time. Other Bay A
 6. Record agency applicability and review date in the UI; stale or unverified packs return to needs-review
 
 None of these notes enables a production pack automatically. The current app presents generic demo guidance. No PDF templates are bundled, mapped or declared accepted.
+
+## Later same-day form-level checkpoint
+
+Additional official-source retrieval on October 7, 2026, approximately 03:48–03:50 UTC refined the notes above. Acceptance remains unconfirmed; no agency was contacted.
+
+- OHA's 2025-named packet embeds RTA footer **LH0406 (10/19)**, an OHA revision of **HUD 52517 (7/19)**. Filename year is not form edition. Its page-6 rent-roll requirement begins at **2+ units**, distinct from the RTA comparable-rental threshold. [OHA packet](https://www.oakha.org/wp-content/uploads/2025/06/RTA-Packet-2025_fillable.pdf)
+- SFHA directly hosts its linked two-page HUD-52517, **04/2023**, printed OMB expiration **04/30/2026**. Agency-hosted provenance does not establish present acceptance. [SFHA RTA landing page](https://sfha.org/resources-forms/request-tenancy-rta-approval-3) · [PDF](https://sfha.org/files/documents/52517ENG.pdf)
+- HACA's two-page direct-deposit form is **Version 2, updated 10.27.2022**. It is financial authorization, not an ordinary cover letter; no real banking/tax fields belong in the MVP. A complete current RTA packet remains unverified. [HACA form](https://www.haca.net/pdf/Direct%20Deposit%20Enrollment%20Form.pdf)
+- SCCHA says move paperwork accompanies the issued voucher. A standalone RFTA PDF, field schema and accepted edition remain unverified. [SCCHA move process](https://www.scchousingauthority.org/section-8/for-participants/existing-tenants/move-process/)
+
+The current five fields cannot populate an RTA/HAP/owner packet or certify a complete agency checklist. Successful PDF/Excel parsing changes input support, not that limitation. An eventual supplementary **Operator Lease-Up Review Cover and Document Checklist** should list candidate documents, applicability, official source/edition, receipt evidence and unresolved action separately. Start with `Not assessed` / `Applicability unconfirmed` / `No receipt evidence in this working copy`; never infer `Required`, `Missing`, `Submitted`, `Approved`, `Inspection passed` or `Complete` from an absent import or successful export. This is an artifact specification, not a claim that the current UI implements it.

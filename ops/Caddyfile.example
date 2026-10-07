@@ -1,0 +1,23 @@
+# HOST-installed Caddy example. Supply NESTLET_DOMAIN in Caddy's private environment.
+# Keep real hostnames, credential hashes and private infrastructure out of Git.
+# The application must have its operator authentication configured before ingress.
+# A containerized Caddy needs a different upstream; 127.0.0.1 is its own container.
+{$NESTLET_DOMAIN} {
+    # Optional additional perimeter login, NOT a replacement for application auth:
+    # basic_auth {
+    #     {$NESTLET_OPERATOR_USER} {$NESTLET_OPERATOR_HASH}
+    # }
+    request_body {
+        max_size 6MB
+    }
+    reverse_proxy 127.0.0.1:4173 {
+        # Never forward optional perimeter-login credentials to the application.
+        header_up -Authorization
+    }
+    header {
+        X-Content-Type-Options nosniff
+        Referrer-Policy no-referrer
+        -Server
+    }
+    # Deliberately no access-log directive: don't add request headers/body logging.
+}

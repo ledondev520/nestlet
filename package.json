@@ -1,0 +1,21 @@
+{
+  "name": "nestlet",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/core.test.js test/server.test.js",
+    "check": "node --check server.js && node --check public/app.js && node --check public/core.js && node --check workbook-worker.js",
+    "test:development": "node --test test/core.test.js test/server.test.js test/development-provider.test.js test/app.test.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
+  },
+  "devDependencies": {
+    "jsdom": "26.1.0"
+  }
+}

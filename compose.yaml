@@ -1,0 +1,43 @@
+# Host-local app only. Public ingress must terminate HTTPS; the app must authenticate operators.
+# Run from this directory: docker compose --env-file .env up --build -d
+services:
+  nestlet:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: nestlet:${NESTLET_IMAGE_TAG:-local}
+    init: true
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:4173:4173"
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: "4173"
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-http://127.0.0.1:4173}
+      DEEPSEEK_MODEL: deepseek-flash
+      ENABLE_LIVE_AI: ${ENABLE_LIVE_AI:-false}
+      # Optional server-provided key. Prefer the authenticated, RAM-only settings flow.
+      # Never bake keys into this file or an image; do not share rendered Compose config.
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 96
+    mem_limit: 768m
+    cpus: 1.0
+    ulimits:
+      core: 0
+      nofile:
+        soft: 1024
+        hard: 1024
+    stop_grace_period: 15s
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"

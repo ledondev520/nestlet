@@ -5,8 +5,9 @@ This is a small JavaScript app, not a framework scaffold. Read the modules in th
 ## File responsibilities
 
 ```text
-server.js           loopback HTTP server, static allowlist, optional provider extraction
-public/core.js      deterministic facts, review gate, drafts, CSV, AI suggestion validation
+server.js           loopback HTTP server, PDF/workbook imports, provider extraction
+public/core.js      review gate, drafts, CSV, AI suggestion validation
+workbook-worker.js isolated real XLSX/XLS parsing and bounded preview
 public/app.js       bilingual interface, transient state, operator review and export actions
 public/index.html   browser entry point
 public/style.css    responsive screen and print presentation
@@ -16,15 +17,15 @@ test/server.test.js local HTTP checks with provider fetch mocked
 docs/               scope, sources, pilot, collaboration and evidence
 ```
 
-No database, package runtime dependency, browser API key or authenticated user session is required for the demo.
+The backend uses SheetJS for workbooks and an operating-system pdftotext dependency for PDFs. No browser API key or database is implemented. The app is independently deployable; Sites is only a temporary preview.
 
 ## Main path
 
 ```text
-Synthetic sample / pasted text / TXT / one-case CSV
-  → app state: original text
-  → extract(text)                           [local label-based demo]
-    or POST /api/extract                    [explicitly opted-in provider path]
+Empty case → pasted text / TXT / CSV / PDF / XLSX / XLS
+  → real local parse / workbook selection and mapping
+  → app state: reviewed source text
+  → POST /api/extract                       [consented deepseek-flash call]
   → five unconfirmed field suggestions + source snippets
   → operator edits / resolves conflicts / confirms each field
   → canDraft(fields)
@@ -35,9 +36,11 @@ Synthetic sample / pasted text / TXT / one-case CSV
 
 CSV export is a separate data interchange path through `exportCSV`. Reimport goes through `parseCSV` and creates new text to review; it does not restore a prior confirmation or agency status.
 
+Final contract: no preloaded sample, mock response or silent local-extractor fallback. Cleanup of the earlier demo route is in progress; test the release commit rather than treating this diagram as a pass result.
+
 ## Core contracts
 
-### `extract(text)`
+### `extract(text)` — legacy/internal label helper, not final-flow fallback
 
 Recognizes the five known English label prefixes and returns one entry per field. Source lines remain attached. Repeated different values signal a conflict; explicit unknown markers become empty values. This is not a general document reader. It does not understand an entire packet, detect every contradiction or verify facts externally.
 

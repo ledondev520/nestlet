@@ -2,11 +2,13 @@
 
 Public documentation checkpoint: October 7, 2026. Configuration and account-specific access must be verified at use time. No paid/authenticated live request was performed for this documentation.
 
-## Current implementation
+## Implementation and final contract
 
-`server.js` is the only provider caller. It sends explicitly consented, bounded text to `https://api.deepseek.com/chat/completions`, requests JSON, and validates source-linked fields with `validateSuggestions` before returning them. The model defaults to `deepseek-v4-pro` and is configurable with `DEEPSEEK_MODEL`. The key is read from the server environment. Missing configuration disables the live path; it does not pretend the demo is an API result.
+`server.js` is the only provider caller. It sends explicitly consented, bounded text to `https://api.deepseek.com/chat/completions`, requests JSON, and validates source-linked fields with `validateSuggestions` before returning them. The product supports `deepseek-flash` only. No legacy model alias is maintained; unsupported configuration must fail visibly rather than select a different model. The key is read from the server environment. Missing configuration disables the live path and must surface a configuration blocker. The final user flow has no sample/mock/local-extractor fallback. Isolated provider fakes belong only in tests.
 
 The provider is used for extraction, not autonomous actions or final correspondence. Deterministic English templates remain in `public/core.js`. The app does not call model-returned tools, connect to portals, send messages or approve case facts. See server.js for exact input limits, timeout and error behavior; do not infer retries or account health from configuration alone.
+
+As of this documentation checkpoint, runtime cleanup and final UI acceptance are in progress; model restriction and no-fallback behavior require direct tests on the release commit.
 
 ## Verified public-source distinctions
 

@@ -1,0 +1,73 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { openApp, loadSample, reviewAll, deferred } from './ui-harness.js';
+
+test('UI starts in Chinese, requires review, and toggles English without changing case or draft', async context => {
+  const app = await openApp(); context.after(app.close);
+  assert.equal(app.document.documentElement.lang, 'zh-CN');
+  assert.match(app.get('live').textContent, /提取并核对/);
+  loadSample(app);
+  const input = app.get('input').value;
+  assert.equal(app.get('input-panel').hidden, true);
+  assert.equal(app.get('review-panel').hidden, false);
+  assert.equal(app.get('generate').disabled, true);
+  assert.equal(app.get('field-2').value, '');
+  for (let index = 0; index < 4; index++) app.check(`confirm-${index}`);
+  assert.equal(app.get('generate').disabled, true);
+  app.check('confirm-4');
+  assert.equal(app.get('generate').disabled, false);
+  app.click('generate');
+  assert.equal(app.get('main').hidden, true);
+  assert.equal(app.get('draft-panel').hidden, false);
+  const draft = app.get('draft').value;
+  assert.match(draft, /Housing authority: \[To be confirmed\]/);
+  assert.equal(/[\u4e00-\u9fff]/u.test(draft), false);
+  app.click('language');
+  assert.equal(app.document.documentElement.lang, 'en');
+  assert.equal(app.get('input').value, input);
+  assert.equal(app.get('draft').value, draft);
+  assert.match(app.get('generate').textContent, /Create English draft/);
+  for (let index = 0; index < 5; index++) assert.equal(app.get(`confirm-${index}`).checked, true);
+});
+
+test('UI conflicts expose both sources, block review, and edited values require new confirmation', async context => {
+  const app = await openApp(); context.after(app.close);
+  app.type('input', 'Owner: Example A LLC\nOwner: Example B LLC');
+  app.click('extract');
+  assert.equal(app.get('confirm-1').disabled, true);
+  assert.equal(app.get('generate').disabled, true);
+  assert.match(app.get('source-1').textContent, /Owner: Example A LLC/);
+  assert.match(app.get('source-1').textContent, /Owner: Example B LLC/);
+  app.type('field-1', 'Example A LLC');
+  assert.equal(app.get('confirm-1').disabled, false);
+  assert.equal(app.get('confirm-1').checked, false);
+  assert.match(app.get('source-1').textContent, /人工修改/);
+  reviewAll(app);
+  app.click('generate');
+  app.click('draft-back');
+  app.type('field-1', 'Example B LLC');
+  assert.equal(app.get('confirm-1').checked, false);
+  assert.equal(app.get('generate').disabled, true);
+  assert.equal(app.document.getElementById('draft'), null);
+  assert.equal(app.document.activeElement.id, 'field-1');
+});
+
+test('UI exports only English artifact text and restores immutable notices after body editing', async context => {
+  const app = await openApp(); context.after(app.close);
+  loadSample(app); reviewAll(app); app.click('generate');
+  app.type('draft', 'Subject: Synthetic follow-up\n\nPlease confirm the current instructions.');
+  app.click('download');
+  app.click('copy'); await app.flush();
+  const exported = await app.downloads[0].blob.text();
+  assert.equal(app.downloads[0].name, 'nestlet-followup-DRAFT.txt');
+  assert.match(exported, /^DRAFT — FOR HUMAN REVIEW\nDE-IDENTIFIED WORKING COPY — NOT FOR SUBMISSION/);
+  assert.match(exported, /not an official government form/);
+  assert.match(exported, /Subject: Synthetic follow-up/);
+  assert.equal(/[\u4e00-\u9fff]/u.test(exported), false);
+  assert.equal(app.clipboard[0], exported);
+  assert.equal(app.document.querySelector('.print-text').textContent, exported);
+  app.click('print'); assert.equal(app.prints, 1);
+  app.type('draft', '请确认资料');
+  for (const id of ['copy', 'download', 'print']) assert.equal(app.get(id).disabled, true);
+  assert.match(app.document.querySelector('.print-text').textContent, /DRAFT EXPORT UNAVAILABLE/);
+});

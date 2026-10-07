@@ -1,0 +1,12 @@
+# Allowlist only the files needed to build the runtime image.
+**
+!package.json
+!package-lock.json
+!server.js
+!workbook-worker.js
+!public/
+!public/**
+!ops/
+!ops/healthcheck.mjs
+!Dockerfile
+!.dockerignore

@@ -1,0 +1,6 @@
+SYNTHETIC DEMO - NOT A REAL CASE
+Property: 128 Example Lane, Unit B
+Owner: Example Property LLC
+PHA: Example Housing Agency
+Case reference: DEMO-104
+Proposed rent: $2,100 per month

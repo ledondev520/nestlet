@@ -1,80 +1,85 @@
 # Nestlet · 巢小秘
 
-A small, pre-portal Housing Choice Voucher paperwork assistant. Start with one synthetic or thoroughly de-identified case, review source-linked facts, and prepare an editable English administrative draft. Keep your existing folders and spreadsheets.
+A standalone JavaScript frontend and backend for one Housing Choice Voucher paperwork case at a time: import material, review source-linked facts, then prepare an editable English administrative draft. Keep your folders and spreadsheets. [Repository](https://github.com/ledondev520/nestlet)
 
-**Prototype only.** No verified local PHA pack, real-case pilot results, official-form completion, automatic sending, or production privacy/security assurance. Nestlet is a provisional name; existing rental-software uses of the name have been identified and trademark clearance has not been performed.
+**Development MVP, not a production housing system.** No verified local PHA pack, real-case pilot results, official-form completion, automatic sending or production privacy/security assurance. The provisional name has existing rental-software collisions; no trademark clearance is claimed.
 
-## Run locally
+## Product contract and release status
 
-Requires Node.js 20 or later and npm. There are no runtime package dependencies.
+The final workflow starts empty and uses real document parsing and `deepseek-flash` extraction. It must not substitute samples, mocked model output, a local rule extractor or an older model alias when configuration or a provider call fails. Test fixtures and isolated fake-provider tests are development evidence only.
+
+**Transition checkpoint, October 7, 2026:** PDF and workbook backend routes are implemented; UI integration, removal of the earlier demo flow and full end-to-end acceptance are being reconciled. Read [validation](docs/validation.md) for the exact tested snapshot. Source code or tests passing at an intermediate commit are not final acceptance.
+
+## Install and run
+
+Use Node.js 24 to match the container runtime, npm, and Poppler's `pdftotext` for text-PDF extraction. Node package dependencies are pinned in `package-lock.json`.
 
 ```sh
+npm ci
+npm run check
+npm test
 npm start
 ```
 
-Open http://127.0.0.1:4173. The server binds to loopback; this is not an authenticated internet service. No API key or account is needed for the local demo. Do not expose it publicly or enter real personal documents.
+Open http://127.0.0.1:4173. The server binds to loopback. `npm start` does not load `.env` automatically. For configuration, copy `.env.example` to a private ignored `.env`, populate the key through an authorized secure mechanism, then run:
 
 ```sh
-npm run check
-npm test
+node --env-file=.env server.js
 ```
 
-See [validation evidence](docs/validation.md) for the scope, actual results, and untested areas. A passing offline suite is not evidence of a working live AI account or correct PHA requirements.
+Required for real AI extraction: server-side `DEEPSEEK_API_KEY` and `ENABLE_LIVE_AI=true`. The only supported product model is `deepseek-flash`; legacy aliases are not maintained. An absent key must be a visible configuration blocker, not an offline success. No live account/key/model response has yet been verified by the project.
 
-## Try the main workflow
+Never paste secrets into chat, browser fields, screenshots or commits. Before sending any production tenant material, resolve provider terms, retention, training use, geography and authorization. The current development build accepts synthetic or thoroughly de-identified inputs only. [Provider notes](docs/provider.md)
 
-1. Click **试用示例 / Try sample** or paste safe text
-2. Click **整理演示字段 / Extract demo fields**
-3. Inspect each value and its source; edit conflicts and review every field, including unknowns
-4. Generate an English draft; review placeholders, recipient, facts, attachments and wording
-5. Copy, download TXT, print using your browser, or export a one-case CSV
+### Dependencies and input limits
 
-The interface defaults to Simplified Chinese and has an English toggle. Generated boilerplate is English in either locale; user-entered values and manual edits are preserved, not translated. Keep those values in English if the whole artifact must be English. Print / Save PDF uses the browser print dialog, not an official-form PDF generator.
+- TXT: UTF-8 text; UI text/file limits must match server acceptance
+- CSV: fixed columns `property,owner,pha,caseReference,rent` and one case row; quoted values are supported
+- PDF: real local `pdftotext` parsing, up to 5 MiB and 50,000 extracted characters; scanned/image-only or encrypted files are rejected; no OCR
+- XLSX / legacy XLS: real SheetJS workbook parsing in an isolated worker, up to 5 MiB; bounded sheet/row/column preview for human mapping; not a file-extension-only acceptance
 
-### Accepted input
+Parser availability is reported by `/api/status`. PDF parsing needs the operating-system Poppler dependency in addition to `npm ci`. Workbook formulas/macros must not execute. File upload sends document bytes to the application's backend; parsing is distinct from a later explicitly consented DeepSeek request. Review extracted reading order and values against the original.
 
-Pasted text and UTF-8 TXT or CSV files only. The UI limits files to 50 KB. No PDF, images, OCR, inbox integration, Google Sheets sync, or PHA portal connection is implemented.
-
-The local extractor recognizes these English labels, not arbitrary prose:
-
-```text
-Property: 128 Example Lane, Unit B
-Owner: Example Property LLC
-PHA: Not confirmed
-Case reference: DEMO-104
-Proposed rent: $2,100 per month
-```
-
-CSV has exactly this header and one case row:
+CSV example:
 
 ```csv
 property,owner,pha,caseReference,rent
 128 Example Lane Unit B,Example Property LLC,Not confirmed,DEMO-104,$2100
 ```
 
-Exported CSV uses formula-prefix protection; it is a data interchange file, not an approved packet or preserved review audit. Importing starts a new review. “Not provided here” never means “not submitted to the agency.”
+This is synthetic documentation data, not a preloaded production case. Exported CSV has formula-prefix protection; reimport starts a fresh review and does not preserve an agency status or review audit.
 
-## Optional DeepSeek extraction
+## Working with a case
 
-Live extraction is separate from local deterministic drafting. Both `ENABLE_LIVE_AI=true` and a server-side `DEEPSEEK_API_KEY` are required. The configurable default model is `deepseek-v4-pro`. **No live account, API key, entitlement, balance or model response has been verified by this project.**
+1. Start with an empty case and import or paste safe material
+2. Review parsed text or map the workbook's selected sheet/row before sending minimal text for extraction
+3. Inspect source-linked facts; resolve conflicts and review every field, including unknowns
+4. Select a supported English document type, generate and edit the draft
+5. Verify placeholders, recipient, facts, dates and attachments before copy/TXT/print export
 
-`.env.example` documents configuration; `npm start` does not automatically load `.env`. On Node 20.6+ you can copy the example to a private, ignored `.env`, set values locally through a secure mechanism, and run:
+The interface defaults to Simplified Chinese and supports English, including errors. External draft boilerplate is English in either locale. Case values and manual edits are preserved rather than silently translated; the operator must ensure the complete formal artifact is English. Print / Save PDF is a browser export, not an official-government PDF generator.
 
-```sh
-node --env-file=.env server.js
-```
+“Not provided here” never means “not submitted to the agency.” Proposed rent is not approved rent. Operator confirmation is not agency verification. [Product scope](docs/product.md)
 
-Never paste a key into chat, a browser field, a screenshot, a fixture, or a commit. Do not enable live mode with real tenant data. Review provider processing terms, retention, training use, geography and authorization first. The in-app confirmation describes transmission; it is not a legal/privacy clearance. See [provider notes](docs/provider.md).
+## Deploy independently
 
-Demo text stays in page memory; refresh or Clear case removes app state. Downloads and copied text remain wherever the operator saves them. In live mode, submitted text leaves this computer for DeepSeek. No database, authentication, multi-user isolation, formal audit trail or production retention policy is implemented.
+Frontend, backend and parser code live in this repository. Sites is only a temporary preview and is not a runtime or deployment dependency. An owner-only preview is not assumed accessible to collaborators.
+
+No VPS target is selected and no remote deployment is claimed. [VPS and Docker deployment plan](docs/deployment.md) documents requirements, a proposed container recipe, release gates and rollback. The current server has no authentication or multi-user isolation: do not expose an unprotected live API to the internet.
+
+## Data boundaries
+
+No database or persistent case storage is implemented. Browser state is transient; downloads/clipboard contents remain where the operator saves them. Imported bytes reach the local/self-hosted backend, and consented extraction text reaches DeepSeek. Transient processing is not a complete retention/deletion or privacy assurance.
+
+No real personal records, raw customer materials, secret values or private infrastructure details belong in the public repo. No messages, signatures, official submissions, housing eligibility decisions or rent approvals are automated.
 
 ## Documentation
 
-- [Product scope and open decisions](docs/product.md)
-- [Official domain sourcebook and version checks](docs/domain-sourcebook.md)
-- [Five-case pilot protocol and blank worksheet](docs/pilot.md)
-- [Code and data-flow walkthrough](docs/code-walkthrough.md)
+- [Official domain sources and version checks](docs/domain-sourcebook.md)
+- [Five-case pilot protocol, not results](docs/pilot.md)
+- [Code and data flow](docs/code-walkthrough.md)
 - [Collaboration contract](docs/collaboration.md)
-- [Engineering skills guide and provenance](docs/skills-guide.md)
+- [Local Codex acceptance task](docs/tasks/local-codex-acceptance.md)
+- [Engineering skills usage and provenance](docs/skills-guide.md)
 
-This repository contains synthetic examples and sanitized product guidance only. The project repository is [ledondev520/nestlet](https://github.com/ledondev520/nestlet). Repository creation does not establish that a release has been pushed, tested remotely, or deployed. Licensing remains a separate release decision.
+Repository creation/publication is separate from tested release or deployment. Licensing remains a separate project-owner decision.
