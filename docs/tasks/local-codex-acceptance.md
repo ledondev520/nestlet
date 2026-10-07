@@ -17,7 +17,7 @@ Independently clone and run https://github.com/ledondev520/nestlet on the owner'
 
 Any owner-only private preview is not assumed accessible to Local Codex and is not a substitute for running the repository in its own authorized environment. This task does not authorize another assistant to connect to or operate a collaborator’s computer.
 
-The repository may initially be empty while the first implementation is being published. If there is no runnable commit, report that blocker and wait for the owner-provided commit; do not invent or duplicate the implementation. Record the exact commit actually tested.
+A runnable initial snapshot is published on main at commit 826202e, with later development continuing. Fetch/pull the current authorized main revision before starting and record its full SHA. Do not assume that an earlier CI pass covers later changes.
 
 ## Scope
 
@@ -52,12 +52,13 @@ Use a separate clone/worktree and branch. Do not change another contributor's ch
 - Copy: test normal path where browser permissions permit; report permission-denied behavior if reproducible without changing security settings
 - Reset/races: cancel and confirm reset, repeated clicks, edit/import around asynchronous work, locale switch while editing; ensure stale results do not revive an old case
 - Layout/accessibility: desktop and narrow/mobile viewport, keyboard-only traversal, visible focus, input labels, readable errors and no blocked actions or horizontal overflow
+- Authentication/settings: verify missing-auth fail-closed behavior, protected settings/paid routes, login/logout and CSRF rejection using operator-authorized non-production test credentials only; never save real credentials in screenshots or fixtures
 - No-key behavior: clear configuration error and no substitute output; no secret can be retrieved from public routes; deepseek-flash is the only accepted model
 
-Test provider failure handling using isolated offline mocks only; do not expose a fake provider or demo fallback in the user-facing application. Never add a real credential. Mocked extraction is not live DeepSeek verification. Do not say “all passed” if browser permissions, PDF inspection or another step was unavailable; mark that step `Not run` with the reason.
+Do not use a mock provider, simulated parser or fabricated response for this acceptance task. Exercise pure logic and real HTTP routes with authored non-sensitive actual files. Real-provider checks require the owner’s authorized secure configuration; if unavailable, mark them Not run and state the exact blocker. Never enter credentials in chat, source, screenshots or fixtures. Historical development-double tests may exist in the repository; their results are separate from acceptance and cannot satisfy real-provider checks. Do not say “all passed” if browser permissions, PDF inspection or another step was unavailable; mark that step `Not run` with the reason.
 
 ## Report format
 
-Include tested commit, npm ci outcome, Poppler/parser availability, commands, browser details, a compact pass/fail/not-run table, screenshots with synthetic content only, exact reproduction steps, severity, and suggested owner. Keep product correctness separate from maintainability notes. Report whether any failures prevent the primary demo loop. Exclude environment secrets, private paths, raw customer materials and unrelated personal screen content.
+Include tested commit, npm ci outcome, Poppler/parser availability, commands, browser details, a compact pass/fail/not-run table, screenshots with synthetic content only, exact reproduction steps, severity, and suggested owner. Keep product correctness separate from maintainability notes. Report whether any failures prevent the primary case workflow. Exclude environment secrets, private paths, raw customer materials and unrelated personal screen content.
 
 Finish only when the reviewable draft PR exists, or report the exact permission/publishing blocker with a local patch/diff available for the owner. Branch creation and a local test pass are not evidence that a remote PR exists.

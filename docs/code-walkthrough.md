@@ -81,7 +81,7 @@ Browser confirms de-identified text transmission
 - New field: align the known field list, labels, parsing, provider prompt/schema, UI, draft content and CSV contract; coordinate this shared interface first
 - New draft: preserve English boilerplate, factual placeholders, explicit document type and review warning; never imply official approval
 - New agency: follow domain-sourcebook.md verification steps before labeling any rule official
-- New persistence/integration: requires a separately reviewed privacy, access and authorization design; do not tack it onto demo state
+- New persistence/integration: requires a separately reviewed privacy, access and authorization design; do not tack it onto transient case state
 - Bug fix: reproduce the defect, add a behavior check at the relevant public interface, rerun affected and aggregate checks, then update dated evidence
 
 The diagram and before/after evidence approach is inspired by the credited `show-me` pattern in Matt Pocock's `pr` skill; see skills-guide.md for exact attribution and usage limits.

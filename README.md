@@ -75,6 +75,7 @@ No real personal records, raw customer materials, secret values or private infra
 
 ## Documentation
 
+- [English operator documents versus official forms](docs/official-artifacts.md)
 - [Official domain sources and version checks](docs/domain-sourcebook.md)
 - [Five-case pilot protocol, not results](docs/pilot.md)
 - [Code and data flow](docs/code-walkthrough.md)
