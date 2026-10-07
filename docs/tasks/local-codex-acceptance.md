@@ -9,7 +9,7 @@
 - Branch: `codex/design-acceptance`; earlier acceptance branches merged in PR #2 and PR #7
 - PR URL: https://github.com/ledondev520/nestlet/pull/2 (merged)
 - Follow-up PR: https://github.com/ledondev520/nestlet/pull/7 (merged)
-- Visual acceptance PR: pending publication
+- Visual acceptance PR: https://github.com/ledondev520/nestlet/pull/10
 - Visual runtime: `e4179b14ae8b2c8051b64d0fad5035d55351d074`; superseded later PR #4 heads require their own verification
 - LC-06 fixed-head verification: `55548513d6a5d66c8920d0fa1882ca0065bc3128`, default macOS suite 103/103 and independent HTTP 5/5
 - Follow-up runtime: `8715b0d78a8cff0b5ebbbb5ea6db0bacd8137342`, identical tree to merged main `b431ea59405cbbf9ab6ec9945010f66f655b1781`
