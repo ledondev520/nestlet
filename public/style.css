@@ -7,6 +7,7 @@
   --ink:#252a20;
   --ink-soft:#575d4a;
   --faint:#8d9080;
+  --faint-strong:#5f6350;
   --hairline:#e0d9c4;
   --hairline-strong:#cfc6ab;
   --accent:#b8402a;
@@ -117,7 +118,7 @@ header:after{content:"";position:absolute;left:0;right:0;bottom:-5px;border-bott
 .input:focus{border-color:var(--ink);background:var(--sheet)}
 textarea.input{min-height:220px;resize:vertical;font-size:14px;line-height:1.8}
 .input-meta{display:flex;align-items:flex-start;gap:16px;justify-content:space-between;margin-top:10px}
-.char-count{white-space:nowrap;font-variant-numeric:tabular-nums;font-family:var(--mono);font-size:11px;color:var(--faint)}
+.char-count{white-space:nowrap;font-variant-numeric:tabular-nums;font-family:var(--mono);font-size:11px;color:var(--faint-strong)}
 .help-details{font-size:12px;color:var(--ink-soft);line-height:1.75}
 .help-details summary{cursor:pointer;font-size:12px;color:var(--accent-deep);width:fit-content}
 .help-details summary:hover{color:var(--accent)}
@@ -145,7 +146,7 @@ textarea.input{min-height:220px;resize:vertical;font-size:14px;line-height:1.8}
 
 /* Review */
 .review-count{color:var(--ink-soft);font-size:12px;font-variant-numeric:tabular-nums;font-family:var(--mono)}
-.review-topline{display:flex;justify-content:space-between;gap:15px;font-size:11px;color:var(--faint);line-height:1.6;margin:0 0 12px}
+.review-topline{display:flex;justify-content:space-between;gap:15px;font-size:11px;color:var(--faint-strong);line-height:1.6;margin:0 0 12px}
 .review-progress{height:3px;border-radius:3px;background:var(--paper-deep);overflow:hidden;margin-bottom:8px}
 .review-progress span{display:block;height:100%;background:var(--accent);transition:width .25s var(--ease)}
 .review-progress .reviewed-0{width:0}.review-progress .reviewed-1{width:20%}.review-progress .reviewed-2{width:40%}.review-progress .reviewed-3{width:60%}.review-progress .reviewed-4{width:80%}.review-progress .reviewed-5{width:100%}
@@ -163,7 +164,7 @@ textarea.input{min-height:220px;resize:vertical;font-size:14px;line-height:1.8}
 .confirm{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--ink-soft);min-height:34px;cursor:pointer;flex-shrink:0}
 .confirm input{width:17px;height:17px;margin:0 3px 0 0;flex-shrink:0;accent-color:var(--accent)}
 .source-details{margin-top:7px}
-.source-details summary{font-size:10px;letter-spacing:.05em;line-height:1.6;color:var(--faint);cursor:pointer;width:fit-content;text-transform:uppercase}
+.source-details summary{font-size:10px;letter-spacing:.05em;line-height:1.6;color:var(--faint-strong);cursor:pointer;width:fit-content;text-transform:uppercase}
 html[lang=zh-CN] .source-details summary{text-transform:none;letter-spacing:.02em;font-size:11px}
 .source-details summary:hover{color:var(--accent-deep)}
 .source{font-size:12px;color:var(--ink-soft);line-height:1.65;padding:9px 12px;background:var(--paper);border-left:2px solid var(--hairline-strong);border-radius:0 6px 6px 0;margin:7px 0 0;white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--mono)}
@@ -185,13 +186,33 @@ html[lang=zh-CN] .source-details summary{text-transform:none;letter-spacing:.02e
 .agency-references select{width:100%;border:1px solid var(--hairline-strong);background:var(--sheet);color:var(--ink);border-radius:8px;padding:9px 10px;margin-top:6px;font-size:12px}
 .agency-references ul{padding-left:18px}
 .agency-references li{margin:8px 0}
-.agency-references li small{display:block;color:var(--faint);font-size:10px}
+.agency-references li small{display:block;color:var(--faint-strong);font-size:10px}
 .agency-references details{margin-top:10px}
 
 /* Draft choice */
 .draft-choice{display:flex;gap:16px;align-items:center;margin-top:20px}
 .draft-choice label{margin:0;white-space:nowrap;font-size:12px;font-weight:600}
-.draft-choice select{flex:1;border:1px solid var(--hairline-strong);border-radius:9px;background:var(--sheet);color:var(--ink);padding:11px 12px;font-size:13px}
+.draft-choice select{flex:1;min-width:0;max-width:100%;border:1px solid var(--hairline-strong);border-radius:9px;background:var(--sheet);color:var(--ink);padding:11px 12px;font-size:13px}
+
+/* Saved-case controls (functional lane owns registration/storage; visual hooks only).
+   Everything wraps and shrinks cleanly, including long saved-case titles on phones. */
+#case-manager{border:1px solid var(--hairline);background:var(--paper);border-radius:10px;padding:14px 16px;margin-top:16px;font-size:12px;line-height:1.7;min-width:0}
+#case-manager label{display:block;font-size:12px;font-weight:600;margin-bottom:7px}
+#case-title{width:100%;min-width:0;max-width:100%;border:1px solid var(--hairline-strong);border-radius:8px;background:var(--sheet);padding:10px 12px;font-size:14px}
+#case-manager .actions{margin-top:12px}
+#case-manager button{max-width:100%;white-space:normal}
+.saved-case{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 0;border-top:1px solid var(--hairline);min-width:0}
+.saved-case:first-of-type{border-top:0}
+.saved-case .saved-case-title,.saved-case span:first-child{flex:1;min-width:0;overflow-wrap:anywhere;font-size:13px}
+.saved-case button{flex-shrink:0;font-size:12px;padding:7px 11px;min-height:34px}
+#case-save-status{font-size:12px;line-height:1.6;margin-top:8px;overflow-wrap:anywhere}
+#case-save-status:empty{display:none}
+@media(max-width:760px){
+  #case-manager{padding:12px}
+  #case-title{font-size:16px}
+  .saved-case{align-items:flex-start}
+  .saved-case .saved-case-title,.saved-case span:first-child{flex-basis:100%}
+}
 
 /* Draft sheet */
 .draft-panel{margin-top:22px}
