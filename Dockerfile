@@ -13,15 +13,18 @@ RUN apt-get update \
 WORKDIR /app
 COPY --from=dependencies --chown=node:node /app/node_modules ./node_modules
 # Explicit copies prevent an accidental .env, upload or private document inclusion.
-COPY --chown=node:node package.json server.js auth.js workbook-worker.js ./
+COPY --chown=node:node package.json server.js auth.js storage.js workbook-worker.js ./
 COPY --chown=node:node public ./public
 COPY --chown=node:node ops/healthcheck.mjs ./ops/healthcheck.mjs
 # User-run operator setup uses the same Node runtime; no host Node/npm required.
-COPY --chown=node:node scripts/setup-operator.js scripts/operator-setup.js ./scripts/
+COPY --chown=node:node scripts/setup-operator.js scripts/operator-setup.js scripts/setup-trial-user.js scripts/trial-user-setup.js ./scripts/
 # Source checkouts may use umask 077. All image contents are public code,
 # so any file-owner UID used by the isolated setup helper must be able to read it.
 # This never touches bind-mounted runtime.env or other host paths.
-RUN chmod -R a+rX /app
+RUN chmod -R a+rX /app \
+    && mkdir -p /data \
+    && chown node:node /data \
+    && chmod 700 /data
 USER node
 EXPOSE 4173
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \

@@ -11,7 +11,7 @@ for (const path of ['/app/.env', '/app/.git/config', '/app/test/server.test.js']
   await assert.rejects(access(path, constants.F_OK), { code: 'ENOENT' });
 }
 // The bundled user-run helper must resolve its support module and reject non-TTY use.
-for (const path of ['/app/scripts/setup-operator.js', '/app/scripts/operator-setup.js']) {
+for (const path of ['/app/scripts/setup-operator.js', '/app/scripts/operator-setup.js', '/app/scripts/setup-trial-user.js', '/app/scripts/trial-user-setup.js']) {
   await access(path, constants.R_OK);
   assert.equal(spawnSync(process.execPath, ['--check', path]).status, 0);
 }
@@ -28,12 +28,15 @@ const text = await statusResponse.text();
 assert.ok(!text.includes('ci-public-nonsecret-sentinel'), 'Status must not echo the key');
 const status = JSON.parse(text);
 assert.equal(status.authConfigured, false);
+assert.equal(status.registrationEnabled, false);
+assert.equal(process.env.NESTLET_DB_PATH, '/data/nestlet.sqlite');
+assert.equal(status.caseStorageEnabled, true);
 assert.equal(status.authenticated, false);
 assert.equal(status.liveEnabled, false);
 assert.equal(status.pdfEnabled, true);
 assert.equal(status.workbookEnabled, true);
 assert.equal(status.csrfToken, undefined);
-for (const [path, method] of [['/api/settings', 'GET'], ['/api/settings', 'POST'], ['/api/settings/test', 'POST'], ['/api/extract', 'POST'], ['/api/document', 'POST'], ['/api/workbook', 'POST']]) {
+for (const [path, method] of [['/api/register', 'POST'], ['/api/cases', 'GET'], ['/api/cases', 'POST'], ['/api/settings', 'GET'], ['/api/settings', 'POST'], ['/api/settings/test', 'POST'], ['/api/extract', 'POST'], ['/api/document', 'POST'], ['/api/workbook', 'POST']]) {
   const response = await fetch(base + path, {
     method,
     headers: { Origin: 'https://nestlet.invalid', 'Content-Type': 'application/json' },

@@ -2,7 +2,7 @@
 
 A standalone JavaScript frontend and backend for one Housing Choice Voucher paperwork case at a time: import material, review source-linked facts, then prepare an editable English administrative draft. Keep your folders and spreadsheets. [Repository](https://github.com/ledondev520/nestlet)
 
-**Development MVP, not a production housing system.** No verified local PHA pack, real-case pilot results, official-form completion, automatic sending or production privacy/security assurance. The provisional name has existing rental-software collisions; no trademark clearance is claimed.
+**Application under active implementation and release verification.** No verified local PHA pack, real-case pilot results, official-form completion, automatic sending or production privacy/security assurance. The provisional name has existing rental-software collisions; no trademark clearance is claimed.
 
 ## Product contract and release status
 
@@ -10,13 +10,21 @@ The final workflow starts empty and uses real document parsing and `deepseek-fla
 
 **Checkpoint, October 7, 2026:** operator authentication, protected parser/extraction/settings routes, real PDF/Excel import, Flash-only extraction and authenticated HTTPS key settings are implemented. The workflow starts empty and has no silent mock/provider fallback. Local Codex reported a real-browser retake against `8b429` covering login, PDF/Excel and exports, plus 87 core and five independent HTTP checks; see [validation](docs/validation.md) for the exact evidence and limitations.
 
-The initial private loopback deployment of `8b429` was reported successful at 04:48 UTC in [deployment run 37573150783](https://github.com/ledondev520/jiesong-system/actions/runs/37573150783); the deployment logs were reviewed separately. Public DNS/trusted HTTPS, production operator configuration and a real DeepSeek call are not established by that result. No first-case time saving or ROI has been validated.
+The initial private loopback deployment of `8b429` was reported successful at 04:48 UTC in [deployment run 37573150783](https://github.com/ledondev520/jiesong-system/actions/runs/37573150783); the deployment logs were reviewed separately. Public trusted HTTPS activation and external health verification completed at 06:07 UTC in [run 37579840911](https://github.com/ledondev520/jiesong-system/actions/runs/37579840911); production operator configuration and a real DeepSeek call are not established by that result. No first-case time saving or ROI has been validated.
 
-**Operator setup helper:** The user-run operator setup helper passed independent review and was published in PR #6, merged as main commit `b431ea59405cbbf9ab6ec9945010f66f655b1781`. Exact PR and main Node/container CI passed, including actual Docker/PTY helper checks. The helper release is staged on the private loopback service: corrected [upgrade run 37577482526](https://github.com/ledondev520/jiesong-system/actions/runs/37577482526) succeeded at 05:40:48 UTC, with a healthy container, fail-closed HTTP checks, helper-module checks and current-release pointer verified; existing runtime configuration was preserved. The earlier attempt rolled back safely and is no longer a blocker. The helper is published, container-verified and privately staged. Operator setup is still a user-controlled step; public DNS/trusted TLS and API configuration remain pending. Public HTTPS/frontend access and a live model call remain unverified.
+**Operator setup helper:** The user-run operator setup helper passed independent review and was published in PR #6, merged as main commit `b431ea59405cbbf9ab6ec9945010f66f655b1781`. Exact PR and main Node/container CI passed, including actual Docker/PTY helper checks. The helper release is staged on the private loopback service: corrected [upgrade run 37577482526](https://github.com/ledondev520/jiesong-system/actions/runs/37577482526) succeeded at 05:40:48 UTC, with a healthy container, fail-closed HTTP checks, helper-module checks and current-release pointer verified; existing runtime configuration was preserved. The earlier attempt rolled back safely and is no longer a blocker. The helper is published, container-verified and privately staged. Operator setup is still a user-controlled step; public trusted HTTPS is verified for the previous application release. Administrator/API configuration and a live model call remain pending; the new registration/SQLite release is not yet deployed.
+
+## Accounts, cases and release scope
+
+**Implementation checkpoint, October 7, 2026, 06:07 UTC:** named trial logins and server-local SQLite case storage are implemented and awaiting final CI, browser and deployment verification. Self-service web registration and ordinary/administrator roles are now explicitly in scope and are implemented, with final release verification pending. This is not a completed customer pilot or evidence that the new release is already on the public service.
+
+Use explicit **Save / Open / Delete** for a case. The page’s preview, editing, copy, download and print remain primary; saving is optional. Saved source text, reviewed fields and drafts belong to the signed-in user. The owner also sees only their own cases; trial users cannot manage the API key or provider settings. Web username/password registration is implemented with a server-assigned ordinary role; administrators bootstrap privately and cannot be selected at registration. Shared teams, CRM and cross-user case administration are not included.
+
+Node.js 24 is required. Configure `NESTLET_DB_PATH` to an explicit private absolute path for direct launch. Docker uses `/data/nestlet.sqlite` on the dedicated `case_data` volume. Saved cases survive process/container restart when that volume is preserved; raw binary uploads are not retained. No automatic backups exist yet. Never remove/prune the data volume as routine deployment or rollback. [SQLite runtime](docs/sqlite-runtime.md)
 
 ## Install and run
 
-Use Node.js 24 to match the container runtime, npm, and Poppler's `pdftotext` for text-PDF extraction. Node package dependencies are pinned in `package-lock.json`.
+Use Node.js 24 (required for server-local SQLite), npm, and Poppler's `pdftotext` for text-PDF extraction. Node package dependencies are pinned in `package-lock.json`.
 
 ```sh
 npm ci --ignore-scripts
@@ -71,11 +79,11 @@ The interface defaults to Simplified Chinese and supports English, including err
 
 Frontend, backend and parser code live in this repository. Sites is only a temporary preview and is not a runtime or deployment dependency. An owner-only preview is not assumed accessible to collaborators.
 
-The owner selected the same VPS as the existing Jiesong service, with Nestlet isolated as an independent service. Private addresses and access details are not published here. An initial loopback container deployment is reported above; public DNS and trusted TLS remain pending. [Deployment status and guide](docs/deployment.md) distinguishes implementation, deployment, configuration and verification. Single-operator authentication exists; multi-user tenant isolation and production privacy readiness do not.
+The owner selected the same VPS as the existing Jiesong service, with Nestlet isolated as an independent service. Private addresses and access details are not published here. An initial loopback container deployment is reported above; certificate issuance has completed, but trusted HTTPS activation is still being verified. [Deployment status and guide](docs/deployment.md) distinguishes implementation, deployment, configuration and verification. Owner/named-trial access and own-user case isolation are implemented in the new feature pending final release verification; production privacy readiness is not established.
 
 ## Data boundaries
 
-No database or persistent case storage is implemented. Browser state is transient; downloads/clipboard contents remain where the operator saves them. Imported bytes reach the local/self-hosted backend, and consented extraction text reaches DeepSeek. Transient processing is not a complete retention/deletion or privacy assurance.
+SQLite stores explicitly saved case text, reviewed fields and drafts per authenticated user. Unsaved browser changes remain transient; downloads/clipboard contents remain where the operator saves them. Raw binary imports are processed but not retained. Imported bytes reach the backend and consented extraction text reaches DeepSeek. Own-user query isolation and deletion do not establish a complete production retention, backup or privacy program.
 
 No real personal records, raw customer materials, secret values or private infrastructure details belong in the public repo. No messages, signatures, official submissions, housing eligibility decisions or rent approvals are automated.
 
@@ -84,6 +92,8 @@ No real personal records, raw customer materials, secret values or private infra
 - [English operator documents versus official forms](docs/official-artifacts.md)
 - [Official domain sources and version checks](docs/domain-sourcebook.md)
 - [Five-case pilot protocol, not results](docs/pilot.md)
+- [Full application architecture and lifecycle](docs/architecture.md)
+- [SQLite storage and named-trial runtime](docs/sqlite-runtime.md)
 - [First operator session and verification gates](docs/onboarding.md)
 - [Code and data flow](docs/code-walkthrough.md)
 - [Collaboration contract](docs/collaboration.md)

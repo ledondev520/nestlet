@@ -5,6 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { spawn, spawnSync } from 'node:child_process';
 import { validateSuggestions } from './public/core.js';
 import { createOperatorAuth } from './auth.js';
+import { openStorage, StorageError } from './storage.js';
 
 const root = new URL('./public/', import.meta.url);
 let publicOrigin = '';
@@ -21,7 +22,14 @@ let apiKey = process.env.DEEPSEEK_API_KEY || '';
 let enabled = process.env.ENABLE_LIVE_AI === 'true' && Boolean(apiKey);
 let connectionVerifiedAt = null;
 let configurationRevision = 0;
-const auth = createOperatorAuth({ passwordHash: process.env.NESTLET_OPERATOR_PASSWORD_HASH, publicOrigin, host: process.env.HOST });
+const storage = openStorage({ filename: process.env.NESTLET_DB_PATH || fileURLToPath(new URL('./data/nestlet.sqlite', import.meta.url)) });
+const auth = createOperatorAuth({ passwordHash: process.env.NESTLET_OPERATOR_PASSWORD_HASH, publicOrigin, host: process.env.HOST,
+  findTrialUser: username => storage.findUserByUsername(username), findTrialUserById: id => storage.getUserById(id),
+  createTrialUser: input => storage.createTrialUser(input) });
+const registrationAttempts = [];
+const trialAiRequests = [];
+const TRIAL_USER_AI_LIMIT = 10;
+const TRIAL_GLOBAL_AI_LIMIT = 30;
 const settingsCalls = [];
 let activeConnectionTests = 0;
 const maxTextLength = 50000;
@@ -59,8 +67,14 @@ function requireSession(request, mutation = true) {
   return session;
 }
 
+function requireOwnerSession(request, mutation = true) {
+  const session = requireSession(request, mutation);
+  if (session.role !== 'owner') throw new RequestError(403, 'OWNER_REQUIRED', 'Only the owner can manage provider settings.');
+  return session;
+}
+
 function requireSecureSettings(request) {
-  const session = requireSession(request);
+  const session = requireOwnerSession(request);
   if (!request.headers.origin) throw new RequestError(403, 'ORIGIN_REJECTED', 'A same-origin browser request is required.');
   if (!auth.secure) throw new RequestError(403, 'HTTPS_REQUIRED', 'API key settings require HTTPS with a configured public origin.');
   const now = Date.now();
@@ -72,11 +86,29 @@ function requireSecureSettings(request) {
 
 function settingsStatus(request) {
   const session = auth.getSession(request);
-  return { model, providerEndpoint: 'https://api.deepseek.com/chat/completions', configured: Boolean(apiKey),
+  const owner = session?.role === 'owner';
+  const common = { model, providerEndpoint: 'https://api.deepseek.com/chat/completions',
     liveEnabled: enabled && auth.configured, authConfigured: auth.configured, authenticated: Boolean(session),
-    secureSettings: auth.secure && auth.configured, operatorSetupInvalid: auth.setupInvalid,
-    ...(session ? { csrfToken: session.csrfToken } : {}),
+    secureLogin: auth.secure || auth.localTransportAllowed,
+    secureSettings: auth.secure && auth.configured && (!session || owner),
+    role: session?.role || null, canManageSettings: owner, caseStorageEnabled: true,
+    registrationEnabled: auth.configured && (auth.secure || auth.localTransportAllowed),
+    ...(session ? { csrfToken: session.csrfToken, userId: session.userId, username: session.username } : {}) };
+  if (!owner) return common;
+  // Only the authenticated owner sees provider-configuration metadata; never credential bytes.
+
+  return { ...common, configured: Boolean(apiKey), operatorSetupInvalid: auth.setupInvalid,
     connectionVerifiedAt, keyStorage: apiKey ? (apiKey === process.env.DEEPSEEK_API_KEY ? 'server-environment' : 'server-memory') : 'none' };
+}
+
+function consumeTrialAiAllowance(session) {
+  if (session.role !== 'trial') return;
+  const now = Date.now();
+  while (trialAiRequests.length && now - trialAiRequests[0].at >= 60 * 60 * 1000) trialAiRequests.shift();
+  if (trialAiRequests.length >= TRIAL_GLOBAL_AI_LIMIT || trialAiRequests.filter(item => item.userId === session.userId).length >= TRIAL_USER_AI_LIMIT) {
+    throw new RequestError(429, 'TRIAL_LIMIT_REACHED', 'The trial AI request limit has been reached. Try again after the hourly window expires.');
+  }
+  trialAiRequests.push({ userId: session.userId, at: now });
 }
 
 async function testProviderConnection(signal) {
@@ -116,11 +148,11 @@ async function readBody(request, maxBytes) {
   return Buffer.concat(chunks);
 }
 
-async function readJson(request) {
+async function readJson(request, maxBytes = 70000) {
   if ((request.headers['content-type'] || '').split(';')[0].trim().toLowerCase() !== 'application/json') {
     throw new RequestError(415, 'UNSUPPORTED_MEDIA_TYPE', 'Use application/json');
   }
-  const bytes = await readBody(request, 70000); // Independent byte limit, including JSON encoding overhead.
+  const bytes = await readBody(request, maxBytes); // Independent byte limit, including JSON encoding overhead.
   try {
     const result = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
     if (!result || typeof result !== 'object' || Array.isArray(result)) throw new Error();
@@ -279,15 +311,33 @@ const server = http.createServer(async (request, response) => {
     if (request.url === '/api/status' && request.method === 'GET') {
       return json(200, { ...settingsStatus(request), pdfEnabled, maxPdfBytes, workbookEnabled, maxWorkbookBytes, maxTextLength, privacyMode: 'synthetic-or-deidentified-only' });
     }
+    if (request.url === '/api/register' && request.method === 'POST') {
+      verifyOrigin(request);
+      if (!request.headers.origin) throw new RequestError(403, 'ORIGIN_REJECTED', 'A same-origin browser request is required.');
+      if (!auth.configured) throw new RequestError(503, 'OPERATOR_SETUP_REQUIRED', 'The administrator must finish setup before accounts can be registered.');
+      if (!auth.secure && !auth.localTransportAllowed) throw new RequestError(403, 'HTTPS_REQUIRED', 'Account registration requires HTTPS outside loopback development.');
+      const now = Date.now();
+      while (registrationAttempts.length && now - registrationAttempts[0] >= 10 * 60 * 1000) registrationAttempts.shift();
+      if (registrationAttempts.length >= 5) throw new RequestError(429, 'REGISTRATION_RATE_LIMITED', 'Too many registration attempts. Try again after the ten-minute window expires.');
+      registrationAttempts.push(now);
+      let body;
+      try { body = await readJson(request, 4096); }
+      catch (error) { if (error.status === 413) throw new RequestError(413, 'REGISTRATION_INVALID', 'Registration input exceeds the 4 KiB limit.'); throw error; }
+      if (Object.keys(body).length !== 3 || Object.keys(body).some(key => !['username', 'password', 'passwordConfirmation'].includes(key))) throw new RequestError(400, 'REGISTRATION_INVALID', 'Provide only a username, password and matching password confirmation.');
+      const result = await auth.register(body);
+      if (result.error) throw new RequestError(result.error === 'LOGIN_RATE_LIMITED' ? 429 : 400, result.error, 'Registration could not be completed. Check the username and matching password requirements.');
+      response.setHeader('Set-Cookie', result.cookie);
+      return json(201, { authenticated: true, csrfToken: result.csrfToken, role: result.role, userId: result.userId, username: result.username });
+    }
     if (request.url === '/api/login' && request.method === 'POST') {
       verifyOrigin(request);
       if (!request.headers.origin) throw new RequestError(403, 'ORIGIN_REJECTED', 'A same-origin browser request is required.');
       if (!auth.secure && !auth.localTransportAllowed) throw new RequestError(403, 'HTTPS_REQUIRED', 'Operator sign-in requires HTTPS outside loopback development.');
       const body = await readJson(request);
-      const result = await auth.login(body.password);
+      const result = await auth.login(body.password, body.username);
       if (result.error) throw new RequestError(result.error === 'LOGIN_RATE_LIMITED' ? 429 : result.error === 'OPERATOR_SETUP_REQUIRED' ? 503 : 401, result.error, result.error === 'LOGIN_RATE_LIMITED' ? 'Too many sign-in attempts. Wait a minute before retrying.' : 'Operator sign-in failed. Check the password or server setup.');
       response.setHeader('Set-Cookie', result.cookie);
-      return json(200, { authenticated: true, csrfToken: result.csrfToken });
+      return json(200, { authenticated: true, csrfToken: result.csrfToken, role: result.role, userId: result.userId, username: result.username });
     }
     if (request.url === '/api/logout' && request.method === 'POST') {
       verifyOrigin(request);
@@ -297,7 +347,7 @@ const server = http.createServer(async (request, response) => {
       return json(200, { authenticated: false });
     }
     if (request.url === '/api/settings' && request.method === 'GET') {
-      requireSession(request, false);
+      requireOwnerSession(request, false);
       return json(200, settingsStatus(request));
     }
     if (request.url === '/api/settings' && request.method === 'POST') {
@@ -324,6 +374,34 @@ const server = http.createServer(async (request, response) => {
       try { return json(200, await testProviderConnection(AbortSignal.any([cancel.signal, AbortSignal.timeout(15000)]))); }
       catch (error) { if (error instanceof RequestError) throw error; throw new RequestError(502, 'CONNECTION_FAILED', 'Connection verification failed. No chat completion was tested.'); }
       finally { activeConnectionTests--; }
+    }
+    if (request.url === '/api/cases' || request.url.startsWith('/api/cases/')) {
+      const mutation = request.method !== 'GET';
+      if (mutation) verifyOrigin(request);
+      const session = requireSession(request, mutation);
+      const id = /^\/api\/cases\/([0-9a-f-]{36})$/u.exec(request.url)?.[1];
+      if (request.url === '/api/cases' && request.method === 'GET') return json(200, { cases: storage.listCases(session.userId) });
+      if (id && request.method === 'GET') {
+        const record = storage.getCase(session.userId, id);
+        if (!record) throw new RequestError(404, 'CASE_NOT_FOUND', 'The case was not found in your account.');
+        return json(200, { case: record });
+      }
+      if ((request.url === '/api/cases' && request.method === 'POST') || (id && ['PUT', 'DELETE'].includes(request.method))) {
+        let body;
+        try { body = await readJson(request, 300000); }
+        catch (error) { if (error.status === 413) throw new RequestError(413, 'CASE_TOO_LARGE', 'This case exceeds the saved-case size limit.'); throw error; }
+        if (request.method === 'POST') return json(201, { case: storage.createCase(session.userId, body) });
+        const { expectedVersion, ...payload } = body;
+        if (request.method === 'DELETE') {
+          if (Object.keys(payload).length) throw new RequestError(400, 'CASE_INVALID', 'Only the expected case version is accepted for deletion.');
+          if (!storage.deleteCase(session.userId, id, expectedVersion)) throw new RequestError(404, 'CASE_NOT_FOUND', 'The case was not found in your account.');
+          return json(200, { deleted: true });
+        }
+        const record = storage.updateCase(session.userId, id, payload, expectedVersion);
+        if (!record) throw new RequestError(404, 'CASE_NOT_FOUND', 'The case was not found in your account.');
+        return json(200, { case: record });
+      }
+      throw new RequestError(404, 'CASE_NOT_FOUND', 'The requested case route was not found.');
     }
     if (request.url === '/api/document' && request.method === 'POST') {
       verifyOrigin(request);
@@ -356,11 +434,12 @@ const server = http.createServer(async (request, response) => {
     }
     if (request.url === '/api/extract' && request.method === 'POST') {
       verifyOrigin(request);
-      requireSession(request);
+      const session = requireSession(request);
       if (!enabled) throw new RequestError(503, 'LIVE_DISABLED', 'Live AI is disabled. Configure the server API connection before using AI extraction.');
       const body = await readJson(request);
       validateInput(body);
       if (activeExtractions >= 2) throw new RequestError(429, 'BUSY', 'Extraction is busy. Try again shortly.');
+      consumeTrialAiAllowance(session);
       activeExtractions++;
       try {
         const fields = await providerSuggestions(body.text, AbortSignal.any([cancel.signal, AbortSignal.timeout(45000)]));
@@ -370,13 +449,20 @@ const server = http.createServer(async (request, response) => {
         throw new RequestError(502, 'EXTRACTION_FAILED', 'Extraction failed. No suggestions were applied.');
       } finally { activeExtractions--; }
     }
-    const routes = { '/': 'index.html', '/app.js': 'app.js', '/core.js': 'core.js', '/agency-guidance.js': 'agency-guidance.js', '/style.css': 'style.css', '/logo.svg': 'logo.svg' };
+    const routes = { '/': 'index.html', '/app.js': 'app.js', '/core.js': 'core.js', '/agency-guidance.js': 'agency-guidance.js', '/style.css': 'style.css', '/logo.svg': 'logo.svg',
+      '/samples/nestlet-synthetic-case.txt': 'samples/nestlet-synthetic-case.txt',
+      '/samples/nestlet-synthetic-case.csv': 'samples/nestlet-synthetic-case.csv',
+      '/samples/nestlet-synthetic-case.pdf': 'samples/nestlet-synthetic-case.pdf',
+      '/samples/nestlet-synthetic-case.xlsx': 'samples/nestlet-synthetic-case.xlsx',
+      '/samples/nestlet-synthetic-case.xls': 'samples/nestlet-synthetic-case.xls' };
     if (request.method !== 'GET' || !Object.hasOwn(routes, request.url)) { response.writeHead(404); return response.end('Not found'); }
     const file = routes[request.url];
-    response.setHeader('Content-Type', file.endsWith('.js') ? 'text/javascript; charset=utf-8' : file.endsWith('.css') ? 'text/css; charset=utf-8' : file.endsWith('.svg') ? 'image/svg+xml' : 'text/html; charset=utf-8');
+    const contentTypes = { js: 'text/javascript; charset=utf-8', css: 'text/css; charset=utf-8', svg: 'image/svg+xml', html: 'text/html; charset=utf-8', txt: 'text/plain; charset=utf-8', csv: 'text/csv; charset=utf-8', pdf: 'application/pdf', xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', xls: 'application/vnd.ms-excel' };
+    response.setHeader('Content-Type', contentTypes[file.split('.').at(-1)]);
+    if (file.startsWith('samples/')) response.setHeader('Content-Disposition', `attachment; filename="${file.slice('samples/'.length)}"`);
     response.end(await readFile(new URL(file, root)));
   } catch (error) {
-    if (error instanceof RequestError) return json(error.status, { error: error.message, code: error.code });
+    if (error instanceof RequestError || error instanceof StorageError) return json(error.status, { error: error.message, code: error.code });
     return json(500, { error: 'Request could not be completed', code: 'INTERNAL_ERROR' });
   }
 });

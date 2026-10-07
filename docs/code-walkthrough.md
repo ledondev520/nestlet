@@ -6,21 +6,24 @@ This is a small JavaScript app, not a framework scaffold. Read the modules in th
 
 ```text
 server.js           HTTP routes, protected PDF/workbook imports, provider/settings calls
-auth.js             single-operator password verification, sessions and CSRF
+auth.js             owner/trial password verification, sessions, role checks and CSRF
+storage.js          Node 24 SQLite users/cases, scoped queries and optimistic versions
 public/agency-guidance.js bilingual official-source references, unconfirmed acceptance
 public/core.js      review gate, drafts, CSV, AI suggestion validation
 workbook-worker.js isolated real XLSX/XLS parsing and bounded preview
-public/app.js       bilingual interface, transient state, operator review and export actions
+public/app.js       bilingual interface, current case state, saved-case actions and exports
 public/index.html   browser entry point
 public/style.css    responsive screen and print presentation
 public/logo.svg     provisional brand artwork
 test/core.test.js   behavior checks at the exported core interface
 test/server.test.js real local HTTP and file-parser checks
-test/auth.test.js   single-operator authentication/session behavior
+test/auth.test.js   authentication/session behavior
+test/storage.test.js real SQLite persistence, ownership and schema boundaries
+test/case-api.test.js authenticated saved-case API and user isolation
 docs/               scope, sources, pilot, collaboration and evidence
 ```
 
-The backend uses SheetJS for workbooks and an operating-system pdftotext dependency for PDFs. Authenticated HTTPS browser key entry is implemented; the submitted key stays in server process memory, not browser storage or a case database. No persistent case database is implemented. The app is independently deployable; Sites is only a temporary preview.
+The backend uses SheetJS for workbooks and an operating-system pdftotext dependency for PDFs. Authenticated HTTPS browser key entry is implemented; the submitted key stays in server process memory, not browser storage or a case database. The SQLite extension persists named trial identities and explicitly saved cases in a dedicated private file; it does not persist provider keys or raw uploaded PDF/workbook binaries. Its final CI/browser/deployment checks are separate from the already staged stateless release. The app is independently deployable; Sites is only a temporary preview.
 
 ## Main path
 
@@ -35,6 +38,7 @@ Empty case → pasted text / TXT / CSV / PDF / XLSX / XLS
   → draft(fields, kind)                     [deterministic English template]
   → operator edits the draft
   → copy / TXT download / browser print
+  → explicit save to user-scoped SQLite case → later reload/update/delete
 ```
 
 CSV export is a separate data interchange path through `exportCSV`. Reimport goes through `parseCSV` and creates new text to review; it does not restore a prior confirmation or agency status.
@@ -79,9 +83,17 @@ Operator signs in; browser receives HttpOnly session cookie + CSRF token
   → browser receives unconfirmed facts, never a key
 ```
 
-`GET /api/status` reports sanitized configuration/capabilities, not live account health. `/api/login` verifies the configured operator hash; `/api/logout` invalidates that session. PDF/workbook parsing and extraction require session plus CSRF. Key writes/tests additionally require the configured HTTPS origin. Sessions and browser-saved keys are lost on server restart; an environment-provided key can be loaded again at startup.
+`GET /api/status` reports sanitized capabilities, not live account health; provider-configuration details are restricted to the authenticated owner. `/api/login` verifies the configured owner hash or a named trial credential; `/api/logout` invalidates that session. PDF/workbook parsing and extraction require session plus CSRF. Key writes/tests additionally require the configured HTTPS origin. Sessions and browser-saved keys are lost on server restart; an environment-provided key can be loaded again at startup.
 
-`POST /api/settings/test` explicitly checks model access through DeepSeek `/models`, not chat completion. Historical development-double tests are separate from real HTTP/file/browser evidence and cannot prove a successful provider call. The static route allowlist must not expose server code or environment files. Single-operator authentication is implemented, but does not establish multi-tenant isolation or production privacy readiness.
+`POST /api/settings/test` explicitly checks model access through DeepSeek `/models`, not chat completion. Historical development-double tests are separate from real HTTP/file/browser evidence and cannot prove a successful provider call. The static route allowlist must not expose server code or environment files. The SQLite extension binds every case operation to the session user and restricts provider settings to the owner. These controls have focused tests; they are not independent security certification or production privacy readiness.
+
+## Saved-case path
+
+`GET/POST /api/cases` and `GET/PUT/DELETE /api/cases/:id` operate only on the authenticated session user. Foreign IDs and missing IDs do not reveal another user's records. The backend validates bounded case JSON and uses parameterized SQLite statements. Updates/deletes require the expected version, so a stale tab cannot silently overwrite a newer save. Browser state remains in memory until the user saves; provider keys are excluded from the case payload.
+
+SQLite uses a dedicated application/schema identifier, foreign keys and bounded per-user storage. Unsupported or unrelated schema files fail closed. The database is stored on the task-owned `/data` volume in Docker, and no raw uploaded binary is persisted. Short-lived SQLite journals remain private; account/case rows survive ordinary container recreation. Sessions and process-memory provider keys do not survive restart.
+
+The private user-run `scripts/setup-trial-user.js` helper creates or rotates one named trial credential after hidden input and final confirmation, preserving its case-owning identity. It grants no owner/provider-settings role. See [SQLite runtime](sqlite-runtime.md) for the isolated Docker handoff and persistence/backup limitations.
 
 ## What to inspect when changing behavior
 

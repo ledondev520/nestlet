@@ -5,11 +5,17 @@ const copy = {
   zh: {
     workspaceTitle: '从材料到英文草稿', safeShort: '仅限虚构或去标识化资料', inputShort: '放入材料', sampleShort: '试用示例', pasteShort: '或在这里粘贴去标识化文本…', inputHelp: '支持格式与处理方式', nextReview: 'AI 提取并核对', reviewShort: '核对五项事实', sourceHint: '原文可展开查看', check: '确认', editedShort: '人工修改 · 查看出处', missingShort: '待补充：', missingScope: '仅表示本次材料未提供，并非机构缺件通知', nextHelp: '后续事项与导出说明', draftTypeShort: '草稿类型', backInput: '返回材料', backReview: '返回核对', gateShort: '请确认每一项；未知信息可保留空白', draftShort: '可直接编辑。辅助文书，非官方表格；请人工复核后使用。', footerShort: '仅生成草稿 · 不自动发送或提交',
     settings: '设置', modelLabel: '模型', endpointLabel: '接口', readyStatus: '提取已启用', configStatus: '尚未启用 AI', backendStatus: '后端未连接', checkingStatus: '正在检查连接', configHelp: '在服务器设置 DEEPSEEK_API_KEY，并将 ENABLE_LIVE_AI 设为 true 后重启。密钥仅保留在服务器，不在浏览器保存。', manualAction: '按标签手动整理', errorConfig: 'DeepSeek 尚未启用。请在设置中查看服务器配置步骤；不会自动切换到模拟结果。', errorBackend: '尚未连接到处理服务器。请启动完整服务后再使用 AI 或文件处理。', filePick: '上传文件', workbookHint: 'Excel 文件上传至服务器读取工作表；需选择单行并确认字段映射。不会执行公式或宏。', workbookConsent: '此 Excel 文件将上传至本服务器以读取工作表和单元格，不会自动发送至 DeepSeek。请确认仅含虚构或去标识化资料。继续？', mapTitle: '选择一行，映射字段', sheetLabel: '工作表', rowLabel: '数据行', columnLabel: '列', skipColumn: '不导入', applyMapping: '确认映射并核对', cancelMapping: '取消导入', errorWorkbook: '无法读取此工作簿。请使用未加密的 XLSX / XLS，或导出为单案例 CSV。', errorMapping: '请选择有效数据行和不重复的列；公式、隐藏或合并单元格不能导入。', workbookLimited: '仅预览前 200 行、50 列；其余内容未载入', workbookBlocked: '部分单元格不可导入，请选择普通可见值',
-    operatorSetup: '请先配置操作员账户', operatorSetupHelp: '请在服务器配置 NESTLET_OPERATOR_PASSWORD_HASH 与 HTTPS 的 PUBLIC_ORIGIN，再重启服务。', signInRequired: '请先登录', operatorPassword: '操作员密码', signIn: '登录', signOut: '退出登录', refreshStatus: '刷新状态', apiKey: 'DeepSeek API Key', replaceKey: '更换 API Key（可选）', keepExistingKey: '留空以保留现有密钥', saveSettings: '保存设置', enableLive: '启用 DeepSeek 提取', keyMemoryNotice: '网页填写的密钥仅存于服务器内存，服务重启后需重新填写；浏览器不保存密钥。', keyEnvironment: '密钥：服务器环境', keyMemory: '密钥：服务器内存', keyMissing: '尚未配置密钥', testConnection: '测试连接', connectionVerified: '模型访问已验证，尚未测试文本生成', settingsSaved: '设置已保存，连接验证状态单独显示', connectionSuccess: '已确认账户可访问 DeepSeek Flash，未调用文本生成', loginSuccess: '已登录，可继续原来的操作', logoutSuccess: '已退出，当前案例已清空', logoutConfirm: '退出登录将清空当前未导出的案例和草稿。继续？', errorAuth: '请登录后重新执行刚才的操作。', errorSession: '登录状态已失效，请重新登录。', errorHttps: '密码和密钥设置仅在可信 HTTPS 页面开放。请先完成服务器 HTTPS 配置。', errorCredentials: '密码不正确，或操作员账户尚未配置。', errorRateLimit: '操作过于频繁，请一分钟后重试。', errorSettings: '设置无效，请检查 API Key 格式。', errorKeyRequired: '请先填写并保存 API Key。', errorConnection: '连接验证失败。请检查密钥和账户访问权限；未测试文本生成。', errorModel: '此账户未返回 DeepSeek Flash 的访问权限，请核实后重试。',
+    operatorSetup: '请先配置操作员账户', operatorSetupHelp: '请在服务器配置 NESTLET_OPERATOR_PASSWORD_HASH 与 HTTPS 的 PUBLIC_ORIGIN，再重启服务。', signInRequired: '请先登录', operatorPassword: '登录密码', signIn: '登录', signOut: '退出登录', refreshStatus: '刷新状态', apiKey: 'DeepSeek API Key', replaceKey: '更换 API Key（可选）', keepExistingKey: '留空以保留现有密钥', saveSettings: '保存设置', enableLive: '启用 DeepSeek 提取', keyMemoryNotice: '网页填写的密钥仅存于服务器内存，服务重启后需重新填写；浏览器不保存密钥。', keyEnvironment: '密钥：服务器环境', keyMemory: '密钥：服务器内存', keyMissing: '尚未配置密钥', testConnection: '测试连接', connectionVerified: '模型访问已验证，尚未测试文本生成', settingsSaved: '设置已保存，连接验证状态单独显示', connectionSuccess: '已确认账户可访问 DeepSeek Flash，未调用文本生成', loginSuccess: '已登录，可继续原来的操作', logoutSuccess: '已退出，工作区已清空；已保存案例仍保留', logoutConfirm: '退出登录会清空工作区，未保存的修改会丢失。已保存的案例仍保留。继续？', errorAuth: '请登录后重新执行刚才的操作。', errorSession: '登录状态已失效，请重新登录。', errorHttps: '密码和密钥设置仅在可信 HTTPS 页面开放。请先完成服务器 HTTPS 配置。', errorCredentials: '用户名或密码不正确，或账户尚未配置。', errorRateLimit: '操作过于频繁，请一分钟后重试。', errorSettings: '设置无效，请检查 API Key 格式。', errorKeyRequired: '请先填写并保存 API Key。', errorConnection: '连接验证失败。请检查密钥和账户访问权限；未测试文本生成。', errorModel: '此账户未返回 DeepSeek Flash 的访问权限，请核实后重试。',
     workflowFocus: '资料参考', localLoginNotice: '本机开发登录。API 密钥的网页录入仍要求已认证的 HTTPS 页面。',
+    account: '账户', trialAccess: '普通账号', trialAccountHint: '可以处理自己的案例；服务连接由管理员维护。', loginUsername: '用户名', loginUsernameHint: '普通账号填写用户名；管理员可留空', errorOwnerRequired: '此操作仅管理员可用。', errorTrialUnavailable: '服务暂不可用，请联系管理员。',
+    savedCases: '我的已存案例', saveCase: '保存案例', caseName: '案例名称', untitledCase: '未命名案例', chooseCase: '选择已保存案例', openCase: '打开', deleteCase: '删除存档', savedScope: '只保存当前账户的文本、核对事实和草稿，不保存原始文件。不会自动保存。', caseSaved: '已保存', caseNotSaved: '尚未保存', unsavedChanges: '有未保存的修改', caseSaveSuccess: '案例已保存', caseOpened: '已打开保存的案例', caseDeleted: '已删除存档，当前工作区内容仍保留', unsavedOpen: '当前修改尚未保存。打开其他案例会替换工作区，继续？', deleteCaseConfirm: '永久删除这个已保存案例？此操作无法撤销。', errorCaseNotFound: '案例不存在或当前账户无权访问。', errorCaseInvalid: '案例内容无效，请检查名称和字段。', errorCaseTooLarge: '案例总数据不能超过 256 KiB，原文和草稿各不能超过 50,000 字符。请缩短内容后重试。', errorCaseConflict: '此案例已在别处修改，未覆盖当前内容。请先导出或复制需要保留的修改，再打开最新存档核对。', errorCaseStorage: '案例存储暂不可用，当前工作区未改变。请稍后重试。', errorCaseChanged: '工作区在加载期间发生变化，未替换内容。请确认修改后再次打开。', errorTrialLimit: '普通账号的提取次数已达限额，请稍后再试或联系管理员。',
+    errorCaseLimit: '当前账户已达到 100 个案例的上限。请先删除不再需要的存档，再添加新案例；现有案例仍可更新。',
+    register: '注册普通账号', repeatPassword: '再次输入密码', registerUsernameHint: '3–64 位小写字母或数字，可含 _ . -；owner 保留给管理员', registerPasswordHint: '密码为 12–256 个字符', registrationSuccess: '普通账号已创建并登录', registrationUnavailable: '注册暂未开放，请联系管理员。', errorRegistration: '请使用符合格式的用户名和 12–256 字符密码；两次密码须一致。', errorPasswordMismatch: '两次输入的密码不一致，请检查。', errorUsernameExists: '该用户名已被使用，请换一个。', errorRegistrationRate: '注册请求过于频繁，请稍后重试。',
+    sampleDownloads: '下载虚构测试材料', sampleDownloadHint: '仅用于测试。下载后自行导入；不会自动填入案例或调用 AI。', sampleWorkbookHint: 'Excel 请选择 Synthetic case 工作表第 2 行，将 A–E 列依次对应五项字段。',
+    signInOrRegister: '登录 / 注册', manageAccount: '管理',
     brand: '巢小秘', tag: '一份材料 · 向前一步', demo: '手动整理', liveMode: 'DeepSeek 实时提取',
     title: '少一点文书，多一点进展。', subtitle: '保留熟悉的文件夹和表格。一次处理一个案例，把零散材料整理成可核对的事实和英文草稿。',
-    eyebrow: '租赁手续，有个小帮手', privacy: '仅限虚构或去标识化资料。请勿输入真实租客、税号、银行或证件信息。本原型不主动保存案例；刷新页面会清空当前工作。下载文件由你保管。',
+    eyebrow: '租赁手续，有个小帮手', privacy: '仅限虚构或去标识化资料。请勿输入真实租客、税号、银行或证件信息。点击“保存案例”会将文本、核对结果和草稿存到当前账户，供返回编辑；原始文件不保留。未保存的修改会在刷新后丢失。',
     steps: ['放入材料', '核对事实', '带走英文草稿'], workflow: '处理步骤',
     input: '从手头的材料开始', inputHint: '粘贴文本，或导入一个案例的 TXT / CSV（最大 50 KB）。', pdfHint: '也支持可选中文本的 PDF（最大 5 MB），不支持扫描件、图片或 OCR。PDF 在服务器提取文本，不会自动发送至 DeepSeek。', noPdfHint: '当前不支持 PDF、图片或 OCR。',
     sample: '试用虚构示例', upload: '选择 TXT / CSV', uploadPdf: '选择 TXT / CSV / PDF',
@@ -29,7 +35,7 @@ const copy = {
     generate: '生成英文草稿', gate: '请先核对全部五项；未知项也需要确认', ready: '已核对全部项目，可以生成草稿',
     draftTitle: '可以带走的英文草稿', draftHint: '这是可编辑的英文辅助文书模板，不是官方表格或合规认证。发送前核对占位符、事实、收件人和实际附件。', template: '英文模板 · 待人工复核',
     copy: '复制草稿', download: '下载 TXT', print: '打印 / 保存 PDF', csv: '导出案例 CSV', csvHint: 'CSV 含英文草稿标识和五项字段，不包含原文或核对状态；重新导入后需再次核对。',
-    reset: '清空案例', resetAsk: '清空当前材料、已核对字段和草稿？未下载的内容将丢失。', replaceAsk: '用新材料替换当前案例？当前核对结果和草稿将被清空。',
+    reset: '清空案例', resetAsk: '清空当前工作区？未保存的修改会丢失，已保存的案例不会删除。', replaceAsk: '用新材料替换当前案例？当前核对结果和草稿将被清空。',
     copied: '英文草稿已复制', copyFail: '复制失败，请手动选中草稿复制', cancelled: '处理已取消，未应用新结果',
     errorFile: '请使用 UTF-8 TXT / 单案例 CSV（最大 50 KB），或当前支持的 PDF / XLSX / XLS。', errorCSV: 'CSV 需要列头 property, owner, pha, caseReference, rent，以及一行案例数据。', errorEmpty: '请先粘贴文本或导入文件。',
     errorLive: '实时 AI 不可用或请求失败。未应用新建议，可重试或选择手动整理。', errorPdf: '无法提取此 PDF。请改为粘贴去标识化文本，或使用可选中文本的 PDF。',
@@ -44,11 +50,17 @@ const copy = {
   en: {
     workspaceTitle: 'From document to English draft', safeShort: 'Synthetic or de-identified information only', inputShort: 'Add your document', sampleShort: 'Try sample', pasteShort: 'Or paste de-identified text here…', inputHelp: 'Formats and processing details', nextReview: 'Extract & review with AI', reviewShort: 'Review five facts', sourceHint: 'Expand a source to check it', check: 'Confirm', editedShort: 'Edited · View source', missingShort: 'To confirm:', missingScope: 'Not provided in this review, not an agency missing-document notice', nextHelp: 'Next steps and export details', draftTypeShort: 'Draft type', backInput: 'Back to document', backReview: 'Back to review', gateShort: 'Confirm every field. Unknown information can stay blank.', draftShort: 'Edit directly. Supplementary draft, not an official form. Review before use.', footerShort: 'Drafts only · Nothing is sent or submitted automatically',
     settings: 'Settings', modelLabel: 'Model', endpointLabel: 'Endpoint', readyStatus: 'Extraction enabled', configStatus: 'AI is not enabled', backendStatus: 'Backend not connected', checkingStatus: 'Checking connection', configHelp: 'Set DEEPSEEK_API_KEY and ENABLE_LIVE_AI=true on the server, then restart. Credentials stay on the server and are never stored in the browser.', manualAction: 'Process labels manually', errorConfig: 'DeepSeek is not enabled. Open Settings for server configuration steps. No simulated result will be substituted.', errorBackend: 'The processing backend is not connected. Start the complete service before using AI or server-side file processing.', filePick: 'Upload a file', workbookHint: 'Excel files are read on the server. Select one row and confirm the field mapping. Formulas and macros are not executed.', workbookConsent: 'This Excel file will be uploaded to the server to read worksheets and cells, not automatically sent to DeepSeek. Confirm that it contains only synthetic or de-identified information. Continue?', mapTitle: 'Choose one row and map its fields', sheetLabel: 'Worksheet', rowLabel: 'Data row', columnLabel: 'Column', skipColumn: 'Skip this field', applyMapping: 'Confirm mapping & review', cancelMapping: 'Cancel import', errorWorkbook: 'Could not read this workbook. Use an unencrypted XLSX / XLS file, or export one case as CSV.', errorMapping: 'Choose a valid row and distinct columns. Formula, hidden, or merged cells cannot be imported.', workbookLimited: 'Preview limited to the first 200 rows and 50 columns', workbookBlocked: 'Some cells cannot be imported. Choose ordinary visible values.',
-    operatorSetup: 'Operator setup required', operatorSetupHelp: 'Configure NESTLET_OPERATOR_PASSWORD_HASH and an HTTPS PUBLIC_ORIGIN on the server, then restart.', signInRequired: 'Sign in to continue', operatorPassword: 'Operator password', signIn: 'Sign in', signOut: 'Sign out', refreshStatus: 'Refresh status', apiKey: 'DeepSeek API Key', replaceKey: 'Replace API key (optional)', keepExistingKey: 'Leave blank to keep the existing key', saveSettings: 'Save settings', enableLive: 'Enable DeepSeek extraction', keyMemoryNotice: 'Keys entered here stay only in server memory and must be entered again after a server restart. The browser does not store them.', keyEnvironment: 'Key: server environment', keyMemory: 'Key: server memory', keyMissing: 'No key configured', testConnection: 'Test connection', connectionVerified: 'Model access verified; text generation not tested', settingsSaved: 'Settings saved. Connection verification is shown separately.', connectionSuccess: 'DeepSeek Flash model access verified. No text generation was called.', loginSuccess: 'Signed in. You can resume your previous action.', logoutSuccess: 'Signed out. The current case has been cleared.', logoutConfirm: 'Signing out clears the current case and draft. Continue?', errorAuth: 'Sign in, then retry your previous action.', errorSession: 'Your session has expired. Sign in again.', errorHttps: 'Password and key settings require a trusted HTTPS page. Configure server HTTPS first.', errorCredentials: 'Incorrect password, or the operator account is not configured.', errorRateLimit: 'Too many attempts. Wait one minute before retrying.', errorSettings: 'Invalid settings. Check the API key format.', errorKeyRequired: 'Enter and save an API key first.', errorConnection: 'Connection verification failed. Check the key and account access. Text generation was not tested.', errorModel: 'DeepSeek Flash was not listed for this account. Verify access before retrying.',
+    operatorSetup: 'Operator setup required', operatorSetupHelp: 'Configure NESTLET_OPERATOR_PASSWORD_HASH and an HTTPS PUBLIC_ORIGIN on the server, then restart.', signInRequired: 'Sign in to continue', operatorPassword: 'Access password', signIn: 'Sign in', signOut: 'Sign out', refreshStatus: 'Refresh status', apiKey: 'DeepSeek API Key', replaceKey: 'Replace API key (optional)', keepExistingKey: 'Leave blank to keep the existing key', saveSettings: 'Save settings', enableLive: 'Enable DeepSeek extraction', keyMemoryNotice: 'Keys entered here stay only in server memory and must be entered again after a server restart. The browser does not store them.', keyEnvironment: 'Key: server environment', keyMemory: 'Key: server memory', keyMissing: 'No key configured', testConnection: 'Test connection', connectionVerified: 'Model access verified; text generation not tested', settingsSaved: 'Settings saved. Connection verification is shown separately.', connectionSuccess: 'DeepSeek Flash model access verified. No text generation was called.', loginSuccess: 'Signed in. You can resume your previous action.', logoutSuccess: 'Signed out. The workspace is cleared; saved cases are retained.', logoutConfirm: 'Signing out clears the workspace and loses unsaved changes. Saved cases are retained. Continue?', errorAuth: 'Sign in, then retry your previous action.', errorSession: 'Your session has expired. Sign in again.', errorHttps: 'Password and key settings require a trusted HTTPS page. Configure server HTTPS first.', errorCredentials: 'Incorrect username or password, or the account is not configured.', errorRateLimit: 'Too many attempts. Wait one minute before retrying.', errorSettings: 'Invalid settings. Check the API key format.', errorKeyRequired: 'Enter and save an API key first.', errorConnection: 'Connection verification failed. Check the key and account access. Text generation was not tested.', errorModel: 'DeepSeek Flash was not listed for this account. Verify access before retrying.',
     workflowFocus: 'Reference focus', localLoginNotice: 'Local development sign-in. Browser API-key entry still requires an authenticated HTTPS page.',
+    account: 'Account', trialAccess: 'Standard account', trialAccountHint: 'Work with your own cases. The service connection is managed by the owner.', loginUsername: 'Username', loginUsernameHint: 'Enter your account username; admins may leave this blank', errorOwnerRequired: 'This action is available only to the owner.', errorTrialUnavailable: 'The service is unavailable. Contact the administrator.',
+    savedCases: 'My saved cases', saveCase: 'Save case', caseName: 'Case name', untitledCase: 'Untitled case', chooseCase: 'Choose a saved case', openCase: 'Open', deleteCase: 'Delete saved case', savedScope: 'Saves text, reviewed facts, and drafts for this account only. Original files are not stored. Saving is manual.', caseSaved: 'Saved', caseNotSaved: 'Not saved yet', unsavedChanges: 'Unsaved changes', caseSaveSuccess: 'Case saved', caseOpened: 'Saved case opened', caseDeleted: 'Saved case deleted. The current workspace content is retained.', unsavedOpen: 'Your changes are not saved. Opening another case replaces the workspace. Continue?', deleteCaseConfirm: 'Permanently delete this saved case? This cannot be undone.', errorCaseNotFound: 'This case does not exist or is not available to this account.', errorCaseInvalid: 'Invalid case content. Check the name and fields.', errorCaseTooLarge: 'Total case data cannot exceed 256 KiB; source text and draft each allow up to 50,000 characters. Shorten the content and retry.', errorCaseConflict: 'This case changed elsewhere. Your work was not overwritten. Export or copy the edits you need to keep, then open the latest saved case to compare.', errorCaseStorage: 'Case storage is unavailable. Your current workspace is unchanged. Try again later.', errorCaseChanged: 'The workspace changed while loading. Nothing was replaced. Review your edits before opening again.', errorTrialLimit: 'The standard-account extraction limit has been reached. Try later or contact the administrator.',
+    errorCaseLimit: 'This account has reached the 100-case limit. Delete an unneeded saved case before adding another. Existing cases can still be updated.',
+    register: 'Create standard account', repeatPassword: 'Repeat password', registerUsernameHint: '3–64 lowercase letters or digits; _ . - allowed. The name owner is reserved.', registerPasswordHint: 'Use 12–256 characters for your password', registrationSuccess: 'Standard account created. You are signed in.', registrationUnavailable: 'Registration is unavailable. Contact the administrator.', errorRegistration: 'Use a valid username and a 12–256-character password. Both password entries must match.', errorPasswordMismatch: 'The passwords do not match. Please check both entries.', errorUsernameExists: 'This username is taken. Choose another.', errorRegistrationRate: 'Too many registration attempts. Please try again later.',
+    sampleDownloads: 'Download synthetic test files', sampleDownloadHint: 'For testing only. Download and import a file yourself; nothing is prefilled and no AI call is automatic.', sampleWorkbookHint: 'For Excel, select row 2 of the Synthetic case sheet and map columns A–E to the five fields in order.',
+    signInOrRegister: 'Sign in / Register', manageAccount: 'Manage',
     brand: 'Nestlet', tag: 'ONE DOCUMENT. ONE STEP FORWARD.', demo: 'Manual processing', liveMode: 'DeepSeek live extraction',
     title: 'Less paperwork. More progress.', subtitle: 'Keep your folders and spreadsheets. Work through one case at a time, turning loose notes into reviewable facts and an English draft.',
-    eyebrow: 'A LITTLE HELP WITH LEASE-UP', privacy: 'Synthetic or de-identified information only. Do not enter real tenant details, tax IDs, bank details, or identity documents. This prototype does not intentionally save cases; refreshing clears your work. You control downloaded files.',
+    eyebrow: 'A LITTLE HELP WITH LEASE-UP', privacy: 'Synthetic or de-identified information only. Do not enter real tenant details, tax IDs, bank details, or identity documents. Save case stores text, reviewed facts, and drafts for this account so you can return to edit. Original files are not retained. Refreshing loses unsaved changes.',
     steps: ['Add a document', 'Review the facts', 'Take an English draft'], workflow: 'Workflow',
     input: 'Start with what you have', inputHint: 'Paste text or import one case as TXT / CSV (up to 50 KB).', pdfHint: 'Text-based PDFs are also supported (up to 5 MB). No scans, images, or OCR. PDF text is extracted on the server and is not automatically sent to DeepSeek.', noPdfHint: 'PDF, images, and OCR are not currently supported.',
     sample: 'Try synthetic sample', upload: 'Choose TXT / CSV', uploadPdf: 'Choose TXT / CSV / PDF',
@@ -68,7 +80,7 @@ const copy = {
     generate: 'Create English draft', gate: 'Review all five fields first, including any unknowns', ready: 'All fields reviewed. Ready to create a draft.',
     draftTitle: 'An English draft to take with you', draftHint: 'An editable English correspondence template, not an official form or compliance certification. Check placeholders, facts, recipient, and actual attachments before use.', template: 'ENGLISH TEMPLATE · HUMAN REVIEW REQUIRED',
     copy: 'Copy draft', download: 'Download TXT', print: 'Print / Save PDF', csv: 'Export case CSV', csvHint: 'CSV includes an English draft-notice row and five field values, not sources or review status. Imported values must be reviewed again.',
-    reset: 'Clear case', resetAsk: 'Clear the current document, reviewed facts, and draft? Content you have not downloaded will be lost.', replaceAsk: 'Replace the current case with new material? Current review decisions and the draft will be cleared.',
+    reset: 'Clear case', resetAsk: 'Clear the workspace? Unsaved changes will be lost. Saved cases will not be deleted.', replaceAsk: 'Replace the current case with new material? Current review decisions and the draft will be cleared.',
     copied: 'English draft copied', copyFail: 'Copy failed. Please select and copy the draft manually.', cancelled: 'Processing cancelled. No new results were applied.',
     errorFile: 'Use UTF-8 TXT / one-case CSV (up to 50 KB), or a currently supported PDF / XLSX / XLS.', errorCSV: 'CSV requires the headers property, owner, pha, caseReference, rent, followed by one case row.', errorEmpty: 'Paste text or import a file first.',
     errorLive: 'Live AI is unavailable or failed. No new suggestions were applied. Retry or choose manual processing.', errorPdf: 'Could not extract this PDF. Paste de-identified text or use a text-based PDF instead.',
@@ -83,7 +95,7 @@ const copy = {
 };
 
 const kinds = DRAFT_TYPES;
-const state = {lang: 'zh', stage: 0, guidanceAgency: DEFAULT_GUIDANCE_AGENCY, guidanceOpen: false, text: '', fields: [], draftText: '', generated: false, error: '', message: '', busy: false, liveEnabled: false, pdfEnabled: false, workbookEnabled: false, workbook: null, sheetIndex: 0, rowIndex: 0, mapping: {}, settingsOpen: false, settingsBusy: false, settingsError: '', settingsMessage: '', authConfigured: false, authenticated: false, secureSettings: false, configured: false, csrfToken: '', connectionVerifiedAt: null, keyStorage: 'none', statusChecked: false, statusError: false, model: 'deepseek-flash', providerEndpoint: 'https://api.deepseek.com/chat/completions', mode: 'demo', source: '', sample: false, namesVerified: false, kind: 'followup', generatedKind: 'followup', version: 0, controller: null};
+const state = {lang: 'zh', stage: 0, guidanceAgency: DEFAULT_GUIDANCE_AGENCY, guidanceOpen: false, text: '', fields: [], draftText: '', generated: false, error: '', message: '', busy: false, liveEnabled: false, pdfEnabled: false, workbookEnabled: false, workbook: null, sheetIndex: 0, rowIndex: 0, mapping: {}, settingsOpen: false, settingsBusy: false, settingsError: '', settingsMessage: '', authConfigured: false, authenticated: false, role: null, canManageSettings: false, userId: null, workspaceOwnerId: null, username: '', loginUsername: '', authForm: 'login', registrationEnabled: false, secureLogin: false, caseStorageEnabled: false, caseId: null, caseVersion: null, caseTitle: '', savedFingerprint: null, cases: [], selectedCaseId: '', casesOpen: false, caseBusy: false, caseError: '', caseMessage: '', caseEpoch: 0, secureSettings: false, configured: false, csrfToken: '', connectionVerifiedAt: null, keyStorage: 'none', statusChecked: false, statusError: false, model: 'deepseek-flash', providerEndpoint: 'https://api.deepseek.com/chat/completions', mode: 'demo', source: '', sample: false, namesVerified: false, kind: 'followup', generatedKind: 'followup', version: 0, controller: null};
 const t = () => copy[state.lang];
 const esc = value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
 const byId = id => document.getElementById(id);
@@ -109,6 +121,9 @@ function fieldMarkup(field, index) {
   </article>`;
 }
 
+function managesSettings() {
+  return state.authenticated && state.role === 'owner' && state.canManageSettings;
+}
 function secureSettingsAvailable() {
   return state.secureSettings && window.location.protocol === 'https:';
 }
@@ -116,34 +131,40 @@ function localDevelopmentLogin() {
   return window.location.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]', '::1'].includes(window.location.hostname);
 }
 function operatorLoginAvailable() {
-  return secureSettingsAvailable() || localDevelopmentLogin();
+  return (state.secureLogin && window.location.protocol === 'https:') || secureSettingsAvailable() || localDevelopmentLogin();
 }
 function settingsMarkup() {
   if (!state.settingsOpen) return '';
   const d = t();
   const disabled = state.settingsBusy || state.busy ? 'disabled' : '';
-  const statusLabel = !state.statusChecked ? d.checkingStatus : state.statusError ? d.backendStatus : !state.authConfigured ? d.operatorSetup : !state.authenticated ? d.signInRequired : state.liveEnabled ? d.readyStatus : d.configStatus;
+  const statusLabel = !state.statusChecked ? d.checkingStatus : state.statusError ? d.backendStatus : !state.authConfigured ? d.operatorSetup : !state.authenticated ? d.signInRequired : state.role === 'trial' ? d.trialAccess : state.liveEnabled ? d.readyStatus : d.configStatus;
   let controls = '';
   if (state.statusError) controls = `<p>${d.errorBackend}</p>`;
   else if (!state.authConfigured) controls = `<p>${d.operatorSetupHelp}</p>`;
   else if (!state.authenticated) {
-    controls = operatorLoginAvailable() ? `${localDevelopmentLogin() ? `<p class="small">${d.localLoginNotice}</p>` : ''}<form id="login-form" autocomplete="off"><label for="operator-password">${d.operatorPassword}</label><div class="credential-row"><input id="operator-password" name="operator-password" type="password" autocomplete="off" minlength="12" maxlength="256" required ${disabled}><button class="primary" type="submit" ${disabled}>${d.signIn}</button></div></form>` : `<p>${d.errorHttps}</p>`;
+    const registering = state.authForm === 'register' && state.registrationEnabled;
+    controls = operatorLoginAvailable() ? `${localDevelopmentLogin() ? `<p class="small">${d.localLoginNotice}</p>` : ''}<div class="actions"><button id="auth-signin" class="link" type="button" ${!registering || disabled ? 'disabled' : ''}>${d.signIn}</button><button id="auth-register" class="link" type="button" ${registering || !state.registrationEnabled || disabled ? 'disabled' : ''}>${d.register}</button></div><form id="login-form" autocomplete="off" novalidate><label for="login-username">${d.loginUsername}</label><input id="login-username" class="input" type="text" autocomplete="off" maxlength="64" value="${esc(state.loginUsername)}" placeholder="${registering ? d.registerUsernameHint : d.loginUsernameHint}" ${disabled}><label for="operator-password">${d.operatorPassword}</label><div class="credential-row"><input id="operator-password" name="operator-password" type="password" autocomplete="off" minlength="12" maxlength="256" ${disabled}>${registering ? '' : `<button class="primary" type="submit" ${disabled}>${d.signIn}</button>`}</div>${registering ? `<p class="small">${d.registerPasswordHint}</p><label for="password-confirmation">${d.repeatPassword}</label><div class="credential-row"><input id="password-confirmation" type="password" autocomplete="off" minlength="12" maxlength="256" ${disabled}><button class="primary" type="submit" ${disabled}>${d.register}</button></div>` : ''}</form>` : `<p>${d.errorHttps}</p>`;
+  } else if (!managesSettings()) {
+    controls = `<p>${state.role === 'trial' ? d.trialAccountHint : d.errorOwnerRequired}</p><button id="logout" class="link" ${disabled}>${d.signOut}</button>`;
   } else if (!secureSettingsAvailable()) {
     controls = `<p>${localDevelopmentLogin() ? d.localLoginNotice : d.errorHttps}</p><p class="small">${state.configured ? state.keyStorage === 'server-environment' ? d.keyEnvironment : d.keyMemory : d.keyMissing}</p><button id="logout" class="link" ${disabled}>${d.signOut}</button>`;
   } else {
     controls = `<form id="key-form" autocomplete="off"><label for="api-key">${state.configured ? d.replaceKey : d.apiKey}</label><div class="credential-row"><input id="api-key" name="api-key" type="password" autocomplete="off" spellcheck="false" autocapitalize="off" maxlength="256" ${state.configured ? '' : 'required'} placeholder="${state.configured ? d.keepExistingKey : ''}" ${disabled}><button class="primary" type="submit" ${disabled}>${d.saveSettings}</button></div><label class="confirm settings-enable"><input id="enable-live" type="checkbox" ${state.liveEnabled || !state.configured ? 'checked' : ''} ${disabled}>${d.enableLive}</label></form><p class="small">${d.keyMemoryNotice}</p><div class="settings-actions"><button id="test-connection" class="secondary" ${disabled || !state.configured ? 'disabled' : ''}>${d.testConnection}</button><button id="logout" class="link" ${disabled}>${d.signOut}</button><span class="small">${state.configured ? state.keyStorage === 'server-environment' ? d.keyEnvironment : d.keyMemory : d.keyMissing}</span></div>${state.connectionVerifiedAt ? `<p class="small">${d.connectionVerified} · ${esc(new Date(state.connectionVerifiedAt).toLocaleString(state.lang === 'zh' ? 'zh-CN' : 'en-US'))}</p>` : ''}`;
   }
-  return `<aside class="settings-panel" aria-label="${d.settings}"><div class="settings-header"><strong class="settings-status">${statusLabel}</strong><button id="refresh-status" class="link" ${disabled}>${d.refreshStatus}</button></div><dl><dt>${d.modelLabel}</dt><dd>${esc(state.model)}</dd><dt>${d.endpointLabel}</dt><dd>${esc(state.providerEndpoint)}</dd></dl>${controls}<div class="error" role="alert">${state.settingsError ? d[state.settingsError] || d.errorGeneric : ''}</div><div class="success" role="status">${state.settingsBusy ? d.busy : state.settingsMessage ? d[state.settingsMessage] : ''}</div></aside>`;
+  return `<aside class="settings-panel" aria-label="${managesSettings() ? d.settings : d.account}"><div class="settings-header"><strong class="settings-status">${statusLabel}</strong><button id="refresh-status" class="link" ${disabled}>${d.refreshStatus}</button></div>${!managesSettings() ? '' : `<dl><dt>${d.modelLabel}</dt><dd>${esc(state.model)}</dd><dt>${d.endpointLabel}</dt><dd>${esc(state.providerEndpoint)}</dd></dl>`}${controls}<div id="settings-error" class="error" role="alert">${state.settingsError ? d[state.settingsError] || d.errorGeneric : ''}</div><div class="success" role="status">${state.settingsBusy ? d.busy : state.settingsMessage ? d[state.settingsMessage] : ''}</div></aside>`;
 }
 
 const authErrorKeys = {
-  AUTH_REQUIRED: 'errorAuth', CSRF_REJECTED: 'errorSession', OPERATOR_SETUP_REQUIRED: 'operatorSetupHelp', HTTPS_REQUIRED: 'errorHttps',
+  REGISTRATION_INVALID: 'errorRegistration', USER_EXISTS: 'errorUsernameExists', USER_LIMIT_REACHED: 'registrationUnavailable', REGISTRATION_RATE_LIMITED: 'errorRegistrationRate',
+  TRIAL_LIMIT_REACHED: 'errorTrialLimit', USER_INVALID: 'errorCredentials', OWNER_REQUIRED: 'errorOwnerRequired', AUTH_REQUIRED: 'errorAuth', CSRF_REJECTED: 'errorSession', OPERATOR_SETUP_REQUIRED: 'operatorSetupHelp', HTTPS_REQUIRED: 'errorHttps',
   INVALID_CREDENTIALS: 'errorCredentials', LOGIN_RATE_LIMITED: 'errorRateLimit', SETTINGS_RATE_LIMITED: 'errorRateLimit',
   INVALID_SETTINGS: 'errorSettings', API_KEY_REQUIRED: 'errorKeyRequired', CONNECTION_FAILED: 'errorConnection', MODEL_UNAVAILABLE: 'errorModel',
   BUSY: 'errorBusy', LIVE_DISABLED: 'errorConfig'
 };
 function responseError(result, fallback) {
-  const key = authErrorKeys[result?.code] || fallback;
+  let key = authErrorKeys[result?.code] || fallback;
+  if (state.role === 'trial' && ['errorConfig', 'errorKeyRequired', 'operatorSetupHelp', 'errorSettings'].includes(key)) key = 'errorTrialUnavailable';
+  if (result?.code === 'OWNER_REQUIRED') {state.settingsOpen = true; state.settingsError = key;}
   if (['AUTH_REQUIRED', 'CSRF_REJECTED', 'OPERATOR_SETUP_REQUIRED', 'HTTPS_REQUIRED'].includes(result?.code)) {
     state.authenticated = false;
     state.csrfToken = '';
@@ -156,12 +177,21 @@ function requestHeaders(extra = {}) {
   return {...extra, ...(state.csrfToken ? {'X-CSRF-Token': state.csrfToken} : {})};
 }
 function applyStatus(status) {
-  for (const key of ['liveEnabled', 'pdfEnabled', 'workbookEnabled', 'authConfigured', 'authenticated', 'secureSettings', 'configured']) {
+  for (const key of ['liveEnabled', 'pdfEnabled', 'workbookEnabled', 'authConfigured', 'authenticated', 'secureSettings', 'secureLogin', 'configured', 'caseStorageEnabled', 'registrationEnabled']) {
     if (key in status) state[key] = status[key] === true;
   }
+  state.role = ['owner', 'trial'].includes(status.role) ? status.role : null;
+  state.canManageSettings = state.role === 'owner' && status.canManageSettings === true;
+  state.userId = typeof status.userId === 'string' ? status.userId : null;
+  state.username = typeof status.username === 'string' ? status.username : '';
+  if (state.userId && state.workspaceOwnerId && state.userId !== state.workspaceOwnerId) {replaceText(''); forgetCaseIdentity(); state.cases = []; state.selectedCaseId = '';}
+  if (state.userId) state.workspaceOwnerId = state.userId;
+  if (!state.authenticated) {state.cases = []; state.selectedCaseId = '';}
+
   state.csrfToken = typeof status.csrfToken === 'string' ? status.csrfToken : '';
   state.connectionVerifiedAt = typeof status.connectionVerifiedAt === 'string' ? status.connectionVerifiedAt : null;
   state.keyStorage = typeof status.keyStorage === 'string' ? status.keyStorage : 'none';
+  if (!managesSettings()) {state.configured = false; state.keyStorage = 'none'; state.connectionVerifiedAt = null;}
   state.model = typeof status.model === 'string' ? status.model : 'deepseek-flash';
   state.providerEndpoint = typeof status.providerEndpoint === 'string' ? status.providerEndpoint : state.providerEndpoint;
   state.statusChecked = true;
@@ -172,17 +202,20 @@ async function refreshStatus() {
     const response = await fetch('/api/status', {cache: 'no-store'});
     if (!response.ok) throw new Error();
     applyStatus(await response.json());
+    await refreshCaseList(false);
   } catch {state.statusChecked = true; state.statusError = true; state.liveEnabled = false;}
   render();
 }
 async function settingsRequest(path, payload, successKey) {
   if (state.settingsBusy) return;
+  if (['/api/settings', '/api/settings/test'].includes(path) && !managesSettings()) {state.settingsError = 'errorOwnerRequired'; state.settingsOpen = true; render(); return;}
   state.settingsBusy = true;
   state.settingsError = '';
   state.settingsMessage = '';
   // The form values are never copied into application state or browser storage.
   const body = JSON.stringify(payload);
   if ('password' in payload) payload.password = '';
+  if ('passwordConfirmation' in payload) payload.passwordConfirmation = '';
   if ('apiKey' in payload) payload.apiKey = '';
   render();
   try {
@@ -193,11 +226,13 @@ async function settingsRequest(path, payload, successKey) {
       if (result.ok !== true || result.check !== 'model-access' || result.chatCompletionTested !== false || result.model !== 'deepseek-flash' || typeof result.verifiedAt !== 'string' || !Number.isFinite(Date.parse(result.verifiedAt))) throw new Error('errorConnection');
       state.connectionVerifiedAt = result.verifiedAt;
     } else if (path === '/api/logout') {
-      replaceText(''); state.authenticated = false; state.csrfToken = ''; await refreshStatus();
-    } else if (path === '/api/login') {
+      replaceText(''); forgetCaseIdentity(); state.workspaceOwnerId = null; state.cases = []; state.selectedCaseId = ''; state.authenticated = false; state.csrfToken = ''; await refreshStatus();
+    } else if (path === '/api/login' || path === '/api/register') {
       state.csrfToken = typeof result.csrfToken === 'string' ? result.csrfToken : '';
       await refreshStatus();
       if (!state.authenticated) throw new Error('errorAuth');
+      if (path === '/api/register' && state.role !== 'trial') throw new Error('errorRegistration');
+      state.authForm = 'login';
     } else {
       if (result.authenticated !== true || typeof result.configured !== 'boolean' || result.model !== 'deepseek-flash') throw new Error('errorSettings');
       applyStatus(result);
@@ -205,6 +240,119 @@ async function settingsRequest(path, payload, successKey) {
     state.settingsMessage = successKey;
   } catch (error) {state.settingsError = copy.en[error.message] ? error.message : 'errorGeneric';}
   finally {state.settingsBusy = false; render();}
+}
+
+function casePayload() {
+  return {
+    title: state.caseTitle.trim(), sourceText: state.text, fields: state.fields,
+    draftType: state.generated ? state.generatedKind : state.kind, draftText: state.draftText,
+    extractionMode: state.mode === 'live' ? 'live' : 'manual', namesVerified: state.namesVerified
+  };
+}
+function caseFingerprint() {return JSON.stringify(casePayload());}
+function hasCaseContent() {return Boolean(state.text || state.fields.length || state.draftText);}
+function hasUnsavedChanges() {
+  return Boolean(hasCaseContent() || state.caseTitle) && caseFingerprint() !== state.savedFingerprint;
+}
+function caseStatusLabel() {
+  return state.caseBusy ? t().busy : hasUnsavedChanges() ? t().unsavedChanges : state.caseId ? t().caseSaved : t().caseNotSaved;
+}
+function updateCaseIndicator() {
+  if (byId('case-save-status')) byId('case-save-status').textContent = caseStatusLabel();
+  if (byId('save-case')) byId('save-case').disabled = state.caseBusy || state.busy || !hasCaseContent();
+}
+function forgetCaseIdentity() {
+  state.caseId = null; state.caseVersion = null; state.caseTitle = ''; state.savedFingerprint = null;
+  state.caseError = ''; state.caseMessage = ''; state.caseEpoch++;
+}
+function caseControlsMarkup() {
+  if (!state.authenticated || !state.caseStorageEnabled) return '';
+  const d = t();
+  const disabled = state.caseBusy || state.busy ? 'disabled' : '';
+  return `<section class="case-controls" aria-label="${d.savedCases}"><div class="actions"><button id="save-case" class="secondary" ${disabled || !hasCaseContent() ? 'disabled' : ''}>${d.saveCase}</button><details id="case-manager" class="help-details" ${state.casesOpen ? 'open' : ''}><summary>${d.savedCases}</summary><div class="draft-choice"><label for="case-title">${d.caseName}</label><input id="case-title" class="input" maxlength="120" value="${esc(state.caseTitle)}" placeholder="${d.untitledCase}"></div><div class="draft-choice"><label for="saved-case">${d.savedCases}</label><select id="saved-case" ${disabled}><option value="">${d.chooseCase}</option>${state.cases.map(item => `<option value="${esc(item.id)}" ${state.selectedCaseId === item.id ? 'selected' : ''}>${esc(item.title)}</option>`).join('')}</select></div><div class="actions"><button id="open-case" class="secondary" ${disabled || !state.selectedCaseId ? 'disabled' : ''}>${d.openCase}</button><button id="delete-case" class="link" ${disabled || !state.selectedCaseId ? 'disabled' : ''}>${d.deleteCase}</button><button id="refresh-cases" class="link" ${disabled}>${d.refreshStatus}</button></div><p>${d.savedScope}</p></details><span id="case-save-status" class="small" role="status">${caseStatusLabel()}</span></div><div class="error" role="alert">${state.caseError ? d[state.caseError] || d.errorGeneric : ''}</div><div class="success" role="status">${state.caseMessage ? d[state.caseMessage] : ''}</div></section>`;
+}
+const caseErrorKeys = {CASE_LIMIT_REACHED: 'errorCaseLimit', CASE_NOT_FOUND: 'errorCaseNotFound', CASE_INVALID: 'errorCaseInvalid', CASE_TOO_LARGE: 'errorCaseTooLarge', CASE_CONFLICT: 'errorCaseConflict', CASE_STORAGE_UNAVAILABLE: 'errorCaseStorage'};
+async function caseRequest(path, method = 'GET', payload) {
+  const response = await fetch(path, {method, cache: 'no-store', headers: requestHeaders(payload ? {'Content-Type': 'application/json'} : {}), ...(payload ? {body: JSON.stringify(payload)} : {})});
+  const result = await response.json();
+  if (!response.ok) throw responseError(result, caseErrorKeys[result.code] || 'errorCaseStorage');
+  return result;
+}
+async function refreshCaseList(shouldRender = true) {
+  if (!state.authenticated || !state.caseStorageEnabled) return;
+  const userId = state.userId;
+  try {
+    const result = await caseRequest('/api/cases');
+    if (userId !== state.userId || !state.authenticated) return;
+    if (!Array.isArray(result.cases) || result.cases.some(item => typeof item.id !== 'string' || typeof item.title !== 'string' || !Number.isInteger(item.version))) throw new Error('errorCaseStorage');
+    state.cases = result.cases;
+    if (!state.cases.some(item => item.id === state.selectedCaseId)) state.selectedCaseId = '';
+  } catch (error) {if (userId === state.userId) state.caseError = copy.en[error.message] ? error.message : 'errorCaseStorage';}
+  if (shouldRender) render();
+}
+function validCaseRecord(record) {
+  return record && typeof record.id === 'string' && Number.isInteger(record.version) && record.version > 0 &&
+    typeof record.title === 'string' && typeof record.sourceText === 'string' && typeof record.draftText === 'string' &&
+    kinds.includes(record.draftType) && Array.isArray(record.fields) && (record.fields.length === 0 || record.fields.length === FIELDS.length && FIELDS.every(key => record.fields.filter(field => field.key === key).length === 1) && record.fields.every(field => typeof field.value === 'string' && typeof field.source === 'string' && typeof field.confirmed === 'boolean' && typeof field.conflict === 'boolean'));
+}
+async function saveCurrentCase() {
+  if (state.caseBusy || state.busy || !hasCaseContent()) return;
+  if (!state.authenticated || !state.caseStorageEnabled) {state.settingsOpen = true; state.settingsError = 'errorAuth'; render(); return;}
+  if (!state.caseTitle.trim()) state.caseTitle = (state.fields.find(field => field.key === 'caseReference')?.value.trim() || state.fields.find(field => field.key === 'property')?.value.trim() || state.source || t().untitledCase).slice(0, 120);
+  const payload = JSON.parse(caseFingerprint());
+  const fingerprint = JSON.stringify(payload);
+  const epoch = state.caseEpoch;
+  const userId = state.userId;
+  const id = state.caseId;
+  state.caseBusy = true; state.caseError = ''; state.caseMessage = ''; render();
+  try {
+    const result = await caseRequest(id ? `/api/cases/${encodeURIComponent(id)}` : '/api/cases', id ? 'PUT' : 'POST', {...payload, ...(id ? {expectedVersion: state.caseVersion} : {})});
+    if (!validCaseRecord(result.case)) throw new Error('errorCaseStorage');
+    if (userId === state.userId && epoch === state.caseEpoch) {
+      state.caseId = result.case.id; state.caseVersion = result.case.version; state.savedFingerprint = fingerprint;
+      state.selectedCaseId = result.case.id; state.caseMessage = 'caseSaveSuccess';
+    }
+    await refreshCaseList(false);
+  } catch (error) {if (userId === state.userId && epoch === state.caseEpoch) state.caseError = copy.en[error.message] ? error.message : 'errorCaseStorage';}
+  finally {state.caseBusy = false; render();}
+}
+async function openSavedCase() {
+  if (!state.selectedCaseId || state.caseBusy || state.busy) return;
+  if (hasUnsavedChanges() && !confirm(t().unsavedOpen)) return;
+  const selected = state.selectedCaseId;
+  const before = caseFingerprint();
+  const epoch = state.caseEpoch;
+  const userId = state.userId;
+  state.caseBusy = true; state.caseError = ''; state.caseMessage = ''; render();
+  try {
+    const result = await caseRequest(`/api/cases/${encodeURIComponent(selected)}`);
+    if (!validCaseRecord(result.case)) throw new Error('errorCaseStorage');
+    if (userId !== state.userId || epoch !== state.caseEpoch || before !== caseFingerprint()) throw new Error('errorCaseChanged');
+    const record = result.case;
+    replaceText(record.sourceText, record.title);
+    state.fields = record.fields.length ? FIELDS.map(key => record.fields.find(field => field.key === key)) : []; state.draftText = record.draftText; state.generated = Boolean(record.draftText);
+    state.kind = record.draftType; state.generatedKind = record.draftType; state.namesVerified = record.namesVerified === true;
+    state.mode = record.extractionMode === 'live' ? 'live' : 'demo';
+    state.caseId = record.id; state.caseVersion = record.version; state.caseTitle = record.title;
+    state.savedFingerprint = caseFingerprint(); state.stage = state.generated ? 2 : state.fields.length ? 1 : 0;
+    state.caseMessage = 'caseOpened';
+  } catch (error) {if (userId === state.userId) state.caseError = copy.en[error.message] ? error.message : 'errorCaseStorage';}
+  finally {state.caseBusy = false; render();}
+}
+async function deleteSavedCase() {
+  const item = state.cases.find(record => record.id === state.selectedCaseId);
+  if (!item || state.caseBusy || state.busy || !confirm(t().deleteCaseConfirm + '\n' + item.title)) return;
+  const userId = state.userId;
+  state.caseBusy = true; state.caseError = ''; state.caseMessage = ''; render();
+  try {
+    const result = await caseRequest(`/api/cases/${encodeURIComponent(item.id)}`, 'DELETE', {expectedVersion: item.version});
+    if (result.deleted !== true) throw new Error('errorCaseStorage');
+    if (userId !== state.userId) return;
+    if (state.caseId === item.id) {state.caseId = null; state.caseVersion = null; state.savedFingerprint = null;}
+    state.selectedCaseId = ''; state.caseMessage = 'caseDeleted';
+    await refreshCaseList(false);
+  } catch (error) {if (userId === state.userId) state.caseError = copy.en[error.message] ? error.message : 'errorCaseStorage';}
+  finally {state.caseBusy = false; render();}
 }
 
 function agencyMarkup() {
@@ -241,13 +389,15 @@ function render() {
   const stage = state.stage;
   document.documentElement.lang = state.lang === 'zh' ? 'zh-CN' : 'en';
   byId('app').innerHTML = `<div class="shell compact-shell">
-    <header><a class="brand" href="#main" aria-label="Nestlet"><img src="/logo.svg" alt=""><div class="wordmark">${d.brand}<span class="small">${state.lang === 'zh' ? ' Nestlet' : ''}</span></div></a><div class="tools"><span class="pill mode">DeepSeek Flash</span><button class="ghost" id="settings" aria-expanded="${state.settingsOpen}">${d.settings}</button><button class="ghost" id="language" lang="${state.lang === 'zh' ? 'en' : 'zh-CN'}" aria-label="${state.lang === 'zh' ? 'Switch interface to English' : '切换界面为中文'}">${state.lang === 'zh' ? 'English' : '中文'}</button></div></header>
+    <header><a class="brand" href="#main" aria-label="Nestlet"><img src="/logo.svg" alt=""><div class="wordmark">${d.brand}<span class="small">${state.lang === 'zh' ? ' Nestlet' : ''}</span></div></a><div class="tools"><span class="pill mode">DeepSeek Flash</span><button class="ghost" id="settings" aria-expanded="${state.settingsOpen}">${!state.authenticated ? d.signInOrRegister : managesSettings() ? d.manageAccount : d.account}</button><button class="ghost" id="language" lang="${state.lang === 'zh' ? 'en' : 'zh-CN'}" aria-label="${state.lang === 'zh' ? 'Switch interface to English' : '切换界面为中文'}">${state.lang === 'zh' ? 'English' : '中文'}</button></div></header>
     ${settingsMarkup()}
     <div class="workspace-heading"><h1>${d.workspaceTitle}</h1><p>${d.safeShort}<span class="workflow-focus">${d.workflowFocus}: ${esc(getAgencyGuidance(state.guidanceAgency, state.lang).label)}</span></p></div>
     <nav class="steps" aria-label="${d.workflow}">${d.steps.map((step, index) => `<button type="button" data-stage="${index}" class="step ${stage === index ? 'active current' : index < stage ? 'active' : ''}" ${index === 1 && !fields.length || index === 2 && !state.generated ? 'disabled' : ''} ${stage === index ? 'aria-current="step"' : ''}><b>${index + 1}</b>${step}</button>`).join('')}</nav>
+    ${caseControlsMarkup()}
     <main id="main" class="grid" ${stage === 2 ? 'hidden' : ''}>
       <section class="panel" id="input-panel" ${stage !== 0 ? 'hidden' : ''}><div class="panel-top"><h2>${d.inputShort}</h2></div>
         <label class="file ${busy ? 'disabled' : ''}"><span aria-hidden="true">↥</span><span>${d.filePick}<small class="file-formats">TXT · CSV${state.pdfEnabled ? ' · PDF' : ''}${state.workbookEnabled ? ' · XLSX · XLS' : ''}</small></span><input type="file" id="file" accept=".txt,.csv,text/plain,text/csv${state.pdfEnabled ? ',.pdf,application/pdf' : ''}${state.workbookEnabled ? ',.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel' : ''}" ${busy ? 'disabled' : ''}></label>
+        <details class="help-details" id="sample-downloads"><summary>${d.sampleDownloads}</summary><div class="actions">${['txt', 'csv', 'pdf', 'xlsx', 'xls'].map(extension => `<a href="/samples/nestlet-synthetic-case.${extension}" download="nestlet-synthetic-case.${extension}">${extension.toUpperCase()}</a>`).join('')}</div><p>${d.sampleDownloadHint}</p><p>${d.sampleWorkbookHint}</p></details>
         ${state.workbook || state.source ? `<div class="document-name">${esc(state.workbook?.filename || state.source)}</div>` : ''}
         ${state.workbook ? workbookMarkup() : `
         <label class="sr-only" for="input">${d.input}</label><textarea class="input" id="input" maxlength="50000" placeholder="${d.pasteShort}" ${busy ? 'disabled' : ''}>${esc(state.text)}</textarea>
@@ -295,6 +445,7 @@ function cancelProcessing() {
   state.busy = false;
 }
 function replaceText(text, source = '', sample = false) {
+  state.caseEpoch++;
   state.stage = 0;
   state.workbook = null;
   cancelProcessing();
@@ -349,7 +500,7 @@ async function importFile(file) {
     state.error = 'errorFile'; render(); return;
   }
   if (file.size > (isPdf || isWorkbook ? 5242880 : 50000)) {state.error = 'errorSize'; render(); return;}
-  if ((state.fields.length || state.generated) && !confirm(t().replaceAsk)) {render(); return;}
+  if (hasUnsavedChanges() && !confirm(t().replaceAsk)) {render(); return;}
   if ((isPdf || isWorkbook) && !state.authConfigured) {state.settingsOpen = true; state.settingsError = 'operatorSetupHelp'; render(); return;}
   if ((isPdf || isWorkbook) && !state.authenticated) {state.settingsOpen = true; state.settingsError = 'errorAuth'; render(); return;}
   if (isPdf && !confirm(t().pdfConsent)) {render(); return;}
@@ -394,7 +545,7 @@ async function importFile(file) {
 
 async function extractLive() {
   if (state.authConfigured && !state.authenticated) {state.settingsOpen = true; state.settingsError = 'errorAuth'; render(); return;}
-  if (!state.liveEnabled) {state.error = state.statusError ? 'errorBackend' : 'errorConfig'; state.settingsOpen = true; render(); return;}
+  if (!state.liveEnabled) {state.error = state.statusError ? 'errorBackend' : state.role === 'trial' ? 'errorTrialUnavailable' : 'errorConfig'; state.settingsOpen = true; render(); return;}
   if (!state.text.trim()) {state.error = 'errorEmpty'; render(); return;}
   if (!confirm(t().consent)) return;
   const {ticket, signal} = beginProcessing();
@@ -420,19 +571,40 @@ function bind() {
   on('draft-back', 'click', () => go(1));
   on('guidance-agency', 'change', event => {state.guidanceAgency = event.target.value; state.guidanceOpen = true; render();});
   on('agency-references', 'toggle', event => {state.guidanceOpen = event.target.open;});
+  on('save-case', 'click', saveCurrentCase);
+  on('open-case', 'click', openSavedCase);
+  on('delete-case', 'click', deleteSavedCase);
+  on('refresh-cases', 'click', () => refreshCaseList());
+  on('case-manager', 'toggle', event => {state.casesOpen = event.target.open;});
+  on('case-title', 'input', event => {state.caseTitle = event.target.value; updateCaseIndicator();});
+  on('saved-case', 'change', event => {state.selectedCaseId = event.target.value; render();});
   on('settings', 'click', () => {state.settingsOpen = !state.settingsOpen; state.settingsError = ''; state.settingsMessage = ''; render();});
   on('refresh-status', 'click', refreshStatus);
+  for (const [id, mode] of [['auth-signin', 'login'], ['auth-register', 'register']]) on(id, 'click', () => {
+    state.loginUsername = byId('login-username')?.value.trim() || state.loginUsername;
+    state.authForm = mode; state.settingsError = ''; state.settingsMessage = ''; render();
+  });
   on('login-form', 'submit', event => {
     event.preventDefault();
     if (!operatorLoginAvailable()) return;
     const input = byId('operator-password');
-    const payload = {password: input.value};
+    const confirmation = byId('password-confirmation');
+    state.loginUsername = byId('login-username').value.trim().toLowerCase();
+    const registering = state.authForm === 'register';
+    let validationError = '';
+    if (registering && !state.registrationEnabled) validationError = 'registrationUnavailable';
+    else if (registering && (!/^[a-z0-9][a-z0-9_.-]{2,63}$/.test(state.loginUsername) || state.loginUsername === 'owner')) validationError = 'errorRegistration';
+    else if (input.value.length < 12 || input.value.length > 256 || /[\u0000-\u001f\u007f]/.test(input.value)) validationError = registering ? 'errorRegistration' : 'errorCredentials';
+    else if (registering && input.value !== confirmation?.value) validationError = 'errorPasswordMismatch';
+    if (validationError) {state.settingsError = validationError; byId('settings-error').textContent = t()[validationError]; return;}
+    const payload = {username: state.loginUsername, password: input.value, ...(registering ? {passwordConfirmation: confirmation.value} : {})};
     input.value = '';
-    settingsRequest('/api/login', payload, 'loginSuccess');
+    if (confirmation) confirmation.value = '';
+    settingsRequest(registering ? '/api/register' : '/api/login', payload, registering ? 'registrationSuccess' : 'loginSuccess');
   });
   on('key-form', 'submit', event => {
     event.preventDefault();
-    if (!secureSettingsAvailable() || !state.authenticated) return;
+    if (!secureSettingsAvailable() || !managesSettings()) return;
     const input = byId('api-key');
     const payload = {enableLive: byId('enable-live').checked};
     if (input.value.trim()) payload.apiKey = input.value.trim();
@@ -448,7 +620,7 @@ function bind() {
   on('language', 'click', () => {state.lang = state.lang === 'zh' ? 'en' : 'zh'; render();});
   on('reset', 'click', () => {
     if ((state.text || state.fields.length || state.busy) && !confirm(t().resetAsk)) return;
-    replaceText(''); state.kind = 'followup'; render(); byId('input').focus();
+    replaceText(''); forgetCaseIdentity(); state.kind = 'followup'; render(); byId('input').focus();
   });
   on('cancel', 'click', () => {cancelProcessing(); state.message = 'cancelled'; render();});
   on('input', 'input', event => {
@@ -459,6 +631,7 @@ function bind() {
     state.message = '';
     if (state.fields.length || state.generated || state.source || wasSample) {clearReview(); state.source = ''; render();}
     else byId('char-count').textContent = state.text.length.toLocaleString() + ' / 50,000';
+    updateCaseIndicator();
   });
   on('file', 'change', event => importFile(event.target.files[0]));
   on('workbook-sheet', 'change', event => {
@@ -504,7 +677,7 @@ function bind() {
     render();
   }));
   on('names-verified', 'change', event => {state.namesVerified = event.target.checked; state.draftText = ''; state.generated = false; render();});
-  on('draft-type', 'change', event => {state.kind = event.target.value;});
+  on('draft-type', 'change', event => {state.kind = event.target.value; updateCaseIndicator();});
   on('generate', 'click', () => {
     if (!canDraft(state.fields) || fieldsNeedEnglish()) return;
     state.draftText = draft(state.fields, state.kind).split('\n').filter(line => !['DRAFT — FOR HUMAN REVIEW', 'DE-IDENTIFIED WORKING COPY — NOT FOR SUBMISSION', 'Operator-prepared supplementary document; not an official government form', 'Supplementary correspondence; not an official government form'].includes(line)).join('\n').trimStart();
@@ -514,7 +687,7 @@ function bind() {
     byId('draft').focus({preventScroll: true});
   });
   on('csv', 'click', () => download(exportCSV(state.fields, {includeNotice: true}), 'nestlet-case-DRAFT.csv', 'text/csv;charset=utf-8'));
-  on('draft', 'input', event => {state.draftText = event.target.value; state.message = ''; document.querySelector('.print-text').textContent = exportDraft(); document.querySelector('#draft-panel .success').textContent = ''; const blocked = draftNeedsEnglish(); ['copy', 'download', 'print'].forEach(id => byId(id).disabled = blocked); byId('draft-language-error').textContent = blocked ? t().draftEnglishRequired : '';});
+  on('draft', 'input', event => {state.draftText = event.target.value; state.message = ''; document.querySelector('.print-text').textContent = exportDraft(); document.querySelector('#draft-panel .success').textContent = ''; const blocked = draftNeedsEnglish(); ['copy', 'download', 'print'].forEach(id => byId(id).disabled = blocked); byId('draft-language-error').textContent = blocked ? t().draftEnglishRequired : ''; updateCaseIndicator();});
   on('download', 'click', () => download(exportDraft(), `nestlet-${state.generatedKind}-DRAFT.txt`, 'text/plain;charset=utf-8'));
   on('print', 'click', () => window.print());
   on('copy', 'click', async () => {
@@ -529,3 +702,5 @@ refreshStatus();
 
 window.addEventListener('beforeprint', () => {document.title = `Nestlet - ${copy.en.types[kinds.indexOf(state.generatedKind)]} - DRAFT`;});
 window.addEventListener('afterprint', () => {document.title = 'Nestlet · 巢小秘';});
+
+window.addEventListener('beforeunload', event => {if (hasUnsavedChanges()) {event.preventDefault(); event.returnValue = '';}});

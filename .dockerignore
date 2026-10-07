@@ -4,6 +4,7 @@
 !package-lock.json
 !server.js
 !auth.js
+!storage.js
 !workbook-worker.js
 !public/
 !public/**
@@ -12,5 +13,7 @@
 !scripts/
 !scripts/setup-operator.js
 !scripts/operator-setup.js
+!scripts/setup-trial-user.js
+!scripts/trial-user-setup.js
 !Dockerfile
 !.dockerignore

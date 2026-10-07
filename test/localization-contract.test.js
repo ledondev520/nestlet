@@ -12,6 +12,9 @@ const copy = vm.runInNewContext('(' + copyMatch[1] + ')', Object.create(null), {
 const errorMapMatch = source.match(/const authErrorKeys = (\{[\s\S]*?\n\});/);
 assert.ok(errorMapMatch);
 const errorMap = vm.runInNewContext('(' + errorMapMatch[1] + ')', Object.create(null), { timeout: 1000 });
+const caseMapMatch = source.match(/const caseErrorKeys = (\{[^;]+\});/);
+assert.ok(caseMapMatch, 'Expected the case-route error map');
+const caseMap = vm.runInNewContext('(' + caseMapMatch[1] + ')', Object.create(null), { timeout: 1000 });
 const containsHan = value => /[\p{Script=Han}]/u.test(value);
 
 function strings(value) { return Array.isArray(value) ? value.flatMap(strings) : typeof value === 'string' ? [value] : []; }
@@ -27,7 +30,7 @@ test('interface dictionaries expose matching complete keys and English copy has 
 });
 
 test('every UI error key and mapped authentication/settings error has Chinese and English wording', () => {
-  const usedKeys = new Set([...Object.keys(copy.en).filter(key => /^error|^operatorSetupHelp$/.test(key)), ...Object.values(errorMap)]);
+  const usedKeys = new Set([...Object.keys(copy.en).filter(key => /^error|^operatorSetupHelp$/.test(key)), ...Object.values(errorMap), ...Object.values(caseMap)]);
   for (const key of usedKeys) {
     assert.equal(typeof copy.zh[key], 'string', key);
     assert.equal(typeof copy.en[key], 'string', key);
@@ -40,7 +43,7 @@ test('every UI error key and mapped authentication/settings error has Chinese an
 });
 
 test('unknown backend errors use local fallback keys and server error messages or stacks are never rendered', () => {
-  assert.match(source, /const key = authErrorKeys\[result\?\.code\] \|\| fallback;/);
+  assert.match(source, /(?:const|let) key = authErrorKeys\[result\?\.code\] \|\| fallback;/);
   assert.match(source, /state\.settingsError = copy\.en\[error\.message\] \? error\.message : 'errorGeneric'/);
   assert.match(source, /state\.error \? d\[state\.error\] \|\| d\.errorGeneric : ''/);
   assert.match(source, /state\.settingsError \? d\[state\.settingsError\] \|\| d\.errorGeneric : ''/);
@@ -52,7 +55,7 @@ test('unknown backend errors use local fallback keys and server error messages o
 });
 
 test('every currently emitted backend error code has an explicit bilingual route fallback or direct mapping', async () => {
-  const backend = (await Promise.all(['server.js', 'auth.js', 'workbook-worker.js'].map(name => readFile(new URL('../' + name, import.meta.url), 'utf8')))).join('\n');
+  const backend = (await Promise.all(['server.js', 'auth.js', 'workbook-worker.js', 'storage.js'].map(name => readFile(new URL('../' + name, import.meta.url), 'utf8')))).join('\n');
   const emitted = new Set([...backend.matchAll(/(?:new RequestError\([^,]+,\s*|fail\(|error:\s*|code:\s*)'([A-Z_]+)'/g)].map(match => match[1]));
   const routeFallbacks = {
     DOCUMENT_CONSENT_REQUIRED: 'errorFile', EXTRACTION_FAILED: 'errorLive', INPUT_TOO_LARGE: 'errorSize',
@@ -61,11 +64,12 @@ test('every currently emitted backend error code has an explicit bilingual route
     PDF_UNAVAILABLE: 'errorPdf', PROVIDER_ERROR: 'errorLive', REQUEST_CANCELLED: 'errorFile', SENSITIVE_DATA: 'errorSensitive',
     SETTINGS_CHANGED: 'errorGeneric', TEXT_TOO_LARGE: 'errorTextSize', UNSUPPORTED_MEDIA_TYPE: 'errorFile',
     WORKBOOK_ENCRYPTED: 'errorWorkbook', WORKBOOK_TIMEOUT: 'errorWorkbook', WORKBOOK_TOO_COMPLEX: 'errorWorkbook',
-    WORKBOOK_UNAVAILABLE: 'errorWorkbook', INTERNAL_ERROR: 'errorGeneric',
+    WORKBOOK_UNAVAILABLE: 'errorWorkbook', INTERNAL_ERROR: 'errorGeneric', USER_EXISTS: 'errorCredentials',
+    STORAGE_PATH_INVALID: 'errorBackend', STORAGE_VERSION_UNSUPPORTED: 'errorBackend',
   };
   assert.ok(emitted.size >= 30);
   for (const code of emitted) {
-    const key = errorMap[code] || routeFallbacks[code];
+    const key = errorMap[code] || caseMap[code] || routeFallbacks[code];
     assert.ok(key, `Review bilingual handling of newly emitted backend code ${code}`);
     assert.ok(containsHan(copy.zh[key]), code);
     assert.ok(copy.en[key] && !containsHan(copy.en[key]), code);

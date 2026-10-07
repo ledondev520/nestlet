@@ -2,9 +2,12 @@
 import { after, before, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { readFile } from 'node:fs/promises';
+import { readFile, mkdtemp, realpath, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import net from 'node:net';
 import http from 'node:http';
+import { extract, parseCSV } from '../public/core.js';
 import { randomBytes, scryptSync } from 'node:crypto';
 const password = 'public-test-only-parser-password';
 const salt = randomBytes(16);
@@ -13,14 +16,16 @@ let sessionHeaders;
 
 let disabled;
 let child;
+let dataDirectory;
 before(async () => {
+  dataDirectory = await mkdtemp(join(await realpath(tmpdir()), 'nestlet-parser-db-'));
   const reservation = net.createServer();
   await new Promise(resolve => reservation.listen(0, '127.0.0.1', resolve));
   const port = reservation.address().port;
   await new Promise(resolve => reservation.close(resolve));
   child = spawn(process.execPath, ['server.js'], {
     cwd: new URL('../', import.meta.url),
-    env: { ...process.env, PORT: String(port), ENABLE_LIVE_AI: 'false', DEEPSEEK_API_KEY: '', DEEPSEEK_MODEL: 'deepseek-flash', PUBLIC_ORIGIN: '', NESTLET_OPERATOR_PASSWORD_HASH: passwordHash, HOST: '127.0.0.1' },
+    env: { ...process.env, PORT: String(port), ENABLE_LIVE_AI: 'false', DEEPSEEK_API_KEY: '', DEEPSEEK_MODEL: 'deepseek-flash', PUBLIC_ORIGIN: '', NESTLET_OPERATOR_PASSWORD_HASH: passwordHash, NESTLET_DB_PATH: join(dataDirectory, 'nestlet.sqlite'), HOST: '127.0.0.1' },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   disabled = { url: `http://127.0.0.1:${port}`, output: '' };
@@ -41,10 +46,11 @@ before(async () => {
 });
 after(async () => {
   if (child && child.exitCode === null) await new Promise(resolve => { child.once('exit', resolve); child.kill('SIGTERM'); });
+  if (dataDirectory) await rm(dataDirectory, { recursive: true, force: true });
 });
 
 test('real server truthfully reports Flash and unavailable live extraction without a configured credential', async () => {
-  const response = await fetch(disabled.url + '/api/status');
+  const response = await fetch(disabled.url + '/api/status', { headers: { Cookie: sessionHeaders.Cookie } });
   assert.equal(response.status, 200);
   const body = await response.json();
   assert.equal(body.liveEnabled, false);
@@ -308,3 +314,41 @@ test('actual server serves the interface entry point and every shipped browser d
     assert.ok((await response.text()).trim().length > 0, path);
   }
 });
+
+for (const [extension, mime] of [
+  ['txt', 'text/plain'], ['csv', 'text/csv'], ['pdf', 'application/pdf'],
+  ['xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'], ['xls', 'application/vnd.ms-excel'],
+]) {
+  test(`public ${extension.toUpperCase()} sample downloads through actual HTTP and is read by its real parser`, async () => {
+    const filename = `nestlet-synthetic-case.${extension}`;
+    const response = await fetch(disabled.url + '/samples/' + filename);
+    assert.equal(response.status, 200);
+    assert.ok(response.headers.get('content-type').startsWith(mime));
+    assert.equal(response.headers.get('content-disposition'), `attachment; filename="${filename}"`);
+    const bytes = Buffer.from(await response.arrayBuffer());
+    assert.ok(bytes.length > 0);
+    if (extension === 'txt' || extension === 'csv') {
+      const raw = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+      const text = extension === 'csv' ? parseCSV(raw) : raw;
+      const fields = extract(text);
+      assert.equal(fields.find(field => field.key === 'property').value, '128 Example Lane, Unit B (fictional)');
+      assert.equal(fields.find(field => field.key === 'pha').value, '');
+      assert.match(fields.find(field => field.key === 'caseReference').value, /SYNTHETIC TEST \/ NOT A REAL CASE/);
+    } else if (extension === 'pdf') {
+      const parsed = await documentRequest(bytes);
+      assert.equal(parsed.status, 200);
+      const result = await parsed.json();
+      assert.equal(result.mode, 'local-pdf');
+      assert.match(result.text, /SYNTHETIC TEST \/ NOT A REAL CASE/);
+      assert.match(result.text, /128 Example Lane/);
+    } else {
+      const parsed = await workbookRequest(bytes, { 'Content-Type': mime });
+      assert.equal(parsed.status, 200);
+      const result = await parsed.json();
+      assert.equal(result.mode, 'local-workbook');
+      const values = result.sheets.flatMap(sheet => sheet.rows.flat()).join('\n');
+      assert.match(values, /SYNTHETIC TEST \/ NOT A REAL CASE/);
+      assert.match(values, /128 Example Lane/);
+    }
+  });
+}
