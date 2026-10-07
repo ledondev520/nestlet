@@ -1,6 +1,6 @@
 # Initial operator setup: user-run private step
 
-**Release status, October 7, 2026, 05:28 UTC:** The user-run operator setup helper has passed independent code review after the unsafe-ancestor and hidden-input fixes. Packaging and real-container CI verification are still pending; the next release PR has not yet been published. Code-review approval is not a published or deployed helper release. The instructions below are for the reviewed helper-enabled release after publication, real-container verification and staging; do not assume the currently deployed image already contains it.
+**Release status, October 7, 2026, 05:42 UTC:** The user-run operator setup helper passed independent review and was published in PR #6, merged as main commit `b431ea59405cbbf9ab6ec9945010f66f655b1781`. Exact PR and main Node/container CI passed, including actual Docker/PTY helper checks. The helper release is staged on the private loopback service: corrected [upgrade run 37577482526](https://github.com/ledondev520/jiesong-system/actions/runs/37577482526) succeeded at 05:40:48 UTC, with a healthy container, fail-closed HTTP checks, helper-module checks and current-release pointer verified; existing runtime configuration was preserved. The earlier attempt rolled back safely and is no longer a blocker. Publication, real-container verification and private VPS staging are complete for the helper release. The instructions below are the remaining user-controlled credential handoff, not evidence that credentials have already been configured.
 
 This helper prepares configuration for the existing single-operator sign-in flow. It does not add public enrollment, create a default password, or generate an API key.
 
@@ -18,7 +18,7 @@ Use the file owner's account. If the runtime file belongs to root, use the corre
 
 ## Docker-only private terminal (no host Node/npm)
 
-The helper-enabled image is intended to include the two setup modules; packaging and real-container CI have not yet established that for a published release. After that release has passed container CI and is staged, the operator can run the command below personally in a private server terminal. The account must own `runtime.env` and have permission to run Docker; for a root-owned deployment, use the owner's privileged terminal. Do not change ownership or broaden file permissions to make setup work.
+The published helper-enabled image includes the two setup modules, verified by real-container CI and PTY checks. That release is confirmed staged on the private VPS service. The operator can run the command below personally in a private server terminal. The account must own `runtime.env` and have permission to run Docker; for a root-owned deployment, use the owner's privileged terminal. Do not change ownership or broaden file permissions to make setup work.
 
 ```sh
 release=$(readlink -f /opt/nestlet/current)
@@ -58,4 +58,4 @@ The helper creates no backup containing old secrets. Cancel or Ctrl-C before the
 
 ## Verification boundary
 
-Automated setup tests use disposable local files and public test-only passwords with actual cryptography and filesystem operations. Those tests do not configure a production credential. Actual VPS password entry, configuration and Nestlet-only container recreation remain a user-controlled handoff. Independent code review passed after the unsafe-ancestor and hidden-input fixes; it does not replace pending packaging/container CI, public trusted-HTTPS verification or a real provider call.
+Automated setup tests use disposable local files and public test-only passwords with actual cryptography and filesystem operations. Those tests do not configure a production credential. Actual VPS password entry, configuration and Nestlet-only container recreation remain a user-controlled handoff. Independent review and actual Docker/PTY verification passed for the published helper. Private VPS staging is also verified. Public trusted HTTPS, user-controlled credentials and a real provider call remain separate pending gates.

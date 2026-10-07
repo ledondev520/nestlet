@@ -1,11 +1,11 @@
 # Standalone VPS deployment plan
 
-**Checkpoint: October 7, 2026, 05:28 UTC.** The owner selected the same VPS as the existing Jiesong service, with Nestlet as an independent service. Initial deployment of source `8b429` to a private loopback container was reported successful at 04:48 UTC in [run 37573150783](https://github.com/ledondev520/nestlet/actions/runs/37573150783). The release coordinator is separately checking the actual logs; this documentation update did not repeat deployment.
+**Checkpoint: October 7, 2026, 05:42 UTC.** The owner selected the same VPS as the existing Jiesong service, with Nestlet as an independent service. Initial deployment of source `8b429` to a private loopback container was reported successful at 04:48 UTC in [run 37573150783](https://github.com/ledondev520/jiesong-system/actions/runs/37573150783). The release coordinator verified the actual logs; this documentation update did not repeat deployment.
 
 | Layer | Current evidence/status |
 | --- | --- |
 | Application implementation | Operator auth, protected routes, Flash-only provider and HTTPS RAM-key settings implemented |
-| Private container deployment | Initial `8b429` loopback deployment reported successful; log verification tracked by release coordinator |
+| Private container deployment | Helper release `b431ea59405cbbf9ab6ec9945010f66f655b1781` staged successfully; run `37577482526` verified healthy/fail-closed/helper checks at 05:40:48 UTC |
 | Operator configuration | Production user-run setup remains a separate private step; no configured production credential is claimed here |
 | Public entry | New subdomain DNS/trusted TLS pending owner action and verification |
 | Real provider | No real-key model-access check or chat completion verified |
@@ -107,4 +107,4 @@ Initial private container deployment is reported in the checkpoint above. Public
 
 ## Operator setup helper status
 
-The user-run operator setup helper has passed independent code review after the unsafe-ancestor and hidden-input fixes. Packaging and real-container CI verification are still pending; the next release PR has not yet been published. Code-review approval is not a published or deployed helper release. Do not treat the local `setup-operator` script as a published/staged production procedure until the helper-enabled release passes container verification and is published/staged. Existing operator authentication is already implemented; this helper only prepares its private password-hash configuration. [First-session gates](onboarding.md) explain the sequence without exposing secrets.
+The user-run operator setup helper passed independent review and was published in PR #6, merged as main commit `b431ea59405cbbf9ab6ec9945010f66f655b1781`. Exact PR and main Node/container CI passed, including actual Docker/PTY helper checks. The helper release is staged on the private loopback service: corrected [upgrade run 37577482526](https://github.com/ledondev520/jiesong-system/actions/runs/37577482526) succeeded at 05:40:48 UTC, with a healthy container, fail-closed HTTP checks, helper-module checks and current-release pointer verified; existing runtime configuration was preserved. The earlier attempt rolled back safely and is no longer a blocker. The helper is published, container-verified and staged on the private loopback service; this does not establish public frontend availability or configured production credentials. Existing operator authentication is already implemented; this helper only prepares its private password-hash configuration. [First-session gates](onboarding.md) explain the sequence without exposing secrets.
