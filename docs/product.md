@@ -23,6 +23,10 @@ The intended user is an administrative operator; actual owner/agent/helper role 
 - Own-user saved-case isolation is implemented for owner/named trials; production sensitive-record readiness, comprehensive audit logging and secure personal-document intake are not established
 - No measured time saving, adoption, willingness to pay or revenue claim
 
+## Email-first account access
+
+Public registration requires email and a matching 6–256 character password. The account is created only after an accepted, unexpired, one-time email verification link is explicitly confirmed. Existing username accounts remain usable and may bind a verified email without changing their ID or saved records. Ordinary verified-email accounts support password recovery; the bootstrap owner's ENV credential retains private operator recovery. Missing mail configuration disables enrollment truthfully. See [email authentication](email-auth.md) for the API, security, service reuse and schema5 rollback requirements. Real inbox delivery and final browser acceptance are separate release gates.
+
 ## Saved cases and roles
 
 The work surface remains one case at a time. Preview, editing, copy, download and print are primary. Explicit Save/Open/Delete adds continuity without turning the app into a multi-case management system. Stored text, reviewed fields and draft belong to the authenticated user; raw binary files are not retained. The owner has access only to owner cases, and named trials only to their own. Trial users cannot manage API credentials/settings.

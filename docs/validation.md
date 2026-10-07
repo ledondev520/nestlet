@@ -244,3 +244,16 @@ Local Codex removed repeated chat consent/footnote/footer prose under the owner'
 Validation: 266 backend tests and 158 frontend tests passed under Node 24.18.0 with an owned, canonical TMPDIR (the default macOS temporary directory fails this repository's permission checks). Build and syntax checks passed. Actual loopback browser login with a public disposable fixture, refresh recovery and 390px no-horizontal-overflow checks passed. Production password-manager save prompts and a live paid-model call are not established by these checks.
 
 Independent Standards and Spec reviews found no release blockers; duplicate control copy and the session contract documentation were corrected. Seven existing real-browser acceptance tests passed, including bilingual 320/390px layouts and account isolation. An additional controlled-React keyboard test passed for Enter versus Shift+Enter/IME; this is not a physical IME-device test.
+## Email-first backend checkpoint, 2026-10-07 12:29 UTC
+
+Schema5 backend work is isolated from the frontend rollout. New registrations require email and verification; username-only public registration is intentionally removed. Existing usernames, administrator aliases and saved records remain compatible. See [email authentication](email-auth.md) for contract/security/rollback details.
+
+- Syntax checks and production frontend build: passed; frontend build is the unchanged base UI and does not certify the new email interface
+- Backend aggregate before the final small loopback-compatibility addition: 282/282 passed. The initial clean-worktree run failed the promoted-root static check because build assets were absent; building resolved it without changing the assertion
+- Focused real HTTP/SQLite/migration checks: 32/32 passed. Verification/reset HTTP fixtures explicitly seed synthetic accepted challenges; they do not send mail or establish real inbox delivery
+- Existing frontend suite: 156/156 passed against the unchanged base UI, not the forthcoming email UI
+- Separate `npm run test:email-contracts`: 53/53 passed with explicitly simulated provider delivery. Adapter signing, receipt validation, bounded timeout/response, sanitization, generic responses, pending accounts, trusted fragments, bind and reset are covered; these are not real-provider evidence
+- Historical schema4→5 migration preserves all old users/data/schema objects and foreign keys. Failed migration rolls back; schema6 fails closed. Actual child-process token/email races admit only one winner. Persistent quotas and session credential fingerprints are tested
+- Independent security review identified quota consumption after per-IP rejection and lost registration resend state after uncertain mail. Both were fixed with dedicated regressions
+- No real credentials read, configured or transmitted; no actual email sent. New email browser acceptance, combined-final-SHA CI and production service acceptance remain separate required gates
+- Existing schema4 binaries cannot open schema5. Do not reuse the schema4-only code rollback helper or restore a backup without a separate authorized recovery decision

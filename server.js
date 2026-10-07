@@ -7,6 +7,9 @@ import { readFile, access } from 'node:fs/promises';
 import { spawn, spawnSync } from 'node:child_process';
 import { validateSuggestions } from './public/core.js';
 import { createOperatorAuth } from './auth.js';
+import { createEmailAuth, EmailAuthError } from './email-auth.js';
+import { createEmailDelivery } from './email-delivery.js';
+import { normalizeEmail } from './email-auth-domain.js';
 import { openStorage, StorageError } from './storage.js';
 import { AssetError, isAssetRecordsPath, handleAssetRecords } from './asset-records.js';
 import { openAssetVault } from './private-assets.js';
@@ -40,8 +43,9 @@ const assetVault = openAssetVault({directory:assetDirectory});
 const telemetry = createTelemetry(storage);
 const auth = createOperatorAuth({ passwordHash: process.env.NESTLET_OPERATOR_PASSWORD_HASH, operatorUsername: process.env.NESTLET_OPERATOR_USERNAME, publicOrigin, host: process.env.HOST,
   findTrialUser: username => storage.findUserByUsername(username), findTrialUserById: id => storage.getUserById(id),
-  createTrialUser: input => storage.createTrialUser(input) });
-const registrationAttempts = [];
+  findUserByEmail: email => storage.emailAuth.findByEmail(email) });
+const emailAuth = createEmailAuth({ storage: storage.emailAuth, delivery: createEmailDelivery(), publicOrigin,
+  currentCredential: id => id === 'owner' ? process.env.NESTLET_OPERATOR_PASSWORD_HASH : storage.getUserById(id)?.passwordHash });
 const trialAiRequests = [];
 const TRIAL_USER_AI_LIMIT = 10;
 const TRIAL_GLOBAL_AI_LIMIT = 30;
@@ -108,7 +112,8 @@ function settingsStatus(request) {
     secureLogin: auth.secure || auth.localTransportAllowed,
     secureSettings: auth.secure && auth.configured && (!session || owner),
     role: session?.role || null, canManageSettings: owner, caseStorageEnabled: true,
-    registrationEnabled: auth.configured && (auth.secure || auth.localTransportAllowed),
+    registrationEnabled: auth.configured && (auth.secure || auth.localTransportAllowed) && emailAuth.configured,
+    ...emailAuth.status(session?.userId, session?.role),
     assetStorageEnabled: true, assetLimits: ASSET_LIMITS, assetTypes: Object.keys(ASSET_TYPES),
     chatEnabled: true, chatImageTypes: CHAT_IMAGE_TYPES, chatLimits: CHAT_LIMITS,
     libraryRetrievalEnabled:true, libraryLimits:{rounds:LIBRARY_AGENT_LIMITS.rounds,calls:LIBRARY_AGENT_LIMITS.calls,resultChars:LIBRARY_AGENT_LIMITS.resultChars,timeoutMs:CHAT_LIMITS.timeoutMs},
@@ -116,7 +121,7 @@ function settingsStatus(request) {
   if (!owner) return common;
   // Only the authenticated owner sees provider-configuration metadata; never credential bytes.
 
-  return { ...common, configured: Boolean(apiKey), operatorSetupInvalid: auth.setupInvalid,
+  return { ...common, configured: Boolean(apiKey), operatorSetupInvalid: auth.setupInvalid, emailDelivery: emailAuth.deliveryStatus(),
     connectionVerifiedAt, keyStorage: apiKey ? (apiKey === process.env.DEEPSEEK_API_KEY ? 'server-environment' : 'server-memory') : 'none' };
 }
 
@@ -392,30 +397,31 @@ const server = http.createServer(async (request, response) => {
     if (request.url === '/api/status' && request.method === 'GET') {
       return json(200, { ...settingsStatus(request), pdfEnabled, maxPdfBytes, workbookEnabled, maxWorkbookBytes, maxTextLength, privacyMode: 'synthetic-or-deidentified-only' });
     }
-    if (request.url === '/api/register' && request.method === 'POST') {
+    if ((request.url === '/api/register' || ['/api/auth/email/resend', '/api/auth/email/verify', '/api/auth/password/forgot', '/api/auth/password/reset', '/api/auth/email/bind'].includes(request.url)) && request.method === 'POST') {
       verifyOrigin(request);
       if (!request.headers.origin) throw new RequestError(403, 'ORIGIN_REJECTED', 'A same-origin browser request is required.');
-      if (!auth.configured) throw new RequestError(503, 'OPERATOR_SETUP_REQUIRED', 'The administrator must finish setup before accounts can be registered.');
-      if (!auth.secure && !auth.localTransportAllowed) throw new RequestError(403, 'HTTPS_REQUIRED', 'Account registration requires HTTPS outside loopback development.');
-      const now = Date.now();
-      while (registrationAttempts.length && now - registrationAttempts[0] >= 10 * 60 * 1000) registrationAttempts.shift();
-      if (registrationAttempts.length >= 5) throw new RequestError(429, 'REGISTRATION_RATE_LIMITED', 'Too many registration attempts. Try again after the ten-minute window expires.');
-      registrationAttempts.push(now);
+      if (!auth.configured) throw new RequestError(503, 'OPERATOR_SETUP_REQUIRED', 'The administrator must finish setup before email authentication is available.');
+      if (!auth.secure && !auth.localTransportAllowed) throw new RequestError(403, 'HTTPS_REQUIRED', 'Email authentication requires HTTPS outside loopback development.');
+      const session = request.url === '/api/auth/email/bind' ? requireSession(request) : null;
       let body;
       try { body = await readJson(request, 4096); }
-      catch (error) { if (error.status === 413) throw new RequestError(413, 'REGISTRATION_INVALID', 'Registration input exceeds the 4 KiB limit.'); throw error; }
-      if (Object.keys(body).length !== 3 || Object.keys(body).some(key => !['username', 'password', 'passwordConfirmation'].includes(key))) throw new RequestError(400, 'REGISTRATION_INVALID', 'Provide only a username, password and matching password confirmation.');
-      const result = await auth.register(body);
-      if (result.error) throw new RequestError(result.error === 'LOGIN_RATE_LIMITED' ? 429 : 400, result.error, 'Registration could not be completed. Check the username and matching password requirements.');
-      response.setHeader('Set-Cookie', result.cookie);
-      return json(201, { authenticated: true, csrfToken: result.csrfToken, role: result.role, userId: result.userId, username: result.username });
+      catch (error) { if (error.status === 413 && request.url === '/api/register') throw new RequestError(413, 'REGISTRATION_INVALID', 'Registration input exceeds the 4 KiB limit.'); throw error; }
+      // Do not trust caller-supplied forwarding headers for rate-limit identity.
+      const ip = request.socket.remoteAddress || 'unknown';
+      if (request.url === '/api/register') return json(202, await emailAuth.register(body, ip));
+      if (request.url === '/api/auth/email/resend') return json(202, await emailAuth.resend(body, ip));
+      if (request.url === '/api/auth/email/verify') return json(200, emailAuth.verify(body, ip));
+      if (request.url === '/api/auth/password/forgot') return json(202, await emailAuth.forgot(body, ip));
+      if (request.url === '/api/auth/password/reset') return json(200, await emailAuth.reset(body, ip));
+      return json(202, await emailAuth.bind(body, session, ip));
     }
     if (request.url === '/api/login' && request.method === 'POST') {
       verifyOrigin(request);
       if (!request.headers.origin) throw new RequestError(403, 'ORIGIN_REJECTED', 'A same-origin browser request is required.');
       if (!auth.secure && !auth.localTransportAllowed) throw new RequestError(403, 'HTTPS_REQUIRED', 'Operator sign-in requires HTTPS outside loopback development.');
       const body = await readJson(request);
-      const result = await auth.login(body.password, body.username, body.rememberMe === true);
+      if (Object.keys(body).some(key => !['email', 'username', 'password', 'rememberMe'].includes(key)) || (Object.hasOwn(body, 'rememberMe') && typeof body.rememberMe !== 'boolean') || (Object.hasOwn(body, 'email') && Object.hasOwn(body, 'username')) || (Object.hasOwn(body, 'email') && !normalizeEmail(body.email))) throw new RequestError(401, 'INVALID_CREDENTIALS', 'Sign-in failed.');
+      const result = await auth.login(body.password, body.email ?? body.username, body.rememberMe === true);
       if (result.error) throw new RequestError(result.error === 'LOGIN_RATE_LIMITED' ? 429 : result.error === 'OPERATOR_SETUP_REQUIRED' ? 503 : 401, result.error, result.error === 'LOGIN_RATE_LIMITED' ? 'Too many sign-in attempts. Wait a minute before retrying.' : 'Operator sign-in failed. Check the password or server setup.');
       response.setHeader('Set-Cookie', result.cookie);
       return json(200, { authenticated: true, csrfToken: result.csrfToken, role: result.role, userId: result.userId, username: result.username });
@@ -716,7 +722,7 @@ const server = http.createServer(async (request, response) => {
     if (file.startsWith('samples/')) response.setHeader('Content-Disposition', `attachment; filename="${file.slice('samples/'.length)}"`);
     response.end(content);
   } catch (error) {
-    if (error instanceof AssetError || error instanceof RequestError || error instanceof StorageError || error instanceof TelemetryError || error instanceof ChatError || error instanceof CaseRecordsError || error instanceof DocumentContextError) return json(error.status, { error: error.message, code: error.code, ...(error.details ? {details:error.details} : {}) });
+    if (error instanceof EmailAuthError || error instanceof AssetError || error instanceof RequestError || error instanceof StorageError || error instanceof TelemetryError || error instanceof ChatError || error instanceof CaseRecordsError || error instanceof DocumentContextError) return json(error.status, { error: error.message, code: error.code, ...(error.details ? {details:error.details} : {}) });
     return json(500, { error: 'Request could not be completed', code: 'INTERNAL_ERROR' });
   }
 });

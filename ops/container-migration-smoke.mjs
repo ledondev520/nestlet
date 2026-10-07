@@ -83,23 +83,23 @@ try {
   storage.close(); storage = undefined;
   database = new DatabaseSync(filename, { readOnly: true });
   assert.equal(database.prepare('PRAGMA application_id').get().application_id, 0x4e53544c);
-  assert.equal(database.prepare('PRAGMA user_version').get().user_version, 4);
+  assert.equal(database.prepare('PRAGMA user_version').get().user_version, 5);
   assert.ok(JSON.stringify(database.prepare('SELECT * FROM users ORDER BY id').all()) === JSON.stringify(beforeUsers), 'Migration changed user columns');
   assert.ok(JSON.stringify(database.prepare('SELECT id,user_id,title,payload_json,version,created_at,updated_at FROM cases ORDER BY id').all()) === JSON.stringify(beforeCases), 'Migration changed case columns');
   assert.equal(database.prepare('PRAGMA quick_check').get().quick_check, 'ok');
   assert.equal(database.prepare('SELECT client_id FROM cases WHERE id=?').get(caseId).client_id, null);
-  for (const table of ['clients','conversations','messages','artifacts']) assert.equal(database.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get().n, 0);
+  for (const table of ['clients','conversations','messages','artifacts','email_identities','email_actions','email_rate_buckets']) assert.equal(database.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get().n, 0);
   assert.equal(database.prepare('SELECT COUNT(*) AS n FROM assets').get().n, 1);
   const schemaObjects = new Set(database.prepare('SELECT name FROM sqlite_master').all().map(row => row.name));
   for (const name of ['assets', 'assets_owner_created', 'assets_owner_case', 'assets_owner_client',
     'assets_owner_insert', 'assets_owner_update', 'assets_immutable_content',
-    'assets_follow_case_customer', 'assets_preserve_case_delete']) {
-    assert.ok(schemaObjects.has(name), `Missing schema4 structure: ${name}`);
+    'assets_follow_case_customer', 'assets_preserve_case_delete', 'email_identities', 'email_actions', 'email_rate_buckets', 'email_actions_expiry', 'email_rate_expiry']) {
+    assert.ok(schemaObjects.has(name), `Missing schema5 structure: ${name}`);
   }
   assert.equal(database.prepare('PRAGMA foreign_key_check').all().length, 0);
   assert.equal(statSync(join(directory, 'assets', asset.id + '.blob')).mode & 0o777, 0o600);
   assert.equal(statSync(filename).mode & 0o777, 0o600);
-  console.log('Actual schema1→4 migration preserved every synthetic user/case column, credential hash, identity and version; schema4 asset structures, original bytes, search, ownership, reopen and private file modes passed. Application database was not modified by this test.');
+  console.log('Actual schema1→5 migration preserved every synthetic user/case column, credential hash, identity and version; schema5 email/asset structures, original bytes, search, ownership, reopen and private file modes passed. Application database was not modified by this test.');
 } finally {
   storage?.close();
   database?.close();
