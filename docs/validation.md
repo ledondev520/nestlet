@@ -3,6 +3,17 @@
 Checkpoint: 2026-10-07. This is a development checkpoint, not final acceptance. Deployment and real-browser integration remain separate; rerun after the final source freeze.
 
 React/shadcn foundation checkpoint (09:33 UTC): production build and seven API/build contracts pass. This is a component preview, not a completed business-page migration. The combined baseline has one legacy localization failure; supported-browser and Docker validation remain pending. See [exact migration evidence](shadcn-migration.md).
+## Artifact invalidation regression, 10:29 UTC
+
+Based on exact main `2fc15f216714d0331a82456edb1d97b9f76f8498`, the new actual-HTTP/SQLite plus development-DOM test first reproduced the reported defect: after opening a final, clearing property, reviewing the unknown and successfully saving, the interface incorrectly remained `Unsaved changes`. A clean preview now exits the opened-artifact editing identity when facts/review state change. Stored artifact versions are untouched. A genuinely edited document remains available as a draft until explicitly saved as a new version.
+
+- `npm run check`: passed
+- `npm test`: strict **231/231 passed**, unchanged evidence tier
+- `node --test test/artifact-invalidation.integration.test.js test/library-ui.test.js test/localization-contract.test.js`: **14/14 passed**. The new lifecycle test uses real HTTP, sessions and disposable SQLite; it executes DOM events in JSDOM, not a browser. Existing library diagnostics use explicit response doubles and remain separately labeled
+- The new lifecycle test verifies the formerly blocked completion/regeneration path, original immutable content, stale historical metadata, and retention/saving of actual unsaved document edits
+- `test/artifact-invalidation.browser.mjs` contains the same end-to-end checks for an independently authorized Chromium environment. Local execution was **blocked before page interaction** by the container's `socket() ... Operation not permitted` restriction; the supported escalation retry had the same result. No browser pass is claimed
+
+For the browser script, use a separately installed official Playwright test runner and its Chromium, then run `node --test test/artifact-invalidation.browser.mjs`. If the runner is installed outside this checkout, `NESTLET_PLAYWRIGHT_MODULE` may identify its module; `NESTLET_CHROMIUM_EXECUTABLE` may identify an already installed Chromium executable. These are optional test-only inputs, not production dependencies or application configuration. The script creates only disposable synthetic accounts/data and makes no model request. The default CI retains strict tests and adds the independently labeled actual-HTTP/DOM lifecycle regression; real-browser acceptance remains a separate gate.
 
 ## Strict acceptance command
 

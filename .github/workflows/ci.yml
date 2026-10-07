@@ -27,3 +27,5 @@ jobs:
         run: npm run test:frontend
       - name: Test local behavior
         run: npm test
+      - name: Test artifact invalidation with actual HTTP and DOM events
+        run: node --test test/artifact-invalidation.integration.test.js
