@@ -116,3 +116,14 @@ test('development React: verified same-user recovery restores only text and keep
   await app.type('A revised question that is still unsent');
   assert.deepEqual(app.readDraft(),{input:'A revised question that is still unsent'});
 });
+
+test('Enter sends once, while Shift+Enter and IME confirmation never send',async context=>{
+  const app=await mount({fetchHandler:async()=>response({code:'CASE_CONFLICT'},409)});context.after(app.close);
+  await app.type('Synthetic keyboard message');
+  const React=await import('react'), input=app.dom.window.document.querySelector('textarea');
+  const press=async options=>{await React.act(async()=>input.dispatchEvent(new app.dom.window.KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true,...options})));await app.flush();};
+  await press({shiftKey:true});await press({isComposing:true});await press({keyCode:229});
+  assert.equal(app.requests.filter(item=>item.options.method==='POST').length,0);
+  await press({});
+  assert.equal(app.requests.filter(item=>item.path==='/api/cases'&&item.options.method==='POST').length,1);
+});

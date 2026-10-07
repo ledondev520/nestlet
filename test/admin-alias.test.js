@@ -251,12 +251,14 @@ test('remember me survives idle time but expires after eight hours and logout re
   const {createOperatorAuth}=await import('../auth.js');
   const auth=createOperatorAuth({passwordHash});
   const normal=await auth.login(password,'owner');
+  const nonBoolean=await auth.login(password,'owner','true');
   const remembered=await auth.login(password,'owner',true);
   const request=session=>({headers:{cookie:session.cookie.split(';')[0]}});
   const realNow=Date.now, start=realNow();
   try {
     Date.now=()=>start+31*60*1000;
     assert.equal(auth.getSession(request(normal)),null);
+    assert.equal(auth.getSession(request(nonBoolean)),null);
     assert.equal(auth.getSession(request(remembered)).userId,'owner');
     Date.now=()=>start+8*60*60*1000+1;
     assert.equal(auth.getSession(request(remembered)),null);

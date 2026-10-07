@@ -1,4 +1,4 @@
-import { MessageSquare, Users, FileText, Files, Globe, ArrowLeft } from 'lucide-react';
+import { MessageSquare, Users, FileText, Files, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const navigation = {
