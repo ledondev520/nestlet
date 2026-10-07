@@ -341,3 +341,11 @@ footer a:hover{color:var(--accent-deep)}
 .readiness .secondary{margin-top:2px}
 .readiness-ready{color:var(--ok);margin-top:14px}
 @media(max-width:760px){.customer-row .input{max-width:none;font-size:16px}.conversation-bar select{font-size:16px}.readiness-item .input{font-size:16px}}
+
+/* Composer over workspace: conversation is the home, material is secondary */
+textarea.chat-input{min-height:110px;font-size:14px;line-height:1.75}
+.composer-actions{margin-top:12px}
+.material-workspace{margin-top:18px;border-top:1px solid var(--hairline);padding-top:12px}
+.material-workspace summary{font-size:12px;font-weight:600;color:var(--ink-soft)}
+.material-workspace[open] summary{margin-bottom:12px;color:var(--accent-deep)}
+@media(max-width:760px){textarea.chat-input{font-size:16px}}
