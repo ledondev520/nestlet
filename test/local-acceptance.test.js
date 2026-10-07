@@ -1,13 +1,17 @@
 // Independent acceptance: real loopback HTTP and actual files; no provider/parser mocks.
-// Deliberately separate from npm test: known final-contract failures must remain visible.
+// Run explicitly; package scripts are owned by the main development lane.
 import { after, before, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { once } from 'node:events';
 import net from 'node:net';
+import { randomBytes, scryptSync } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 
-let child, base;
+let child, base, sessionHeaders;
+const password = 'public-test-only-local-acceptance';
+const salt = randomBytes(16);
+const passwordHash = `scrypt$${salt.toString('base64url')}$${scryptSync(password, salt, 32).toString('base64url')}`;
 before(async () => {
   const reservation = net.createServer();
   await new Promise(resolve => reservation.listen(0, '127.0.0.1', resolve));
@@ -17,7 +21,7 @@ before(async () => {
   child = spawn(process.execPath, ['server.js'], {
     cwd: new URL('../', import.meta.url),
     env: { ...process.env, HOST: '127.0.0.1', PORT: String(port), ENABLE_LIVE_AI: 'false',
-      DEEPSEEK_API_KEY: '', DEEPSEEK_MODEL: 'deepseek-flash', PUBLIC_ORIGIN: '' },
+      DEEPSEEK_API_KEY: '', DEEPSEEK_MODEL: 'deepseek-flash', PUBLIC_ORIGIN: '', NESTLET_OPERATOR_PASSWORD_HASH: passwordHash },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   await new Promise((resolve, reject) => {
@@ -28,18 +32,24 @@ before(async () => {
     child.once('error', error => { clearTimeout(timer); reject(error); });
     child.once('exit', code => { clearTimeout(timer); reject(new Error(`Server exited ${code}`)); });
   });
+  const login = await fetch(base + '/api/login', { method: 'POST',
+    headers: { 'Content-Type': 'application/json', Origin: base }, body: JSON.stringify({ password }) });
+  assert.equal(login.status, 200);
+  const result = await login.json();
+  sessionHeaders = { Cookie: login.headers.get('set-cookie').split(';')[0], 'X-CSRF-Token': result.csrfToken, Origin: base };
 });
 after(async () => {
   if (child && child.exitCode === null) { const exited = once(child, 'exit'); child.kill(); await exited; }
 });
-const workbook = (bytes, extraHeaders = {}) => fetch(base + '/api/workbook', {
+const workbook = (bytes, extraHeaders = {}, authenticated = true) => fetch(base + '/api/workbook', {
   method: 'POST', headers: { 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    'X-Document-Consent': 'synthetic-or-deidentified', ...extraHeaders }, body: bytes,
+    'X-Document-Consent': 'synthetic-or-deidentified', ...(authenticated ? sessionHeaders : {}), ...extraHeaders }, body: bytes,
 });
 
 test('missing authentication fails closed on the document-processing route', async () => {
-  const response = await workbook(await readFile(new URL('./fixtures/case.xlsx', import.meta.url)));
-  assert.ok([401, 403].includes(response.status), `Unauthenticated workbook POST returned ${response.status}`);
+  const response = await workbook(await readFile(new URL('./fixtures/case.xlsx', import.meta.url)), {}, false);
+  assert.equal(response.status, 401);
+  assert.equal((await response.json()).code, 'AUTH_REQUIRED');
 });
 
 test('workbook processing rejects a foreign Origin', async () => {
@@ -58,3 +68,14 @@ for (const [name, bytes] of [
     assert.equal((await response.json()).code, 'INVALID_WORKBOOK');
   });
 }
+
+
+test('legacy model configuration fails at startup without a provider call', () => {
+  const result = spawnSync(process.execPath, ['server.js'], {
+    cwd: new URL('../', import.meta.url), encoding: 'utf8', timeout: 3000,
+    env: { ...process.env, HOST: '127.0.0.1', PORT: '0', PUBLIC_ORIGIN: '',
+      ENABLE_LIVE_AI: 'false', DEEPSEEK_API_KEY: '', DEEPSEEK_MODEL: 'deepseek-chat', NESTLET_OPERATOR_PASSWORD_HASH: '' },
+  });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Only DEEPSEEK_MODEL=deepseek-flash is supported/);
+});

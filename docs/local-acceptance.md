@@ -1,6 +1,8 @@
 # Independent local acceptance — 2026-10-07
 
-**Disposition: final workflow not accepted.** A real local browser exercised the available UI with synthetic inputs. Parsing, human review and English exports work on the tested paths, but the final AI-only contract is not met; live-provider and PDF-import acceptance remain blocked. This is not production certification or an official-form/agency acceptance claim.
+**First-round disposition (historical): final workflow not accepted.** A real local browser exercised the available UI with synthetic inputs. Parsing, human review and English exports work on the tested paths, but the final AI-only contract is not met; live-provider and PDF-import acceptance remain blocked. This is not production certification or an official-form/agency acceptance claim.
+
+**Latest update:** authentication and model restrictions passed on `8b42962`; explicit manual parsing was clarified as intentional. See the second-round results at the end. Live-provider/HTTPS settings remain unverified, and real idle expiry is still running.
 
 ## Snapshot and environment
 
@@ -147,3 +149,40 @@ The next acceptance will follow these user stories, retaining a precise SHA and 
 5. Recovery from invalid files, expired login, provider failure where authorized and reproducible, cancel/reset and stale asynchronous work.
 
 Requested from the coordinator in Issue #1: fixed retest SHA, non-production authentication initialization instructions, a reproducible session-expiry path, and the confirmed decision on whether explicit manual parsing remains. Current evidence describes that route truthfully as deterministic parsing, never a successful AI call; LC-01 remains a snapshot contract finding until that decision is resolved. Check frequency is now ten minutes; comments are posted only for substantive changes.
+
+## Second-round results — fixed runtime `8b42962`, 2026-10-07
+
+Runtime commit: **`8b42962e55305e3cc70b7c20ce5d7e4d74ed13c7`**, PR #5; its GitHub test and actual container-smoke checks were SUCCESS when selected. Merged into this independent acceptance branch at `c3be4de39d7190e60cf5414b89c7d935acb2046c`. Tests/docs are the only local changes relative to that runtime. The coordinator subsequently [confirmed this exact retest baseline and clarified the manual route](https://github.com/ledondev520/nestlet/issues/1#issuecomment-6030996347). No frontend redesign code from PR #4 was pulled into this snapshot.
+
+Environment: Node **24.19.0** for installation, checks, HTTP tests **and browser servers**, npm 11.14.1, Poppler **26.09.0**, same macOS/Chromium as the first round. `npm ci` succeeded (40 packages, 0 reported vulnerabilities). Disposable test-only operator passwords were scrypt-hashed in memory for loopback processes; no user account or actual DeepSeek key was configured. Authentication was real, not a mocked endpoint.
+
+| Check | Second-round result |
+| --- | --- |
+| `npm run check` | Pass |
+| `npm test` | **87 pass, 0 fail, 0 skip**, including actual PDF and encrypted XLS/XLSX parsing, authentication, CSRF and source-linked agency guidance |
+| `node --test test/local-acceptance.test.js` | **5 pass, 0 fail, 0 skip**; real configured operator login precedes parser-negative tests. Signed-out assertion is exactly 401 + `AUTH_REQUIRED`, not a broadened status allowance. |
+| Legacy model startup | Pass: a real subprocess with `DEEPSEEK_MODEL=deepseek-chat`, no key and AI disabled exits 1 with the Flash-only error. No outbound provider request. |
+| Optional real idle-session test | **Running / not yet passed**. `node --test test/session-idle.acceptance.js` started at approximately 12:34 Asia/Shanghai; requires 30 real idle minutes. Result will be recorded separately. |
+
+### User-story observations in the actual browser
+
+1. **First arrival / sign-in:** unconfigured server shows an empty Chinese case and operator setup instructions. A configured-but-signed-out PDF import opens the sign-in panel without parsing; wrong test password shows a localized error. Correct local development login succeeds. HTTP intentionally exposes no API-key entry field and explains the HTTPS requirement. Revisit preserves the authenticated session but starts a fresh empty case, as documented.
+2. **Actual import / recover:** authenticated text PDF produces the six expected synthetic lines; scanned/image-only fixture displays the no-OCR message; encrypted PDF is rejected. Actual password-encrypted XLSX/XLS are rejected with the unencrypted-workbook guidance. A valid PDF imported successfully after these failures. Switching to English produced the corresponding no-OCR message. Actual XLSX row/column mapping again produced all five fixture values with fresh confirmation requirements. Real server baseline tests also cover legacy XLS, corrupt/disguised/oversized inputs and encrypted workbook rejection.
+3. **Review / English artifact:** selected worksheet fields were reviewed and generated through the explicit deterministic path, never represented as AI extraction. A follow-up draft stayed English across locale switching. After editing, actual TXT download and browser PDF both retained the three immutable English notices. The PDF contained one page, only the edited English document and notices, with no settings/navigation/SFHA guidance. Real copy action reported success. A 390px authenticated settings/draft view had document scroll width 390px, with no horizontal overflow.
+4. **Logout / session loss:** cancelling logout retained the existing draft. Confirming logout cleared source and draft; revisit required sign-in. Independently revoking the disposable real server session through its actual logout endpoint while the page still displayed authenticated state made the next PDF import fail with a sign-in instruction; the previous source remained intact. Signing in and retrying then worked. This is **revoked-session recovery**, not yet a timed-expiry browser pass.
+5. **Async reset / locale:** browser network latency was deliberately throttled while still talking to the actual local PDF endpoint (no intercepted/fabricated response). During in-flight upload, reset plus new source preserved `Property: Synthetic Reset Winner` after another delayed real HTTP roundtrip; old content did not revive. Switching locale while another actual PDF request was pending retained English and applied the real parsed text. Missing-key AI action continued to show its explicit blocker and did not substitute manual results.
+
+### Disposition of earlier findings
+
+- **LC-01 resolved by explicit product clarification**, not removal: genuine deterministic manual parsing and workbook mapping are intentional. The observed route is explicitly labeled; failed AI does not silently fall back. Historical observation and earlier contract interpretation above are retained for traceability.
+- **LC-02 resolved on this snapshot:** missing operator setup fails closed (503), configured signed-out access fails closed (401), invalid CSRF/origin fails closed (403). Parser-negative tests authenticate before reaching the parser. Real browser login/logout and revoked-session recovery passed.
+- **LC-03 resolved on this snapshot:** unsupported model is rejected at startup; independently reproduced without any provider credential or mock.
+
+Remaining **Not run**: actual trusted HTTPS browser key entry/save and model-access check, actual DeepSeek extraction/provider failure, native print-dialog save, clipboard permission-denied case, and timed-expiry browser recovery. No fabricated/provider-double results count toward these. The separate real idle HTTP observation is still pending and cannot be inferred from revocation recovery.
+
+### New bounded follow-ups for the main owners
+
+- **LC-04 — stale setup/deployment prose (P2, docs owner):** README still says the server has no authentication, and its start instructions omit the new operator hash setup; parts of deployment docs also call integration pending. Current `docs/auth-contract.md` is accurate. Bring public getting-started/deployment wording in line with the shipped auth flow; no runtime change needed from this lane.
+- **LC-05 — misleading extracted-text limit error (P2, UI owner):** import `test/fixtures/large-text.pdf` (35,717 bytes) while authenticated. It exceeds 50,000 extracted characters, but browser says the file is too large and lists the 5 MB PDF byte limit. It correctly refuses the document, but should distinguish the extracted-character limit and suggest shortening/splitting the text. Exact reproduction is safe with the committed synthetic fixture. Runtime wording remains owned by the main/UI lane.
+
+Second-round evidence (synthetic page content only): [unconfigured setup](../test/local-acceptance-evidence/auth-unconfigured.png), [real authenticated PDF import](../test/local-acceptance-evidence/pdf-import-auth.png), [390px authenticated draft](../test/local-acceptance-evidence/auth-mobile.png), [actual TXT](../test/local-acceptance-evidence/auth-export.txt), [actual browser PDF](../test/local-acceptance-evidence/auth-export.pdf). First-round assets remain unchanged.
