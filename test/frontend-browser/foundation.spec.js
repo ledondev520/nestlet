@@ -22,7 +22,10 @@ test('real shadcn dialog traps focus, closes with Escape and returns focus under
     window.__cspViolations = [];
     document.addEventListener('securitypolicyviolation', event => window.__cspViolations.push(event.violatedDirective));
   });
-  await page.goto('/next/#components');
+  const response = await page.goto('/next/#components');
+  const nonce = await page.locator('meta[name="nestlet-style-nonce"]').getAttribute('content');
+  expect(nonce).toMatch(/^[A-Za-z0-9+/]{24}$/u);
+  expect(response.headers()['content-security-policy']).toContain(`style-src 'self' 'nonce-${nonce}'`);
   const trigger = page.getByRole('button', { name: '检查对话框' });
   const scrollState = () => page.evaluate(() => ({
     body: getComputedStyle(document.body).overflowY,
@@ -37,6 +40,11 @@ test('real shadcn dialog traps focus, closes with Escape and returns focus under
     await expect(dialog).toBeVisible();
     await expect(dialog.getByRole('heading', { name: '组件检查' })).toBeVisible();
     await expect.poll(async () => Object.values(await scrollState()).includes('hidden')).toBe(true);
+    const scrollStyleNonces = await page.locator('style').evaluateAll(styles => styles
+      .filter(style => style.textContent.includes('body[data-scroll-locked]'))
+      .map(style => style.nonce));
+    expect(scrollStyleNonces.length, 'The official modal scroll-lock stylesheet is present').toBeGreaterThan(0);
+    expect(scrollStyleNonces.every(value => value === nonce), 'Only this document’s trusted nonce permits the modal style').toBe(true);
     for (const key of ['Tab', 'Tab', 'Shift+Tab', 'Shift+Tab']) {
       await page.keyboard.press(key);
       expect(await page.evaluate(() => Boolean(document.activeElement?.closest('[role="dialog"]')))).toBe(true);
@@ -57,4 +65,31 @@ test('static frontend assets are allowlisted and source/server files stay privat
   const page = await request.get('/next/');
   expect(page.headers()['content-security-policy']).toContain("script-src 'self'");
   expect(page.headers()['content-security-policy']).not.toContain('unsafe-inline');
+});
+
+
+test('root and alias HTML use fresh style-only nonces while legacy and script policy stay strict', async ({ request }) => {
+  const seen = new Set();
+  for (const path of ['/', '/', '/next/', '/next/', '/next']) {
+    const response = await request.get(path);
+    expect(response.status(), path).toBe(200);
+    const html = await response.text();
+    const nonce = /<meta\s+name=["']nestlet-style-nonce["']\s+content=["']([^"']+)["']/u.exec(html)?.[1];
+    expect(nonce, `Fresh trusted-style meta at ${path}`).toMatch(/^[A-Za-z0-9+/]{24}$/u);
+    expect(seen.has(nonce), 'Each HTML response needs an unpredictable, unreused nonce').toBe(false);
+    seen.add(nonce);
+    expect(html).not.toContain('__NESTLET_STYLE_NONCE__');
+    const csp = response.headers()['content-security-policy'];
+    const directives = csp.split(';').map(value => value.trim());
+    expect(directives.find(value => value.startsWith('script-src '))).toBe("script-src 'self'");
+    expect(directives.find(value => value.startsWith('style-src '))).toBe(`style-src 'self' 'nonce-${nonce}'`);
+    expect(csp).not.toContain('unsafe-inline');
+    expect(csp).not.toContain('unsafe-eval');
+    expect(response.headers()['cache-control']).toContain('no-store');
+  }
+  const legacy = await request.get('/legacy/');
+  expect(legacy.status()).toBe(200);
+  expect(await legacy.text()).not.toContain('nestlet-style-nonce');
+  expect(legacy.headers()['content-security-policy']).not.toContain("'nonce-");
+  expect(legacy.headers()['content-security-policy']).not.toContain('unsafe-inline');
 });

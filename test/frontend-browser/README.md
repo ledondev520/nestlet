@@ -16,11 +16,11 @@ npm run test:browser:frontend
 
 The browser install uses the version already pinned in the repository lockfile. Run browser execution in a supported GitHub Actions or authorized local environment. `--list`, source checks, jsdom tests, and `fixture.check.mjs` do not launch a browser and are not browser-pass evidence.
 
-The dedicated `Nestlet browser acceptance` workflow runs these steps for pull requests, main pushes, and manual dispatch. It retains the HTML/JUnit report, labelled screenshots from successful synthetic journeys, and synthetic-only failure traces/screenshots for seven days. Read the job's exact commit and individual test results before claiming a pass.
+The dedicated `Nestlet browser acceptance` workflow runs these steps at the promoted `/` homepage for pull requests, main pushes, and manual dispatch. It retains the HTML/JUnit report, labelled screenshots from successful synthetic journeys, and synthetic-only failure traces/screenshots for seven days. Read the job's exact commit and individual test results before claiming a pass.
 
 ## Coverage
 
-- Existing component palette, bilingual text, escaped input, Radix dialog keyboard/focus, static allowlist, and strict production CSP
+- Existing component palette, bilingual text, escaped input, repeated Radix modal keyboard/focus/scroll-lock lifecycles, static allowlist, strict production CSP, and fresh style-only document nonces matching the official injected modal styles
 - Actual six-character registration and later sign-in through the UI
 - Standalone original upload before creating any case, full page reload, global discovery, safe text preview, focus return, and byte-for-byte browser download
 - Manually reviewed, unassigned case save, full reload, global discovery, and real application reopen with saved source/facts
@@ -29,7 +29,7 @@ The dedicated `Nestlet browser acceptance` workflow runs these steps for pull re
 - 320/390-pixel Chinese and English account/product pages, populated saved-case rows, keyboard activation and focus return, browser Back/Forward, root and visible-control overflow, and strict CSP
 - Successful screenshots identify fixture, viewport, language, and actual page; they are not production screenshots
 
-`NESTLET_BROWSER_ENTRY_PATH` defaults to `/next/`. After the separately approved default-route promotion, run with `NESTLET_BROWSER_ENTRY_PATH=/` to exercise the same account/save/reload journeys at the root entry. Component QA remains explicitly at `/next/#components`; that component route cannot substitute for product acceptance.
+`NESTLET_BROWSER_ENTRY_PATH` defaults to `/next/`. The CI workflow explicitly uses `/`; to reproduce that default-route gate locally, run with `NESTLET_BROWSER_ENTRY_PATH=/` to exercise the same account/save/reload journeys at the root entry. Component QA remains explicitly at `/next/#components`; that component route cannot substitute for product acceptance.
 
 ## Explicitly not established
 
