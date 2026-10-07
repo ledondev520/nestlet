@@ -1,6 +1,6 @@
 # React / shadcn integration contract
 
-This directory is the JavaScript/JSX frontend. No TypeScript application source is used. The legacy `public/app.js` stays available during migration; `/next/` serves the integrated account/chat/customer/material/document build. `/next/#components` is the separate component QA route. Implementation and development tests do not replace exact-build browser/provider acceptance.
+This directory is the JavaScript/JSX frontend. No TypeScript application source is used. `/` serves the integrated account/chat/customer/material/document build; `/next/` is an alias and `/legacy/` explicitly serves the previous `public/app.js` workspace. `/next/#components` is the separate component QA route. Implementation and development tests do not replace exact-build browser/provider acceptance.
 
 ## Shared foundation
 
@@ -59,3 +59,9 @@ The shadcn CLI is not a build/runtime dependency: checked-in official JSX source
 ## Commands and evidence
 
 `npm run build` emits only compiled public assets into `public/next/`; Node backend stays JavaScript. `npm run dev:frontend` starts Vite locally. Production-like browser testing uses a built frontend and the real Node server, so CSP and same-origin checks are exercised. Passing mocks or a preview page cannot certify real-provider, email, full workflow, or deployment acceptance.
+
+## Entry routes and modal CSP
+
+Each built React HTML response at `/`, `/next`, or `/next/` receives a fresh cryptographically random 144-bit style nonce and `Cache-Control: no-store`. The matching meta value is passed to the supported `get-nonce` API before rendering. Radix scroll locking can then attach its trusted style element with that nonce. Script policy remains `script-src 'self'`; style attributes and arbitrary inline styles/scripts are not permitted. `/legacy/` retains its previous strict policy without a nonce. No build or partially missing JS/CSS produces an explicit bilingual 503.
+
+The production root browser gate covers product journeys and responsive navigation, while `/next/#components` separately exercises repeated modal focus, dismissal, scroll-lock restoration and zero CSP violations. HTTP nonce/route tests are distinct from the browser gate; neither certifies live-provider calls.

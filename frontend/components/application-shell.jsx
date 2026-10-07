@@ -10,7 +10,7 @@ export function ApplicationShell({ children, lang = 'zh', onLanguageChange, view
   return <div className="paper-shell">
     <a href="#workspace" className="sr-only focus:not-sr-only focus:block focus:py-2">{lang === 'zh' ? '跳到工作区' : 'Skip to workspace'}</a>
     <header className="paper-masthead">
-      <a href="/next/" className="paper-brand flex min-w-0 items-center gap-3 text-inherit no-underline" aria-label="Nestlet">
+      <a href="/" className="paper-brand flex min-w-0 items-center gap-3 text-inherit no-underline" aria-label="Nestlet">
         <img src="/logo.svg" alt="" width="40" height="40" />
         <div className="paper-title min-w-0 text-[23px] font-bold leading-tight">{lang === 'zh' ? '巢小秘' : 'Nestlet'}<span className="paper-tagline mt-1 block font-sans text-[10px] font-normal tracking-[.14em] text-muted-foreground">{lang === 'zh' ? 'NESTLET' : 'ONE DOCUMENT. ONE STEP FORWARD.'}</span></div>
       </a>
@@ -26,7 +26,7 @@ export function ApplicationShell({ children, lang = 'zh', onLanguageChange, view
     <main id="workspace" tabIndex={-1} className="mt-8 outline-none">{children}</main>
     <footer className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-5 text-xs leading-relaxed text-muted-foreground">
       <p>{lang === 'zh' ? '仅限虚构或去标识化资料 · 不自动发送或提交' : 'Synthetic or de-identified material only · No automatic sending or submission'}</p>
-      <a href="/" className="inline-flex items-center gap-1 underline underline-offset-4"><ArrowLeft size={13} aria-hidden="true" />{lang === 'zh' ? '现有工作区' : 'Existing workspace'}</a>
+      <a href="/legacy/" className="inline-flex items-center gap-1 underline underline-offset-4"><ArrowLeft size={13} aria-hidden="true" />{lang === 'zh' ? '旧版工作区' : 'Legacy workspace'}</a>
     </footer>
   </div>;
 }

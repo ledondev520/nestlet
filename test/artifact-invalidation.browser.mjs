@@ -32,7 +32,7 @@ test('a saved final can be invalidated, saved unknown, completed again, and rege
   const browserContext=await browser.newContext(), page=await browserContext.newPage(), errors=[];
   page.on('pageerror',error=>errors.push(error.message));
   const login=await browserContext.request.post(base+'/api/login',{data:{password},headers:{Origin:base}});assert.equal(login.status(),200);
-  await page.goto(base);await page.locator('#language').click();
+  await page.goto(base+'/legacy/');await page.locator('#language').click();
   await page.locator('#case-manager > summary').click();await page.locator('#saved-case').selectOption(record.id);await page.locator('#open-case').click();
   await page.locator('#generate-final').click();await page.locator('#draft').waitFor({state:'visible'});
   const original=await page.locator('#draft').inputValue();assert.match(original,/128 Example Lane/);assert.doesNotMatch(original,/\bDRAFT\b|NOT FOR SUBMISSION/u);

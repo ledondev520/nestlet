@@ -1,9 +1,9 @@
 import http from 'node:http';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, randomBytes } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { readFile } from 'node:fs/promises';
+import { readFile, access } from 'node:fs/promises';
 import { spawn, spawnSync } from 'node:child_process';
 import { validateSuggestions } from './public/core.js';
 import { createOperatorAuth } from './auth.js';
@@ -665,7 +665,7 @@ const server = http.createServer(async (request, response) => {
         throw new RequestError(502, 'EXTRACTION_FAILED', 'Extraction failed. No suggestions were applied.');
       } finally { activeExtractions--; }
     }
-    const routes = { '/': 'index.html', '/app.js': 'app.js', '/core.js': 'core.js', '/agency-guidance.js': 'agency-guidance.js', '/style.css': 'style.css', '/logo.svg': 'logo.svg',
+    const routes = { '/': 'next/index.html', '/legacy': 'index.html', '/legacy/': 'index.html', '/app.js': 'app.js', '/core.js': 'core.js', '/agency-guidance.js': 'agency-guidance.js', '/style.css': 'style.css', '/logo.svg': 'logo.svg',
       '/next': 'next/index.html', '/next/': 'next/index.html', '/next/app.js': 'next/app.js', '/next/index.css': 'next/index.css',
       '/samples/nestlet-synthetic-case.txt': 'samples/nestlet-synthetic-case.txt',
       '/samples/nestlet-synthetic-case.csv': 'samples/nestlet-synthetic-case.csv',
@@ -674,10 +674,31 @@ const server = http.createServer(async (request, response) => {
       '/samples/nestlet-synthetic-case.xls': 'samples/nestlet-synthetic-case.xls' };
     if (request.method !== 'GET' || !Object.hasOwn(routes, request.url)) { response.writeHead(404); return response.end('Not found'); }
     const file = routes[request.url];
+    let content;
+    try {
+      // A partially copied frontend must not produce a blank page or silently
+      // fall back to the old product. Static filenames remain explicitly allowed.
+      if (file === 'next/index.html') await Promise.all(['next/app.js', 'next/index.css'].map(asset => access(new URL(asset, root))));
+      content = await readFile(new URL(file, root));
+    } catch (error) {
+      if (file.startsWith('next/') && error.code === 'ENOENT') {
+        response.writeHead(503, { 'Content-Type': 'text/html; charset=utf-8', 'Retry-After': '60' });
+        return response.end('<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>工作区暂不可用 · Workspace unavailable</title><main><h1>工作区暂不可用</h1><p>新版界面尚未完成部署。请稍后重试，或联系管理员。</p><section lang="en"><h2>Workspace temporarily unavailable</h2><p>The new interface has not finished deploying. Please try again shortly or contact the administrator.</p></section></main></html>');
+      }
+      throw error;
+    }
+    if (file === 'next/index.html') {
+      // Radix's official scroll-lock helper creates a trusted style element.
+      // Authorize that element only for this HTML response; scripts and style
+      // attributes keep the original strict policy, without unsafe-inline.
+      const styleNonce = randomBytes(18).toString('base64');
+      response.setHeader('Content-Security-Policy', response.getHeader('Content-Security-Policy').replace("style-src 'self'", `style-src 'self' 'nonce-${styleNonce}'`));
+      content = Buffer.from(content.toString('utf8').replace('__NESTLET_STYLE_NONCE__', styleNonce));
+    }
     const contentTypes = { js: 'text/javascript; charset=utf-8', css: 'text/css; charset=utf-8', svg: 'image/svg+xml', html: 'text/html; charset=utf-8', txt: 'text/plain; charset=utf-8', csv: 'text/csv; charset=utf-8', pdf: 'application/pdf', xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', xls: 'application/vnd.ms-excel' };
     response.setHeader('Content-Type', contentTypes[file.split('.').at(-1)]);
     if (file.startsWith('samples/')) response.setHeader('Content-Disposition', `attachment; filename="${file.slice('samples/'.length)}"`);
-    response.end(await readFile(new URL(file, root)));
+    response.end(content);
   } catch (error) {
     if (error instanceof AssetError || error instanceof RequestError || error instanceof StorageError || error instanceof TelemetryError || error instanceof ChatError || error instanceof CaseRecordsError || error instanceof DocumentContextError) return json(error.status, { error: error.message, code: error.code, ...(error.details ? {details:error.details} : {}) });
     return json(500, { error: 'Request could not be completed', code: 'INTERNAL_ERROR' });
