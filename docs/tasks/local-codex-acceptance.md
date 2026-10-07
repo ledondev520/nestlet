@@ -8,7 +8,7 @@
 - Base commit: `826202ee7da2b072d544c716cba19ac9cf38d6bf`; synchronized documentation from `6678aeaa57c666fcf77b2700653ed391c2034f0d` (runtime unchanged)
 - Branch: `codex/acceptance-followup` (original `test/local-codex-acceptance` merged in PR #2)
 - PR URL: https://github.com/ledondev520/nestlet/pull/2 (merged)
-- Follow-up PR: pending publication
+- Follow-up PR: https://github.com/ledondev520/nestlet/pull/7
 - Follow-up runtime: `8715b0d78a8cff0b5ebbbb5ea6db0bacd8137342`, identical tree to merged main `b431ea59405cbbf9ab6ec9945010f66f655b1781`
 - Second-round runtime: `8b42962e55305e3cc70b7c20ce5d7e4d74ed13c7`; Node 24 + actual Poppler/browser
 - Coordination issue: https://github.com/ledondev520/nestlet/issues/1
