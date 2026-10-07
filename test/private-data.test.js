@@ -17,6 +17,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomBytes, randomUUID, scryptSync } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
+import { Worker } from 'node:worker_threads';
 import { openStorage } from '../storage.js';
 import { openAssetVault, parseAsset } from '../private-assets.js';
 import {
@@ -314,4 +315,53 @@ test('live committed WAL snapshots become standalone backups without changing so
   // Later source writes remain independent; the recovery point stays immutable.
   writer.prepare('UPDATE cases SET version=8 WHERE id=?').run(caseId);
   assert.equal(verifyPrivateBackup({ input: output }).schemaVersion, 3);
+});
+
+
+test('backup waits for a bounded real exclusive writer and verifies its committed case plus originals', async (t) => {
+  const f = await fixture(t);
+  const writer = new Worker(`
+    const { parentPort, workerData } = require('node:worker_threads');
+    const { DatabaseSync } = require('node:sqlite');
+    const db = new DatabaseSync(workerData.filename, { timeout: 5000 });
+    db.exec('BEGIN EXCLUSIVE');
+    db.prepare('UPDATE cases SET version=version+1 WHERE id=?').run(workerData.caseId);
+    parentPort.once('message', () => setTimeout(() => {
+      db.exec('COMMIT'); db.close(); parentPort.close();
+    }, 150));
+    parentPort.postMessage('exclusive-lock-held');
+  `, { eval: true, workerData: { filename: f.filename, caseId: f.record.id } });
+  const finished = new Promise((resolve, reject) => {
+    writer.once('error', reject);
+    writer.once('exit', (code) => code === 0 ? resolve() : reject(new Error('Synthetic writer failed')));
+  });
+  // Observe rejection immediately, and still await it below; cleanup must not
+  // leave an unhandled worker rejection when a backup assertion itself fails.
+  finished.catch(() => {});
+  t.after(async () => { await writer.terminate(); await finished.catch(() => {}); });
+  await new Promise((resolve, reject) => {
+    writer.once('error', reject);
+    writer.once('message', (value) => {
+      if (value === 'exclusive-lock-held') resolve();
+      else reject(new Error('Synthetic writer did not acquire its lock'));
+    });
+  });
+  // The worker holds an actual SQLite EXCLUSIVE lock before backup opens its
+  // private read connection. It commits independently while the reader waits.
+  writer.postMessage('release-after-reader-starts');
+  const output = join(f.root, 'exclusive-lock-snapshot');
+  const result = await backupPrivateData({ ...f, output });
+  await finished;
+  assert.equal(result.verified, true);
+  assert.equal(result.assetCount, 2);
+  assert.equal(verifyPrivateBackup({ input: output }).assetCount, 2);
+  const restored = await restorePrivateBackup({ input: output, output: join(f.root, 'exclusive-lock-restored') });
+  const store = openStorage({ filename: restored.filename });
+  try {
+    assert.equal(store.getCase(f.user.id, f.record.id).version, f.record.version + 1);
+    assert.equal(store.getCase(f.user.id, f.record.id).sourceText, 'Synthetic source');
+    const asset = store.getAsset(f.user.id, f.asset.id);
+    assert.deepEqual(openAssetVault({ directory: restored.assetsDirectory }).read(asset), f.bytes);
+    assert.equal(store.listAssets('owner').total, 1);
+  } finally { store.close(); }
 });
