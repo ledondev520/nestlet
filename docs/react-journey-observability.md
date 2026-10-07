@@ -1,6 +1,6 @@
 # React action observability (v1)
 
-Implementation candidate, 2026-10-07. This module adds a bounded client for the existing [workflow telemetry contract](telemetry-api.md). It does not change the event allowlist, HTTP contract, SQLite schema, retention, ownership or authorization. Shared React integration is a separate reviewed change; the module alone is not evidence that the running UI emits these events.
+Implementation candidate, 2026-10-07. This module adds a bounded client for the existing [workflow telemetry contract](telemetry-api.md). It does not change the event allowlist, HTTP contract, SQLite schema, retention, ownership or authorization. The React session/API/App integration owns identity, workflow scope and fixed action observations. Feature wiring and the distinct verification tiers below describe the actual coverage; the helper alone is not treated as UI evidence.
 
 ## What is measured
 
@@ -16,7 +16,7 @@ Neither navigation nor `activateStep` fabricates an action success. An action th
 
 There are no generic page-visit/dwell events, request-start events, slow-pending notifications, event-loop/CPU stall measurements, new customer/auth/settings events, or chat/extraction client action aliases in v1. Server `request.chat`, extraction, parser and case timing remain separate existing observations. The SQL event-name CHECK constraint requires a separately reviewed migration before new event names can be accepted on existing databases. Long dwell must not be described as a stall.
 
-The module supports all twelve existing actions, but each feature must wire a real action before it is covered. The current minimal integration can automatically cover only exact parser uploads and case mutations; its tests do not establish paste/mapping/review/draft/export UI coverage. Private asset storage at `/api/assets`, artifact download, and streaming chat are deliberately not guessed from generic routes. Browser unload flushing is best effort and may be lost.
+The shared API observes exact parser uploads and case mutations, with explicit case-read opt-in and background-read suppression. Intake owns one file action across original storage/processing, explicit mapped-row application and individual fact confirmation. Documents owns readiness confirmation, actual generation, save-version boundaries, copy, download initiation and print-dialog invocation. Focused controls activate their matching dwell steps; navigation and typing alone do not emit events. Paste, manual/AI extraction, streaming-chat client dwell, customer/auth/settings actions and global original-file exports remain uncovered instead of being relabeled. Browser unload flushing is best effort and may be lost.
 
 ## Single owner per action
 
@@ -88,3 +88,9 @@ On 2026-10-07, the focused suite `node --test frontend/lib/journey-telemetry*.te
 The isolated candidate also passed `node --check frontend/lib/journey-telemetry.js`, `npm run check`, `npm run build`, all 145 frontend tests and all 264 backend tests. The Vite build still reports its over-500 kB chunk warning; no new runtime dependency was added. These checks reuse the workspace's installed locked dependencies; they are not a fresh dependency-install claim.
 
 Exact-build real-browser navigation, feature wiring, pagehide delivery and mobile timing behavior remain Local QA's responsibility. No browser or deployment pass is claimed here. Backout before integration is simply omitting the observer; after integration remove/disable the shared hooks. No database downgrade is needed because this change has no schema migration.
+
+## Integrated feature evidence
+
+The shared hooks have controlled transport/React StrictMode coverage for classification, body/abort timing, identity isolation, logout and observer fault isolation. Intake adds four controlled React DOM checks for focused-action boundaries, no per-keystroke data, one file operation versus parser duplication, failures, inactivity and failure isolation. Documents adds eleven controlled DOM checks plus a real local HTTP/SQLite journey that reads back the six fixed client action categories and excludes private contents. These feature-owned events have no fabricated request IDs; exact correlation remains limited to shared API requests with matching allowlisted response headers.
+
+A download observation means an anchor was activated after exact-byte verification. A print observation means the application invoked the print dialog. Neither establishes OS file delivery, user confirmation, printed output or saved PDF success. The browser acceptance gate must be rerun on the integrated candidate; these DOM/HTTP checks do not substitute for that gate or live-provider verification.

@@ -26,10 +26,15 @@ jobs:
         run: npm ci --ignore-scripts
       - name: Install official Chromium for the locked Playwright version
         run: npx --no-install playwright install --with-deps chromium
+      - name: Install the actual PDF text parser
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends poppler-utils
       - name: Build the production frontend
         run: npm run build
       - name: Verify the disposable backend fixture over real HTTP
-        run: node test/frontend-browser/fixture.check.mjs
+        run: |
+          node test/frontend-browser/fixture.check.mjs
+          node test/frontend-browser/formats-fixture.check.mjs
+          node test/frontend-browser/customer-cases-fixture.check.mjs
       - name: Run real-browser journeys against disposable Node and SQLite
         run: npm run test:browser:frontend
       - name: Describe the exact acceptance boundary
@@ -41,7 +46,8 @@ jobs:
             echo "Product entry: $NESTLET_BROWSER_ENTRY_PATH"
             echo 'This job uses built frontend assets, real HTTP, real SQLite, and synthetic disposable accounts/files.'
             echo 'Read the test result for pass/fail. A component-only pass does not establish the product journeys.'
-            echo 'Live DeepSeek extraction/chat/vision, email delivery, service-restart browser recovery, and production deployment are NOT RUN by this job.'
+            echo 'The customer-case scenario tests an isolated Node restart with the same SQLite/assets and fresh sign-in; check individual test results.'
+            echo 'Live DeepSeek extraction/chat/vision, genuine email delivery, production host/container restart or restore, and production deployment are NOT RUN by this job.'
           } >> "$GITHUB_STEP_SUMMARY"
       - name: Retain synthetic browser report and failure evidence
         if: always()

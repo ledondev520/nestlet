@@ -4,6 +4,7 @@ import { ApiError } from '@/lib/api';
 import { useSuspendedDraft } from '@/lib/suspended-draft';
 import { confirmationBody, currentValue, issueChange, printableFilename, fillPrintDocument, hasUnreviewedCJK } from './helpers.js';
 import { validDocumentRecovery, documentDraftSnapshot } from './draft-state.js';
+import { documentFailure, useDocumentObservation } from './observation.js';
 
 const initial = () => ({record:null, source:'', kind:'followup', readiness:null, readinessLoading:false, artifacts:[], conversations:[],
   selected:null, content:'', artifactTitle:'', saveStatus:'draft', answers:{}, namesVerified:false, issueForm:null, issueBaseline:'',
@@ -13,10 +14,11 @@ const failure = code => new ApiError(code);
 const isAbort = error => error?.name === 'AbortError';
 
 export function useDocuments(lang, caseId, onDirtyChange, visible = true) {
-  const {status, api} = useSession();
+  const {status, api, journey} = useSession();
   const {restored,saveDraft,clearDraft,cacheStatus} = useSuspendedDraft('documents');
   const restorationApplied = useRef(false), restoring = useRef(false);
   const identity = status.authenticated && status.userId && caseId ? `${status.userId}:${caseId}` : null;
+  const observation = useDocumentObservation(journey, visible, identity);
   const identityRef = useRef(identity); identityRef.current = identity;
   const epoch = useRef(0), controller = useRef(null), lock = useRef(false), readinessSequence = useRef(0), urls = useRef(new Set()), popups = useRef(new Set()), editorRevision = useRef(0);
   const [state, setState] = useState(initial);
@@ -38,7 +40,7 @@ export function useDocuments(lang, caseId, onDirtyChange, visible = true) {
   const verify = current => {if (!active(current)) throw new DOMException('Case context changed', 'AbortError');};
   const json = async (current, method, path, body) => {
     verify(current);
-    const value = method === 'get' ? await api.get(path, {signal:current.signal}) : await api[method](path, body, {signal:current.signal});
+    const value = method === 'get' ? await api.get(path, {signal:current.signal, telemetry:false}) : await api[method](path, body, {signal:current.signal, telemetry:false});
     verify(current); return value;
   };
 
@@ -134,36 +136,43 @@ export function useDocuments(lang, caseId, onDirtyChange, visible = true) {
   async function perform(name, work) {
     if (lock.current || !identity || !latest.current.record) return;
     const current = ticket(), snapshot = {...latest.current, editorRevision:editorRevision.current};
+    const event = {confirm:'review.confirm', generate:'draft.generate', 'save-version':'draft.edit', copy:'export.copy', download:'export.download', print:'export.print'}[name];
+    const observed = observation.begin(event, current.signal);
     lock.current = true; patch({busy:name, error:null, notice:''});
     try {
       if (snapshot.recoveryBaseVersion !== null && !['copy','open','download','print'].includes(name)) throw failure('CASE_CONFLICT');
-      await work(current, snapshot);
+      await work(current, snapshot, observed);
+      observed.finish({ok:true});
     }
-    catch (error) {if (active(current) && !isAbort(error)) patch({error, ...(error.code === 'DOCUMENT_DETAILS_REQUIRED' && error.details ? {readiness:error.details} : {})});}
+    catch (error) {observed.finish(documentFailure(name, error)); if (active(current) && !isAbort(error)) patch({error, ...(error.code === 'DOCUMENT_DETAILS_REQUIRED' && error.details ? {readiness:error.details} : {})});}
     finally {if (active(current)) {lock.current = false; patch({busy:''});}}
   }
-  async function generateUsing(current, record, kind, expectedEditorRevision) {
-    const readiness = await json(current, 'get', `/api/cases/${caseId}/readiness?kind=${kind}&locale=${lang === 'en' ? 'en' : 'zh'}`);
-    patch({readiness}); if (!readiness.ready) return;
-    const {artifact} = await json(current, 'post', `/api/cases/${caseId}/artifacts/generate`, {kind, status:'final', expectedCaseVersion:record.version});
-    if (!artifact || artifact.caseId !== caseId || typeof artifact.content !== 'string') throw failure('INVALID_RESPONSE');
-    if (expectedEditorRevision !== editorRevision.current) {await extras(current); throw failure('LOCAL_CHANGED');}
-    patch({selected:artifact, content:artifact.content, artifactTitle:artifact.title, saveStatus:artifact.status, notice:'generated'});
-    await extras(current);
+  async function generateUsing(current, record, kind, expectedEditorRevision, observed = observation.begin('draft.generate', current.signal)) {
+    try {
+      const readiness = await json(current, 'get', `/api/cases/${caseId}/readiness?kind=${kind}&locale=${lang === 'en' ? 'en' : 'zh'}`);
+      patch({readiness}); if (!readiness.ready) {observed.finish({ok:false, errorCode:'CLIENT_VALIDATION'}); return;}
+      const {artifact} = await json(current, 'post', `/api/cases/${caseId}/artifacts/generate`, {kind, status:'final', expectedCaseVersion:record.version});
+      if (!artifact || artifact.caseId !== caseId || typeof artifact.content !== 'string') throw failure('INVALID_RESPONSE');
+      if (expectedEditorRevision !== editorRevision.current) {await extras(current); throw failure('LOCAL_CHANGED');}
+      patch({selected:artifact, content:artifact.content, artifactTitle:artifact.title, saveStatus:artifact.status, notice:'generated'});
+      observed.finish({ok:true});
+      await extras(current);
+    } catch (error) {observed.finish(documentFailure('generate', error)); throw error;}
   }
-  const generate = () => perform('generate', async (current, snapshot) => {
+  const generate = () => perform('generate', async (current, snapshot, observed) => {
     if (snapshot.content !== (snapshot.selected?.content ?? snapshot.record.draftText)) throw failure('UNSAVED_ARTIFACT');
-    await generateUsing(current, snapshot.record, snapshot.kind, snapshot.editorRevision);
+    await generateUsing(current, snapshot.record, snapshot.kind, snapshot.editorRevision, observed);
   });
-  const confirmAnswers = (andGenerate = false) => perform('confirm', async (current, snapshot) => {
+  const confirmAnswers = (andGenerate = false) => perform('confirm', async (current, snapshot, observed) => {
     if (andGenerate && snapshot.content !== (snapshot.selected?.content ?? snapshot.record.draftText)) throw failure('UNSAVED_ARTIFACT');
     const shownAnswers = {...Object.fromEntries((snapshot.readiness?.missing || []).map(item => [item.key, currentValue(snapshot.record, item.key)])), ...snapshot.answers};
     const body = confirmationBody(shownAnswers, snapshot.record, snapshot.namesVerified !== snapshot.record.namesVerified ? snapshot.namesVerified : undefined);
-    if (!body) {if (andGenerate) await generateUsing(current, snapshot.record, snapshot.kind, snapshot.editorRevision); return;}
+    if (!body) {observed.finish({ok:false, errorCode:'CLIENT_VALIDATION'}); if (andGenerate) await generateUsing(current, snapshot.record, snapshot.kind, snapshot.editorRevision); return;}
     const result = await json(current, 'patch', `/api/cases/${caseId}/document-context`, body);
     applyRecord(result.case, snapshot, {notice:result.archivedLegacyDraft ? 'archived' : 'saved'});
     setState(previous => ({...previous, answers:JSON.stringify(previous.answers) === JSON.stringify(snapshot.answers) ? {} : previous.answers,
       content:!previous.selected && previous.content === snapshot.record.draftText ? result.case.draftText || '' : previous.content}));
+    observed.finish({ok:true});
     await extras(current);
     if (andGenerate && editorRevision.current === snapshot.editorRevision) await generateUsing(current, result.case, snapshot.kind, snapshot.editorRevision);
   });
@@ -177,7 +186,7 @@ export function useDocuments(lang, caseId, onDirtyChange, visible = true) {
     if (!artifact || artifact.caseId !== caseId || typeof artifact.content !== 'string') throw failure('INVALID_RESPONSE');
     patch({selected:artifact, content:artifact.content, artifactTitle:artifact.title, saveStatus:artifact.status});
   });
-  const saveArtifact = () => perform('save-version', async (current, snapshot) => {
+  const saveArtifact = () => perform('save-version', async (current, snapshot, observed) => {
     if (hasUnreviewedCJK(snapshot.content, snapshot.record)) throw failure('DOCUMENT_ENGLISH_REQUIRED');
     const {artifact} = await json(current, 'post', `/api/cases/${caseId}/artifacts`, {kind:snapshot.selected?.kind || snapshot.kind,
       title:snapshot.artifactTitle || snapshot.kind, status:snapshot.saveStatus, content:snapshot.content, expectedCaseVersion:snapshot.record.version});
@@ -186,6 +195,7 @@ export function useDocuments(lang, caseId, onDirtyChange, visible = true) {
       content:previous.content === snapshot.content ? artifact.content : previous.content,
       artifactTitle:previous.artifactTitle === snapshot.artifactTitle ? artifact.title : previous.artifactTitle,
       saveStatus:previous.content === snapshot.content ? artifact.status : 'draft', notice:'saved'}));
+    observed.finish({ok:true});
     await extras(current);
   });
   const copy = () => perform('copy', async (current, snapshot) => {
@@ -210,18 +220,19 @@ export function useDocuments(lang, caseId, onDirtyChange, visible = true) {
   });
   const print = () => {
     if (lock.current || !identity || !latest.current.selected) return;
-    const popup = window.open('', '_blank'); if (!popup) {patch({error:failure('PRINT_BLOCKED')}); return;}
-    popups.current.add(popup);
-    popup.document.title = 'Preparing document';
-    return perform('print', async (current, snapshot) => {
+    return perform('print', async (current, snapshot, observed) => {
+      // Still synchronous with the user gesture, before the first awaited request.
+      const popup = window.open('', '_blank'); if (!popup) throw failure('PRINT_BLOCKED');
+      popups.current.add(popup);
       try {
+        popup.document.title = 'Preparing document';
         const content = await exactSavedText(current, snapshot);
         const link = fillPrintDocument(popup, content, `${window.location.origin}/next/index.css`, printableFilename(snapshot.selected));
         await new Promise((resolve, reject) => {
           const timeout = setTimeout(() => reject(failure('PRINT_FAILED')), 10000);
           link.onload = () => {clearTimeout(timeout); resolve();}; link.onerror = () => {clearTimeout(timeout); reject(failure('PRINT_FAILED'));};
         });
-        verify(current); if (popup.closed) return;
+        verify(current); if (popup.closed) {observed.finish({ok:false, cancelled:true}); return;}
         popup.focus(); popup.print();
       } catch (error) {popup.close(); popups.current.delete(popup); throw error;}
     });
@@ -231,5 +242,5 @@ export function useDocuments(lang, caseId, onDirtyChange, visible = true) {
     if (result.conversation?.caseId !== caseId) throw failure('INVALID_RESPONSE'); return result.messages || [];
   };
   return {state, status, cacheStatus, dirty, contentDirty, patch, editArtifact, reload, generate, confirmAnswers, saveIssue, openArtifact, saveArtifact, copy, download, print,
-    sourceMessages};
+    sourceMessages, observation};
 }

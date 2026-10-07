@@ -4,6 +4,12 @@ import {AGENCY_OPTIONS, DEFAULT_GUIDANCE_AGENCY, GUIDANCE_COPY, getAgencyGuidanc
 const copy = {
   zh: {
     artifactEditsKept: '文书中的未保存编辑仍保留，请另存文书版本；已保存的历史版本不会被修改。',
+    errorLibraryPermission: '需要明确授权本次资料检索，才会将相关保存片段发送给 DeepSeek。',
+    errorLibraryUnavailable: '资料检索未完成。请检查当前案例，稍后重试；不会自动重复模型请求。',
+    errorLibraryLimit: '本次资料检索已达到范围或轮数限制。请缩小问题后重新发送。',
+    errorLibrarySensitive: '相关资料含可能的敏感标识，被拦截的片段未发送。请先去标识处理。',
+    errorLibraryCancelled: '资料检索已停止或超时。已收到的内容可能不完整，请查看保存状态。',
+    errorLibrarySource: '模型引用的资料编号无法核实，本次回答未标记为完成。请重新核对来源。',
     errorReadinessUnsaved: '请先保存案件或当前文书的修改，再补齐资料。你的输入仍保留。', errorReadinessChanged: '资料已在服务器保存，但等待期间工作区又有修改。你的本地输入未被覆盖；请先保留修改，再打开最新案件对照。',
     errorCaseIssueNotFound: '这条待办事项不存在或不属于当前案件，请刷新后重试。', artifactOpen: '打开', artifactArchived: '旧稿已保留在文档版本中', generateFinal: '生成完成版', customerCases: '客户案件', artifactHistory: '历史版本，请根据当前案件重新生成',
     workspaceTitle: '从材料到英文草稿', safeShort: '仅限虚构或去标识化资料', inputShort: '放入材料', sampleShort: '试用示例', pasteShort: '或在这里粘贴去标识化文本…', inputHelp: '支持格式与处理方式', nextReview: 'AI 提取并核对', reviewShort: '核对五项事实', sourceHint: '原文可展开查看', check: '确认', editedShort: '人工修改 · 查看出处', missingShort: '待补充：', missingScope: '仅表示本次材料未提供，并非机构缺件通知', nextHelp: '后续事项与导出说明', draftTypeShort: '草稿类型', backInput: '返回材料', backReview: '返回核对', gateShort: '请确认每一项；未知信息可保留空白', draftShort: '可直接编辑。辅助文书，非官方表格；请人工复核后使用。', footerShort: '仅生成草稿 · 不自动发送或提交',
@@ -16,7 +22,7 @@ const copy = {
     account: '账户', trialAccess: '普通账号', trialAccountHint: '可以处理自己的案例；服务连接由管理员维护。', loginUsername: '用户名', loginUsernameHint: '普通账号填写用户名；管理员可留空', errorOwnerRequired: '此操作仅管理员可用。', errorTrialUnavailable: '服务暂不可用，请联系管理员。',
     savedCases: '我的已存案例', saveCase: '保存案例', caseName: '案例名称', untitledCase: '未命名案例', chooseCase: '选择已保存案例', openCase: '打开', deleteCase: '删除存档', savedScope: '只保存当前账户的文本、核对事实和草稿，不保存原始文件。不会自动保存。', caseSaved: '已保存', caseNotSaved: '尚未保存', unsavedChanges: '有未保存的修改', caseSaveSuccess: '案例已保存', caseOpened: '已打开保存的案例', caseDeleted: '已删除存档，当前工作区内容仍保留', unsavedOpen: '当前修改尚未保存。打开其他案例会替换工作区，继续？', deleteCaseConfirm: '永久删除这个已保存案例？此操作无法撤销。', errorCaseNotFound: '案例不存在或当前账户无权访问。', errorCaseInvalid: '案例内容无效，请检查名称和字段。', errorCaseTooLarge: '案例总数据不能超过 256 KiB，原文和草稿各不能超过 50,000 字符。请缩短内容后重试。', errorCaseConflict: '此案例已在别处修改，未覆盖当前内容。请先导出或复制需要保留的修改，再打开最新存档核对。', errorCaseStorage: '案例存储暂不可用，当前工作区未改变。请稍后重试。', errorCaseChanged: '工作区在加载期间发生变化，未替换内容。请确认修改后再次打开。', errorTrialLimit: '普通账号的提取次数已达限额，请稍后再试或联系管理员。',
     errorCaseLimit: '当前账户已达到 100 个案例的上限。请先删除不再需要的存档，再添加新案例；现有案例仍可更新。',
-    register: '注册普通账号', repeatPassword: '再次输入密码', registerUsernameHint: '3–64 位小写字母或数字，可含 _ . -；owner 保留给管理员', registerPasswordHint: '密码为 6–256 个字符', registrationSuccess: '普通账号已创建并登录', registrationUnavailable: '注册暂未开放，请联系管理员。', errorRegistration: '请使用符合格式的用户名和 6–256 字符密码；两次密码须一致。', errorPasswordMismatch: '两次输入的密码不一致，请检查。', errorUsernameExists: '该用户名已被使用，请换一个。', errorRegistrationRate: '注册请求过于频繁，请稍后重试。',
+    register: '通过邮箱注册', repeatPassword: '再次输入密码', registerUsernameHint: '3–64 位小写字母或数字，可含 _ . -；owner 保留给管理员', registerPasswordHint: '密码为 6–256 个字符', registrationSuccess: '普通账号已创建并登录', registrationUnavailable: '注册暂未开放，请联系管理员。', errorRegistration: '请使用符合格式的用户名和 6–256 字符密码；两次密码须一致。', errorPasswordMismatch: '两次输入的密码不一致，请检查。', errorUsernameExists: '该用户名已被使用，请换一个。', errorRegistrationRate: '注册请求过于频繁，请稍后重试。',
     sampleDownloads: '下载虚构测试材料', sampleDownloadHint: '仅用于测试。下载后自行导入；不会自动填入案例或调用 AI。', sampleWorkbookHint: 'Excel 请选择 Synthetic case 工作表第 2 行，将 A–E 列依次对应五项字段。',
     signInOrRegister: '登录 / 注册', manageAccount: '管理',
     brand: '巢小秘', tag: '一份材料 · 向前一步', demo: '手动整理', liveMode: 'DeepSeek 实时提取',
@@ -55,6 +61,12 @@ const copy = {
   },
   en: {
     artifactEditsKept: 'Your unsaved document edits are retained. Save a document version; existing history is unchanged.',
+    errorLibraryPermission: 'Explicit permission is required before relevant saved excerpts are sent to DeepSeek for this lookup.',
+    errorLibraryUnavailable: 'Library retrieval did not complete. Check the current case and try again later; model requests are not retried automatically.',
+    errorLibraryLimit: 'This lookup reached its scope or round limit. Narrow the question before sending again.',
+    errorLibrarySensitive: 'Possible sensitive identifiers were found. Blocked excerpts were not sent; de-identify the material first.',
+    errorLibraryCancelled: 'Library retrieval stopped or timed out. Received text may be incomplete; check its saved state.',
+    errorLibrarySource: 'The model cited an unverified source label. This answer was not marked complete; review the sources.',
     errorReadinessUnsaved: 'Save your case or document edits before completing these details. Your input is preserved.', errorReadinessChanged: 'The details were saved on the server, but the workspace changed while waiting. Your local input was preserved. Keep those edits, then open the latest case to reconcile.',
     errorCaseIssueNotFound: 'This case issue is unavailable. Refresh the case and try again.', artifactOpen: 'Open', artifactArchived: 'The earlier draft is preserved in document versions', generateFinal: 'Generate final document', customerCases: 'Customer cases', artifactHistory: 'Historical version; regenerate from the current case',
     workspaceTitle: 'From document to English draft', safeShort: 'Synthetic or de-identified information only', inputShort: 'Add your document', sampleShort: 'Try sample', pasteShort: 'Or paste de-identified text here…', inputHelp: 'Formats and processing details', nextReview: 'Extract & review with AI', reviewShort: 'Review five facts', sourceHint: 'Expand a source to check it', check: 'Confirm', editedShort: 'Edited · View source', missingShort: 'To confirm:', missingScope: 'Not provided in this review, not an agency missing-document notice', nextHelp: 'Next steps and export details', draftTypeShort: 'Draft type', backInput: 'Back to document', backReview: 'Back to review', gateShort: 'Confirm every field. Unknown information can stay blank.', draftShort: 'Edit directly. Supplementary draft, not an official form. Review before use.', footerShort: 'Drafts only · Nothing is sent or submitted automatically',
@@ -67,7 +79,7 @@ const copy = {
     account: 'Account', trialAccess: 'Standard account', trialAccountHint: 'Work with your own cases. The service connection is managed by the owner.', loginUsername: 'Username', loginUsernameHint: 'Enter your account username; admins may leave this blank', errorOwnerRequired: 'This action is available only to the owner.', errorTrialUnavailable: 'The service is unavailable. Contact the administrator.',
     savedCases: 'My saved cases', saveCase: 'Save case', caseName: 'Case name', untitledCase: 'Untitled case', chooseCase: 'Choose a saved case', openCase: 'Open', deleteCase: 'Delete saved case', savedScope: 'Saves text, reviewed facts, and drafts for this account only. Original files are not stored. Saving is manual.', caseSaved: 'Saved', caseNotSaved: 'Not saved yet', unsavedChanges: 'Unsaved changes', caseSaveSuccess: 'Case saved', caseOpened: 'Saved case opened', caseDeleted: 'Saved case deleted. The current workspace content is retained.', unsavedOpen: 'Your changes are not saved. Opening another case replaces the workspace. Continue?', deleteCaseConfirm: 'Permanently delete this saved case? This cannot be undone.', errorCaseNotFound: 'This case does not exist or is not available to this account.', errorCaseInvalid: 'Invalid case content. Check the name and fields.', errorCaseTooLarge: 'Total case data cannot exceed 256 KiB; source text and draft each allow up to 50,000 characters. Shorten the content and retry.', errorCaseConflict: 'This case changed elsewhere. Your work was not overwritten. Export or copy the edits you need to keep, then open the latest saved case to compare.', errorCaseStorage: 'Case storage is unavailable. Your current workspace is unchanged. Try again later.', errorCaseChanged: 'The workspace changed while loading. Nothing was replaced. Review your edits before opening again.', errorTrialLimit: 'The standard-account extraction limit has been reached. Try later or contact the administrator.',
     errorCaseLimit: 'This account has reached the 100-case limit. Delete an unneeded saved case before adding another. Existing cases can still be updated.',
-    register: 'Create standard account', repeatPassword: 'Repeat password', registerUsernameHint: '3–64 lowercase letters or digits; _ . - allowed. The name owner is reserved.', registerPasswordHint: 'Use 6–256 characters for your password', registrationSuccess: 'Standard account created. You are signed in.', registrationUnavailable: 'Registration is unavailable. Contact the administrator.', errorRegistration: 'Use a valid username and a 6–256-character password. Both password entries must match.', errorPasswordMismatch: 'The passwords do not match. Please check both entries.', errorUsernameExists: 'This username is taken. Choose another.', errorRegistrationRate: 'Too many registration attempts. Please try again later.',
+    register: 'Register with email', repeatPassword: 'Repeat password', registerUsernameHint: '3–64 lowercase letters or digits; _ . - allowed. The name owner is reserved.', registerPasswordHint: 'Use 6–256 characters for your password', registrationSuccess: 'Standard account created. You are signed in.', registrationUnavailable: 'Registration is unavailable. Contact the administrator.', errorRegistration: 'Use a valid username and a 6–256-character password. Both password entries must match.', errorPasswordMismatch: 'The passwords do not match. Please check both entries.', errorUsernameExists: 'This username is taken. Choose another.', errorRegistrationRate: 'Too many registration attempts. Please try again later.',
     sampleDownloads: 'Download synthetic test files', sampleDownloadHint: 'For testing only. Download and import a file yourself; nothing is prefilled and no AI call is automatic.', sampleWorkbookHint: 'For Excel, select row 2 of the Synthetic case sheet and map columns A–E to the five fields in order.',
     signInOrRegister: 'Sign in / Register', manageAccount: 'Manage',
     brand: 'Nestlet', tag: 'ONE DOCUMENT. ONE STEP FORWARD.', demo: 'Manual processing', liveMode: 'DeepSeek live extraction',
@@ -291,8 +303,8 @@ function settingsMarkup() {
   if (state.statusError) controls = `<p>${d.errorBackend}</p>`;
   else if (!state.authConfigured) controls = `<p>${d.operatorSetupHelp}</p>`;
   else if (!state.authenticated) {
-    const registering = state.authForm === 'register' && state.registrationEnabled;
-    controls = operatorLoginAvailable() ? `${localDevelopmentLogin() ? `<p class="small">${d.localLoginNotice}</p>` : ''}<div class="actions"><button id="auth-signin" class="link" type="button" ${!registering || disabled ? 'disabled' : ''}>${d.signIn}</button><button id="auth-register" class="link" type="button" ${registering || !state.registrationEnabled || disabled ? 'disabled' : ''}>${d.register}</button></div><form id="login-form" autocomplete="off" novalidate><label for="login-username">${d.loginUsername}</label><input id="login-username" class="input" type="text" autocomplete="off" maxlength="64" value="${esc(state.loginUsername)}" placeholder="${registering ? d.registerUsernameHint : d.loginUsernameHint}" ${disabled}><label for="operator-password">${d.operatorPassword}</label><div class="credential-row"><input id="operator-password" name="operator-password" type="password" autocomplete="off" minlength="6" maxlength="256" ${disabled}>${registering ? '' : `<button class="primary" type="submit" ${disabled}>${d.signIn}</button>`}</div>${registering ? `<p class="small">${d.registerPasswordHint}</p><label for="password-confirmation">${d.repeatPassword}</label><div class="credential-row"><input id="password-confirmation" type="password" autocomplete="off" minlength="6" maxlength="256" ${disabled}><button class="primary" type="submit" ${disabled}>${d.register}</button></div>` : ''}</form>` : `<p>${d.errorHttps}</p>`;
+    // Enrollment lives in the email-aware root UI; legacy retains existing-account login.
+    controls = operatorLoginAvailable() ? `${localDevelopmentLogin() ? `<p class="small">${d.localLoginNotice}</p>` : ''}<div class="actions"><a id="legacy-email-register" class="link" href="/">${d.register}</a></div><form id="login-form" autocomplete="off" novalidate><label for="login-username">${d.loginUsername}</label><input id="login-username" class="input" type="text" autocomplete="off" maxlength="64" value="${esc(state.loginUsername)}" placeholder="${d.loginUsernameHint}" ${disabled}><label for="operator-password">${d.operatorPassword}</label><div class="credential-row"><input id="operator-password" name="operator-password" type="password" autocomplete="off" minlength="6" maxlength="256" ${disabled}><button class="primary" type="submit" ${disabled}>${d.signIn}</button></div></form>` : `<p>${d.errorHttps}</p>`;
   } else if (!managesSettings()) {
     controls = `<p>${state.role === 'trial' ? d.trialAccountHint : d.errorOwnerRequired}</p><button id="logout" class="link" ${disabled}>${d.signOut}</button>`;
   } else if (!secureSettingsAvailable()) {
@@ -304,6 +316,11 @@ function settingsMarkup() {
 }
 
 const authErrorKeys = {
+  LIBRARY_CONTEXT_INVALID: 'errorLibraryUnavailable', LIBRARY_CONSENT_REQUIRED: 'errorLibraryPermission',
+  LIBRARY_ARGUMENT_INVALID: 'errorLibraryUnavailable', LIBRARY_TOOL_UNKNOWN: 'errorLibraryUnavailable', LIBRARY_NOT_FOUND: 'errorLibraryUnavailable',
+  LIBRARY_SENSITIVE_DATA: 'errorLibrarySensitive', LIBRARY_UNAVAILABLE: 'errorLibraryUnavailable',
+  LIBRARY_RESULT_LIMIT: 'errorLibraryLimit', LIBRARY_TOOL_LIMIT: 'errorLibraryLimit',
+  LIBRARY_ABORTED: 'errorLibraryCancelled', LIBRARY_TIMEOUT: 'errorLibraryCancelled', LIBRARY_UNVERIFIED_CITATION: 'errorLibrarySource',
   REGISTRATION_INVALID: 'errorRegistration', USER_EXISTS: 'errorUsernameExists', USER_LIMIT_REACHED: 'registrationUnavailable', REGISTRATION_RATE_LIMITED: 'errorRegistrationRate',
   TRIAL_LIMIT_REACHED: 'errorTrialLimit', USER_INVALID: 'errorCredentials', OWNER_REQUIRED: 'errorOwnerRequired', AUTH_REQUIRED: 'errorAuth', CSRF_REJECTED: 'errorSession', OPERATOR_SETUP_REQUIRED: 'operatorSetupHelp', HTTPS_REQUIRED: 'errorHttps',
   INVALID_CREDENTIALS: 'errorCredentials', LOGIN_RATE_LIMITED: 'errorRateLimit', SETTINGS_RATE_LIMITED: 'errorRateLimit',
@@ -390,11 +407,10 @@ async function settingsRequest(path, payload, successKey) {
       state.connectionVerifiedAt = result.verifiedAt;
     } else if (path === '/api/logout') {
       replaceText(''); forgetCaseIdentity(); state.workspaceOwnerId = null; state.cases = []; state.selectedCaseId = ''; state.authenticated = false; state.csrfToken = ''; resetTelemetry(); await refreshStatus();
-    } else if (path === '/api/login' || path === '/api/register') {
+    } else if (path === '/api/login') {
       state.csrfToken = typeof result.csrfToken === 'string' ? result.csrfToken : '';
       await refreshStatus();
       if (!state.authenticated) throw new Error('errorAuth');
-      if (path === '/api/register' && state.role !== 'trial') throw new Error('errorRegistration');
       state.authForm = 'login';
     } else {
       if (result.authenticated !== true || typeof result.configured !== 'boolean' || result.model !== 'deepseek-flash') throw new Error('errorSettings');
@@ -1135,27 +1151,17 @@ function bind() {
   on('saved-case', 'change', event => {state.selectedCaseId = event.target.value; render();});
   on('settings', 'click', () => {state.settingsOpen = !state.settingsOpen; state.settingsError = ''; state.settingsMessage = ''; render();});
   on('refresh-status', 'click', refreshStatus);
-  for (const [id, mode] of [['auth-signin', 'login'], ['auth-register', 'register']]) on(id, 'click', () => {
-    state.loginUsername = byId('login-username')?.value.trim() || state.loginUsername;
-    state.authForm = mode; state.settingsError = ''; state.settingsMessage = ''; render();
-  });
   on('login-form', 'submit', event => {
     event.preventDefault();
     if (!operatorLoginAvailable()) return;
     const input = byId('operator-password');
-    const confirmation = byId('password-confirmation');
     state.loginUsername = byId('login-username').value.trim().toLowerCase();
-    const registering = state.authForm === 'register';
-    let validationError = '';
-    if (registering && !state.registrationEnabled) validationError = 'registrationUnavailable';
-    else if (registering && (!/^[a-z0-9][a-z0-9_.-]{2,63}$/.test(state.loginUsername) || state.loginUsername === 'owner')) validationError = 'errorRegistration';
-    else if (input.value.length < 6 || input.value.length > 256 || /[\u0000-\u001f\u007f]/.test(input.value)) validationError = registering ? 'errorRegistration' : 'errorCredentials';
-    else if (registering && input.value !== confirmation?.value) validationError = 'errorPasswordMismatch';
-    if (validationError) {state.settingsError = validationError; byId('settings-error').textContent = t()[validationError]; return;}
-    const payload = {username: state.loginUsername, password: input.value, ...(registering ? {passwordConfirmation: confirmation.value} : {})};
+    if (input.value.length < 6 || input.value.length > 256 || /[\u0000-\u001f\u007f]/.test(input.value)) {
+      state.settingsError = 'errorCredentials'; byId('settings-error').textContent = t().errorCredentials; return;
+    }
+    const payload = {username: state.loginUsername, password: input.value};
     input.value = '';
-    if (confirmation) confirmation.value = '';
-    settingsRequest(registering ? '/api/register' : '/api/login', payload, registering ? 'registrationSuccess' : 'loginSuccess');
+    settingsRequest('/api/login', payload, 'loginSuccess');
   });
   on('key-form', 'submit', event => {
     event.preventDefault();

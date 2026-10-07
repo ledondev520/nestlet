@@ -47,7 +47,6 @@ function MessageSource({lang, caseId, value, onChange, conversations, loadMessag
     </NativeSelect>}
     {value && !conversationId && <p className="break-all text-xs text-muted-foreground">{d.source}: {value}</p>}
     {failed && <p role="alert" className="text-sm text-destructive">{d.sourceUnavailable}</p>}
-    <p className="text-xs text-muted-foreground">{d.sourceNotEvidence}</p>
   </fieldset>;
 }
 
@@ -55,7 +54,7 @@ function ContextDetails({record, lang, disabled, onAdd, form, onForm}) {
   const d = documentCopy(lang);
   const {key,value,notApplicable} = form;
   const context = record.documentContext || {};
-  return <details className="rounded-lg border border-border bg-card px-5 py-4">
+  return <details data-journey-action="review.confirm" className="rounded-lg border border-border bg-card px-5 py-4">
     <summary className="cursor-pointer text-sm font-medium">{d.confirmedDetails}</summary>
     <dl className="mt-4 grid gap-4 sm:grid-cols-2">
       {[...(record.fields || []).map(field => ({...field, label:d.fields[field.key]})), ...Object.entries(context).map(([name, entry]) => ({...entry, key:name, label:d.fields[name]}))].map(entry => <div key={entry.key} className="min-w-0 space-y-1">
@@ -76,7 +75,6 @@ function ContextDetails({record, lang, disabled, onAdd, form, onForm}) {
         <div className="space-y-1"><Label htmlFor="document-detail-value">{d.answer}</Label><Input id="document-detail-value" value={value} maxLength={FACT_KEYS.includes(key) ? 3000 : 1000} disabled={disabled || notApplicable} onChange={event => onForm({...form,value:event.target.value,touched:true})} /></div>
       </div>
       {['documentDate','salutation','senderRole','senderOrganization','recipientOrganization','attachments','nextActionOwner','targetDate'].includes(key) && <div className="flex items-center gap-2"><Checkbox id="document-detail-na" checked={notApplicable} disabled={disabled} onCheckedChange={checked => onForm({...form,notApplicable:checked === true,touched:true})} /><Label htmlFor="document-detail-na">{d.notApplicable}</Label></div>}
-      <p className="text-xs text-muted-foreground">{d.optionalHint}</p>
       <Button type="submit" size="sm" variant="outline" disabled={disabled || (!value.trim() && !notApplicable)}>{d.addAnswer}</Button>
     </form>
   </details>;
@@ -101,9 +99,9 @@ export function DocumentsPage({lang = 'zh', caseId, onDirtyChange, onOpenIntake,
 
   if (!status.authenticated) return <Card className="paper-card"><CardContent className="pt-1 text-sm text-muted-foreground">{d.signIn}</CardContent></Card>;
   if (!caseId) return <Card className="paper-card"><CardHeader><CardTitle className="paper-title">{d.title}</CardTitle><CardDescription>{d.selectCase}</CardDescription></CardHeader></Card>;
-  return <div className="space-y-6" data-testid="documents-page">
+  return <div ref={page.observation.ref} onFocusCapture={page.observation.onFocusCapture} onBlurCapture={page.observation.onBlurCapture} className="space-y-6" data-testid="documents-page">
     <header className="flex flex-wrap items-start justify-between gap-3">
-      <div className="space-y-2"><p className="text-xs tracking-widest text-muted-foreground">{d.eyebrow}</p><h1 className="paper-title text-3xl">{record?.title || d.title}</h1><p className="max-w-2xl text-sm text-muted-foreground">{d.subtitle}</p></div>
+      <div className="space-y-2"><h1 className="paper-title text-3xl">{record?.title || d.title}</h1><p className="max-w-2xl text-sm text-muted-foreground">{d.subtitle}</p></div>
       <div className="flex flex-wrap gap-2">{onOpenIntake && <Button variant="outline" size="sm" onClick={onOpenIntake}><ArrowUpRight aria-hidden="true" />{d.material}</Button>}<Button variant="ghost" size="sm" disabled={busy} onClick={() => page.reload(true)}><RefreshCw aria-hidden="true" />{d.reload}</Button></div>
     </header>
     {state.error && <Alert variant="destructive" role="alert"><AlertTitle>{conflict ? d.conflict : documentErrorText(state.error, lang)}</AlertTitle>{conflict && <AlertDescription className="space-y-2"><p>{documentErrorText(state.error, lang)}</p><Button size="sm" variant="outline" disabled={busy} onClick={() => page.reload(true)}>{d.reload}</Button></AlertDescription>}</Alert>}
@@ -112,7 +110,7 @@ export function DocumentsPage({lang = 'zh', caseId, onDirtyChange, onOpenIntake,
     {state.loading && <div role="status" aria-label={d.loading} className="space-y-3"><Skeleton className="h-10 w-2/3" /><Skeleton className="h-44 w-full" /><span className="sr-only">{d.loading}</span></div>}
     {!state.loading && !record && <Button disabled={busy} onClick={() => page.reload(false)}>{d.retry}</Button>}
     {record && <>
-      <Card className="paper-card">
+      <Card data-journey-action="review.confirm" className="paper-card">
         <CardHeader><div className="flex flex-wrap items-center justify-between gap-3"><CardTitle className="paper-title text-xl">{questionKeys.length ? d.missingTitle : d.ready}</CardTitle><Badge variant="outline">v{record.version}</Badge></div><CardDescription>{d.missingHint}</CardDescription></CardHeader>
         <CardContent className="space-y-5">
           <div className="space-y-1"><Label htmlFor="document-kind">{d.kind}</Label><NativeSelect id="document-kind" disabled={busy} value={state.kind} onChange={event => patch({kind:event.target.value})}>{DOCUMENT_KINDS.map((kind, index) => <NativeSelectOption key={kind} value={kind}>{d.kinds[index]}</NativeSelectOption>)}</NativeSelect></div>
@@ -130,9 +128,8 @@ export function DocumentsPage({lang = 'zh', caseId, onDirtyChange, onOpenIntake,
             {languageReview && !record.namesVerified && <div className="flex items-start gap-2"><Checkbox id="document-names-verified" checked={state.namesVerified} disabled={busy} onCheckedChange={checked => patch({namesVerified:checked === true})} /><Label htmlFor="document-names-verified" className="text-sm leading-relaxed">{d.namesVerified}</Label></div>}
             <div className="flex flex-wrap gap-2"><Button type="submit" variant="outline" disabled={busy}>{d.confirm}</Button><Button type="button" disabled={busy || page.contentDirty} onClick={() => page.confirmAnswers(true)}><Check aria-hidden="true" />{d.confirmContinue}</Button></div>
           </form>}
-          {!questionKeys.length && <Button disabled={busy || !state.readiness?.ready || page.contentDirty} onClick={page.generate}><FileText aria-hidden="true" />{d.generate}</Button>}
+          {!questionKeys.length && <Button data-journey-action="draft.generate" disabled={busy || !state.readiness?.ready || page.contentDirty} onClick={page.generate}><FileText aria-hidden="true" />{d.generate}</Button>}
           {page.contentDirty && <p className="text-sm text-muted-foreground">{d.saveBeforeExport}</p>}
-          <p className="text-xs text-muted-foreground">{d.generationHint}</p>
         </CardContent>
       </Card>
       <ContextDetails key={record.id} record={record} lang={lang} disabled={busy} onAdd={updateAnswer} form={state.detailForm} onForm={detailForm => patch({detailForm})} />
@@ -155,7 +152,7 @@ export function DocumentsPage({lang = 'zh', caseId, onDirtyChange, onOpenIntake,
         </CardContent>
       </Card>
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_17rem]">
-        <Card className="paper-card min-w-0">
+        <Card data-journey-action="draft.edit" className="paper-card min-w-0">
           <CardHeader><div className="flex flex-wrap items-center justify-between gap-2"><CardTitle className="paper-title text-xl">{d.preview}</CardTitle>{state.content && <Badge variant="outline">{page.contentDirty ? d.edited : state.selected?.status === 'final' ? d.final : d.draft}</Badge>}</div><CardDescription>{d.previewHint}</CardDescription></CardHeader>
           <CardContent className="space-y-4">
             {state.selected?.isStale && <Alert><AlertTitle>{d.historical}</AlertTitle><AlertDescription>{d.stale}</AlertDescription></Alert>}
@@ -163,7 +160,7 @@ export function DocumentsPage({lang = 'zh', caseId, onDirtyChange, onOpenIntake,
               <div className="space-y-2"><Label htmlFor="document-artifact-title">{d.artifactTitle}</Label><Input id="document-artifact-title" value={state.artifactTitle} maxLength={120} disabled={busy} onChange={event => page.editArtifact({artifactTitle:event.target.value})} /></div>
               <div className="space-y-2"><Label htmlFor="document-body">{d.content}</Label><Textarea id="document-body" lang="en" value={state.content} maxLength={50000} rows={24} className="min-h-96 font-serif leading-relaxed" disabled={busy} onChange={event => page.editArtifact({content:event.target.value})} /></div>
               {!isEnglish && <p role="alert" className="text-sm text-destructive">{d.errors.DOCUMENT_ENGLISH_REQUIRED}</p>}
-              <div className="flex flex-wrap gap-2"><Button variant="outline" size="sm" disabled={busy || !state.content || !isEnglish} onClick={page.copy}><Copy aria-hidden="true" />{d.copy}</Button><Button variant="outline" size="sm" disabled={busy || !state.selected || page.contentDirty || !isEnglish} onClick={page.download}><Download aria-hidden="true" />{d.download}</Button><Button variant="outline" size="sm" disabled={busy || !state.selected || page.contentDirty || !isEnglish} onClick={page.print}><Printer aria-hidden="true" />{d.print}</Button></div>
+              <div className="flex flex-wrap gap-2"><Button variant="outline" size="sm" disabled={busy || !state.content || !isEnglish} data-journey-action="export.copy" onClick={page.copy}><Copy aria-hidden="true" />{d.copy}</Button><Button variant="outline" size="sm" disabled={busy || !state.selected || page.contentDirty || !isEnglish} data-journey-action="export.download" onClick={page.download}><Download aria-hidden="true" />{d.download}</Button><Button variant="outline" size="sm" disabled={busy || !state.selected || page.contentDirty || !isEnglish} data-journey-action="export.print" onClick={page.print}><Printer aria-hidden="true" />{d.print}</Button></div>
               <Separator />
               <div className="flex flex-wrap items-end gap-3"><div className="space-y-1"><Label htmlFor="document-save-status">{d.saveStatus}</Label><NativeSelect id="document-save-status" value={state.saveStatus} disabled={busy} onChange={event => patch({saveStatus:event.target.value})}><NativeSelectOption value="draft">{d.draft}</NativeSelectOption><NativeSelectOption value="final">{d.final}</NativeSelectOption></NativeSelect></div><Button disabled={busy || !state.content.trim() || !isEnglish} onClick={page.saveArtifact}>{d.saveVersion}</Button></div>
             </> : <p className="py-10 text-center text-sm text-muted-foreground">{d.noPreview}</p>}

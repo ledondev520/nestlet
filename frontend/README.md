@@ -11,18 +11,25 @@ This directory is the JavaScript/JSX frontend. No TypeScript application source 
 - `@/lib/session`: `SessionProvider`, `useSession`
 - `styles.css`: Kimi's Working Paper colors and typefaces mapped to semantic shadcn tokens; no legacy CSS import
 
-`useSession()` returns `{status, loading, error, api, refresh, login, register, logout}`.
+`useSession()` returns `{status, loading, error, recovery, api, journey, refresh, login, register, logout}`.
 
-- `status` is the `/api/status` body, including `authenticated`, `userId`, `username`, `role`, `canManageSettings`, `authConfigured`, `registrationEnabled`, `secureLogin`, `secureSettings`, and provider capabilities
+- `status` is the `/api/status` body, including `authenticated`, `userId`, `username`, `role`, `canManageSettings`, `authConfigured`, `registrationEnabled`, `emailDeliveryConfigured`, `email`, `emailVerified`, `emailBindingRequired`, `passwordRecoveryMethod`, `secureLogin`, `secureSettings`, and provider capabilities
 - `api.get(path, {signal})`; `api.post/put/patch/delete(path, body, {signal})`; `api.request(path, {method, body, signal})`
 - Responses are parsed JSON, not `Response` objects. Cookie/CSRF handling is automatic. An aborted read rejects with `AbortError`; other failures are `ApiError`
-- `login({username,password})`; `register({username,password,passwordConfirmation})`; `logout()`; `refresh({signal})`
-- The session stores only current account/capability state in memory. Do not write passwords, keys, or CSRF tokens to local/session storage
+- `login({email,password,rememberMe})` or existing-account `login({username,password,rememberMe})`; `register({email,password,passwordConfirmation})` returns an accepted verification request and never creates a session; `logout()`; `refresh({signal})`
+- The session stores only current account/capability state in memory. Do not write passwords, keys, email-link tokens, or CSRF tokens to local/session storage. The existing explicit remember-me option may store only a validated legacy username; email identifiers are not persisted by this implementation
 - Settings updates use `api.post('/api/settings', payload)` then `refresh()`
 - Raw local files use `api.upload(path, file, {contentType, filename, assetConsent: true, signal})`; `/api/assets` persists the original only after the feature's explicit save action. The helper URL-encodes `filename`, sends exact raw bytes/MIME and adds `X-Asset-Consent: persist-private`. Legacy PDF/workbook parser routes use `documentConsent: true` instead. This does not imply AI transmission consent
+- `journey` is the optional bounded, current-tab first-party action observer. See `docs/react-journey-observability.md`; it accepts fixed metadata only. Shared API observes exact parser/case writes. Background reads are omitted; an explicit case-open read may use `{telemetry: true}`. Feature-owned operations use `{telemetry: false}` to avoid duplicates. Observer failure never changes business success
 - Streaming chat uses its own streaming fetch and the current `status.csrfToken`. Do not send the token anywhere except the same-origin application API
 
 ## Feature boundaries
+
+### Official-source references
+
+The authenticated root workspace mounts `components/agency-guidance.jsx` above Conversation, Materials & facts, and Documents. It uses the existing bilingual `public/agency-guidance.js` registry in a collapsed native disclosure with shadcn Label/NativeSelect and existing design tokens. Official titles remain in their source language. Edition metadata, source-check date, conditional preparation notes and the printed OMB caution remain available inside the disclosure; applicability is visibly unconfirmed even while collapsed.
+
+App owns the transient reference selector, initially SFHA for research. This is separate from the saved `pha` fact: it never writes case data, changes document readiness, or inserts an agency into a generated document. It survives view/language changes in the workspace and resets when another case/account opens or the page reloads. The choice is not a persisted case setting. Chat receives the selected ID for subsequent requests; only server-owned registry text can become reference context. Source observations are not fetched or reverified for each request.
 
 Each feature owns only its directory and tests. Foundation owner integrates App/navigation after modules are ready.
 
@@ -65,3 +72,22 @@ The shadcn CLI is not a build/runtime dependency: checked-in official JSX source
 Each built React HTML response at `/`, `/next`, or `/next/` receives a fresh cryptographically random 144-bit style nonce and `Cache-Control: no-store`. The matching meta value is passed to the supported `get-nonce` API before rendering. Radix scroll locking can then attach its trusted style element with that nonce. Script policy remains `script-src 'self'`; style attributes and arbitrary inline styles/scripts are not permitted. `/legacy/` retains its previous strict policy without a nonce. No build or partially missing JS/CSS produces an explicit bilingual 503.
 
 The production root browser gate covers product journeys and responsive navigation, while `/next/#components` separately exercises repeated modal focus, dismissal, scroll-lock restoration and zero CSP violations. HTTP nonce/route tests are distinct from the browser gate; neither certifies live-provider calls.
+
+## Email account release boundary
+
+The email UI requires the schema5 API in the same release. Registration is email-only and returns202 without authenticating. Existing usernames remain supported for login. Email delivery status is supplied by `/api/status`; absent configuration keeps registration and email-request actions unavailable and never implies delivery. Request success is deliberately generic and does not establish eligibility, account existence, inbox receipt, or live mail-provider acceptance.
+
+`main.jsx` captures trusted root `/#auth=verify&token=...` or `/#auth=reset&token=...` fragments before React effects, removes the fragment with `replaceState`, and keeps the token in a clearable memory closure. Neither opening a link nor a GET consumes it. Verification requires an explicit button; reset requires matching passwords. Submission removes the local token even if the network result is uncertain. Reopen the email or request a fresh link to retry. Link tokens never enter route telemetry, markup, localStorage, sessionStorage, or logs. Navigation, closing the link, pagehide, and account changes discard the token. Server expiration remains authoritative.
+
+Authenticated existing accounts bind email with their current password and the current CSRF token. They remain pending until explicit inbox verification and status refresh. Wrong binding passwords do not expire an otherwise valid session; genuine AUTH_REQUIRED does. Password reset invalidates previous sessions on the server. Administrator/bootstrap recovery is explicitly unavailable by email in this release and must be performed by the administrator personally in the private server setup flow.
+
+See `features/auth/README.md` for test scope. Real browser, DirectMail delivery, and deployment acceptance remain separate gates.
+
+## Explicit chat workflow bridge
+
+Chat additionally accepts `onReviewMessage(request)`, `onOpenMaterials()`, `onOpenDocuments({userId,caseId})` and `active`. App owns the short-lived account/case/message-scoped text-review request and passes `textReviewRequest`/`onTextReviewHandled(id)` to Intake. Intake previews it separately, then only appends its unreviewed source text on an explicit action. It never replaces a buffer or confirms a fact. Chat's document continuation returns to pending material first and otherwise opens the already-mounted Documents editor without changing its edits. Complete assistant messages may explicitly save source-linked, unreviewed draft artifacts; final generation remains in the established reviewed workflow. See `features/chat/WORKFLOW.md` and `features/chat/ORIGINAL-RETENTION.md` for invariants, evidence and limits.
+
+
+## Owner account management and bounded administrator diagnostics
+
+The unified schema6 candidate mounts `AccountAdministration` and `OperationalDiagnostics` inside Account and settings. Account management requires the immutable owner identity plus the explicit capability; delegated administrators receive only the separately gated read-only diagnostics. Inactive settings unmount the privileged inner panels and discard pending permission intent. Settings labels distinguish Owner, Administrator and Ordinary user without changing the owner/trial authentication roles. Owner recovery copy is specific to the bootstrap owner; delegated accounts retain verified-email recovery. See `../docs/account-administration.md` for the migration/release boundary and `features/account-administration/README.md` for the API contract.

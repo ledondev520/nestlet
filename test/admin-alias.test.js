@@ -94,15 +94,15 @@ test('configured administrator alias signs in to the immutable owner and keeps l
 });
 
 test('administrator names stay reserved while ordinary users retain their own role and cannot manage settings', async context => {
-  const site = await app(context);
+  const site = await app(context, { seed: storage => storage.createTrialUser({ username: 'ordinary-alias-test', passwordHash: ordinaryHash }) });
   for (const username of ['demo-admin', ' DEMO-ADMIN ', 'owner', 'Kelvin']) {
     const response = await site.register(username);
     assert.equal(response.status, 400);
     assert.equal((await response.json()).code, 'REGISTRATION_INVALID');
     assert.equal(response.headers.get('set-cookie'), null);
   }
-  const registered = await site.register('ordinary-alias-test');
-  assert.equal(registered.status, 201);
+  // Username-only enrollment is intentionally removed; this is an existing legacy account.
+  assert.equal((await site.register('ordinary-alias-test')).status, 400);
   const ordinary = await sessionFrom(await site.login('ordinary-alias-test', ordinaryPassword));
   assert.equal(ordinary.role, 'trial');
   assert.notEqual(ordinary.userId, 'owner');
@@ -191,9 +191,12 @@ test('private helper optionally writes the alias atomically and preserves unrela
   await assert.rejects(inspectOperatorTarget(target), /duplicate administrator-username/);
 });
 
-test('real administrator login and ordinary registration reject five characters, accept six and preserve the 256-character maximum', async context => {
+test('real administrator and legacy ordinary login reject five characters, accept six and preserve the 256-character maximum', async context => {
   const six = 'Abc123'; // Disposable test credential, never a real account.
-  const site = await app(context, { passwordHash: makeHash(six) });
+  const site = await app(context, { passwordHash: makeHash(six), seed: storage => {
+    storage.createTrialUser({ username: 'six-characters', passwordHash: makeHash(six) });
+    storage.createTrialUser({ username: 'maximum-characters', passwordHash: makeHash('x'.repeat(256)) });
+  } });
   assert.equal((await site.login('demo-admin', 'Abc12')).status, 401);
   assert.equal((await site.login('demo-admin', 'Abc124')).status, 401);
   for (const name of ['demo-admin', 'owner', '']) {
@@ -202,13 +205,13 @@ test('real administrator login and ordinary registration reject five characters,
     assert.equal(owner.role, 'owner');
   }
   assert.equal((await site.register('five-characters', 'Abc12')).status, 400);
-  assert.equal((await site.register('six-characters', six)).status, 201);
+  assert.equal((await site.register('six-characters', six)).status, 400, 'No username registration fallback');
   const ordinary = await sessionFrom(await site.login('six-characters', six));
   assert.equal(ordinary.role, 'trial');
   assert.notEqual(ordinary.userId, 'owner');
   assert.equal((await site.request('/api/settings', { session: ordinary })).status, 403);
   assert.equal((await site.register('too-many-characters', 'x'.repeat(257))).status, 400);
-  assert.equal((await site.register('maximum-characters', 'x'.repeat(256))).status, 201);
+  assert.equal((await site.register('maximum-characters', 'x'.repeat(256))).status, 400);
   assert.equal((await site.login('maximum-characters', 'x'.repeat(256))).status, 200);
   const fiveOnly = createOperatorAuth({ passwordHash: makeHash('Abc12') });
   assert.equal((await fiveOnly.login('Abc12')).error, 'INVALID_CREDENTIALS', 'Even a matching legacy five-character hash cannot bypass the minimum');
@@ -236,7 +239,7 @@ test('private administrator and ordinary setup both reject five characters and c
   const user = await setTrialUserPassword({ ...options, password: 'Abc123', passwordConfirmation: 'Abc123' });
   const storage = openStorage({ filename: database });
   try {
-    const auth = createOperatorAuth({ passwordHash: ownerHash, findTrialUser: name => storage.findUserByUsername(name) });
+    const auth = createOperatorAuth({ passwordHash: ownerHash, findTrialUser: name => storage.findUserByUsername(name), findTrialUserById: id => storage.getUserById(id) });
     const session = await auth.login('Abc123', 'six-character-user');
     assert.equal(session.userId, user.userId);
     assert.equal(session.role, 'trial');
@@ -266,4 +269,12 @@ test('remember me survives idle time but expires after eight hours and logout re
   const signedIn=await auth.login(password,'owner',true);
   auth.logout(auth.getSession(request(signedIn)));
   assert.equal(auth.getSession(request(signedIn)),null);
+});
+
+test('explicit loopback PUBLIC_ORIGIN supports local email links without permitting public plaintext authentication', () => {
+  for (const publicOrigin of ['http://127.0.0.1:4173', 'http://localhost:4173', 'http://[::1]:4173']) {
+    assert.equal(createOperatorAuth({ passwordHash: ownerHash, publicOrigin, host: '127.0.0.1' }).localTransportAllowed, true);
+    assert.equal(createOperatorAuth({ passwordHash: ownerHash, publicOrigin, host: '0.0.0.0' }).localTransportAllowed, false);
+  }
+  assert.equal(createOperatorAuth({ passwordHash: ownerHash, publicOrigin: 'http://public.example.invalid', host: '127.0.0.1' }).localTransportAllowed, false);
 });

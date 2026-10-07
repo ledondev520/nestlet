@@ -12,7 +12,7 @@ import { JSDOM } from 'jsdom';
 import { createServer as createViteServer } from 'vite';
 import { openStorage } from '../../../storage.js';
 
-test('documents use real case confirmation, final generation, immutable history, issue updates and conflict-safe edits', {timeout:30000}, async context => {
+test('realHTTP + controlledDOM: documents and promoted root preserve case facts, official references, exports and observations', {timeout:30000}, async context => {
   const directory = await mkdtemp(join(await realpath(tmpdir()), 'nestlet-react-documents-'));
   const filename = join(directory, 'nestlet.sqlite');
   const storage = openStorage({filename});
@@ -58,14 +58,20 @@ test('documents use real case confirmation, final generation, immutable history,
     popup.document.head.append=(...nodes)=>{append(...nodes);for(const node of nodes)if(node.tagName==='LINK')setTimeout(()=>node.dispatchEvent(new popup.Event('load')),0);};
     return popup;
   };
-  const vite=await createViteServer({server:{middlewareMode:true},appType:'custom',logLevel:'error'});
+  const vite=await createViteServer({server:{middlewareMode:true,hmr:false,ws:false,watch:null},appType:'custom',logLevel:'error'});
   context.after(()=>vite.close());
   const {DocumentsPage}=await vite.ssrLoadModule('/features/documents/index.jsx');
-  const {SessionProvider}=await vite.ssrLoadModule('/lib/session.jsx');
+  const {SessionProvider,useSession}=await vite.ssrLoadModule('/lib/session.jsx');
   const React=await import('react'),{createRoot}=await import('react-dom/client');
+  let journey;
+  function Scope({id,children}) {
+    const session=useSession(); journey=session.journey;
+    React.useLayoutEffect(()=>{if(session.status.authenticated){journey.setScope({workspaceKey:record.id,caseId:id});journey.visit('documents');}},[id,session.status.authenticated,journey]);
+    return children;
+  }
   const root=createRoot(dom.window.document.getElementById('root'));
   context.after(async()=>{await React.act(async()=>root.unmount());dom.window.close();URL.createObjectURL=savedCreate;URL.revokeObjectURL=savedRevoke;for(const[key,descriptor]of globals){if(descriptor)Object.defineProperty(globalThis,key,descriptor);else delete globalThis[key];}});
-  const render=async id=>React.act(async()=>root.render(React.createElement(SessionProvider,null,React.createElement(DocumentsPage,{lang:'en',caseId:id}))));
+  const render=async id=>React.act(async()=>root.render(React.createElement(SessionProvider,null,React.createElement(Scope,{id},React.createElement(DocumentsPage,{lang:'en',caseId:id})))));
   const waitFor=async predicate=>{const end=Date.now()+8000;while(!predicate()){if(Date.now()>end)throw new Error('DOM wait timed out: '+dom.window.document.body.textContent);await React.act(async()=>{await new Promise(resolve=>setTimeout(resolve,15));});}};
   const idle=()=>waitFor(()=>![...dom.window.document.querySelectorAll('[role="status"]')].some(item=>item.textContent==='Working…'));
   const button=text=>[...dom.window.document.querySelectorAll('button')].find(item=>item.textContent.trim()===text);
@@ -100,6 +106,18 @@ test('documents use real case confirmation, final generation, immutable history,
   await React.act(async()=>button('Reload saved version, keep my edits').click());await waitFor(()=>dom.window.document.body.textContent.includes('The latest saved case is loaded.'));await idle();
   assert.ok(dom.window.document.getElementById('document-body').value.endsWith('An unsaved human edit.'));
   await click('Save new version');await waitFor(()=>!dom.window.document.body.textContent.includes('Unsaved edits'));
+  await journey.flush();
+  const eventRequest=requests.find(item=>/^\/api\/workflows\/[0-9a-f-]{36}\/events$/u.test(item.path));
+  assert.ok(eventRequest,'Actual feature actions sent workflow events over HTTP');
+  const observedResponse=await request(eventRequest.path);assert.equal(observedResponse.status,200);
+  const observed=(await observedResponse.json()).events.filter(item=>item.source==='client');
+  for(const event of ['review.confirm','draft.generate','draft.edit','export.copy','export.download','export.print']) assert.ok(observed.some(item=>item.event===event&&item.outcome==='success'),event);
+  assert.equal(observed.filter(item=>item.event==='review.confirm').length,1);
+  assert.equal(observed.filter(item=>item.event==='draft.generate').length,1);
+  assert.ok(observed.some(item=>item.event==='export.download'&&item.outcome==='failure'));
+  assert.ok(observed.some(item=>item.event==='draft.edit'&&item.outcome==='failure'));
+  assert.ok(observed.every(item=>item.caseId===record.id&&item.requestId===null),'Feature JSON calls do not expose correlation headers; no IDs are invented');
+  for(const privateText of ['Synthetic Johnny case','Synthetic source evidence','128 Example Lane','intake@example.invalid','An unsaved human edit.',password,loginBody.csrfToken]) assert.equal(JSON.stringify(observed).includes(privateText),false);
   delayedPath=`/api/artifacts/${archived.id}`;
   const started=new Promise(resolve=>{delayedStarted=resolve;});
   await React.act(async()=>dom.window.document.querySelector(`[data-artifact-id="${archived.id}"] button`).click());await started;
@@ -108,5 +126,52 @@ test('documents use real case confirmation, final generation, immutable history,
   assert.doesNotMatch(dom.window.document.body.textContent,/EARLIER HUMAN-EDITED LETTER|Synthetic Johnny case/);
   assert.equal(requests.some(item=>item.path==='/api/extract'||item.path==='/api/chat'),false);
   await idle();
+
+  // Mount the actual promoted root, rather than just a registry or isolated panel.
+  // Reference changes must survive view/locale navigation but never alter saved facts.
+  await React.act(async()=>root.render(null));
+  const {default:App}=await vite.ssrLoadModule('/App.jsx');
+  const {draftVault}=await vite.ssrLoadModule('/lib/draft-vault.js');
+  draftVault.verifyUser(loginBody.userId);
+  assert.equal(draftVault.write({userId:loginBody.userId,workspaceKey:'active',feature:'workspace'},{caseId:record.id,view:'documents',workspaceKey:record.id}),true);
+  dom.window.history.replaceState(null,'','/#documents');
+  dom.window.HTMLElement.prototype.scrollIntoView=function(){};
+  await React.act(async()=>root.render(React.createElement(SessionProvider,null,React.createElement(App))));
+  const panel=()=>dom.window.document.querySelector('[data-testid="agency-guidance"]');
+  await waitFor(()=>panel()&&dom.window.document.getElementById('document-kind'));
+  await idle();
+  assert.equal(panel().open,false,'Reference detail stays compact by default');
+  assert.match(panel().textContent,/官方资料参考/);
+  assert.equal(panel().querySelector('select').value,'sfha');
+  assert.ok(panel().querySelector('a[href="https://sfha.org/files/documents/52517ENG.pdf"]'));
+  assert.match(panel().textContent,/尚未确认|不得修改该日期|不能视为每宗新租约必填/);
+  const beforeReferenceChange=(await(await request(`/api/cases/${record.id}`)).json()).case;
+  const beforeReadiness=await(await request(`/api/cases/${record.id}/readiness?kind=followup&locale=en`)).json();
+  const caseWrites=()=>requests.filter(item=>/^\/api\/(cases|artifacts)(?:\/|$)/u.test(item.path)&&item.options.method&&item.options.method!=='GET').length;
+  const writesBefore=caseWrites();
+  await React.act(async()=>{panel().open=true;const select=panel().querySelector('select');select.value='oha';select.dispatchEvent(new dom.window.Event('change',{bubbles:true}));});
+  assert.ok(panel().querySelector('a[href="https://www.oakha.org/propertyowners/section8ownerforms/"]'));
+  assert.equal(panel().querySelector('a[href*="sfha.org"]'),null);
+  await click('材料与事实');
+  assert.equal(panel().querySelector('select').value,'oha');
+  await React.act(async()=>dom.window.document.querySelector('button[aria-label="Switch interface to English"]').click());
+  assert.match(panel().textContent,/Official source references|Accepted edition and case applicability unconfirmed/);
+  await click('Documents');await idle();
+  assert.equal(panel().querySelector('select').value,'oha');
+  assert.equal(caseWrites(),writesBefore,'Changing references and language makes no case/artifact mutations');
+  assert.deepEqual((await(await request(`/api/cases/${record.id}`)).json()).case,beforeReferenceChange);
+  assert.deepEqual(await(await request(`/api/cases/${record.id}/readiness?kind=followup&locale=en`)).json(),beforeReadiness);
+  await click('Generate final document');
+  await waitFor(()=>dom.window.document.getElementById('document-body')?.value.includes('Supplementary correspondence;'));
+  const rootDocument=dom.window.document.getElementById('document-body').value;
+  assert.doesNotMatch(rootDocument,/[\p{Script=Han}]|Oakland|OHA|SFHA/u,'Reference choice does not become a document fact');
+  assert.match(rootDocument,/not an official agency form|does not constitute.*agency acceptance/);
+  await click('Customers');await waitFor(()=>dom.window.document.querySelector(`button[aria-label="Open saved case: ${other.title}"]`));
+  assert.equal(panel(),null,'No unrelated guidance on customer or settings screens');
+  await React.act(async()=>dom.window.document.querySelector(`button[aria-label="Open saved case: ${other.title}"]`).click());
+  await waitFor(()=>panel());
+  assert.equal(panel().querySelector('select').value,'sfha','Opening another case resets the transient reference');
+  await click('Documents');await waitFor(()=>dom.window.document.getElementById('document-answer-property'));
+  assert.equal(Boolean(button('Generate final document')),false,'Guidance does not fill or confirm missing case facts');
   await React.act(async()=>root.unmount());
 });

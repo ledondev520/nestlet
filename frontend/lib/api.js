@@ -1,4 +1,5 @@
 /** Same-origin JSON client. Sessions and CSRF tokens remain in memory. */
+import { classifyJourneyRequest } from './journey-telemetry.js';
 export class ApiError extends Error {
   constructor(code, status = 0, details) {
     super(code);
@@ -9,8 +10,8 @@ export class ApiError extends Error {
   }
 }
 
-export function createApiClient({ fetchImpl = (...args) => fetch(...args), getCsrfToken = () => '', onUnauthorized = () => {} } = {}) {
-  async function request(path, { method = 'GET', body, signal, rawBody, contentType, filename, assetConsent, documentConsent } = {}) {
+export function createApiClient({ fetchImpl = (...args) => fetch(...args), getCsrfToken = () => '', onUnauthorized = () => {}, getJourney = () => null } = {}) {
+  async function request(path, { method = 'GET', body, signal, rawBody, contentType, filename, assetConsent, documentConsent, telemetry } = {}) {
     if (typeof path !== 'string' || !path.startsWith('/api/') || path.includes('\\') || /[\r\n]/.test(path)) {
       throw new ApiError('INVALID_API_PATH');
     }
@@ -27,6 +28,16 @@ export function createApiClient({ fetchImpl = (...args) => fetch(...args), getCs
       if (documentConsent === true) headers['X-Document-Consent'] = 'synthetic-or-deidentified';
     } else if (body !== undefined) headers['Content-Type'] = 'application/json';
     if (!['GET', 'HEAD'].includes(method)) headers['X-CSRF-Token'] = requestCsrf;
+    // Reads are not automatically counted as user opens: most are background
+    // refreshes. Explicit reads can opt in; feature-owned actions opt out.
+    const event = telemetry === false || method === 'GET' && telemetry !== true ? null : classifyJourneyRequest(path, method);
+    let observation;
+    try {
+      observation = event ? getJourney()?.beginAction(event, { signal }) : null;
+      const workflowId = observation?.headers?.['X-Workflow-Id'];
+      if (typeof workflowId === 'string' && /^[a-f0-9-]{36}$/u.test(workflowId)) headers['X-Workflow-Id'] = workflowId;
+    } catch { /* Observability must never alter business behavior. */ }
+    const observed = detail => { try { observation?.finish(detail); } catch { /* Nonblocking metadata only. */ } };
     let response;
     try {
       response = await fetchImpl(path, {
@@ -34,19 +45,26 @@ export function createApiClient({ fetchImpl = (...args) => fetch(...args), getCs
         ...(rawBody !== undefined ? { body: rawBody } : body === undefined ? {} : { body: JSON.stringify(body) })
       });
     } catch (error) {
+      observed({ ok: false, cancelled: error.name === 'AbortError' });
       if (error.name === 'AbortError') throw error;
       throw new ApiError('NETWORK_ERROR');
     }
     let data;
     try { data = await response.json(); }
     catch {
+      observed({ ok: false, cancelled: signal?.aborted === true, httpStatus: response.status, headers: response.headers });
       if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
       throw new ApiError('INVALID_RESPONSE', response.status);
     }
-    if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+    if (signal?.aborted) {
+      observed({ ok: false, cancelled: true, httpStatus: response.status, headers: response.headers });
+      throw new DOMException('Aborted', 'AbortError');
+    }
+    observed({ ok: response.ok, httpStatus: response.status, headers: response.headers });
     if (!response.ok) {
       // A delayed old-account request must not log out a newer session.
-      if (response.status === 401 && !path.startsWith('/api/login') && requestCsrf === getCsrfToken()) onUnauthorized();
+      const rejectedBindingPassword = path === '/api/auth/email/bind' && data?.code === 'INVALID_CREDENTIALS';
+      if (response.status === 401 && !path.startsWith('/api/login') && !rejectedBindingPassword && requestCsrf === getCsrfToken()) onUnauthorized();
       // Never render arbitrary backend exception text as interface copy.
       throw new ApiError(typeof data?.code === 'string' ? data.code : 'REQUEST_FAILED', response.status, data?.details);
     }

@@ -2,6 +2,18 @@
 
 Checkpoint: 2026-10-07. This is a development checkpoint, not final acceptance. Deployment and real-browser integration remain separate; rerun after the final source freeze.
 
+## Official-reference React migration regression, 2026-10-07
+
+Based on exact main `73255d90826e4934b1f0f489d3ed836e076096ed`, the existing official-source registry was previously reachable only in the legacy UI. The promoted React root now exposes a compact bilingual reference disclosure in chat/materials/documents, separate from case facts. Chat sends an allowlisted reference ID; the server supplies bounded registry observations and explicit case-applicability/version uncertainty to both ordinary and library-assisted requests. No new source assertions, official-form mapping, model, network tool, schema or authorization behavior is added. The registry's recorded check dates are reused, not a claim of fresh source verification in this change.
+
+- `npm run check`: passed
+- `npm run build`: passed; existing single-bundle size advisory remains
+- `npm test`: **312/312 passed**, zero failed/skipped
+- `npm run test:frontend`: **224/224 passed**, zero failed/skipped
+- Root React-DOM plus real HTTP/SQLite regression verifies reference availability, both interface languages, unchanged case/readiness on selection, English supplementary generation without invented agency facts, and case-switch reset. The ordinary/library HTTP protocol test verifies server-owned guidance reaches the upstream request; that upstream is an authored local fixture, not DeepSeek
+- `npm ci --ignore-scripts --offline` could not complete because one package was absent from the local cache. Checks reused the existing dependency tree from an isolated worktree with the identical lockfile SHA-256, and `npm ls --depth=0` passed. No dependency/lockfile changes or install scripts were run
+- No browser, live provider, email, production service, push, merge or deployment was used for this candidate. Real-browser visual/keyboard/mobile review and real-provider source fidelity remain separate acceptance gates. Generated final correspondence remains supplementary and does not certify an official packet or agency acceptance
+
 React/shadcn foundation checkpoint (09:33 UTC): production build and seven API/build contracts pass. This is a component preview, not a completed business-page migration. The combined baseline has one legacy localization failure; supported-browser and Docker validation remain pending. See [exact migration evidence](shadcn-migration.md).
 ## Artifact invalidation regression, 10:29 UTC
 
@@ -231,6 +243,12 @@ No API/server/storage/package contracts changed in this follow-up. The separate 
 
 Isolated branch based on main `2fc15f216714d0331a82456edb1d97b9f76f8498`. New `test/legacy-draft-preservation.test.js` passes 9/9 using actual disposable SQLite files and authenticated HTTP, including concurrent writer processes, optimistic conflicts, cross-user denial, archive/update triggers that force rollback, capacity failure, exact text/provenance retention and response metadata. No provider doubles, paid calls or production records are used. On this isolated candidate, `npm run check` passed and the full default `npm test` passed 240/240 with 0 skipped. Pinned dependency installation succeeded with an explicit temporary npm cache after the default cache path was unavailable. These results are not a browser/deployment or real-provider acceptance claim.
 
+### October 7, 2026 — opt-in bounded chat retrieval
+
+Isolated candidate based on unified head `d3a762d05c1a3a12c9c567421ee18b0fb0e50651`, with the reviewed library helper. Pinned install completed with `npm ci --ignore-scripts` and a temporary npm cache. `npm run check` passed; the expanded default suite passed **287/287, 0 skipped**. This includes 12 real-SQLite helper tests and 11 explicitly isolated local-HTTP/provider-protocol fixture tests. The latter exercise actual authenticated chat HTTP, SQLite persistence, cancellation, rollback/error behavior and exact-once source appendices, but are not DeepSeek or paid-provider acceptance.
+
+Independent read-only review reproduced assistant-insert failure/deduplication and a shortened test deadline in an isolated copy, then reported no remaining blocker on the frozen runtime bytes. Live provider tool calling, actual retrieval UI/browser acceptance and deployment remain separate release gates. No production API credential or paid call was used for this work.
+
 ## Chat / sign-in polish, October 7, 2026
 
 Local Codex removed repeated chat consent/footnote/footer prose under the owner's explicit UI request, changed the thread/composer layout and added remembered username/password-manager-compatible native inputs. The opt-in rememberMe flag preserves a session through idle periods within the existing eight-hour absolute expiry. Server restart still invalidates in-memory sessions.
@@ -238,3 +256,115 @@ Local Codex removed repeated chat consent/footnote/footer prose under the owner'
 Validation: 266 backend tests and 158 frontend tests passed under Node 24.18.0 with an owned, canonical TMPDIR (the default macOS temporary directory fails this repository's permission checks). Build and syntax checks passed. Actual loopback browser login with a public disposable fixture, refresh recovery and 390px no-horizontal-overflow checks passed. Production password-manager save prompts and a live paid-model call are not established by these checks.
 
 Independent Standards and Spec reviews found no release blockers; duplicate control copy and the session contract documentation were corrected. Seven existing real-browser acceptance tests passed, including bilingual 320/390px layouts and account isolation. An additional controlled-React keyboard test passed for Enter versus Shift+Enter/IME; this is not a physical IME-device test.
+## Email-first backend checkpoint, 2026-10-07 12:29 UTC
+
+Schema5 backend work is isolated from the frontend rollout. New registrations require email and verification; username-only public registration is intentionally removed. Existing usernames, administrator aliases and saved records remain compatible. See [email authentication](email-auth.md) for contract/security/rollback details.
+
+- Syntax checks and production frontend build: passed; frontend build is the unchanged base UI and does not certify the new email interface
+- Backend aggregate before the final small loopback-compatibility addition: 282/282 passed. The initial clean-worktree run failed the promoted-root static check because build assets were absent; building resolved it without changing the assertion
+- Focused real HTTP/SQLite/migration checks: 32/32 passed. Verification/reset HTTP fixtures explicitly seed synthetic accepted challenges; they do not send mail or establish real inbox delivery
+- Existing frontend suite: 156/156 passed against the unchanged base UI, not the forthcoming email UI
+- Separate `npm run test:email-contracts`: 53/53 passed with explicitly simulated provider delivery. Adapter signing, receipt validation, bounded timeout/response, sanitization, generic responses, pending accounts, trusted fragments, bind and reset are covered; these are not real-provider evidence
+- Historical schema4→5 migration preserves all old users/data/schema objects and foreign keys. Failed migration rolls back; schema6 fails closed. Actual child-process token/email races admit only one winner. Persistent quotas and session credential fingerprints are tested
+- Independent security review identified quota consumption after per-IP rejection and lost registration resend state after uncertain mail. Both were fixed with dedicated regressions
+- No real credentials read, configured or transmitted; no actual email sent. New email browser acceptance, combined-final-SHA CI and production service acceptance remain separate required gates
+- Existing schema4 binaries cannot open schema5. Do not reuse the schema4-only code rollback helper or restore a backup without a separate authorized recovery decision
+
+### Email backend integration with chat retrieval and remembered sessions, 12:36 UTC
+
+Rebased backend runtime `d857037` onto resolved retrieval/main integration `431909f`. Preserved upstream library tools/retrieval and exact session semantics: normal idle30 minutes, remembered idle8 hours, absolute8 hours, process-local sessions. The login API accepts strictly Boolean rememberMe and retains verified-email/legacy identity selection. Tests additionally prove reset revokes normal and remembered sessions, leaves another user's session valid, and a credential rotation during asynchronous login prevents a stale remembered cookie. Restart still revokes all cookies.
+
+Integrated local checks passed: syntax, build, **308/308 backend**, **53/53 explicitly simulated email-service contracts**, and **201/201 existing frontend**. This is not the new email frontend/browser or actual inbox acceptance. No production service configuration or real mail send occurred. Both independent security findings from the first review were rechecked as fixed with three focused regressions.
+
+
+## Interface copy sweep, October 7, 2026
+
+At the owner's request, local Codex reviewed chat, material intake, customer/file directories, documents, account settings and shared recovery states. Removed implementation-status commentary and redundant permanent notes in both languages. Runtime failures still describe the required next action; unsaved edits, conflicts, file limitations and incomplete responses remain distinguishable.
+
+Material extraction now starts from the explicitly named DeepSeek action without a second consent checkbox. Changing source text or uploading files never starts a provider request; the existing request validation and the consent field remain. Updated the controlled React test to verify this trigger and retained its failure/no-fallback assertions.
+
+Validation: 158 frontend tests passed. Production build passed. Browser smoke, bilingual responsive flows, stored files/documents and account isolation are tested with the existing seven-test suite on a disposable local service. No production material or live provider call was used for validation.
+
+## Combined email release candidate, 2026-10-07 12:53 UTC
+
+Combined the email frontend/backend with the resolved framework base `2d5d0d6` (including the owner's shorter copy and existing native-autofill/remembered-session behavior). Required local checks pass: JavaScript syntax, production React build, **311 backend tests**, **223 frontend/API/React DOM tests**, **53 explicitly simulated mail contracts**, real HTTP email/legacy/format fixtures, and the HTTP/DOM artifact lifecycle. Playwright discovers **13 scenarios**; official Chromium and container acceptance are still pending for the final published head.
+
+New real HTTP/SQLite/React coverage verifies explicit activation, email login, reset, stable identity, token replay rejection and old-session revocation with deliberately seeded accepted synthetic challenges. Separate simulated-transport HTTP fixtures cover generic enrollment/resend/forgot, actual cooldown/rate rules and binding. Neither establishes real DirectMail or inbox delivery. No production signup, recipient send or credential entry was performed by this implementation work.
+
+Review found and fixed same-URL Back traversal retaining a captured link, schema5 backups not requiring the originals directory when empty, and missing Docker-context allowances for the four new email modules. Legacy enrollment now links to the root email flow instead of posting the removed username-registration contract. Owner recovery stays private-bootstrap-only. Manual snapshot restoration's password/token consequences are explicit in email-auth.md.
+
+An extra run of the old sample-driven `test/app.test.js` reports three failures. The same three failures were independently reproduced on unchanged framework base `2d5d0d6`; that deprecated development suite assumes the retired local/sample extraction flow. It is not included in current required acceptance and was not altered to claim a pass. Current required suites pass as stated above. Local Docker/Chromium execution was not available/run; official CI remains authoritative for those gates.
+
+## Customer/case browser candidate, 2026-10-07 15:03 UTC
+
+Added four provider-free Chromium scenarios on base `73255d90826e4934b1f0f489d3ed836e076096ed`; see [the precise customer/case evidence boundary](../test/frontend-browser/CUSTOMER-CASES.md). The candidate covers UI-created linked customers/cases, reviewed facts, a resolved question, final/edited-draft versions, exact original bytes, real private-fixture server restart and fresh login, empty-conversation selection, role isolation, two-tab conflicts, offline save retention and explicit retry. Two trial identities are privately seeded legacy fixtures; three empty conversations use normal authenticated HTTP, with no fabricated messages or provider responses.
+
+Local results: the new real HTTP/SQLite restart and isolation contract passed repeatedly; existing product/email/format fixture checks passed; syntax and production build passed; backend **311/311** and frontend **223/223** passed. Playwright discovers **17 scenarios in six files**. Independent static review found no definite selector/flow blocker. **The four new Chromium scenarios have not run here**: the executor does not support standalone browser execution and no bypass was attempted. Exact-commit official CI must establish their actual browser result. Existing bundle-size warning remains. No production navigation, live provider/email call, UI/backend product change, push, merge or deployment occurred in this local candidate task.
+
+### Customer/case official CI and main integration, 2026-10-07 15:33 UTC
+
+[Official browser run 37643281521](https://github.com/ledondev520/nestlet/actions/runs/37643281521) passed **17/17 Chromium scenarios**, with zero failures/errors/skips in downloaded JUnit, including all four new customer/case tests. PR head `dbdfcbb44bdfaf4f612ecebe93fe3332bd8a42dc` and actual PR checkout `37bc10b2f51e1c8de7664ea8a12d00dfb097b857` have the identical verified source tree `cbc0b25b60a61adf9fa8e82f11be6ae59582cbe8`. This proves the exercised isolated Node/SQLite/assets restart with fresh sign-in, customer/case/version recovery, conflicts and offline retention. Empty conversations remain API-created; live chat/provider, genuine mail and production host/container restart or restore remain untested by this suite.
+
+Merged official-guidance main `6b357266ff5548785479d08c5d219dafa6b277a2` into the browser candidate without conflicts, preserving both prior evidence sections. Combined local verification passed: syntax, production build, **312/312 backend**, **224/224 frontend**, **53/53 explicitly simulated email contracts**, **1/1 real HTTP/DOM artifact lifecycle**, all four standalone product/email/format/customer fixture checks, and browser discovery of 17 scenarios. Workflow YAML verification confirms the only workflow changes add the customer fixture command and correct the evidence-summary wording; permissions, triggers, environment and existing gates remain unchanged. Fresh official CI is required for the integrated head; the earlier Chromium pass is not inherited. No PR merge or deployment was performed by this test task.
+
+### 2026-10-07 — explicit chat-original retention, isolated local component
+
+The isolated retention component reuses the existing private asset API, preserving exact selected PNG/JPEG originals in the same saved case with explicit consent. It does not retain unselected images or change historical chat metadata. Twelve new tests cover adapter validation, development React DOM races/retries/cancel, and actual local HTTP/SQLite/private-file persistence, response-loss reconciliation, restart/search, and per-user isolation. `npm run check`, 312 backend tests, 236 frontend tests, and the standalone branch build passed. Identical-lock installed dependencies were reused without an install. This does not yet establish entry-point integration, real browser, provider, CI, or deployment acceptance. See [the retention contract and detailed evidence](../frontend/features/chat/ORIGINAL-RETENTION.md).
+
+## 2026-10-07: local conversation-to-case bridge and integrated original retention
+
+Implemented against base `5335312` with the explicit original-retention module. Chat now has same-case materials/document continuation, a read-only saved-readiness panel, append-only unreviewed message handoff, and explicit source-linked draft-only answer saving. The existing case/fact/document editors remain the owners of their buffers, confirmation gates and optimistic versions. No schema/provider/auth/release-helper changes were made.
+
+Local evidence uses synthetic inputs only:
+
+- `workflow.http-dom.test.js`: actual React DOM events, real local HTTP and SQLite, with authored saved conversation content rather than a provider response. Passed source-review cancel/append, unsaved material/composer/document preservation, known confirmed fact reuse, missing-answer confirmation, real final generation, exact source-linked draft storage, double-click prevention, deliberately truncated committed HTTP 201 response reconciliation, pre-write cancel, real concurrent-update 409, late old-case response rejection and process restart persistence
+- Focused controlled DOM/model tests separately cover malformed/untrusted/incomplete/oversized messages, account/case scope, duplicate source append, and uncertain/truncated-201 new-case creation without a duplicate POST
+- Integrated image-original module retains exact selected File bytes only on explicit save; its separate actual HTTP/SQLite/DOM evidence is recorded above
+- `npm run check`, `npm run build`, `npm run test:frontend` (244/244), `npm test` (312/312), and `npm run test:email-contracts` (53/53) passed. Pinned dependencies were reused from a sibling with an identical lockfile; no new install or dependency was added. The build continues to report the existing large-chunk advisory
+- A new official-CI Playwright gate (`chat-workflow.spec.js`) covers first-save image retention plus same-case review/generation and 390px navigation. Local test listing passed. Chromium execution was deliberately not attempted in the blocked local standalone environment
+
+This is local implementation evidence, not a published or deployed release. Exact-combination official CI browser execution, real provider/vision/SSE acceptance and production rollout remain separate gates. No live AI or email was sent by this work.
+
+A separate read-only review found the malformed-success classification edge. It was fixed with an explicit known pre-commit rejection allowlist and independently rechecked; no remaining material blocker was found within this bridge scope. This review did not run a browser.
+
+## Prepared owner-controlled administrator capability, 2026-10-07 16:47 UTC
+
+Separate local schema6 branch based on `5335312`; not merged, published or deployed. An independent verified-email account can receive a reversible, owner-granted administrator capability while retaining its own ID, email, password recovery and user-scoped cases/files. The bootstrap owner remains immutable and uses its environment password. Administrators receive bounded read-only operational diagnostics; account grants, provider settings and global telemetry remain owner-only. New grants require a verified email. No real account grant, credential entry, email or model-provider call was made.
+
+Local evidence on this candidate: syntax checks and production build passed; **325/325 backend**, **253/253 frontend** and **53/53 explicitly simulated email-contract tests** passed. The 29 new frontend model/React-JSDOM checks use synthetic API fixtures, not browser or production acceptance. Actual HTTP/SQLite tests cover owner-only permission management, CSRF/Origin, registration self-promotion rejection, exact replay and stale-ABA protection, immediate grant/revoke on existing cookies, restart, recovery session invalidation, own/foreign case/customer/conversation/artifact/workflow/original-file reads and mutation denials. The append-only minimal audit is atomic with each grant/revoke and failed audit insertion rolls back access.
+
+A genuine populated schema5 fixture matches all 42 schema objects in the baseline's fresh database. Migration preserves preexisting user/email/data rows, DDL, foreign keys and telemetry sequence; repeated opens and two simultaneous startup processes leave no automatic grants. Late migration failure rolls back all new DDL; schema7 fails closed without source byte/file-set or journal-mode changes. Real private-data backup tests preserve a pre-upgrade schema5 snapshot, migrate only an isolated restored drill to6, then round-trip administrator state, audit, email actions/rate limits and original bytes through schema6 snapshot/restore. The pre5 rollback snapshot and source remain unchanged. Nestlet's own backup helper recognizes schemas1–6 and rejects future7. No independent deployment/maintenance helper was changed.
+
+Independent local read-only backend review found no blocking security/correctness issue and independently checked hostile cross-user HTTP operations. It also identified and resolved a fixture-aging hazard by using current synthetic timestamps. Both new backend modules are explicitly included in Docker runtime COPY and the context allowlist, covered by a source-contract test. **An actual Docker build/start, real Chromium UI flows, final App/settings mounting and exact-SHA official CI remain unrun**. The existing bundle-size warning remains. This local preparation does not establish production release readiness and is separate from the schema4→5 email release.
+
+Dependency note: the offline `npm ci --ignore-scripts` attempt could not complete because the npm cache lacked a pinned package. For the reported local checks, an existing installed dependency tree from an identical package-lock.json was copied into this disposable worktree. No successful fresh dependency install is claimed. See [the permission/API/migration contract](account-administration.md) and [isolated frontend integration](../frontend/features/account-administration/README.md).
+
+## Dedicated official-reference browser scenario preparation, 2026-10-07
+
+Test-only continuation from exact main `5335312fd53becaad4bfccace5c1f3e39c6bf4f2`: one new `test/frontend-browser/agency-guidance.spec.js` scenario exercises the existing reference panel across chat/materials/documents, both interface languages and 320/390/1280-pixel viewports. Native disclosure/selector keyboard interaction, focus order, overflow, displayed source cautions, unchanged real case/readiness data, and zero provider/business-write requests are asserted. It reuses the existing private synthetic fixture and introduces no UI/backend/fixture behavior or response doubles.
+
+Local evidence: build and syntax passed; Playwright discovery lists 18 scenarios; existing actual-HTTP fixture and customer-case checks passed; backend 312/312 and frontend 224/224 passed. The unchanged dependency tree was reused from the identical locked dependency set, with `npm ls --depth=0` passing. No standalone browser, deployed service, model provider, merge or deployment was used. The new browser scenario remains unrun until its exact published candidate earns an official Chromium CI result. Existing source-check dates are not freshly verified by this work. Kimi's visual review and live-provider source fidelity remain separate.
+
+## Unified local schema6 candidate, 2026-10-07 17:08 UTC
+
+Combined the conversation/material/document bridge, explicit chat-original retention, owner-controlled account administration, PR24 official-reference browser scenario, and PR25 value-preserving chat-radius tokens on an isolated branch based on `5335312`. App/settings now mounts the capability-gated owner roster and bounded diagnostics, with inactive navigation clearing privileged panels. Owner, Administrator and Ordinary user access labels are distinct; bootstrap-owner recovery wording no longer incorrectly describes delegated administrator accounts.
+
+The mounted App/settings integration passed actual HTTP/SQLite/React DOM verification with disposable synthetic identities: verified registration through disclosed simulated mail transport, immutable owner/unverified legacy restrictions, cancel without PUT, leaving/re-entering settings discards pending permission intent, one explicit versioned grant, fresh roster read, same-cookie delegated diagnostics without roster/provider requests, one revoke/audit event, and account-switch/ordinary cleanup. No real account permissions, provider keys, genuine mail or model calls were used.
+
+Final local aggregate checks passed: `npm run check`, production Vite build, **277/277 frontend**, **325/325 backend**, **53/53 simulated email contracts**, **1/1 additional actual HTTP/DOM artifact-invalidation integration**, and all four standalone product/email/formats/customer HTTP fixture checks. Dependencies remain unchanged and were reused from an identical locked tree. The Vite large-chunk advisory remains.
+
+The two container SQLite smoke scripts previously pinned schema5. Their expectations now match this candidate’s schema6, including capability/audit tables and immutable-audit triggers, and the unauthenticated container smoke includes all three new admin GET routes. The real schema1→6 migration script and the SQLite write/read smoke passed locally in a fresh private test directory; these do not establish Docker image/container acceptance. The independent active schema4→5 deployment/maintenance helper was not changed.
+
+Playwright discovery lists **20 scenarios**, including new integrated chat/original-retention and account-administration gates plus the PR24 reference scenario. Browser source/syntax checks passed; **Chromium and Docker execution, exact-SHA official CI, publication and deployment are NOT RUN here**. Docker CLI is absent in this authoring environment, and Chrome execution remains reserved for official CI. This schema6 candidate is separate from the independent `5335312` source candidate for the schema4→5 rollout. A schema6 database cannot be used with a schema5 binary; the documented pre-upgrade snapshot/restore and explicit release gates remain mandatory.
+
+### PR26 first official CI result and label assertion correction
+
+For head `f93099504908c4245bfc9b15e3adca8d73248762`, official [Node checks 37658510035](https://github.com/ledondev520/nestlet/actions/runs/37658510035) and [Docker/container checks 37658510372](https://github.com/ledondev520/nestlet/actions/runs/37658510372) passed. The actual checkout was PR merge `a7db14cb8e61bc33bf452496b89397c70ae49caf`; GitHub Git-data reads verified that its tree and the head tree are both `13a3ca0909af1dea9134c2401611da4f7ff44e29`.
+
+[Official browser run 37658510816](https://github.com/ledondev520/nestlet/actions/runs/37658510816) completed **19/20** scenarios. The new integrated owner/delegated account UI, chat-image/case/document path, and official-reference scenario passed. The older customer-case scenario stopped at its obsolete access-label assertion (`Ordinary account` / `Administrator`). The product now deliberately distinguishes `Ordinary user` / `Administrator` / `Owner`. The assertion now targets the dedicated `account-access` element and checks the correct ordinary/owner labels; no product behavior or permission gate changed. A fresh exact-head official browser result is still required before declaring the whole suite passed. No local Chromium run or production action was used.
+
+### Local follow-up: saved case title refresh, 2026-10-07
+
+A separate unpublished branch based on `1bad360` fixes the stale chat toolbar title after a same-case rename. The existing account/case-scoped progress read now supplies only its validated saved title to Chat; it does not reload conversation history, replace the selected conversation, or clear unsaved inputs. No request/storage/schema contract changed.
+
+The new focused actual HTTP/SQLite/React DOM test reproduced the stale title on the base, then passed after the patch. It renames and saves through Materials, returns to Chat without reloading, verifies the title and selected conversation, and preserves both an unsent chat question and a later unsaved material draft. Syntax, Vite build, **278/278 frontend** and **325/325 backend** checks passed. No local Chromium, provider call, publication or deployment was performed. PR26’s branch remains at `1bad360`; its earlier official CI result does not certify this unpublished follow-up.

@@ -4,6 +4,12 @@
 !package-lock.json
 !server.js
 !auth.js
+!account-administration.js
+!account-administration-storage.js
+!email-auth.js
+!email-auth-domain.js
+!email-auth-storage.js
+!email-delivery.js
 !storage.js
 !telemetry.js
 !chat.js
@@ -34,3 +40,5 @@ public/next/
 !scripts/private-data-operations.js
 !Dockerfile
 !.dockerignore
+
+!agent-library-tools.js

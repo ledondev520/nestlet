@@ -58,8 +58,8 @@ afterEach(async () => { await React.act(async () => root.unmount()); host.remove
 after(async () => { await vite?.close(); dom?.window.close(); });
 
 test('empty bilingual intake uses official shadcn primitives and has no fabricated content', async () => {
-  const api = apiFor(); await render(api); assert.equal(api.calls.length, 0); assert.equal(labeled('Case source text').value, ''); assert.match(text(), /0 \/ 5 Reviewed/); assert.equal(host.querySelectorAll('[data-slot=checkbox]').length, 6); assert.ok(host.querySelector('[data-slot=card]')); assert.doesNotMatch(text(), /128 Example|DEMO-104/);
-  await render(api, { lang: 'zh' }); assert.match(text(), /让每个事实，都有出处/); assert.match(text(), /保存到私有档案并处理/);
+  const api = apiFor(); await render(api); assert.equal(api.calls.length, 0); assert.equal(labeled('Case source text').value, ''); assert.match(text(), /0 \/ 5 Reviewed/); assert.equal(host.querySelectorAll('[data-slot=checkbox]').length, 5); assert.ok(host.querySelector('[data-slot=card]')); assert.doesNotMatch(text(), /128 Example|DEMO-104/);
+  await render(api, { lang: 'zh' }); assert.match(text(), /材料与事实/); assert.match(text(), /保存到私有档案并处理/);
 });
 test('private TXT save is explicit, appends stored text, preserves reviewed evidence, and never calls AI', async () => {
   const api = apiFor(({ method, path }) => method === 'UPLOAD' ? { asset: asset({ caseId: A }) } : path === '/api/cases/' + A ? { case: blank({ sourceText: 'Earlier text', fields: extract('Owner: Reviewed owner').map(field => ({ ...field, confirmed: true })) }) } : undefined);
@@ -73,20 +73,28 @@ test('CSV uses real UTF-8 original bytes after private save instead of tab-norma
 test('saved image and scanned PDF honestly show unavailable OCR without changing source', async () => {
   for (const name of ['Synthetic.png', 'Synthetic.pdf']) {
     const api = apiFor(({ method }) => method === 'UPLOAD' ? { asset: asset({ originalFilename: name, textStatus: 'unavailable' }) } : undefined);
-    await render(api); await choose([new File(['synthetic fixture bytes'], name)]); await click(button('Save privately and process')); assert.match(text(), /no usable text/); assert.equal(labeled('Case source text').value, ''); assert.equal(api.calls.filter(call => call.path.endsWith('/text')).length, 0);
+    await render(api); await choose([new File(['synthetic fixture bytes'], name)]); await click(button('Save privately and process')); assert.match(text(), /No text was extracted/); assert.equal(labeled('Case source text').value, ''); assert.equal(api.calls.filter(call => call.path.endsWith('/text')).length, 0);
   }
 });
 test('saved truncated text is visible but never silently appended', async () => {
   const api = apiFor(({ method, path }) => method === 'UPLOAD' ? { asset: asset({ textTruncated: true }) } : path.endsWith('/text') ? { asset: asset({ textTruncated: true }), text: 'Incomplete' } : undefined);
-  await render(api); await choose([new File(['large original fixture'], 'Synthetic.txt')]); await click(button('Save privately and process')); assert.match(text(), /indexed text is truncated/); assert.equal(labeled('Case source text').value, ''); assert.ok(host.querySelector('a[href$="/download"]'));
+  await render(api); await choose([new File(['large original fixture'], 'Synthetic.txt')]); await click(button('Save privately and process')); assert.match(text(), /Select the relevant passages/); assert.equal(labeled('Case source text').value, ''); assert.ok(host.querySelector('a[href$="/download"]'));
 });
 test('Excel requires actual selected-row mapping and rejects blocked cells before adding source', async () => {
   const workbook = { sheets: [{ name: 'Synthetic sheet', hidden: false, rows: [['Property', 'Owner', 'Rent'], ['Synthetic Lane', 'Example LLC', '$2100']], blockedCells: [{ row: 1, column: 1, reason: 'formula' }], truncated: false }] };
   const api = apiFor(({ path }) => path === '/api/workbook' ? workbook : undefined); await render(api); await choose([new File(['not a real workbook; parser double only'], 'Synthetic.xlsx')]); await click(button('Save privately and process'));
   assert.match(text(), /Choose one worksheet and row/); assert.equal(labeled('Case source text').value, ''); const propertyMap = labeled('Property address · Mapped column'); assert.equal([...propertyMap.options].find(option => option.value === '1').disabled, true); await change(propertyMap, '0'); await change(labeled('Proposed rent · Mapped column'), '2'); await click(button('Append this row and review facts')); assert.equal(field('property').value, 'Synthetic Lane'); assert.equal(host.querySelector('[id$="-property-source"]').value, 'Synthetic sheet!A2: Synthetic Lane'); assert.equal(field('rent').value, '$2100'); assert.equal(api.calls.find(call => call.path === '/api/workbook').documentConsent, true);
 });
-test('AI is separately consented, resets consent on changed text, and failure never runs manual fallback', async () => {
-  const api = apiFor(({ path }) => path === '/api/extract' ? Promise.reject({ code: 'PROVIDER_ERROR', status: 502 }) : undefined); await render(api); await change(labeled('Case source text'), 'Property: Synthetic Lane'); assert.equal(button('Extract with AI').disabled, true); await click(host.querySelector('[id$="-ai-consent"]')); assert.equal(button('Extract with AI').disabled, false); await change(labeled('Case source text'), 'Property: Other synthetic lane'); assert.equal(button('Extract with AI').disabled, true); await click(host.querySelector('[id$="-ai-consent"]')); await click(button('Extract with AI')); assert.match(text(), /no substitute results/); assert.equal(field('property').value, ''); assert.deepEqual(api.calls.find(call => call.path === '/api/extract').body, { text: 'Property: Other synthetic lane', consent: true });
+test('AI extraction starts only on explicit DeepSeek action and failure preserves the facts', async () => {
+  const api = apiFor(({ path }) => path === '/api/extract' ? Promise.reject({ code: 'PROVIDER_ERROR', status: 502 }) : undefined);
+  await render(api); await change(labeled('Case source text'), 'Property: Synthetic Lane');
+  assert.equal(host.querySelector('[id$="-ai-consent"]'),null);
+  assert.equal(button('Extract with DeepSeek').disabled,false);
+  await change(labeled('Case source text'), 'Property: Other synthetic lane');
+  assert.equal(api.calls.filter(call=>call.path==='/api/extract').length,0);
+  await click(button('Extract with DeepSeek'));
+  assert.match(text(), /Extraction failed/); assert.equal(field('property').value, '');
+  assert.deepEqual(api.calls.find(call=>call.path==='/api/extract').body,{text:'Property: Other synthetic lane',consent:true});
 });
 test('manual extraction preserves differing reviewed fields as explicit conflicts and requires resolution', async () => {
   const api = apiFor(({ path }) => path === '/api/cases/' + A ? { case: blank({ fields: extract('Property: Previous synthetic lane').map(item => ({ ...item, confirmed: true })) }) } : undefined);
@@ -108,14 +116,14 @@ test('active reentry refreshes canonical values without replacing unsaved local 
   let record = blank(); const api = apiFor(({ path }) => path === '/api/cases/' + A ? { case: record } : undefined); await render(api, { caseId: A }); await change(labeled('Case source text'), 'My edit'); await render(api, { caseId: A, active: false }); record = { ...record, sourceText: 'Remote source', version: 2 }; await render(api, { caseId: A, active: true }); assert.equal(labeled('Case source text').value, 'My edit'); assert.match(text(), /saved version changed/);
 });
 test('late old-case AI response is ignored and old scope is aborted', async () => {
-  const extraction = deferred(); const api = apiFor(({ path }) => path === '/api/extract' ? extraction.promise : undefined); await render(api, { caseId: A }); await change(labeled('Case source text'), 'Property: Old synthetic lane'); await click(host.querySelector('[id$="-ai-consent"]')); await click(button('Extract with AI')); const request = api.calls.find(call => call.path === '/api/extract'); await render(api, { caseId: B }); assert.equal(request.signal.aborted, true); await React.act(async () => extraction.resolve({ fields: extract('Property: Old synthetic lane') })); assert.equal(labeled('Case name').value, 'Second synthetic case'); assert.equal(field('property').value, '');
+  const extraction = deferred(); const api = apiFor(({ path }) => path === '/api/extract' ? extraction.promise : undefined); await render(api, { caseId: A }); await change(labeled('Case source text'), 'Property: Old synthetic lane'); await click(button('Extract with DeepSeek')); const request = api.calls.find(call => call.path === '/api/extract'); await render(api, { caseId: B }); assert.equal(request.signal.aborted, true); await React.act(async () => extraction.resolve({ fields: extract('Property: Old synthetic lane') })); assert.equal(labeled('Case name').value, 'Second synthetic case'); assert.equal(field('property').value, '');
 });
 test('import handoff adopts exactly once only for matching account and case', async () => {
   const api = apiFor(), handled = [], file = new File(['Source'], 'Forwarded.txt'); const props = { onImportHandled: value => handled.push(value) }; await render(api, { ...props, importRequest: { id: 'foreign', userId: 'foreign', caseId: null, files: [file] } }); assert.doesNotMatch(text(), /Forwarded.txt/); await render(api, { ...props, importRequest: { id: 'right', userId, caseId: null, files: [file] } }); await render(api, { ...props, importRequest: { id: 'right', userId, caseId: null, files: [file] } }); assert.deepEqual(handled, ['right']); assert.equal([...host.querySelectorAll('p')].filter(element => element.textContent === 'Forwarded.txt').length, 1); assert.equal(api.calls.length, 0);
 });
 test('same-user recovery preserves local text and requires reconciliation when server version changed', async () => {
   draftVault.verifyUser(userId); const previous = blank({ version: 1 }); const snapshot = recoverySnapshot({ ...caseWork(previous), sourceText: 'Recovered local source' }, previous, A); assert.equal(draftVault.write({ userId, workspaceKey, feature: 'intake' }, snapshot), true); draftVault.suspend(userId); draftVault.verifyUser(userId);
-  const api = apiFor(({ path }) => path === '/api/cases/' + A ? { case: blank({ sourceText: 'New server source', version: 2 }) } : undefined); await render(api, { caseId: A }, true); assert.equal(labeled('Case source text').value, 'Recovered local source'); assert.match(text(), /Recovered unsaved text edits/); assert.equal(button('Save case').disabled, true); await click(button('Reconcile and review')); assert.equal(labeled('Case source text').value, 'Recovered local source\n\nNew server source'); assert.equal(window.localStorage.length, 0); assert.equal(window.sessionStorage.length, 0);
+  const api = apiFor(({ path }) => path === '/api/cases/' + A ? { case: blank({ sourceText: 'New server source', version: 2 }) } : undefined); await render(api, { caseId: A }, true); assert.equal(labeled('Case source text').value, 'Recovered local source'); assert.match(text(), /Unsaved text restored/); assert.equal(button('Save case').disabled, true); await click(button('Reconcile and review')); assert.equal(labeled('Case source text').value, 'Recovered local source\n\nNew server source'); assert.equal(window.localStorage.length, 0); assert.equal(window.sessionStorage.length, 0);
 });
 test('saving a new case associates confirmed originals without uploading bytes again', async () => {
   const bound = [], api = apiFor(); await render(api, { onCaseChange: value => bound.push(value) }); await choose([new File(['Property: Synthetic Lane'], 'Synthetic.txt')]); await click(button('Save privately and process')); await click(button('Save case')); const association = api.calls.find(call => call.method === 'PATCH'); assert.deepEqual(association.body, { caseId: A, expectedVersion: 1 }); assert.equal(api.calls.filter(call => call.method === 'UPLOAD').length, 1); assert.deepEqual(bound, [A]); assert.equal(button('Link to saved case'), undefined);
@@ -134,7 +142,7 @@ test('same-account current-tab cache keeps only text edits and clears after full
   draftVault.verifyUser(userId); const api = apiFor(); await render(api, {}, true); await change(labeled('Case source text'), 'Unsaved synthetic source'); await choose([new File(['Binary never cached'], 'NotUploaded.txt')]); const cached = draftVault.read({ userId, workspaceKey, feature: 'intake' }); assert.equal(cached.sourceText, 'Unsaved synthetic source'); assert.equal(JSON.stringify(cached).includes('NotUploaded.txt'), false); assert.ok(!('draftText' in cached)); await click(button('Remove: NotUploaded.txt')); await click(button('Save case')); assert.equal(draftVault.read({ userId, workspaceKey, feature: 'intake' }), null);
 });
 test('source bounds are explicit and source edits do not silently shorten pasted content', async () => {
-  await render(apiFor()); const oversized = 'Synthetic '.repeat(5100); await change(labeled('Case source text'), oversized); assert.equal(labeled('Case source text').value, oversized); assert.equal(button('Save case').disabled, true); assert.equal(button('Organize explicit labels').disabled, true); assert.match(text(), /never silently truncated/);
+  await render(apiFor()); const oversized = 'Synthetic '.repeat(5100); await change(labeled('Case source text'), oversized); assert.equal(labeled('Case source text').value, oversized); assert.equal(button('Save case').disabled, true); assert.equal(button('Organize explicit labels').disabled, true); assert.match(text(), /Text exceeds 50,000 characters/);
 });
 test('another page’s first-save binding retains already-entered intake work and client association', async () => {
   const api = apiFor(({ path }) => path === '/api/cases/' + A ? { case: blank({ clientId: C }) } : undefined);
@@ -166,4 +174,88 @@ test('new handoff merges with existing unprocessed files rather than replacing t
 });
 test('failed initial canonical read stays retryable and cannot overwrite a case from an empty buffer', async () => {
   const api = apiFor(({ path }) => path === '/api/cases/' + A ? Promise.reject({ code: 'NETWORK_ERROR' }) : undefined); await render(api, { caseId: A }); assert.match(text(), /Cannot connect/); assert.equal(button('Save case').disabled, true); assert.equal(labeled('Case source text').disabled, true); assert.ok(button('Read again'));
+});
+
+function actionRecorder() {
+  const steps = [], actions = [];
+  return {steps, actions, journey: {
+    activateStep: event => steps.push(event),
+    beginAction(event, options = {}) {const entry = {event, options, outcomes:[]}; actions.push(entry); return {finish: outcome => entry.outcomes.push(outcome)};}
+  }};
+}
+test('development action observations begin only on focused controls and actual file/review actions', async () => {
+  const recorder = actionRecorder(), api = apiFor(); await render(api, {journey:recorder.journey});
+  assert.deepEqual(recorder.steps, []); assert.deepEqual(recorder.actions, []);
+  await React.act(async () => host.querySelector('input[type=file]').focus()); assert.equal(recorder.steps.at(-1), 'input.file');
+  await choose([new File(['PRIVATE BODY NOT TELEMETRY'], 'Private filename.txt')]);
+  assert.equal(recorder.actions.length, 0);
+  await click(button('Save privately and process'));
+  assert.deepEqual(recorder.actions.map(item => item.event), ['input.file']);
+  assert.deepEqual(recorder.actions[0].outcomes, [{ok:true,cancelled:false}]);
+  assert.deepEqual(Object.keys(recorder.actions[0].options), ['signal']);
+  await change(field('property'), 'Private reviewed address'); assert.equal(recorder.actions.length, 1);
+  await React.act(async () => field('property').focus()); assert.equal(recorder.steps.at(-1), 'review.confirm');
+  await click(host.querySelector('[id$="-property-confirm"]'));
+  assert.equal(recorder.actions.at(-1).event, 'review.confirm'); assert.deepEqual(recorder.actions.at(-1).outcomes, [{ok:true}]);
+  await click(host.querySelector('[id$="-property-confirm"]')); assert.equal(recorder.actions.length, 2, 'unchecking is not a completed confirmation');
+  await React.act(async () => labeled('Case source text').focus()); assert.equal(recorder.steps.at(-1), null);
+  assert.doesNotMatch(JSON.stringify(recorder.actions), /PRIVATE BODY|Private filename|Private reviewed address/);
+});
+test('development file observation counts the full workbook once and mapping only when explicitly applied', async () => {
+  const recorder = actionRecorder(); const workbook = {sheets:[{name:'Private worksheet',hidden:false,rows:[['Property'],['Private value']],blockedCells:[],truncated:false}]};
+  const api = apiFor(({path}) => path === '/api/workbook' ? workbook : undefined); await render(api, {journey:recorder.journey});
+  await choose([new File(['controlled workbook transport fixture'], 'Private workbook.xlsx')]); await click(button('Save privately and process'));
+  assert.deepEqual(recorder.actions.map(item => item.event), ['input.file']);
+  assert.equal(api.calls.find(call => call.path === '/api/workbook').telemetry, false, 'parser request suppresses duplicate API observation');
+  const mapping = labeled('Property address · Mapped column'); await React.act(async () => mapping.focus());
+  assert.equal(recorder.steps.at(-1), 'input.mapping'); await change(mapping, '0'); await click(button('Append this row and review facts'));
+  assert.deepEqual(recorder.actions.map(item => item.event), ['input.file','input.mapping']);
+  assert.equal(recorder.actions[1].outcomes[0].ok, true);
+  assert.doesNotMatch(JSON.stringify(recorder.actions), /Private worksheet|Private value|Private workbook/);
+});
+test('development failed and hidden file work never claims a successful active observation', async () => {
+  const recorder = actionRecorder(); const api = apiFor(({method}) => method === 'UPLOAD' ? Promise.reject({code:'PDF_ENCRYPTED'}) : undefined);
+  await render(api, {journey:recorder.journey}); await choose([new File(['Controlled invalid PDF'], 'Private.pdf')]); await click(button('Save privately and process'));
+  assert.deepEqual(recorder.actions[0].outcomes, [{ok:false,cancelled:false}]);
+  await render(api, {journey:recorder.journey,active:false}); await click(button('Save privately and process'));
+  assert.equal(recorder.actions.length, 1, 'kept-mounted inactive work does not start a new active observation');
+});
+test('development observer exceptions never change successful material or review behavior', async () => {
+  const journey = {activateStep(){throw new Error('Observer failure');},beginAction(){throw new Error('Observer failure');}};
+  const api = apiFor(); await render(api, {journey}); await React.act(async () => host.querySelector('input[type=file]').focus());
+  await choose([new File(['Private body'], 'Private.txt')]); await click(button('Save privately and process'));
+  assert.match(labeled('Case source text').value, /Synthetic Lane/);
+  await click(host.querySelector('[id$="-property-confirm"]')); assert.equal(host.querySelector('[id$="-property-confirm"]').getAttribute('data-state'),'checked');
+});
+
+test('chat text handoff is explicit, append-only, scoped, and preserves pending material and confirmed facts', async () => {
+  const request = { id: C, userId, caseId: A, conversationId: B, messageId: C, role: 'assistant', content: 'Property: Unreviewed different lane' };
+  const handled = [], original = blank({ sourceText: 'Saved source', draftText: 'A carefully edited draft', fields: extract('Property: Confirmed original lane').map(field => ({...field, confirmed:true})) });
+  const api = apiFor(({path}) => path === '/api/cases/' + A ? {case:original} : undefined);
+  await render(api, {caseId:A}); await change(labeled('Case source text'), 'Pending source edits');
+  await render(api, {caseId:A, textReviewRequest:request, onTextReviewHandled:id=>handled.push(id)});
+  assert.equal(labeled('Case source text').value, 'Pending source edits');
+  assert.match(text(), /Nothing has been added or confirmed yet/);
+  await click(button('Append unreviewed text'));
+  assert.equal(handled.length, 1); assert.match(labeled('Case source text').value, /^Pending source edits\n\nUNREVIEWED AI RESPONSE/);
+  assert.match(labeled('Case source text').value, new RegExp('Message: '+C));
+  assert.equal(field('property').value, 'Confirmed original lane');
+  assert.equal(host.querySelector('[id$="-property-confirm"]').getAttribute('data-state'), 'checked');
+  assert.equal(api.calls.some(call=>['POST','PUT','PATCH'].includes(call.method)), false);
+  await render(api, {caseId:A, textReviewRequest:request, onTextReviewHandled:id=>handled.push(id)});
+  assert.equal(button('Append unreviewed text'), undefined);
+  const before = labeled('Case source text').value;
+  const repeated = {...request, id:userId};
+  await render(api, {caseId:A,textReviewRequest:repeated}); await click(button('Append unreviewed text'));
+  assert.equal(labeled('Case source text').value, before, 'Same exact message block is not appended twice');
+});
+
+test('cancelling and stale-scope chat handoffs leave source and facts unchanged', async () => {
+  const request = {id:C,userId,caseId:A,conversationId:B,messageId:C,role:'user',content:'Owner: Pending proposal'};
+  const handled = [], api = apiFor(); await render(api,{caseId:A,textReviewRequest:{...request,userId:'foreign'}});
+  assert.equal(button('Append unreviewed text'), undefined);
+  await render(api,{caseId:A,textReviewRequest:request,onTextReviewHandled:id=>handled.push(id)});
+  await click(button('Cancel text handoff')); assert.deepEqual(handled,[C]); assert.equal(labeled('Case source text').value,'');
+  await render(api,{caseId:B,textReviewRequest:{...request,id:userId}}); assert.equal(button('Append unreviewed text'), undefined);
+  assert.equal(api.calls.some(call=>['POST','PUT','PATCH'].includes(call.method)), false);
 });

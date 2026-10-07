@@ -78,7 +78,6 @@ export function OriginalMaterials({ api, clientId, cases = [], lang = 'zh', refr
           </li>;
         })}</ul>}
         {(offset > 0 || page.total > ASSET_PAGE_SIZE) && <div className="flex justify-between gap-3 border-t pt-3"><Button type="button" variant="outline" size="sm" disabled={offset === 0 || result.loading} onClick={() => changePage(Math.max(0, offset - ASSET_PAGE_SIZE))}>{t.previous}</Button><Button type="button" variant="outline" size="sm" disabled={result.loading || page.assets.length === 0 || offset + page.assets.length >= page.total} onClick={() => changePage(offset + ASSET_PAGE_SIZE)}>{t.next}</Button></div>}
-        {page.assets.length > 0 && <p className="text-xs leading-relaxed text-muted-foreground">{t.externalNote}</p>}
       </>}
       {selected && <TextPreview key={selected.id} api={api} asset={selected} t={t} onClose={() => setSelected(null)} />}
     </CardContent>

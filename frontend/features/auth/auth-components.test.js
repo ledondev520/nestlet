@@ -25,7 +25,8 @@ function fixture(status,settings={configured:false,liveEnabled:false,secureSetti
    calls.push({path,method:options.method||'GET',body:options.body?JSON.parse(options.body):null});
    let body=path==='/api/status'?status:settings,code=200;
    if(path==='/api/settings' && options.method==='POST') {if(failSave){body={error:'Synthetic secret must never show',code:'PROVIDER_UNAVAILABLE'};code=503;}else{body={...settings,configured:true};}}
-   if(path==='/api/login' || path==='/api/register'){status={...owner,role:'trial',canManageSettings:false,username:JSON.parse(options.body).username};body=status;}
+   if(path==='/api/register'){body={accepted:true,authenticated:false,next:'check-email-if-eligible',retryAfter:60};code=202;}
+   if(path==='/api/login'){status={...owner,role:'trial',canManageSettings:false,username:JSON.parse(options.body).username};body=status;}
    if(path==='/api/settings/test')body={ok:true,model:'deepseek-flash',check:'model-access',chatCompletionTested:false,verifiedAt:'2026-10-07T00:00:00.000Z'};
    if(path==='/api/logout'){status={authenticated:false};body={ok:true};}
    return new Response(JSON.stringify(body),{status:code,headers:{'content-type':'application/json'}});
@@ -72,25 +73,25 @@ test('logout cancellation sends nothing; explicit confirmation sends logout once
  assert.equal(calls.filter(c=>c.path==='/api/logout').length,1);assert.equal(host.textContent,'');
 });
 
-test('username registration requires matching confirmation and explicitly posts six-character fixture password',async()=>{
- const calls=fixture({authenticated:false,authConfigured:true,secureLogin:true,registrationEnabled:true});await render(AuthPanel);
+test('email registration requires confirmation and stays signed out on generic202',async()=>{
+ const calls=fixture({authenticated:false,authConfigured:true,secureLogin:true,registrationEnabled:true,emailDeliveryConfigured:true});await render(AuthPanel);
  await click([...host.querySelectorAll('button')].find(button=>button.textContent==='Register'));
- await input(host.querySelector('[name=username]'),'synthetic-user');
+ await input(host.querySelector('[name=email]'),'synthetic@example.invalid');
  await input(host.querySelector('[name=password]'),'123456');
  await input(host.querySelector('[name=passwordConfirmation]'),'654321');
  await React.act(async()=>host.querySelector('form').dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true})));
  assert.equal(calls.filter(c=>c.method==='POST').length,0);assert.ok(host.querySelector('[role=alert]'));
  await input(host.querySelector('[name=passwordConfirmation]'),'123456');
  await React.act(async()=>host.querySelector('form').dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true})));
- assert.deepEqual(calls.find(c=>c.path==='/api/register').body,{username:'synthetic-user',password:'123456',passwordConfirmation:'123456'});
- assert.equal(host.querySelector('input[type=password]'),null);assert.match(host.textContent,/synthetic-user/);
+ assert.deepEqual(calls.find(c=>c.path==='/api/register').body,{email:'synthetic@example.invalid',password:'123456',passwordConfirmation:'123456'});
+ assert.equal(host.querySelector('input[type=password]'),null);assert.match(host.textContent,/Check your inbox if eligible/);assert.doesNotMatch(host.textContent,/Signed in/);assert.equal(calls.filter(c=>c.path==='/api/status').length,1);
 });
 test('model-access action is explicit and does not claim chat generation passed',async()=>{
  const calls=fixture(owner,{configured:true,liveEnabled:false,secureSettings:true,keyStorage:'server-memory'});await render(SettingsPage);
  assert.equal(calls.filter(c=>c.path==='/api/settings/test').length,0);
  await click([...host.querySelectorAll('button')].find(button=>button.textContent==='Verify model access'));
  assert.deepEqual(calls.find(c=>c.path==='/api/settings/test').body,{});
- assert.match(host.textContent,/Chat generation has not been tested/);
+ assert.match(host.textContent,/Model access verified/);
 });
 
 test('remembered login uses native autofill values and stores only username',async()=>{

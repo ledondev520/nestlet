@@ -1,5 +1,7 @@
 /** Server-local, owner-scoped SQLite storage. Input text is untrusted; private asset bytes are stored separately; no provider keys are saved. */
 import { DatabaseSync } from 'node:sqlite';
+import { EMAIL_SCHEMA_SQL, createEmailAuthStorage } from './email-auth-storage.js';
+import { ACCOUNT_ADMINISTRATION_SCHEMA_SQL, createAccountAdministrationStorage } from './account-administration-storage.js';
 import { randomUUID } from 'node:crypto';
 import { constants, closeSync, fchmodSync, fstatSync, lstatSync, mkdirSync, openSync } from 'node:fs';
 import { dirname, parse, resolve, sep } from 'node:path';
@@ -8,7 +10,7 @@ import { validateDocumentContext, validateFinalArtifact } from './document-conte
 import { ASSET_LIMITS, ASSET_TYPES, assetFilename, assetAssociation, assetKeys, assetId, normalizeAssetSearch, assetFail } from './asset-domain.js';
 import { TELEMETRY_LIMITS, CLIENT_EVENTS, SERVER_EVENTS, validateStoredTelemetryEvent, telemetryId } from './telemetry.js';
 
-const SCHEMA_VERSION = 4;
+const SCHEMA_VERSION = 6;
 const APPLICATION_ID = 0x4e53544c; // NSTL, distinct from unrelated SQLite files.
 export const MAX_CASE_BYTES = 256 * 1024;
 export const MAX_SOURCE_CHARS = 50_000;
@@ -451,6 +453,8 @@ export function openStorage({ filename, reservedUsername = process.env.NESTLET_O
           BEGIN UPDATE assets SET case_id=NULL,version=version+1,updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE case_id=OLD.id AND owner_user_id=OLD.user_id; END;
         PRAGMA user_version = 4;`);
       }
+      if (currentVersion < 5) db.exec(EMAIL_SCHEMA_SQL);
+      if (currentVersion < 6) db.exec(ACCOUNT_ADMINISTRATION_SCHEMA_SQL);
       db.prepare("INSERT INTO users(id, username, role, password_hash, created_at) VALUES('owner', 'owner', 'owner', NULL, ?) ON CONFLICT(id) DO NOTHING").run(new Date().toISOString());
     });
     const userLookup = db.prepare('SELECT id, username, role, password_hash AS passwordHash, created_at AS createdAt FROM users WHERE id = ?');
@@ -595,6 +599,8 @@ export function openStorage({ filename, reservedUsername = process.env.NESTLET_O
     };
     try { telemetryTransaction(() => pruneTelemetry()); } catch { /* Optional maintenance cannot disable business storage. */ }
     return {
+      emailAuth: createEmailAuthStorage({ db, transaction, maxUsers: MAX_TRIAL_USERS }),
+      accountAdministration: createAccountAdministrationStorage({ db, transaction }),
       assetUsage(id) { requireUser(id);return assetUsage(id); },
       validateAssetLinks(id,links) { requireUser(id);return assetLinks(id,links); },
       createAsset(id,payload,links={},writeBytes) {

@@ -7,6 +7,10 @@ import { readFile, access } from 'node:fs/promises';
 import { spawn, spawnSync } from 'node:child_process';
 import { validateSuggestions } from './public/core.js';
 import { createOperatorAuth } from './auth.js';
+import { AccountAdministrationError, isBootstrapOwner } from './account-administration.js';
+import { createEmailAuth, EmailAuthError } from './email-auth.js';
+import { createEmailDelivery } from './email-delivery.js';
+import { normalizeEmail } from './email-auth-domain.js';
 import { openStorage, StorageError } from './storage.js';
 import { AssetError, isAssetRecordsPath, handleAssetRecords } from './asset-records.js';
 import { openAssetVault } from './private-assets.js';
@@ -14,7 +18,8 @@ import { ASSET_LIMITS, ASSET_TYPES } from './asset-domain.js';
 import { CaseRecordsError, isCaseRecordsPath, handleCaseRecords } from './case-records.js';
 import { DocumentContextError } from './document-context.js';
 import { createTelemetry, TelemetryError, telemetryId, telemetryPageOptions } from './telemetry.js';
-import { CHAT_LIMITS, CHAT_IMAGE_TYPES, ChatError, validateChatRequest, conversationHistory, chatProviderMessages, openChatStream } from './chat.js';
+import { CHAT_LIMITS, CHAT_IMAGE_TYPES, ChatError, validateChatRequest, conversationHistory, chatProviderMessages, openChatStream, openLibraryChatStream, librarySourceEvent, libraryActivityEvent, LIBRARY_CHAT_ERRORS } from './chat.js';
+import { createLibraryToolSession, LIBRARY_AGENT_LIMITS } from './agent-library-tools.js';
 
 const root = new URL('./public/', import.meta.url);
 let publicOrigin = '';
@@ -39,8 +44,10 @@ const assetVault = openAssetVault({directory:assetDirectory});
 const telemetry = createTelemetry(storage);
 const auth = createOperatorAuth({ passwordHash: process.env.NESTLET_OPERATOR_PASSWORD_HASH, operatorUsername: process.env.NESTLET_OPERATOR_USERNAME, publicOrigin, host: process.env.HOST,
   findTrialUser: username => storage.findUserByUsername(username), findTrialUserById: id => storage.getUserById(id),
-  createTrialUser: input => storage.createTrialUser(input) });
-const registrationAttempts = [];
+  findUserByEmail: email => storage.emailAuth.findByEmail(email),
+  hasAdministratorCapability: id => storage.accountAdministration.administrator(id) });
+const emailAuth = createEmailAuth({ storage: storage.emailAuth, delivery: createEmailDelivery(), publicOrigin,
+  currentCredential: id => id === 'owner' ? process.env.NESTLET_OPERATOR_PASSWORD_HASH : storage.getUserById(id)?.passwordHash });
 const trialAiRequests = [];
 const TRIAL_USER_AI_LIMIT = 10;
 const TRIAL_GLOBAL_AI_LIMIT = 30;
@@ -84,7 +91,7 @@ function requireSession(request, mutation = true) {
 
 function requireOwnerSession(request, mutation = true) {
   const session = requireSession(request, mutation);
-  if (session.role !== 'owner') throw new RequestError(403, 'OWNER_REQUIRED', 'Only the owner can manage provider settings.');
+  if (!isBootstrapOwner(session)) throw new RequestError(403, 'OWNER_REQUIRED', 'Only the owner can manage provider settings.');
   return session;
 }
 
@@ -101,20 +108,23 @@ function requireSecureSettings(request) {
 
 function settingsStatus(request) {
   const session = auth.getSession(request);
-  const owner = session?.role === 'owner';
+  const owner = isBootstrapOwner(session);
   const common = { model, providerEndpoint: 'https://api.deepseek.com/chat/completions',
     liveEnabled: enabled && auth.configured, authConfigured: auth.configured, authenticated: Boolean(session),
     secureLogin: auth.secure || auth.localTransportAllowed,
     secureSettings: auth.secure && auth.configured && (!session || owner),
     role: session?.role || null, canManageSettings: owner, caseStorageEnabled: true,
-    registrationEnabled: auth.configured && (auth.secure || auth.localTransportAllowed),
+    administrator: session?.administrator === true, canManageAccounts: owner, canViewDiagnostics: session?.canViewDiagnostics === true,
+    registrationEnabled: auth.configured && (auth.secure || auth.localTransportAllowed) && emailAuth.configured,
+    ...emailAuth.status(session?.userId, session?.role),
     assetStorageEnabled: true, assetLimits: ASSET_LIMITS, assetTypes: Object.keys(ASSET_TYPES),
     chatEnabled: true, chatImageTypes: CHAT_IMAGE_TYPES, chatLimits: CHAT_LIMITS,
+    libraryRetrievalEnabled:true, libraryLimits:{rounds:LIBRARY_AGENT_LIMITS.rounds,calls:LIBRARY_AGENT_LIMITS.calls,resultChars:LIBRARY_AGENT_LIMITS.resultChars,timeoutMs:CHAT_LIMITS.timeoutMs},
     ...(session ? { csrfToken: session.csrfToken, userId: session.userId, username: session.username } : {}) };
   if (!owner) return common;
   // Only the authenticated owner sees provider-configuration metadata; never credential bytes.
 
-  return { ...common, configured: Boolean(apiKey), operatorSetupInvalid: auth.setupInvalid,
+  return { ...common, configured: Boolean(apiKey), operatorSetupInvalid: auth.setupInvalid, emailDelivery: emailAuth.deliveryStatus(),
     connectionVerifiedAt, keyStorage: apiKey ? (apiKey === process.env.DEEPSEEK_API_KEY ? 'server-environment' : 'server-memory') : 'none' };
 }
 
@@ -390,33 +400,35 @@ const server = http.createServer(async (request, response) => {
     if (request.url === '/api/status' && request.method === 'GET') {
       return json(200, { ...settingsStatus(request), pdfEnabled, maxPdfBytes, workbookEnabled, maxWorkbookBytes, maxTextLength, privacyMode: 'synthetic-or-deidentified-only' });
     }
-    if (request.url === '/api/register' && request.method === 'POST') {
+    if ((request.url === '/api/register' || ['/api/auth/email/resend', '/api/auth/email/verify', '/api/auth/password/forgot', '/api/auth/password/reset', '/api/auth/email/bind'].includes(request.url)) && request.method === 'POST') {
       verifyOrigin(request);
       if (!request.headers.origin) throw new RequestError(403, 'ORIGIN_REJECTED', 'A same-origin browser request is required.');
-      if (!auth.configured) throw new RequestError(503, 'OPERATOR_SETUP_REQUIRED', 'The administrator must finish setup before accounts can be registered.');
-      if (!auth.secure && !auth.localTransportAllowed) throw new RequestError(403, 'HTTPS_REQUIRED', 'Account registration requires HTTPS outside loopback development.');
-      const now = Date.now();
-      while (registrationAttempts.length && now - registrationAttempts[0] >= 10 * 60 * 1000) registrationAttempts.shift();
-      if (registrationAttempts.length >= 5) throw new RequestError(429, 'REGISTRATION_RATE_LIMITED', 'Too many registration attempts. Try again after the ten-minute window expires.');
-      registrationAttempts.push(now);
+      if (!auth.configured) throw new RequestError(503, 'OPERATOR_SETUP_REQUIRED', 'The administrator must finish setup before email authentication is available.');
+      if (!auth.secure && !auth.localTransportAllowed) throw new RequestError(403, 'HTTPS_REQUIRED', 'Email authentication requires HTTPS outside loopback development.');
+      const session = request.url === '/api/auth/email/bind' ? requireSession(request) : null;
       let body;
       try { body = await readJson(request, 4096); }
-      catch (error) { if (error.status === 413) throw new RequestError(413, 'REGISTRATION_INVALID', 'Registration input exceeds the 4 KiB limit.'); throw error; }
-      if (Object.keys(body).length !== 3 || Object.keys(body).some(key => !['username', 'password', 'passwordConfirmation'].includes(key))) throw new RequestError(400, 'REGISTRATION_INVALID', 'Provide only a username, password and matching password confirmation.');
-      const result = await auth.register(body);
-      if (result.error) throw new RequestError(result.error === 'LOGIN_RATE_LIMITED' ? 429 : 400, result.error, 'Registration could not be completed. Check the username and matching password requirements.');
-      response.setHeader('Set-Cookie', result.cookie);
-      return json(201, { authenticated: true, csrfToken: result.csrfToken, role: result.role, userId: result.userId, username: result.username });
+      catch (error) { if (error.status === 413 && request.url === '/api/register') throw new RequestError(413, 'REGISTRATION_INVALID', 'Registration input exceeds the 4 KiB limit.'); throw error; }
+      // Do not trust caller-supplied forwarding headers for rate-limit identity.
+      const ip = request.socket.remoteAddress || 'unknown';
+      if (request.url === '/api/register') return json(202, await emailAuth.register(body, ip));
+      if (request.url === '/api/auth/email/resend') return json(202, await emailAuth.resend(body, ip));
+      if (request.url === '/api/auth/email/verify') return json(200, emailAuth.verify(body, ip));
+      if (request.url === '/api/auth/password/forgot') return json(202, await emailAuth.forgot(body, ip));
+      if (request.url === '/api/auth/password/reset') return json(200, await emailAuth.reset(body, ip));
+      return json(202, await emailAuth.bind(body, session, ip));
     }
     if (request.url === '/api/login' && request.method === 'POST') {
       verifyOrigin(request);
       if (!request.headers.origin) throw new RequestError(403, 'ORIGIN_REJECTED', 'A same-origin browser request is required.');
       if (!auth.secure && !auth.localTransportAllowed) throw new RequestError(403, 'HTTPS_REQUIRED', 'Operator sign-in requires HTTPS outside loopback development.');
       const body = await readJson(request);
-      const result = await auth.login(body.password, body.username, body.rememberMe === true);
+      if (Object.keys(body).some(key => !['email', 'username', 'password', 'rememberMe'].includes(key)) || (Object.hasOwn(body, 'rememberMe') && typeof body.rememberMe !== 'boolean') || (Object.hasOwn(body, 'email') && Object.hasOwn(body, 'username')) || (Object.hasOwn(body, 'email') && !normalizeEmail(body.email))) throw new RequestError(401, 'INVALID_CREDENTIALS', 'Sign-in failed.');
+      const result = await auth.login(body.password, body.email ?? body.username, body.rememberMe === true);
       if (result.error) throw new RequestError(result.error === 'LOGIN_RATE_LIMITED' ? 429 : result.error === 'OPERATOR_SETUP_REQUIRED' ? 503 : 401, result.error, result.error === 'LOGIN_RATE_LIMITED' ? 'Too many sign-in attempts. Wait a minute before retrying.' : 'Operator sign-in failed. Check the password or server setup.');
       response.setHeader('Set-Cookie', result.cookie);
-      return json(200, { authenticated: true, csrfToken: result.csrfToken, role: result.role, userId: result.userId, username: result.username });
+      return json(200, { authenticated: true, csrfToken: result.csrfToken, role: result.role, userId: result.userId, username: result.username,
+        administrator: result.administrator, canManageAccounts: result.canManageAccounts, canViewDiagnostics: result.canViewDiagnostics });
     }
     if (request.url === '/api/logout' && request.method === 'POST') {
       verifyOrigin(request);
@@ -453,6 +465,34 @@ const server = http.createServer(async (request, response) => {
       try { return json(200, await testProviderConnection(AbortSignal.any([cancel.signal, AbortSignal.timeout(15000)]))); }
       catch (error) { if (error instanceof RequestError) throw error; throw new RequestError(502, 'CONNECTION_FAILED', 'Connection verification failed. No chat completion was tested.'); }
       finally { activeConnectionTests--; }
+    }
+    const accountUrl = new URL(request.url, 'http://localhost');
+    const accountRoute = /^\/api\/admin\/accounts\/(owner|[0-9a-f-]{36})\/administrator$/u.exec(accountUrl.pathname);
+    if (accountUrl.pathname === '/api/admin/accounts' || accountUrl.pathname === '/api/admin/account-audit' || accountRoute) {
+      verifyOrigin(request);
+      const mutation = request.method !== 'GET';
+      const session = requireOwnerSession(request, mutation);
+      if (mutation && !request.headers.origin) throw new RequestError(403, 'ORIGIN_REJECTED', 'A same-origin browser request is required.');
+      if (!auth.secure && !auth.localTransportAllowed) throw new RequestError(403, 'HTTPS_REQUIRED', 'Account administration requires HTTPS outside loopback development.');
+      if (request.method === 'GET' && accountUrl.pathname === '/api/admin/account-audit') {
+        const values = [...accountUrl.searchParams];
+        if (values.some(([key,value]) => !['before','limit'].includes(key) || !/^[1-9][0-9]{0,15}$/u.test(value)) || new Set(values.map(([key]) => key)).size !== values.length) throw new AccountAdministrationError();
+        return json(200, storage.accountAdministration.audit(session, Object.fromEntries(values.map(([key,value]) => [key,Number(value)]))));
+      }
+      if (accountUrl.search) throw new AccountAdministrationError();
+      if (request.method === 'GET' && accountUrl.pathname === '/api/admin/accounts') return json(200, storage.accountAdministration.listAccounts(session));
+      if (request.method === 'PUT' && accountRoute) return json(200, storage.accountAdministration.setAdministrator(session, accountRoute[1], await readJson(request, 1024)));
+      throw new RequestError(405, 'METHOD_NOT_ALLOWED', 'Method not allowed.');
+    }
+    if (accountUrl.pathname === '/api/admin/diagnostics') {
+      verifyOrigin(request);
+      const session = requireSession(request, false);
+      if (!session.canViewDiagnostics) throw new AccountAdministrationError('ADMINISTRATOR_REQUIRED', 403);
+      if (request.method !== 'GET') throw new RequestError(405, 'METHOD_NOT_ALLOWED', 'Method not allowed.');
+      if (accountUrl.search) throw new AccountAdministrationError();
+      // Bounded process health only: no account roster, telemetry, paths, configuration secrets or customer data.
+      return json(200, { model, liveEnabled: enabled && auth.configured, pdfEnabled, workbookEnabled,
+        uptimeSeconds: Math.floor(process.uptime()), activeRequests: { chat: activeChatRequests, extraction: activeExtractions, pdf: activePdfExtractions, workbook: activeWorkbookExtractions } });
     }
     const telemetryUrl = new URL(request.url, 'http://localhost');
     const workflowRoute = /^\/api\/workflows\/([0-9a-f-]{36})\/(bind|events)$/u.exec(telemetryUrl.pathname);
@@ -598,14 +638,24 @@ const server = http.createServer(async (request, response) => {
       const currentMessage = input.messages[0];
       if (conversation) input.messages = [...conversationHistory(history,body.messages[0].content.length),currentMessage];
       chatProviderMessages(input, record); // Validate bounded stored evidence before spending provider quota.
+      if(input.libraryConsent)response.setHeader('X-Library-Retrieval','enabled');
       if (!enabled) throw new RequestError(503, 'LIVE_DISABLED', 'Live AI is disabled. The administrator must configure the provider before chatting.');
       if (activeExtractions >= 2) throw new RequestError(429, 'BUSY', 'AI processing is busy. Try again shortly.');
       consumeTrialAiAllowance(session);
       activeExtractions++;
       if (conversationKey) activeConversations.add(conversationKey);
       const chatAbort = new AbortController();
-      const signal = AbortSignal.any([cancel.signal, chatAbort.signal, AbortSignal.timeout(CHAT_LIMITS.timeoutMs)]);
+      const remaining=input.libraryConsent?Math.max(1,Math.ceil(CHAT_LIMITS.timeoutMs-(performance.now()-requestStarted))):CHAT_LIMITS.timeoutMs;
+      const signal = AbortSignal.any([cancel.signal, chatAbort.signal, AbortSignal.timeout(remaining)]);
       let streaming = false, userMessage = null, assistantMessage = null, answer = '', completed = false;
+      let library=null;
+      let sourceEvent=null,sourceAppended=false,sourcesSent=false;
+      const appendSources=provided=>{
+        if(sourceAppended||!library)return sourceEvent;
+        const event=provided||librarySourceEvent(library,requestId,input.locale);
+        if(event){if(event.requestId!==requestId||answer.length+event.appendix.length>CHAT_LIMITS.outputChars)throw new ChatError('LIBRARY_RESULT_LIMIT',502);answer+=event.appendix;sourceEvent={requestId:event.requestId,items:event.items,appendix:event.appendix};sourceAppended=true;}
+        return sourceEvent;
+      };
       const saveAssistant = state => {
         if (!conversation || !userMessage || assistantMessage) return assistantMessage;
         try {
@@ -615,18 +665,21 @@ const server = http.createServer(async (request, response) => {
         } catch { throw new ChatError('CHAT_SAVE_FAILED',503); }
       };
       try {
+        library=input.libraryConsent?createLibraryToolSession({storage,userId:session.userId,libraryConsent:true,currentCaseId:caseId||null,signal}):null;
         if (conversation) {
           const original = body.messages[0];
           userMessage = storage.appendMessage(session.userId,conversation.id,{role:'user',content:original.content,state:'complete',requestId,clientMessageId:input.clientMessageId,
             imageMetadata:(original.images || []).map(image => ({mimeType:image.mimeType,byteCount:Buffer.byteLength(image.data,'base64'),retained:false}))});
           if (!userMessage) throw new ChatError('CONVERSATION_NOT_FOUND',404);
         }
-        const stream = await openChatStream({ apiKey, input, record, signal });
+        const stream = library?await openLibraryChatStream({apiKey,input,record,signal,library,requestId}):await openChatStream({ apiKey, input, record, signal });
         response.writeHead(200, { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-store', 'X-Accel-Buffering': 'no' });
         response.flushHeaders(); streaming = true;
         if (conversation) await writeChatEvent(response,signal,'conversation',{conversationId:conversation.id,userMessageId:userMessage.id});
         for await (const event of stream) {
           if (event.type === 'delta') { answer += event.text; await writeChatEvent(response, signal, 'delta', { text: event.text }); }
+          else if(event.type==='activity'){await writeChatEvent(response,signal,'activity',libraryActivityEvent(event));}
+          else if(event.type==='sources'){const sources=appendSources(event);if(sources&&!sourcesSent){sourcesSent=true;await writeChatEvent(response,signal,'sources',sources);}}
           else if (event.type === 'done') {
             saveAssistant('complete'); completed = true;
             await writeChatEvent(response, signal, 'done', { requestId,...(assistantMessage ? {assistantMessageId:assistantMessage.id,conversationId:conversation.id} : {}) });
@@ -636,13 +689,14 @@ const server = http.createServer(async (request, response) => {
         response.end();
       } catch (error) {
         let failure = error;
+        if(library&&!completed)try{appendSources();}catch(sourceError){failure=sourceError;}
         if (!completed) try { saveAssistant(cancel.signal.aborted || response.destroyed ? 'interrupted' : 'failed'); } catch (saveError) { failure = saveError; }
         recordTracking(streaming ? 200 : (cancel.signal.aborted || response.destroyed ? 499 : failure.status || 502),cancel.signal.aborted || response.destroyed ? 'REQUEST_CANCELLED' : failure.code,'failure');
         if (cancel.signal.aborted || response.destroyed) return;
         if (!streaming) throw failure instanceof ChatError || failure instanceof StorageError ? failure : new ChatError('CHAT_PROVIDER_FAILED', 502);
-        const allowed = new Set(['CHAT_STREAM_FAILED', 'CHAT_PROVIDER_FAILED', 'CHAT_INCOMPLETE', 'CHAT_UNSUPPORTED_OUTPUT', 'CHAT_TOO_LARGE','CHAT_SAVE_FAILED']);
+        const allowed = new Set(['CHAT_STREAM_FAILED', 'CHAT_PROVIDER_FAILED', 'CHAT_INCOMPLETE', 'CHAT_UNSUPPORTED_OUTPUT', 'CHAT_TOO_LARGE','CHAT_SAVE_FAILED',...LIBRARY_CHAT_ERRORS]);
         const code = allowed.has(failure.code) ? failure.code : 'CHAT_STREAM_FAILED';
-        try { await writeChatEvent(response, AbortSignal.any([cancel.signal, AbortSignal.timeout(2000)]), 'error', { code, requestId, retryable: true,...(assistantMessage ? {assistantMessageId:assistantMessage.id,conversationId:conversation.id} : {}) }); } catch {}
+        try { if(sourceEvent&&!sourcesSent){sourcesSent=true;await writeChatEvent(response,AbortSignal.any([cancel.signal,AbortSignal.timeout(2000)]),'sources',sourceEvent);} await writeChatEvent(response, AbortSignal.any([cancel.signal, AbortSignal.timeout(2000)]), 'error', { code, requestId, retryable: true,...(assistantMessage ? {assistantMessageId:assistantMessage.id,conversationId:conversation.id} : {}) }); } catch {}
         response.end();
       } finally { chatAbort.abort(); activeExtractions--; if (conversationKey) activeConversations.delete(conversationKey); }
       return;
@@ -700,7 +754,7 @@ const server = http.createServer(async (request, response) => {
     if (file.startsWith('samples/')) response.setHeader('Content-Disposition', `attachment; filename="${file.slice('samples/'.length)}"`);
     response.end(content);
   } catch (error) {
-    if (error instanceof AssetError || error instanceof RequestError || error instanceof StorageError || error instanceof TelemetryError || error instanceof ChatError || error instanceof CaseRecordsError || error instanceof DocumentContextError) return json(error.status, { error: error.message, code: error.code, ...(error.details ? {details:error.details} : {}) });
+    if (error instanceof AccountAdministrationError || error instanceof EmailAuthError || error instanceof AssetError || error instanceof RequestError || error instanceof StorageError || error instanceof TelemetryError || error instanceof ChatError || error instanceof CaseRecordsError || error instanceof DocumentContextError) return json(error.status, { error: error.message, code: error.code, ...(error.details ? {details:error.details} : {}) });
     return json(500, { error: 'Request could not be completed', code: 'INTERNAL_ERROR' });
   }
 });

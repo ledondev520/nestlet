@@ -27,5 +27,7 @@ jobs:
         run: npm run test:frontend
       - name: Test local behavior
         run: npm test
+      - name: Test email contracts with explicitly simulated mail transport
+        run: npm run test:email-contracts
       - name: Test artifact invalidation with actual HTTP and DOM events
         run: node --test test/artifact-invalidation.integration.test.js
