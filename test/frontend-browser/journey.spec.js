@@ -59,7 +59,9 @@ test('six-character account → standalone original → unassigned case → fina
     await navigate(page, 'Materials & facts');
     await expect(page.getByLabel('Case name', { exact: true })).toHaveValue(title);
     await expect(page.getByLabel('Case source text', { exact: true })).toHaveValue(SOURCE);
-    for (const checkbox of await page.getByRole('checkbox', { name: 'I reviewed this fact or its unknown status', exact: true }).all()) await expect(checkbox).toBeChecked();
+    const restoredFacts = page.locator('main > section:not([hidden])').getByRole('checkbox', { name: 'I reviewed this fact or its unknown status', exact: true });
+    await expect(restoredFacts).toHaveCount(5);
+    for (const checkbox of await restoredFacts.all()) await expect(checkbox).toBeChecked();
     expect((await (await page.request.get('/api/clients')).json()).clients).toEqual([]);
   });
 
