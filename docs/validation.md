@@ -183,3 +183,18 @@ A direct cloud-browser loopback navigation was blocked; no alternate route was u
 ## Limits
 
 Source-substring validation does not prove semantic truth or discover every contradiction. Sensitive-identifier pattern checks are not comprehensive de-identification. PDF text extraction does not verify reading order or official form fields; no OCR is supported. CSV prefix bytes are tested, but actual Excel/Google Sheets formula execution has not been exercised. Named-trial access can be revoked by rotating the credential; no account-disable endpoint is implemented in this scope. These tests establish neither agency-specific compliance nor production security/privacy readiness. No real customer records, housing decisions, external communication, or official submissions were used.
+
+## Private originals / schema4 candidate — October 7, 2026, 10:11 UTC
+
+On the dedicated private-assets feature branch based on 8a7f5de:
+
+- `npm run check`: passed; all new server/parser/operations modules included
+- `npm test`: 250 tests, 249 passed, one known existing legacy bilingual-route fallback failure (`CHAT_TOO_LARGE` in `test/localization-contract.test.js`); frontend/integration lane owns that mapping. No full-release pass is claimed
+- New private-assets coverage: 20 passing tests with real disposable SQLite, HTTP sessions, original byte uploads/downloads, real Poppler/SheetJS/PNG/JPEG parsing, PNG malformed-filter/palette/Adam7 rejection, Unicode literal search, ordinary/admin isolation, CSRF/Origin/explicit-save checks, quotas (including actual 51×5 MiB stored files), unsafe symlink/hardlink paths, digest corruption, process restart and preserving originals when a case is deleted
+- Genuine baseline schema3 DDL migration to schema4 preserved users/customers/cases/conversations/messages/artifacts/telemetry rows exactly; failure rollback and future-schema fail-closed checks passed. Existing schema1/2 migration checks now target schema4 and passed
+- Manual backup, verify, restore-to-new-directory after simulated source loss, exact-user export without credential tables, corrupt/missing/unexpected snapshot rejection, CLI execution and orphan reporting without deletion passed using synthetic data
+- FTS5 was directly verified available in Node24; bounded Unicode-normalized literal substring SQL search was deliberately selected for this version. No FTS query language, semantic search, OCR or automatic AI library access is claimed
+- Existing parser resource limits remain; image decoding runs in an isolated process with stripped environment, timeout/address/CPU/heap and pixel/decode-memory limits. No private file/model transmission or third-party viewer is involved
+- Skills `orbit:software-engineering`, upstream implement/TDD/code-review guidance were read; targeted real-interface tests and an independent security review were used. A complete test-first workflow or full two-axis upstream review ritual is not claimed
+
+This is local backend evidence. The standalone feature branch does not include the separately owned Docker allowlist/COPY or React changes. Integrated image startup, real-browser PDF/image preview/CSP, end-to-end UI, exact-SHA release CI and deployment remain separate verification. No production files, credentials or database were read or modified; no backup job was scheduled and no deployment was performed.

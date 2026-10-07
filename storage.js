@@ -1,13 +1,14 @@
-/** Server-local, owner-scoped SQLite storage. Input text is untrusted; no uploaded bytes or keys are saved. */
+/** Server-local, owner-scoped SQLite storage. Input text is untrusted; private asset bytes are stored separately; no provider keys are saved. */
 import { DatabaseSync } from 'node:sqlite';
 import { randomUUID } from 'node:crypto';
 import { constants, closeSync, fchmodSync, fstatSync, lstatSync, mkdirSync, openSync } from 'node:fs';
 import { dirname, parse, resolve, sep } from 'node:path';
 import { FIELDS, DRAFT_TYPES, canDraft } from './public/core.js';
 import { validateDocumentContext, validateFinalArtifact } from './document-context.js';
+import { ASSET_LIMITS, ASSET_TYPES, assetFilename, assetAssociation, assetKeys, assetId, normalizeAssetSearch, assetFail } from './asset-domain.js';
 import { TELEMETRY_LIMITS, CLIENT_EVENTS, SERVER_EVENTS, validateStoredTelemetryEvent, telemetryId } from './telemetry.js';
 
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 const APPLICATION_ID = 0x4e53544c; // NSTL, distinct from unrelated SQLite files.
 export const MAX_CASE_BYTES = 256 * 1024;
 export const MAX_SOURCE_CHARS = 50_000;
@@ -409,6 +410,47 @@ export function openStorage({ filename, reservedUsername = process.env.NESTLET_O
         CREATE TRIGGER immutable_artifact_update BEFORE UPDATE ON artifacts BEGIN SELECT RAISE(ABORT, 'Artifacts are immutable'); END;
         PRAGMA user_version = 3;`);
       }
+      if (currentVersion < 4) {
+        db.exec(`CREATE TABLE assets (
+          id TEXT PRIMARY KEY NOT NULL,
+          owner_user_id TEXT NOT NULL REFERENCES users(id),
+          case_id TEXT REFERENCES cases(id) ON DELETE SET NULL,
+          client_id TEXT REFERENCES clients(id),
+          original_filename TEXT NOT NULL,
+          mime_type TEXT NOT NULL,
+          size_bytes INTEGER NOT NULL CHECK(size_bytes > 0 AND size_bytes <= ${ASSET_LIMITS.fileBytes}),
+          sha256 TEXT NOT NULL CHECK(length(sha256)=64),
+          extracted_text TEXT NOT NULL,
+          search_text TEXT NOT NULL,
+          text_status TEXT NOT NULL CHECK(text_status IN ('ready','unavailable')),
+          text_truncated INTEGER NOT NULL CHECK(text_truncated IN (0,1)),
+          preview_kind TEXT NOT NULL CHECK(preview_kind IN ('pdf','image','text')),
+          warnings_json TEXT NOT NULL CHECK(json_valid(warnings_json)),
+          version INTEGER NOT NULL CHECK(version > 0),
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          UNIQUE(owner_user_id,id)
+        ) STRICT;
+        CREATE INDEX assets_owner_created ON assets(owner_user_id,created_at DESC,id);
+        CREATE INDEX assets_owner_case ON assets(owner_user_id,case_id,created_at DESC,id);
+        CREATE INDEX assets_owner_client ON assets(owner_user_id,client_id,created_at DESC,id);
+        CREATE TRIGGER assets_owner_insert BEFORE INSERT ON assets
+          WHEN (NEW.case_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM cases WHERE id=NEW.case_id AND user_id=NEW.owner_user_id AND client_id IS NEW.client_id))
+          OR (NEW.client_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM clients WHERE id=NEW.client_id AND user_id=NEW.owner_user_id))
+          BEGIN SELECT RAISE(ABORT,'Invalid private asset association'); END;
+        CREATE TRIGGER assets_owner_update BEFORE UPDATE OF owner_user_id,case_id,client_id ON assets
+          WHEN NEW.owner_user_id != OLD.owner_user_id
+          OR (NEW.case_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM cases WHERE id=NEW.case_id AND user_id=NEW.owner_user_id AND client_id IS NEW.client_id))
+          OR (NEW.client_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM clients WHERE id=NEW.client_id AND user_id=NEW.owner_user_id))
+          BEGIN SELECT RAISE(ABORT,'Invalid private asset association'); END;
+        CREATE TRIGGER assets_immutable_content BEFORE UPDATE OF id,original_filename,mime_type,size_bytes,sha256,extracted_text,search_text,text_status,text_truncated,preview_kind,warnings_json,created_at ON assets
+          BEGIN SELECT RAISE(ABORT,'Original assets are immutable'); END;
+        CREATE TRIGGER assets_follow_case_customer AFTER UPDATE OF client_id ON cases WHEN NEW.client_id IS NOT OLD.client_id
+          BEGIN UPDATE assets SET client_id=NEW.client_id,version=version+1,updated_at=NEW.updated_at WHERE case_id=NEW.id AND owner_user_id=NEW.user_id; END;
+        CREATE TRIGGER assets_preserve_case_delete BEFORE DELETE ON cases
+          BEGIN UPDATE assets SET case_id=NULL,version=version+1,updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE case_id=OLD.id AND owner_user_id=OLD.user_id; END;
+        PRAGMA user_version = 4;`);
+      }
       db.prepare("INSERT INTO users(id, username, role, password_hash, created_at) VALUES('owner', 'owner', 'owner', NULL, ?) ON CONFLICT(id) DO NOTHING").run(new Date().toISOString());
     });
     const userLookup = db.prepare('SELECT id, username, role, password_hash AS passwordHash, created_at AS createdAt FROM users WHERE id = ?');
@@ -416,6 +458,17 @@ export function openStorage({ filename, reservedUsername = process.env.NESTLET_O
     const lookup = db.prepare('SELECT id, title, client_id AS clientId, payload_json AS payloadJson, version, created_at AS createdAt, updated_at AS updatedAt FROM cases WHERE user_id = ? AND id = ?');
     const clientLookup = db.prepare('SELECT id,display_name AS displayName,version,created_at AS createdAt,updated_at AS updatedAt FROM clients WHERE user_id=? AND id=?');
     const requireUser = id => { userId(id); if (!userLookup.get(id)) fail('USER_INVALID'); };
+    const assetColumns = `id,case_id AS caseId,client_id AS clientId,original_filename AS originalFilename,mime_type AS mimeType,size_bytes AS sizeBytes,sha256,text_status AS textStatus,text_truncated AS textTruncated,preview_kind AS previewKind,warnings_json AS warningsJson,version,created_at AS createdAt,updated_at AS updatedAt`;
+    const assetMetadata = row => { if(!row)return null;const {warningsJson,...rest}=row;return {...rest,textTruncated:Boolean(rest.textTruncated),warnings:JSON.parse(warningsJson)}; };
+    const assetLookup = db.prepare(`SELECT ${assetColumns} FROM assets WHERE owner_user_id=? AND id=?`);
+    const assetUsage = id => ({...db.prepare('SELECT COUNT(*) AS count,COALESCE(SUM(size_bytes),0) AS bytes FROM assets WHERE owner_user_id=?').get(id)});
+    function assetLinks(id,links) {
+      assetAssociation(links);
+      const caseId=links.caseId??null;let clientId=links.clientId??null;
+      if(caseId){const record=lookup.get(id,caseId);if(!record)assetFail('CASE_NOT_FOUND',404);if(Object.hasOwn(links,'clientId')&&clientId!==record.clientId)assetFail('ASSET_ASSOCIATION_MISMATCH');clientId=record.clientId;}
+      if(clientId&&!clientLookup.get(id,clientId))assetFail('CLIENT_NOT_FOUND',404);
+      return {caseId,clientId};
+    }
     const publicUser = row => ({ id: row.id, username: row.username, role: row.role, createdAt: row.createdAt });
     const fullCase = row => row ? { ...JSON.parse(row.payloadJson), id: row.id, clientId: row.clientId, version: row.version, createdAt: row.createdAt, updatedAt: row.updatedAt } : null;
     const messageSource = (id, messageId) => db.prepare('SELECT m.id,m.state,m.role,m.conversation_id AS conversationId,c.case_id AS caseId FROM messages m JOIN conversations c ON c.id=m.conversation_id AND c.user_id=m.user_id WHERE m.user_id=? AND m.id=?').get(id,messageId);
@@ -542,6 +595,42 @@ export function openStorage({ filename, reservedUsername = process.env.NESTLET_O
     };
     try { telemetryTransaction(() => pruneTelemetry()); } catch { /* Optional maintenance cannot disable business storage. */ }
     return {
+      assetUsage(id) { requireUser(id);return assetUsage(id); },
+      validateAssetLinks(id,links) { requireUser(id);return assetLinks(id,links); },
+      createAsset(id,payload,links={},writeBytes) {
+        assetKeys(payload,['originalFilename','mimeType','sizeBytes','sha256','text','textStatus','textTruncated','previewKind','warnings'],['originalFilename','mimeType','sizeBytes','sha256','text','textStatus','textTruncated','previewKind','warnings']);
+        assetFilename(payload.originalFilename,payload.mimeType);
+        if(!Number.isSafeInteger(payload.sizeBytes)||payload.sizeBytes<1||payload.sizeBytes>ASSET_LIMITS.fileBytes||typeof payload.sha256!=='string'||!/^[0-9a-f]{64}$/u.test(payload.sha256)||typeof payload.text!=='string'||payload.text.length>ASSET_LIMITS.textChars||!['ready','unavailable'].includes(payload.textStatus)||typeof payload.textTruncated!=='boolean'||payload.previewKind!==ASSET_TYPES[payload.mimeType].previewKind||!Array.isArray(payload.warnings)||payload.warnings.length>50||payload.warnings.some(w=>typeof w!=='string'||w.length>1000)||typeof writeBytes!=='function')assetFail('ASSET_INVALID');
+        return transaction(()=>{
+          requireUser(id);const associated=assetLinks(id,links),usage=assetUsage(id);
+          if(usage.count>=ASSET_LIMITS.filesPerUser||usage.bytes+payload.sizeBytes>ASSET_LIMITS.userBytes)assetFail('ASSET_QUOTA_EXCEEDED',409);
+          const recordId=randomUUID(),now=new Date().toISOString();
+          // The quota lock covers durable file creation and metadata commit. No public path or identity enters this callback.
+          writeBytes(recordId);
+          db.prepare('INSERT INTO assets(id,owner_user_id,case_id,client_id,original_filename,mime_type,size_bytes,sha256,extracted_text,search_text,text_status,text_truncated,preview_kind,warnings_json,version,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?,?)')
+            .run(recordId,id,associated.caseId,associated.clientId,payload.originalFilename,payload.mimeType,payload.sizeBytes,payload.sha256,payload.text,normalizeAssetSearch(payload.originalFilename+'\n'+payload.text),payload.textStatus,Number(payload.textTruncated),payload.previewKind,JSON.stringify(payload.warnings),now,now);
+          return assetMetadata(assetLookup.get(id,recordId));
+        });
+      },
+      getAsset(id,recordId) { requireUser(id);return assetId(recordId)?assetMetadata(assetLookup.get(id,recordId)):null; },
+      getAssetText(id,recordId) { requireUser(id);if(!assetId(recordId))return null;const row=db.prepare('SELECT extracted_text AS text FROM assets WHERE owner_user_id=? AND id=?').get(id,recordId);return row?row.text:null; },
+      updateAssetLinks(id,recordId,links,expectedVersion) {
+        if(!Number.isSafeInteger(expectedVersion)||expectedVersion<1)assetFail('ASSET_INVALID');
+        return transaction(()=>{requireUser(id);const existing=assetId(recordId)&&assetLookup.get(id,recordId);if(!existing)return null;if(existing.version!==expectedVersion)assetFail('ASSET_CONFLICT',409);
+          const associated=assetLinks(id,links);db.prepare('UPDATE assets SET case_id=?,client_id=?,version=version+1,updated_at=? WHERE owner_user_id=? AND id=? AND version=?').run(associated.caseId,associated.clientId,new Date().toISOString(),id,recordId,expectedVersion);return assetMetadata(assetLookup.get(id,recordId));});
+      },
+      listAssets(id,options={}) {
+        requireUser(id);assetKeys(options,['q','caseId','clientId','limit','offset']);
+        const q=options.q??'',limit=options.limit??50,offset=options.offset??0;
+        if(typeof q!=='string'||q.length>200||/[\u0000-\u001f\u007f]/u.test(q)||!Number.isSafeInteger(limit)||limit<1||limit>100||!Number.isSafeInteger(offset)||offset<0||offset>ASSET_LIMITS.filesPerUser)assetFail('ASSET_INVALID');
+        const where=['owner_user_id=?'],args=[id];
+        for(const [field,column,lookupFn,error] of [['caseId','case_id',lookup,'CASE_NOT_FOUND'],['clientId','client_id',clientLookup,'CLIENT_NOT_FOUND']])if(options[field]!==undefined){if(!assetId(options[field]))assetFail('ASSET_INVALID');if(!lookupFn.get(id,options[field]))assetFail(error,404);where.push(column+'=?');args.push(options[field]);}
+        const needle=normalizeAssetSearch(q.trim());if(needle){where.push('instr(search_text,?)>0');args.push(needle);}
+        const clause=where.join(' AND '),total=db.prepare(`SELECT COUNT(*) AS count FROM assets WHERE ${clause}`).get(...args).count;
+        const rows=db.prepare(`SELECT ${assetColumns}${needle?',extracted_text AS searchBody':''} FROM assets WHERE ${clause} ORDER BY created_at DESC,id LIMIT ? OFFSET ?`).all(...args,limit,offset);
+        const assets=rows.map(row=>{const {searchBody,...metadata}=row;const asset=assetMetadata(metadata);if(needle){const index=normalizeAssetSearch(searchBody).indexOf(needle);asset.snippet=index<0?asset.originalFilename:searchBody.slice(Math.max(0,index-60),Math.max(0,index-60)+240);}return asset;});
+        return {assets,total,limit,offset,searchMode:'literal-substring',usage:assetUsage(id),limits:ASSET_LIMITS};
+      },
       telemetryPrune() { return telemetryTransaction(() => pruneTelemetry()); },
       telemetryCreateWorkflow(id) {
         return telemetryTransaction(() => {
