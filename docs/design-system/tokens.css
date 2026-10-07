@@ -1,7 +1,7 @@
-/* Nestlet design tokens — "working paper" system, v1 (2026-10-07).
+/* Nestlet design tokens — "working paper" system, v1.1 (2026-10-07).
    Canonical source for the shadcn/Vite migration. Semantic tokens reference
-   primitives; components consume semantics only. Implemented and verified in
-   public/style.css @ design/kimi-k3-frontend. */
+   primitives; components consume semantics only. Consumed at runtime by
+   frontend/design-system/tokens.css (value-preserving sync, PR #25). */
 :root {
   /* Primitives: palette */
   --paper: #f6f1e6;        /* warm rice-paper canvas */
@@ -61,7 +61,8 @@
   --radius-control: 8px;
   --radius-panel: 14px;
   --radius-bubble-user: 20px 20px 4px 20px;  /* chat-polish: floating composer idiom */
-  --radius-composer: 20px;                  /* docked chat composer */
+  --radius-composer: 20px;                  /* docked chat composer, desktop */
+  --radius-composer-mobile: 16px;           /* docked chat composer, ≤640px viewports */
   --radius-pill: 999px;
 
   /* Elevation: warm-tinted, never pure black */
