@@ -24,15 +24,29 @@ test('real shadcn dialog traps focus, closes with Escape and returns focus under
   });
   await page.goto('/next/#components');
   const trigger = page.getByRole('button', { name: '检查对话框' });
-  await trigger.click();
-  const dialog = page.getByRole('dialog');
-  await expect(dialog).toBeVisible();
-  await expect(dialog.getByRole('heading', { name: '组件检查' })).toBeVisible();
-  await page.keyboard.press('Tab');
-  expect(await page.evaluate(() => Boolean(document.activeElement?.closest('[role="dialog"]')))).toBe(true);
-  await page.keyboard.press('Escape');
-  await expect(dialog).not.toBeVisible();
-  await expect(trigger).toBeFocused();
+  const scrollState = () => page.evaluate(() => ({
+    body: getComputedStyle(document.body).overflowY,
+    root: getComputedStyle(document.documentElement).overflowY
+  }));
+  const originalScroll = await scrollState();
+  // Reopening must not leak scroll locks or lose focus behavior. Exercise both
+  // keyboard dismissal and the actual close control under unchanged strict CSP.
+  for (const closeWith of ['Escape', 'button']) {
+    await trigger.click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole('heading', { name: '组件检查' })).toBeVisible();
+    await expect.poll(async () => Object.values(await scrollState()).includes('hidden')).toBe(true);
+    for (const key of ['Tab', 'Tab', 'Shift+Tab', 'Shift+Tab']) {
+      await page.keyboard.press(key);
+      expect(await page.evaluate(() => Boolean(document.activeElement?.closest('[role="dialog"]')))).toBe(true);
+    }
+    if (closeWith === 'Escape') await page.keyboard.press('Escape');
+    else await dialog.getByRole('button', { name: 'Close', exact: true }).click();
+    await expect(dialog).not.toBeVisible();
+    await expect(trigger).toBeFocused();
+    await expect.poll(scrollState).toEqual(originalScroll);
+  }
   violations.push(...await page.evaluate(() => window.__cspViolations));
   expect(violations).toEqual([]);
 });
