@@ -327,6 +327,7 @@ const authErrorKeys = {
   INVALID_SETTINGS: 'errorSettings', API_KEY_REQUIRED: 'errorKeyRequired', CONNECTION_FAILED: 'errorConnection', MODEL_UNAVAILABLE: 'errorModel',
   BUSY: 'errorBusy', LIVE_DISABLED: 'errorConfig',
   CLIENT_INVALID: 'errorClientInvalid', CLIENT_NOT_FOUND: 'errorClientNotFound', CLIENT_CONFLICT: 'errorClientConflict',
+  CONVERSATION_ACTION_INVALID: 'errorConversationInvalid', CONVERSATION_ACTION_SOURCE_NOT_FOUND: 'errorConversationNotFound', CONVERSATION_ACTION_SOURCE_INCOMPLETE: 'errorArtifactSource',
   CONVERSATION_INVALID: 'errorConversationInvalid', CONVERSATION_NOT_FOUND: 'errorConversationNotFound', MESSAGE_INVALID: 'errorMessageInvalid',
   CHAT_CONVERSATION_BUSY: 'errorChatBusy', CHAT_TURN_EXISTS: 'errorChatTurnExists', CHAT_SAVE_FAILED: 'errorChatSaveFailed',
   CHAT_INVALID: 'errorChat', CHAT_TOO_LARGE: 'chatTooLong', CHAT_IMAGE_INVALID: 'chatImageBad', CHAT_IMAGE_UNSUPPORTED: 'chatImageBad',

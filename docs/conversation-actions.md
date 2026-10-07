@@ -47,3 +47,13 @@ An exact retry returns the immutable original artifact, including its original s
 Prepare and library reads share the existing three-round/six-call/24,000-character tool result budget. The library receives the remaining combined budget before issuing source references; an over-budget read yields a bounded error without committing a citation. No provider retry or new paid call is introduced.
 
 Synthetic tests cover actual HTTP/authentication/owner isolation, no-write prepare/cancel, explicit unconfirmed saves and source persistence, unchanged confirmations and unresolved conflicts, stale versions, invalid fields, incomplete/missing sources, concurrent independent SQLite processes, exact retries/reopen, and mixed prepare/read exhaustion. Authored SSE fixtures separately test tentative proposal events and completion; they are not live-provider acceptance. Frontend/browser integration, real provider tools, container runtime and production acceptance require separate verification.
+
+## Desktop conversation review UI
+
+The chat composer offers a per-message, default-off preview permission. It adds `actionConsent:true` only for the explicitly selected send and resets it immediately. `proposal` SSE envelopes are bounded and checked against the active case, conversation, action/request fields and derived endpoint; preview rows must match the exact values to be applied. Draft content remains plain text.
+
+Proposal buttons remain disabled throughout streaming and history refresh. They become available only after the parser exhausts a successful stream with a matching request and terminal conversation ID. Interrupted, malformed, foreign-scope and cancelled streams discard the proposals. A case/account/conversation transition clears the cards and aborts outstanding requests.
+
+Applying uses the existing synchronous chat operation lock and a fixed current-case PATCH/POST route. It sends only `{conversationAction:request}`. Cancel discards only the preview. Existing conflicts, including unconfirmed conflicting evidence, block apply. A successful suggestion remains unreviewed; an answer is saved only as a draft. Known 4xx rejection explains the problem without replay. An uncertain or malformed write response disables replay and directs the user to inspect saved facts or document versions. Source and workflow navigation retain the established unsaved-edit checks.
+
+The UI does not persist pending proposal authority across reloads. Request a new preview from the saved conversation when necessary. Model output cannot supply arbitrary destinations, confirmation flags or final-document status.

@@ -400,3 +400,14 @@ Isolated candidate based on `0ad91847`; no merge, deployment, credentials or liv
 - Existing frontend unit/DOM suite: 278 passed, 0 skipped; this does not establish new proposal UI or real-browser acceptance.
 - Full aggregate initially failed two static-serving checks before a production frontend build existed. After build, only the new-error bilingual audit failed; the separate frontend owner is adding its explicit mappings. This candidate alone is not a full aggregate pass until that integration is checked.
 - Actual Docker runtime, new frontend browser flow and live-provider tool execution: not run. Docker is not available in this executor. Packaging allowlist/COPY declarations include the new runtime module.
+
+## Integrated desktop conversational proposals, 2026-10-07 23:49 UTC
+
+Isolated local candidate combines the reviewed source navigation, test-only desktop document export coverage, provenance-bound backend proposals, and new desktop chat review UI. No schema or authentication policy change, visual redesign, publication, merge or deployment was performed.
+
+- Syntax checks and production build passed. The existing bundle-size advisory remains.
+- Combined backend suite: **342/342** passed; frontend suite: **292/292** passed; disclosed simulated email-contract suite: **53/53** passed. New action-focused frontend tests: **8/8** passed, including actual loopback HTTP, SQLite, React StrictMode DOM and a disclosed controlled chat SSE fixture. This is not a live provider response or Chromium acceptance.
+- Covered per-send consent reset, cancel with zero writes, proposal blocking until successful terminal stream, exact case/conversation/request binding, double-apply prevention, persisted unreviewed provenance, reviewed and unconfirmed conflict blocking, draft-only saving, stale-version rejection, lost-write uncertainty without replay, stale account completion suppression and preservation of unsent input.
+- Independent code review found and verified fixes for React StrictMode effect replay, already-unconfirmed conflicts and terminal conversation binding; its combined backend/frontend/localization focused suite passed **30/30**.
+- Source-navigation and document-export test commits are included; the new browser scenarios remain **NOT RUN** here. The previously reported Chromium IPC launch denial was respected without retry or alternate browser route. Exact-commit official CI, Chromium rendering, real provider tool execution, live-account journeys and production rollout remain separate gates.
+- Existing pinned dependencies were reused from the backend candidate with an identical lockfile. No dependency package or lockfile change was introduced by the UI work.
