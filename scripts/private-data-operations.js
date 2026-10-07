@@ -179,6 +179,31 @@ function expectedContents(directory, names) {
   if (seen.some((name) => !names.includes(name)) || names.some((name) => !seen.includes(name)))
     fail('Snapshot contains unexpected or missing files.');
 }
+// SQLite backup inherits the source journal mode. Normalize only the new,
+// task-owned copy so read-only verification cannot create WAL sidecars or miss
+// committed pages. Never change the live source or loosen the strict manifest.
+function finalizeDatabaseCopy(filename) {
+  const fd = privateDescriptor(filename);
+  closeSync(fd);
+  const db = new DatabaseSync(filename, {
+    allowExtension: false,
+    enableForeignKeyConstraints: true,
+    timeout: 5000
+  });
+  try {
+    db.exec('PRAGMA trusted_schema=OFF; PRAGMA synchronous=FULL;');
+    if (db.prepare('PRAGMA journal_mode=DELETE').get().journal_mode !== 'delete')
+      fail('Copied database could not be finalized.');
+  } finally {
+    db.close();
+  }
+  const finalized = privateDescriptor(filename);
+  try {
+    fsyncSync(finalized);
+  } finally {
+    closeSync(finalized);
+  }
+}
 export async function backupPrivateData({ filename, assetsDirectory, output }) {
   separateOutput(output, assetsDirectory);
   const source = openDatabase(filename);
@@ -196,6 +221,7 @@ export async function backupPrivateData({ filename, assetsDirectory, output }) {
   } finally {
     source.close();
   }
+  finalizeDatabaseCopy(snapshot);
   const copied = openDatabase(snapshot);
   let rows;
   try {
@@ -295,6 +321,7 @@ export async function restorePrivateBackup({ input, output }) {
   } finally {
     source.close();
   }
+  finalizeDatabaseCopy(filename);
   const original = openAssetVault({ directory: join(input, 'assets') }),
     target = openAssetVault({ directory: join(output, 'assets') });
   for (const asset of checked.manifest.assets) target.write(asset.id, original.read(asset));

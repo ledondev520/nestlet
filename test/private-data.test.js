@@ -271,3 +271,47 @@ test('a consistent backup verifies and restores while another real connection co
     store.close();
   }
 });
+
+
+test('live committed WAL snapshots become standalone backups without changing source mode or bytes', async (t) => {
+  const root = mkdtempSync(join(realpathSync(tmpdir()), 'nestlet-wal-backup-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const source = join(root, 'source');
+  mkdirSync(source, { mode: 0o700 });
+  const filename = join(source, 'nestlet.sqlite');
+  writeFileSync(filename, '', { mode: 0o600 });
+  const writer = new DatabaseSync(filename);
+  t.after(() => writer.close());
+  writer.exec(readFileSync(new URL('./fixtures/schema3.sql', import.meta.url), 'utf8'));
+  writer.exec('PRAGMA journal_mode=WAL; PRAGMA wal_autocheckpoint=0;');
+  const now = '2026-10-07T00:00:00.000Z', caseId = randomUUID();
+  writer.prepare('INSERT INTO users VALUES(?,?,?,?,?)').run('owner', 'owner', 'owner', null, now);
+  writer.prepare('INSERT INTO cases VALUES(?,?,?,?,?,?,?,?)').run(
+    caseId, 'owner', 'Committed only in WAL', '{}', 7, now, now, null
+  );
+  const sourceBytes = readFileSync(filename), walBytes = readFileSync(filename + '-wal');
+  assert.ok(walBytes.length > 0);
+  const output = join(root, 'snapshot');
+  const backed = await backupPrivateData({ filename, assetsDirectory: join(source, 'missing-assets'), output });
+  assert.equal(backed.schemaVersion, 3);
+  assert.equal(verifyPrivateBackup({ input: output }).verified, true);
+  assert.deepEqual(readdirSync(output).sort(), ['assets', 'manifest.json', 'nestlet.sqlite']);
+  assert.deepEqual(readFileSync(filename), sourceBytes);
+  assert.deepEqual(readFileSync(filename + '-wal'), walBytes);
+  assert.equal(writer.prepare('PRAGMA journal_mode').get().journal_mode, 'wal');
+  assert.deepEqual(readdirSync(source).sort(), ['nestlet.sqlite', 'nestlet.sqlite-shm', 'nestlet.sqlite-wal']);
+  const restored = await restorePrivateBackup({ input: output, output: join(root, 'restored') });
+  for (const path of [join(output, 'nestlet.sqlite'), restored.filename]) {
+    const check = new DatabaseSync(path, { readOnly: true });
+    try {
+      assert.equal(check.prepare('PRAGMA journal_mode').get().journal_mode, 'delete');
+      assert.equal(check.prepare('PRAGMA user_version').get().user_version, 3);
+      assert.equal(check.prepare('SELECT version FROM cases WHERE id=?').get(caseId).version, 7);
+    } finally { check.close(); }
+  }
+  assert.deepEqual(readdirSync(output).sort(), ['assets', 'manifest.json', 'nestlet.sqlite']);
+  assert.deepEqual(readdirSync(join(root, 'restored')).sort(), ['assets', 'nestlet.sqlite']);
+  // Later source writes remain independent; the recovery point stays immutable.
+  writer.prepare('UPDATE cases SET version=8 WHERE id=?').run(caseId);
+  assert.equal(verifyPrivateBackup({ input: output }).schemaVersion, 3);
+});
