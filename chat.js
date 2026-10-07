@@ -1,4 +1,5 @@
 /** Real DeepSeek streaming chat; consented library reads are a separate bounded path. */
+import { CONVERSATION_ACTION_TOOLS, loadConversationAction } from './conversation-action-contract.js';
 import { LIBRARY_AGENT_LIMITS, LIBRARY_SYSTEM_PROMPT, LibraryToolError, assertLibraryOutboundSafe } from './agent-library-tools.js';
 import { AGENCY_OPTIONS, GUIDANCE_COPY, getAgencyGuidance } from './public/agency-guidance.js';
 export const CHAT_LIMITS = Object.freeze({ messages: 12, messageChars: 8000, totalChars: 24000, images: 2, imageBytes: 2 * 1024 * 1024, requestBytes: 6 * 1024 * 1024, outputChars: 64000, timeoutMs: 90000 });
@@ -48,12 +49,14 @@ function imageUrl(image) {
 }
 
 export function validateChatRequest(body) {
-  exactKeys(body, ['caseId', 'conversationId', 'clientMessageId', 'locale', 'consent', 'libraryConsent', 'guidanceAgency', 'messages'], ['locale', 'consent', 'messages']);
+  exactKeys(body, ['caseId', 'conversationId', 'clientMessageId', 'locale', 'consent', 'libraryConsent', 'actionConsent', 'guidanceAgency', 'messages'], ['locale', 'consent', 'messages']);
   if (body.guidanceAgency !== undefined && !AGENCY_OPTIONS.some(option => option.id === body.guidanceAgency)) fail();
   if (body.consent !== true || !['zh', 'en'].includes(body.locale) || (body.caseId !== undefined && (typeof body.caseId !== 'string' || !UUID.test(body.caseId))) || !Array.isArray(body.messages) || !body.messages.length || body.messages.length > CHAT_LIMITS.messages) fail();
   if (body.conversationId !== undefined && (!UUID.test(body.conversationId) || !UUID.test(body.clientMessageId) || body.messages.length !== 1 || body.messages[0]?.role !== 'user')) fail();
   if (body.conversationId === undefined && body.clientMessageId !== undefined) fail();
   if (body.libraryConsent !== undefined && typeof body.libraryConsent !== 'boolean') fail();
+  if (body.actionConsent !== undefined && typeof body.actionConsent !== 'boolean') fail();
+  if (body.actionConsent === true && !body.conversationId) fail();
   let characters = 0, imageCount = 0;
   const messages = body.messages.map(message => {
     exactKeys(message, ['role', 'content', 'images'], ['role', 'content']);
@@ -72,7 +75,7 @@ export function validateChatRequest(body) {
     ] : message.content };
   });
   if (messages.at(-1).role !== 'user') fail();
-  return { caseId: body.caseId, conversationId:body.conversationId, clientMessageId:body.clientMessageId, libraryConsent:body.libraryConsent === true, guidanceAgency:body.guidanceAgency ?? 'unknown', locale: body.locale, messages, imageCount };
+  return { caseId: body.caseId, conversationId:body.conversationId, clientMessageId:body.clientMessageId, libraryConsent:body.libraryConsent === true, actionConsent:body.actionConsent === true, guidanceAgency:body.guidanceAgency ?? 'unknown', locale: body.locale, messages, imageCount };
 }
 
 /** Saved text is bounded for provider context; old image pixels are deliberately unavailable. */
@@ -293,9 +296,10 @@ export function libraryCitationGuard(library) {
 
 /** Production uses the fixed official endpoint. fetchImpl is a local protocol-test seam only. */
 export async function openLibraryChatStream({apiKey,input,record,signal,library,requestId,fetchImpl=fetch}) {
-  if(input.libraryConsent!==true||!library?.tools?.length)fail('LIBRARY_CONSENT_REQUIRED',400);
+  if((input.libraryConsent!==true&&input.actionConsent!==true)||!library?.tools?.length)fail('LIBRARY_CONSENT_REQUIRED',400);
   const messages=chatProviderMessages(input,record);
   messages[0]={...messages[0],content:messages[0].content.replace('You have no tools and cannot change case data.','You may use only the supplied read-only library tools; you cannot change case data.')+'\n'+LIBRARY_SYSTEM_PROMPT+' Cite issued labels only in bracketed form such as [S1]. Labels in older conversation messages belong to their historical Request ID; only labels issued in this request may support fresh lookup claims. Never invent labels.'};
+  if (input.actionConsent === true) messages[0].content += '\nYou may also prepare read-only case suggestions and drafts using the supplied prepare tools. A preview is never a saved change or a user approval. Do not claim any case update, confirmation, resolution, finalization or external send. Use only the following server-verified current case and saved-message IDs. Never invent a message ID or use one from another case. The current answer does not yet exist as a complete saved message.\n' + JSON.stringify(input.actionContext);
   const request=async forceFinal=>{
     libraryActive(signal);assertLibraryOutboundSafe(messages);
     let upstream;try{upstream=await fetchImpl('https://api.deepseek.com/chat/completions',{method:'POST',redirect:'error',signal,
@@ -327,6 +331,7 @@ export async function openLibraryChatStream({apiKey,input,record,signal,library,
         let executed;try{executed=library.executeRound(result.toolCalls);}catch(error){throw libraryFailure(error);}
         libraryActive(signal);
         for(const activity of executed.activities)yield{type:'activity',...activity};
+        for(const proposal of executed.proposals || []) yield {type:'proposal',proposal};
         messages.push(...executed.messages);
         const finalRound=library.getStats().rounds>=LIBRARY_AGENT_LIMITS.rounds||library.getStats().calls>=LIBRARY_AGENT_LIMITS.calls;
         if(finalRound)messages[0]={...messages[0],content:messages[0].content+' The read-only tool budget is exhausted. Give a final answer using available evidence and state limitations; request no more tools.'};
@@ -336,4 +341,59 @@ export async function openLibraryChatStream({apiKey,input,record,signal,library,
       fail('LIBRARY_TOOL_LIMIT',502);
     }catch(error){libraryActive(signal);throw libraryFailure(error);}
   })();
+}
+
+/** Compose read-only tools without expanding library consent or sharing another case's messages. */
+export function createConversationToolSession({storage,userId,record,conversationId,library=null,signal}) {
+  let rounds=0,calls=0,resultChars=0;
+  const active=()=>libraryActive(signal);
+  const getStats=()=>({rounds,calls,resultChars,sourceCount:library?.getSources().length || 0});
+  return {
+    tools:[...(library?.tools || []),...CONVERSATION_ACTION_TOOLS],
+    getSources:()=>library?.getSources() || [],getStats,
+    executeRound(toolCalls) {
+      active();
+      if(!Array.isArray(toolCalls)||!toolCalls.length||toolCalls.length>LIBRARY_AGENT_LIMITS.callsPerRound||rounds>=LIBRARY_AGENT_LIMITS.rounds||calls+toolCalls.length>LIBRARY_AGENT_LIMITS.calls)fail('LIBRARY_TOOL_LIMIT',502);
+      const ids=new Set();
+      for(const call of toolCalls){
+        exactKeys(call,['id','type','function'],['id','type','function']);exactKeys(call.function,['name','arguments'],['name','arguments']);
+        if(call.type!=='function'||typeof call.id!=='string'||!/^[A-Za-z0-9_-]{1,128}$/u.test(call.id)||ids.has(call.id)||typeof call.function.arguments!=='string'||call.function.arguments.length>LIBRARY_AGENT_LIMITS.argumentChars)fail('LIBRARY_ARGUMENT_INVALID',502);
+        ids.add(call.id);
+      }
+      rounds++;calls+=toolCalls.length;
+      const messages=[],activities=[],proposals=[];
+      const readCalls=toolCalls.filter(call=>['search_library','read_library'].includes(call.function.name));
+      const readResults=readCalls.length&&library?library.executeRound(readCalls,{resultCharsRemaining:LIBRARY_AGENT_LIMITS.resultChars-resultChars-128*(toolCalls.length-readCalls.length)}):null;
+      if(readResults) {
+        activities.push(...readResults.activities);
+        // Charge accepted reads before allocating any proposal, independent of call order.
+        resultChars+=readResults.messages.reduce((total,message)=>total+message.content.length,0);
+      }
+      let remainingNonRead=toolCalls.length-(readResults?.messages.length || 0);
+      for(const call of toolCalls){
+        active();
+        const read=readResults?.messages.find(message=>message.tool_call_id===call.id);
+        if(read){messages.push(read);continue;}
+        remainingNonRead--;
+        let result,proposal;
+        try {
+          if(!CONVERSATION_ACTION_TOOLS.some(tool=>tool.function.name===call.function.name))fail('LIBRARY_TOOL_UNKNOWN',400);
+          const args=JSON.parse(call.function.arguments);
+          if(!object(args)||Object.hasOwn(args,'action')||args.sourceConversationId!==conversationId)fail('CONVERSATION_ACTION_INVALID');
+          const current=storage.getCase(userId,record.id);
+          if(!current)fail('CASE_NOT_FOUND',404);
+          proposal=loadConversationAction(storage,userId,current,{...args,action:call.function.name});
+          assertLibraryOutboundSafe(proposal);
+          result={ok:true,proposal};
+        } catch(error) {result={ok:false,error:{code:/^(CONVERSATION_ACTION_|DOCUMENT_|CASE_|LIBRARY_)/u.test(error.code || '')?error.code:'CONVERSATION_ACTION_INVALID'}};proposal=null;}
+        let content=JSON.stringify(result);
+        if(resultChars+content.length>LIBRARY_AGENT_LIMITS.resultChars-128*(LIBRARY_AGENT_LIMITS.calls-calls+remainingNonRead)){content=JSON.stringify({ok:false,error:{code:'LIBRARY_RESULT_LIMIT'}});proposal=null;}
+        resultChars+=content.length;
+        messages.push({role:'tool',tool_call_id:call.id,content});
+        if(proposal)proposals.push(proposal);
+      }
+      if(resultChars>LIBRARY_AGENT_LIMITS.resultChars)fail('LIBRARY_RESULT_LIMIT',502);
+      return {messages,activities,proposals};
+    }
+  };
 }

@@ -178,7 +178,10 @@ export function createLibraryToolSession({ storage, userId, libraryConsent = fal
     return () => { for (const [key, value] of pending) references.set(key, value); for (const id of pendingIds) discovered.add(id); };
   }
 
-  function executeRound(toolCalls) {
+  function executeRound(toolCalls, {resultCharsRemaining = LIBRARY_AGENT_LIMITS.resultChars - resultChars} = {}) {
+    // A composing prepare-tool session may supply its smaller shared output budget.
+    if (!Number.isSafeInteger(resultCharsRemaining) || resultCharsRemaining < 0 || resultCharsRemaining > LIBRARY_AGENT_LIMITS.resultChars) fail('LIBRARY_CONTEXT_INVALID');
+    let remaining = Math.min(resultCharsRemaining, LIBRARY_AGENT_LIMITS.resultChars - resultChars);
     checkActive();
     if (rounds >= LIBRARY_AGENT_LIMITS.rounds || calls >= LIBRARY_AGENT_LIMITS.calls) fail('LIBRARY_TOOL_LIMIT');
     rounds++;
@@ -206,10 +209,10 @@ export function createLibraryToolSession({ storage, userId, libraryConsent = fal
       }
       let content = JSON.stringify(result);
       // Reserve a bounded error envelope for every remaining permitted call.
-      if (content.length > LIBRARY_AGENT_LIMITS.resultChars - resultChars - 128 * (LIBRARY_AGENT_LIMITS.calls - calls)) {
+      if (content.length > remaining - 128 * (LIBRARY_AGENT_LIMITS.calls - calls)) {
         result = { ok: false, error: { code: 'LIBRARY_RESULT_LIMIT' } }; content = JSON.stringify(result); commit = () => {};
       }
-      resultChars += content.length; commit();
+      resultChars += content.length; remaining -= content.length; commit();
       messages.push({ role: 'tool', tool_call_id: call.id, content });
       activities.push({ phase, state: result.ok ? 'completed' : 'error', ...(result.ok ? { count: result.results?.length ?? 1 } : { code: result.error.code }) });
     }
