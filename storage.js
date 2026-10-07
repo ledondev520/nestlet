@@ -825,10 +825,13 @@ export function openStorage({ filename, reservedUsername = process.env.NESTLET_O
       },
       getCase(id, recordId) { requireUser(id); return caseId(recordId) ? fullCase(lookup.get(id, recordId)) : null; },
       updateCase(id, recordId, payload, expectedVersion, options = {}) {
-        entityKeys(options,['archiveLegacyDraft'],[],'CASE_INVALID');
-        if (Object.hasOwn(options,'archiveLegacyDraft') && typeof options.archiveLegacyDraft !== 'boolean') fail();
-        if (!plain(payload)) fail();
-        const canonical = validateCasePayload(options.archiveLegacyDraft ? {...payload,draftText:''} : payload);
+        entityKeys(options,['archiveLegacyDraft','returnEffects'],[],'CASE_INVALID');
+        for (const key of ['archiveLegacyDraft','returnEffects']) if (Object.hasOwn(options,key) && typeof options[key] !== 'boolean') fail();
+        if (!plain(payload) || !Object.hasOwn(payload,'draftText')) fail();
+        const incomingDraft = text(payload.draftText,50_000);
+        // Validate facts first, then decide whether a carried-forward draft became stale.
+        // Its old review gate must not prevent the user from correcting/revoking facts.
+        const canonical = validateCasePayload({...payload,draftText:''});
         version(expectedVersion);
         return transaction(() => {
           requireUser(id);
@@ -836,18 +839,25 @@ export function openStorage({ filename, reservedUsername = process.env.NESTLET_O
           if (!existing) return null;
           if (existing.version !== expectedVersion) fail('CASE_CONFLICT', 409);
           const previous = JSON.parse(existing.payloadJson);
-          if (options.archiveLegacyDraft) {
-            if (payload.draftText && payload.draftText !== previous.draftText) fail();
-            if (previous.draftText) insertArtifact(id,recordId,artifactPayload({kind:previous.draftType,title:'Archived '+previous.draftType+' draft',status:'draft',content:previous.draftText,expectedCaseVersion:existing.version},{generationMethod:'user-edited'}));
-          }
-          const preserved = { ...canonical };
+          if (options.archiveLegacyDraft && incomingDraft && incomingDraft !== previous.draftText) fail();
+          const inputsChanged = canonical.sourceText !== previous.sourceText ||
+            JSON.stringify(canonical.fields) !== JSON.stringify(previous.fields) ||
+            canonical.draftType !== previous.draftType || canonical.namesVerified !== (previous.namesVerified === true);
+          const carriedStaleDraft = Boolean(previous.draftText && incomingDraft === previous.draftText && inputsChanged);
+          const nextDraft = options.archiveLegacyDraft || carriedStaleDraft ? '' : incomingDraft;
+          const preserved = {...canonical,draftText:nextDraft};
           for (const key of ['documentContext','caseIssues']) if (!Object.hasOwn(payload,key) && Object.hasOwn(previous,key)) preserved[key]=previous[key];
           const merged = validateCasePayload(preserved);
+          let archived = null;
+          if (previous.draftText && (options.archiveLegacyDraft || nextDraft !== previous.draftText)) {
+            archived = insertArtifact(id,recordId,artifactPayload({kind:previous.draftType,title:'Archived '+previous.draftType+' draft',status:'draft',content:previous.draftText,expectedCaseVersion:existing.version},{generationMethod:'user-edited'}));
+          }
           const clientId = Object.hasOwn(payload,'clientId') ? canonical.clientId : existing.clientId;
           validateCaseLinks(id,recordId,merged,clientId);
           db.prepare('UPDATE cases SET title = ?, payload_json = ?, client_id = ?, version = version + 1, updated_at = ? WHERE user_id = ? AND id = ? AND version = ?')
             .run(merged.title, storedCaseJson(merged), clientId, new Date().toISOString(), id, recordId, expectedVersion);
-          return fullCase(lookup.get(id, recordId));
+          const record = fullCase(lookup.get(id, recordId));
+          return options.returnEffects ? {case:record,archivedLegacyDraft:Boolean(archived),archivedArtifactId:archived?.id ?? null,legacyDraftInvalidated:Boolean(previous.draftText && !nextDraft)} : record;
         });
       },
       deleteCase(id, recordId, expectedVersion) {

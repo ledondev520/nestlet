@@ -202,7 +202,6 @@ On the dedicated private-assets feature branch based on 8a7f5de:
 - Manual backup, verify, restore-to-new-directory after simulated source loss, exact-user export without credential tables, corrupt/missing/unexpected snapshot rejection, CLI execution and orphan reporting without deletion passed using synthetic data
 - FTS5 was directly verified available in Node24; bounded Unicode-normalized literal substring SQL search was deliberately selected for this version. No FTS query language, semantic search, OCR or automatic AI library access is claimed
 - Existing parser resource limits remain; image decoding runs in an isolated process with stripped environment, timeout/address/CPU/heap and pixel/decode-memory limits. No private file/model transmission or third-party viewer is involved
-- Skills `orbit:software-engineering`, upstream implement/TDD/code-review guidance were read; targeted real-interface tests and an independent security review were used. A complete test-first workflow or full two-axis upstream review ritual is not claimed
 
 This is local backend evidence. The standalone feature branch does not include the separately owned Docker allowlist/COPY or React changes. Integrated image startup, real-browser PDF/image preview/CSP, end-to-end UI, exact-SHA release CI and deployment remain separate verification. No production files, credentials or database were read or modified; no backup job was scheduled and no deployment was performed.
 
@@ -216,3 +215,7 @@ This is local backend evidence. The standalone feature branch does not include t
 - Restore output must be outside its source snapshot and cannot already exist; backup/export output cannot be nested under source originals
 
 No API/server/storage/package contracts changed in this follow-up. The separate runtime/frontend integration and exact release checks remain required. Timeout/decompression-bomb adversarial tests and non-Linux/no-prlimit equivalent native-memory enforcement remain unverified; no cross-platform hard-resource-limit claim is made.
+
+### October 7, 2026 — atomic generic case-update draft preservation
+
+Isolated branch based on main `2fc15f216714d0331a82456edb1d97b9f76f8498`. New `test/legacy-draft-preservation.test.js` passes 9/9 using actual disposable SQLite files and authenticated HTTP, including concurrent writer processes, optimistic conflicts, cross-user denial, archive/update triggers that force rollback, capacity failure, exact text/provenance retention and response metadata. No provider doubles, paid calls or production records are used. On this isolated candidate, `npm run check` passed and the full default `npm test` passed 240/240 with 0 skipped. Pinned dependency installation succeeded with an explicit temporary npm cache after the default cache path was unavailable. These results are not a browser/deployment or real-provider acceptance claim.

@@ -535,9 +535,9 @@ const server = http.createServer(async (request, response) => {
           if (!storage.deleteCase(session.userId, id, expectedVersion)) throw new RequestError(404, 'CASE_NOT_FOUND', 'The case was not found in your account.');
           return json(200, { deleted: true });
         }
-        const record = storage.updateCase(session.userId, id, payload, expectedVersion);
-        if (!record) throw new RequestError(404, 'CASE_NOT_FOUND', 'The case was not found in your account.');
-        return json(200, { case: record });
+        const result = storage.updateCase(session.userId, id, payload, expectedVersion, {returnEffects:true});
+        if (!result) throw new RequestError(404, 'CASE_NOT_FOUND', 'The case was not found in your account.');
+        return json(200, result);
       }
       throw new RequestError(404, 'CASE_NOT_FOUND', 'The requested case route was not found.');
     }
