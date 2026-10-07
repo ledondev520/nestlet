@@ -109,7 +109,7 @@ Support one explicitly selected tenant-based HCV PHA pack at a time. Other Bay A
 5. Map only permitted fields and preserve mandatory pages and legal text; test against a synthetic answer key
 6. Record agency applicability and review date in the UI; stale or unverified packs return to needs-review
 
-None of these notes enables a production pack automatically. The current app presents generic demo guidance. No PDF templates are bundled, mapped or declared accepted.
+None of these notes enables a production pack automatically. Generic preparation guidance is not a verified PHA requirements pack. No PDF templates are bundled, mapped or declared accepted.
 
 ## Later same-day form-level checkpoint
 
@@ -121,3 +121,5 @@ Additional official-source retrieval on October 7, 2026, approximately 03:48–0
 - SCCHA says move paperwork accompanies the issued voucher. A standalone RFTA PDF, field schema and accepted edition remain unverified. [SCCHA move process](https://www.scchousingauthority.org/section-8/for-participants/existing-tenants/move-process/)
 
 The current five fields cannot populate an RTA/HAP/owner packet or certify a complete agency checklist. Successful PDF/Excel parsing changes input support, not that limitation. An eventual supplementary **Operator Lease-Up Review Cover and Document Checklist** should list candidate documents, applicability, official source/edition, receipt evidence and unresolved action separately. Start with `Not assessed` / `Applicability unconfirmed` / `No receipt evidence in this working copy`; never infer `Required`, `Missing`, `Submitted`, `Approved`, `Inspection passed` or `Complete` from an absent import or successful export. This is an artifact specification, not a claim that the current UI implements it.
+
+The consolidated [English artifact and form-mapping requirements](official-artifacts.md) distinguish usable supplementary drafts from future official-form filling and detail the five-field model’s limits.
