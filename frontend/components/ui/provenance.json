@@ -1,0 +1,85 @@
+{
+  "repository": "https://github.com/shadcn-ui/ui",
+  "revision": "04b5af3c0ec02fc6a4330e4f441c15571adfdb76",
+  "license": "MIT",
+  "style": "new-york-v4",
+  "language": "JavaScript/JSX",
+  "retrieval": "Official GitHub raw sources; shadcn registry endpoint was unavailable from the build environment.",
+  "transformations": [
+    "Babel removes TypeScript annotations and type-only imports, preserving JSX",
+    "cn import points to @/lib/utils",
+    "Internal registry UI imports point to @/components/ui"
+  ],
+  "components": [
+    {
+      "name": "button",
+      "source": "https://github.com/shadcn-ui/ui/blob/04b5af3c0ec02fc6a4330e4f441c15571adfdb76/apps/v4/registry/new-york-v4/ui/button.tsx",
+      "sha256": "79dd6f75f8136394442202d6b8b922fb269eaad0a5dba579397c9d5b41f893bb"
+    },
+    {
+      "name": "input",
+      "source": "https://github.com/shadcn-ui/ui/blob/04b5af3c0ec02fc6a4330e4f441c15571adfdb76/apps/v4/registry/new-york-v4/ui/input.tsx",
+      "sha256": "0c9457181f6ddc80969bcf854e92c362903a55b6e889fbef3fd85343ecc4af5b"
+    },
+    {
+      "name": "card",
+      "source": "https://github.com/shadcn-ui/ui/blob/04b5af3c0ec02fc6a4330e4f441c15571adfdb76/apps/v4/registry/new-york-v4/ui/card.tsx",
+      "sha256": "ef8305b12c3112dab42a4708b41b1ebcc042fa5ab4c20f039da8d45b09ed5059"
+    },
+    {
+      "name": "dialog",
+      "source": "https://github.com/shadcn-ui/ui/blob/04b5af3c0ec02fc6a4330e4f441c15571adfdb76/apps/v4/registry/new-york-v4/ui/dialog.tsx",
+      "sha256": "2ade6074e5fad0a4eb171ead44c43d3301a3c83d186d7236fb1fdbea80ee556b"
+    },
+    {
+      "name": "label",
+      "source": "https://github.com/shadcn-ui/ui/blob/04b5af3c0ec02fc6a4330e4f441c15571adfdb76/apps/v4/registry/new-york-v4/ui/label.tsx",
+      "sha256": "344bde38b8531615dbf8e14af3895517c24d8ef6ce56ddeda7e2e6fe4b5d0c00"
+    },
+    {
+      "name": "textarea",
+      "source": "https://github.com/shadcn-ui/ui/blob/04b5af3c0ec02fc6a4330e4f441c15571adfdb76/apps/v4/registry/new-york-v4/ui/textarea.tsx",
+      "sha256": "5cafcfeeee29534f449387a16b585f5923d2faab1a0cdc50a874416b175f59ce"
+    },
+    {
+      "name": "tabs",
+      "source": "https://github.com/shadcn-ui/ui/blob/04b5af3c0ec02fc6a4330e4f441c15571adfdb76/apps/v4/registry/new-york-v4/ui/tabs.tsx",
+      "sha256": "e1df6e2f95ece373ca909c1d54b8ba8cf4c47dd425c1784bbb9a01c38dd0936b"
+    },
+    {
+      "name": "select",
+      "source": "https://github.com/shadcn-ui/ui/blob/04b5af3c0ec02fc6a4330e4f441c15571adfdb76/apps/v4/registry/new-york-v4/ui/select.tsx",
+      "sha256": "962830436bd0b7ee50e556f0747e277d6a86869ed27d167516346b15f26309d8"
+    },
+    {
+      "name": "native-select",
+      "source": "https://github.com/shadcn-ui/ui/blob/04b5af3c0ec02fc6a4330e4f441c15571adfdb76/apps/v4/registry/new-york-v4/ui/native-select.tsx",
+      "sha256": "4bdbce5575dce610fed747df4547a3d494713f4df8d28e09b3ccee62e4d72f93"
+    },
+    {
+      "name": "badge",
+      "source": "https://github.com/shadcn-ui/ui/blob/04b5af3c0ec02fc6a4330e4f441c15571adfdb76/apps/v4/registry/new-york-v4/ui/badge.tsx",
+      "sha256": "13a9380dfff853ee730c14a52df49f22aecd31f40f2998d7c1e7ec458b6e1650"
+    },
+    {
+      "name": "alert",
+      "source": "https://github.com/shadcn-ui/ui/blob/04b5af3c0ec02fc6a4330e4f441c15571adfdb76/apps/v4/registry/new-york-v4/ui/alert.tsx",
+      "sha256": "d03dcae5cdb63c381c1144ca9a0c49ba0e46466967d7deb94662034042acb034"
+    },
+    {
+      "name": "separator",
+      "source": "https://github.com/shadcn-ui/ui/blob/04b5af3c0ec02fc6a4330e4f441c15571adfdb76/apps/v4/registry/new-york-v4/ui/separator.tsx",
+      "sha256": "ad7d5403fe337160e41dbf04147896e448ae3a747b8d06660d627d74d60021bc"
+    },
+    {
+      "name": "checkbox",
+      "source": "https://github.com/shadcn-ui/ui/blob/04b5af3c0ec02fc6a4330e4f441c15571adfdb76/apps/v4/registry/new-york-v4/ui/checkbox.tsx",
+      "sha256": "ba0ac64064e2d8fa7299d53e9e84b9a4772fef8dd4cf6170c56d3030a1d69941"
+    },
+    {
+      "name": "skeleton",
+      "source": "https://github.com/shadcn-ui/ui/blob/04b5af3c0ec02fc6a4330e4f441c15571adfdb76/apps/v4/registry/new-york-v4/ui/skeleton.tsx",
+      "sha256": "f51ce0fcd31e5c31437382e80ea0af94b4fc3d64221d27091d36824546780a43"
+    }
+  ]
+}

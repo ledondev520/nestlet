@@ -29,11 +29,14 @@ Use Node.js 24 (required for server-local SQLite), npm, and Poppler's `pdftotext
 ```sh
 npm ci --ignore-scripts
 npm run check
+npm run build
 npm test
 npm start
 ```
 
 Open http://127.0.0.1:4173. The server binds to loopback. `npm start` does not load `.env` automatically. For configuration, copy `.env.example` to a private ignored `.env`, provide the operator password hash through an authorized private setup, then run:
+
+The JavaScript/JSX React + shadcn/ui migration is being integrated at `/next/`. The root entry remains the existing work surface until exact-build workflow acceptance. Run `npm run build` after frontend changes; Docker builds these assets from source. See [frontend integration](frontend/README.md) for module contracts and honest migration scope. A component preview is not a completed product migration.
 
 ```sh
 node --env-file=.env server.js

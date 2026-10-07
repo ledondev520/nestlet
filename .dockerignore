@@ -12,6 +12,13 @@
 !workbook-worker.js
 !public/
 !public/**
+# Build from source; do not trust a developer's stale compiled output.
+public/next/
+!frontend/
+!frontend/**
+!vite.config.js
+!jsconfig.json
+!components.json
 !ops/
 !ops/healthcheck.mjs
 !scripts/

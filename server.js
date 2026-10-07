@@ -646,6 +646,7 @@ const server = http.createServer(async (request, response) => {
       } finally { activeExtractions--; }
     }
     const routes = { '/': 'index.html', '/app.js': 'app.js', '/core.js': 'core.js', '/agency-guidance.js': 'agency-guidance.js', '/style.css': 'style.css', '/logo.svg': 'logo.svg',
+      '/next': 'next/index.html', '/next/': 'next/index.html', '/next/app.js': 'next/app.js', '/next/index.css': 'next/index.css',
       '/samples/nestlet-synthetic-case.txt': 'samples/nestlet-synthetic-case.txt',
       '/samples/nestlet-synthetic-case.csv': 'samples/nestlet-synthetic-case.csv',
       '/samples/nestlet-synthetic-case.pdf': 'samples/nestlet-synthetic-case.pdf',

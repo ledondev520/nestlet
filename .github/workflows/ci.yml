@@ -21,5 +21,9 @@ jobs:
         run: npm ci --ignore-scripts
       - name: Check JavaScript
         run: npm run check
+      - name: Build JavaScript React frontend
+        run: npm run build
+      - name: Test frontend API and build contracts
+        run: npm run test:frontend
       - name: Test local behavior
         run: npm test

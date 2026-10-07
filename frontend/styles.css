@@ -1,0 +1,121 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* Kimi's Working Paper palette, preserved rather than replaced by a preset.
+   Source: public/style.css at a2417b6. This route has its own CSS boundary. */
+:root {
+  --paper: #f6f1e6;
+  --paper-deep: #efe8d8;
+  --sheet: #fffdf6;
+  --ink: #252a20;
+  --ink-soft: #575d4a;
+  --hairline: #e0d9c4;
+  --hairline-strong: #cfc6ab;
+  --cinnabar: #b8402a;
+  --cinnabar-deep: #93311e;
+  --cinnabar-tint: #f7e9e2;
+  --serif: "Songti SC", "STSong", "Noto Serif SC", Georgia, "Times New Roman", serif;
+  --sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Segoe UI", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  --shadow-sheet: 0 1px 2px rgb(88 74 43 / .05), 0 10px 30px -12px rgb(88 74 43 / .18);
+  --radius: .625rem;
+  --background: var(--paper);
+  --foreground: var(--ink);
+  --card: var(--sheet);
+  --card-foreground: var(--ink);
+  --popover: var(--sheet);
+  --popover-foreground: var(--ink);
+  --primary: var(--ink);
+  --primary-foreground: var(--paper);
+  --secondary: var(--paper-deep);
+  --secondary-foreground: var(--ink);
+  --muted: var(--paper-deep);
+  --muted-foreground: var(--ink-soft);
+  --accent: var(--cinnabar-tint);
+  --accent-foreground: var(--cinnabar-deep);
+  --destructive: var(--cinnabar-deep);
+  --border: var(--hairline);
+  --input: var(--hairline-strong);
+  --ring: var(--cinnabar);
+}
+
+@theme inline {
+  --font-sans: var(--sans);
+  --font-serif: var(--serif);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * { @apply border-border; }
+  body { @apply m-0 bg-background font-sans text-foreground antialiased; }
+  button:not(:disabled), a { cursor: pointer; }
+  ::selection { background: var(--cinnabar-tint); }
+}
+
+.paper-shell {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 40px 56px;
+}
+.paper-masthead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 22px 0 18px;
+  border-bottom: 2px solid var(--ink);
+  position: relative;
+}
+.paper-masthead::after {
+  content: "";
+  position: absolute;
+  bottom: -5px;
+  left: 0;
+  right: 0;
+  border-bottom: 1px solid var(--hairline-strong);
+}
+.paper-card { box-shadow: var(--shadow-sheet); }
+.paper-title { font-family: var(--serif); }
+.paper-divider { border-top: 1px solid var(--hairline); }
+.paper-note { border-left: 3px solid var(--cinnabar); background: var(--cinnabar-tint); }
+.print-document {
+  max-width: 760px;
+  margin: 32px auto;
+  padding: 24px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: 14px/1.65 Georgia, "Times New Roman", serif;
+  color: #111;
+  background: #fff;
+}
+@media print {
+  body:has(.print-document) { background: #fff; }
+  .print-document { max-width: none; margin: 0; padding: 0; font-size: 11pt; }
+}
+@media (max-width: 600px) {
+  .paper-shell { padding: 0 18px 36px; }
+  .paper-masthead { align-items: flex-start; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
