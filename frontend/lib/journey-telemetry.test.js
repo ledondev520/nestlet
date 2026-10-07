@@ -86,7 +86,7 @@ test('correlation requires exact current sent/returned workflow, active status a
     action.finish({ headers: new Headers({ 'X-Workflow-Id': returned, 'X-Telemetry-Status': status, 'X-Request-Id': id }) });
   }
   await j.flush();
-  assert.deepEqual(f.events().slice(1).map(event => event.requestId), [requestId, undefined, undefined, undefined]);
+  assert.deepEqual(f.events().slice(1).map(event => event.requestId), [requestId, undefined, undefined]);
 });
 
 test('abort records one fixed cancellation and removes listener; navigation drops stale observations', async t => {
@@ -220,4 +220,13 @@ test('no more than twenty unfinished action observers are admitted at once', asy
   for (const action of pending) action.finish(); await j.flush();
   assert.equal(f.events().length, 20);
   j.beginAction('case.save').finish(); await j.flush(); assert.equal(f.events().length, 21);
+});
+
+
+test('server-rejected workflow context drops an unrelated-case action instead of attributing it to the old case', async t => {
+  const f = fixture(t), j = f.telemetry;
+  j.beginAction('input.paste').finish(); await j.flush();
+  const action = j.beginAction('case.save');
+  action.finish({ ok: true, headers: new Headers({ 'X-Telemetry-Status': 'ignored-invalid-workflow', 'X-Request-Id': requestId }) });
+  await j.flush(); assert.equal(f.events().length, 1);
 });

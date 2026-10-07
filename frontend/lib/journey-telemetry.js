@@ -191,8 +191,13 @@ export function createJourneyTelemetry({
       try {
         const returnedWorkflow = responseHeaders?.get?.('X-Workflow-Id');
         const requestId = responseHeaders?.get?.('X-Request-Id');
+        const trackingStatus = responseHeaders?.get?.('X-Telemetry-Status');
+        // The server can reject an old workflow on an unrelated case creation/read.
+        // Do not misattribute that action to the prior case merely by omitting its request ID.
+        if (trackingStatus === 'ignored-invalid-workflow' ||
+          (headers['X-Workflow-Id'] && returnedWorkflow && returnedWorkflow !== headers['X-Workflow-Id'])) return;
         if (workflowId && headers['X-Workflow-Id'] === workflowId && returnedWorkflow === workflowId &&
-          responseHeaders?.get?.('X-Telemetry-Status') === 'active' && UUID.test(requestId)) payload.requestId = requestId;
+          trackingStatus === 'active' && UUID.test(requestId)) payload.requestId = requestId;
       } catch { /* Headers are optional. */ }
       enqueue(payload);
     };
