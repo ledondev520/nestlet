@@ -102,13 +102,14 @@ let draftEditTracked = false;
     passwords, keys, or arbitrary metadata. A telemetry failure must never change
     business state, clear work, or mark anything as failed. */
 let workflowId = null;
+let workflowUserId = null;
 let correlationRequestId = null;
 let creating = null;
 let disabled = false;
 let telemetryEpoch = 0;
 let activeMs = 0;
 let activeSince = null;
-let hooks = { isAuthenticated: () => false, getCsrf: () => '' };
+let hooks = { isAuthenticated: () => false, getCsrf: () => '', getUserId: () => null };
 
 const clock = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 const isVisible = () => typeof document === 'undefined' || document.visibilityState !== 'hidden';
@@ -137,53 +138,66 @@ function configureTelemetry(options) {
   hooks = {...hooks, ...options};
 }
 
-/** Start a fresh journey: next event lazily creates a new workflow. */
+/** Start a fresh journey: abandon any in-flight creation (its finally guards on
+    promise identity, so a newer creation is never cleared by the old one). */
 function resetTelemetry() {
   telemetryEpoch++;
   workflowId = null;
+  workflowUserId = null;
   correlationRequestId = null;
+  creating = null;
   disabled = false;
-  // Any in-flight creation belongs to the previous identity/journey and is
-  // ignored when it resolves (see the epoch check inside ensureWorkflow).
+  activeMs = 0;
+  pauseActive();
+  activeSince = null;
+  resumeActive();
 }
 
 /** Headers for business requests that support workflow correlation. */
 function telemetryHeaders() {
-  return workflowId ? { 'X-Workflow-Id': workflowId } : {};
+  return workflowId && workflowUserId === hooks.getUserId() ? { 'X-Workflow-Id': workflowId } : {};
 }
 
 /** Observe a business response. A request ID is only correlated when telemetry
-    is active AND the server used this exact workflow. */
+    is active, the server used this exact workflow, and the workflow belongs to
+    the currently authenticated identity. */
 function noteBusinessResponse(response) {
   try {
     const get = response?.headers?.get?.bind(response.headers);
     if (!get) return;
     const returnedWorkflow = get('X-Workflow-Id');
-    if (returnedWorkflow) {
-      if (!workflowId) workflowId = returnedWorkflow;
-      if (returnedWorkflow !== workflowId) { correlationRequestId = null; return; }
+    if (returnedWorkflow && !workflowId && hooks.isAuthenticated()) {
+      workflowId = returnedWorkflow;
+      workflowUserId = hooks.getUserId();
     }
+    if (returnedWorkflow && returnedWorkflow !== workflowId) { correlationRequestId = null; return; }
+    if (workflowId && workflowUserId !== hooks.getUserId()) { correlationRequestId = null; return; }
     correlationRequestId = get('X-Telemetry-Status') === 'active' ? get('X-Request-Id') : null;
   } catch { /* telemetry is best-effort */ }
 }
 
 async function ensureWorkflow() {
-  if (workflowId) return workflowId;
+  if (workflowId && workflowUserId === hooks.getUserId()) return workflowId;
   if (disabled || !hooks.isAuthenticated()) return null;
   if (!creating) {
     const epoch = telemetryEpoch;
-    creating = (async () => {
+    const userId = hooks.getUserId();
+    const pending = (async () => {
       try {
-        const response = await fetch('/api/workflows', { method: 'POST', headers: { 'X-CSRF-Token': hooks.getCsrf() } });
-        if (epoch !== telemetryEpoch) return null; // identity/journey changed mid-flight
+        const response = await fetch('/api/workflows', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': hooks.getCsrf() }, body: '{}' });
+        if (epoch !== telemetryEpoch || userId !== hooks.getUserId()) return null;
         if (!response.ok) { disabled = true; return null; }
         const result = await response.json();
-        if (epoch !== telemetryEpoch) return null;
-        workflowId = typeof result.workflowId === 'string' ? result.workflowId : null;
-        if (!workflowId) disabled = true;
+        if (epoch !== telemetryEpoch || userId !== hooks.getUserId()) return null;
+        if (typeof result.workflowId === 'string') {
+          workflowId = result.workflowId;
+          workflowUserId = userId;
+        } else disabled = true;
       } catch { if (epoch === telemetryEpoch) disabled = true; }
       return workflowId;
-    })().finally(() => { if (telemetryEpoch === epoch) creating = null; });
+    })();
+    creating = pending;
+    pending.finally(() => { if (creating === pending) creating = null; });
   }
   return creating;
 }
@@ -191,13 +205,15 @@ async function ensureWorkflow() {
 /** Fire-and-forget client event. `extra` may carry waitMs and a fixed errorCode. */
 function track(event, outcome, extra = {}) {
   if (disabled || !hooks.isAuthenticated()) return;
+  const epoch = telemetryEpoch;
+  const userId = hooks.getUserId();
   const payload = { event, outcome, clientActiveMs: takeActiveMs() };
   if (Number.isInteger(extra.waitMs)) payload.clientWaitMs = Math.min(Math.max(extra.waitMs, 0), 300000);
   if (correlationRequestId) payload.requestId = correlationRequestId;
   if (typeof extra.errorCode === 'string') payload.errorCode = extra.errorCode;
   void (async () => {
     const id = await ensureWorkflow();
-    if (!id || !hooks.isAuthenticated()) return;
+    if (!id || epoch !== telemetryEpoch || userId !== hooks.getUserId() || !hooks.isAuthenticated()) return;
     try {
       await fetch(`/api/workflows/${encodeURIComponent(id)}/events`, {
         method: 'POST',
@@ -208,7 +224,7 @@ function track(event, outcome, extra = {}) {
   })();
 }
 
-configureTelemetry({isAuthenticated: () => state.authenticated, getCsrf: () => state.csrfToken});
+configureTelemetry({isAuthenticated: () => state.authenticated, getCsrf: () => state.csrfToken, getUserId: () => state.userId});
 const t = () => copy[state.lang];
 const esc = value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
 const byId = id => document.getElementById(id);
@@ -290,12 +306,14 @@ function requestHeaders(extra = {}) {
   return {...extra, ...(state.csrfToken ? {'X-CSRF-Token': state.csrfToken} : {})};
 }
 function applyStatus(status) {
+  const previousUserId = state.userId;
   for (const key of ['liveEnabled', 'pdfEnabled', 'workbookEnabled', 'authConfigured', 'authenticated', 'secureSettings', 'secureLogin', 'configured', 'caseStorageEnabled', 'registrationEnabled']) {
     if (key in status) state[key] = status[key] === true;
   }
   state.role = ['owner', 'trial'].includes(status.role) ? status.role : null;
   state.canManageSettings = state.role === 'owner' && status.canManageSettings === true;
   state.userId = typeof status.userId === 'string' ? status.userId : null;
+  if (state.userId !== previousUserId) resetTelemetry();
   state.username = typeof status.username === 'string' ? status.username : '';
   if (state.userId && state.workspaceOwnerId && state.userId !== state.workspaceOwnerId) {replaceText(''); forgetCaseIdentity(); state.cases = []; state.selectedCaseId = '';}
   if (state.userId) state.workspaceOwnerId = state.userId;
