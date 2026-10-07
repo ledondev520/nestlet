@@ -389,3 +389,14 @@ test('schema5 private snapshot preserves verified email binding, pending hash-on
   } finally { recovered.close(); }
   assert.equal(readFileSync(join(output, 'nestlet.sqlite')).includes(Buffer.from(reset.token)), false);
 });
+
+
+test('schema5 backups require the private originals directory even when no asset rows exist', async t => {
+  const root = mkdtempSync(join(realpathSync(tmpdir()), 'nestlet-schema5-vault-guard-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const filename = join(root, 'nestlet.sqlite'), assetsDirectory = join(root, 'missing-assets'), output = join(root, 'snapshot');
+  const store = openStorage({ filename }); store.close();
+  await assert.rejects(backupPrivateData({ filename, assetsDirectory, output }), error => error.code === 'ENOENT');
+  assert.equal(readdirSync(root).includes('snapshot'), false);
+  assert.equal(readdirSync(root).includes('missing-assets'), false);
+});

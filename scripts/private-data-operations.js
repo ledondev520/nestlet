@@ -215,7 +215,7 @@ export async function backupPrivateData({ filename, assetsDirectory, output }) {
   const snapshot = join(output, 'nestlet.sqlite');
   try {
     sourceVersion = schemaVersion(source);
-    if (sourceVersion === 4 || existsSync(assetsDirectory)) {
+    if (sourceVersion >= 4 || existsSync(assetsDirectory)) {
       preparePrivateDirectory(assetsDirectory, { create: false });
       sourceVault = openAssetVault({ directory: assetsDirectory });
     }
