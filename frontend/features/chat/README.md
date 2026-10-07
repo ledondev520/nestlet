@@ -1,6 +1,6 @@
 # Chat feature
 
-Public export: `ChatPage({lang='zh', caseId=null, onCaseChange, onDirtyChange?, onImportFiles?})`.
+Public export: `ChatPage({lang='zh', caseId=null, guidanceAgency='unknown', onCaseChange, onDirtyChange?, onImportFiles?})`.
 
 - `onCaseChange(id)` binds a newly saved case to the current workspace. It is not an instruction to switch to a different customer's case.
 - `onDirtyChange(boolean)` covers unsent text/images, pending decoding and active streaming. App must confirm actual case switches, then remount case features using its workspace epoch. Account changes always remount.
@@ -9,6 +9,10 @@ Public export: `ChatPage({lang='zh', caseId=null, onCaseChange, onDirtyChange?, 
 - Navigation may hide this component without unmounting to preserve an unsent composer. Unmount, account changes and true case changes abort requests and revoke all owned object URLs.
 
 The first send creates a real empty case and conversation before calling `/api/chat`. Any creation failure stops the operation. Existing case data is never overwritten by chat typing. Persistent requests contain exactly one new user message plus conversationId and a fresh clientMessageId. The server supplies saved history and facts.
+
+The root's separate official-reference selector supplies `guidanceAgency`, a strict registry ID. Clients cannot supply reference URLs or policy prose. The server defaults omitted IDs to `unknown` for earlier clients and rejects unknown IDs/extra source fields. Both ordinary and opt-in library chat receive an English registry snapshot bounded to 8,000 serialized characters, including official URLs, check date, displayed editions and acceptance uncertainty. This does not infer the responsible case agency, add case facts, fetch websites or provide another model/tool capability. Instructions require Chinese/English conversational explanations with English formal drafts, current-applicability checks, no agency-approval claims and no hidden reasoning. Prompt instructions are not a guarantee of live-model answer quality; real-provider source fidelity still needs acceptance testing.
+
+The updated frontend and backend ship together because earlier backends reject the new request field. The shipped source registry is distinct from the per-request saved-library `[S1]` references and never becomes a retrieved customer record.
 
 Failures retain received partial text, then reload actual saved history. A reload racing disconnect cleanup keeps a clearly labeled local partial until the server confirms it. Retry places the question back in the composer; a new paid request requires another explicit Send. No automatic provider retry or transient fallback exists.
 

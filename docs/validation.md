@@ -2,6 +2,18 @@
 
 Checkpoint: 2026-10-07. This is a development checkpoint, not final acceptance. Deployment and real-browser integration remain separate; rerun after the final source freeze.
 
+## Official-reference React migration regression, 2026-10-07
+
+Based on exact main `73255d90826e4934b1f0f489d3ed836e076096ed`, the existing official-source registry was previously reachable only in the legacy UI. The promoted React root now exposes a compact bilingual reference disclosure in chat/materials/documents, separate from case facts. Chat sends an allowlisted reference ID; the server supplies bounded registry observations and explicit case-applicability/version uncertainty to both ordinary and library-assisted requests. No new source assertions, official-form mapping, model, network tool, schema or authorization behavior is added. The registry's recorded check dates are reused, not a claim of fresh source verification in this change.
+
+- `npm run check`: passed
+- `npm run build`: passed; existing single-bundle size advisory remains
+- `npm test`: **312/312 passed**, zero failed/skipped
+- `npm run test:frontend`: **224/224 passed**, zero failed/skipped
+- Root React-DOM plus real HTTP/SQLite regression verifies reference availability, both interface languages, unchanged case/readiness on selection, English supplementary generation without invented agency facts, and case-switch reset. The ordinary/library HTTP protocol test verifies server-owned guidance reaches the upstream request; that upstream is an authored local fixture, not DeepSeek
+- `npm ci --ignore-scripts --offline` could not complete because one package was absent from the local cache. Checks reused the existing dependency tree from an isolated worktree with the identical lockfile SHA-256, and `npm ls --depth=0` passed. No dependency/lockfile changes or install scripts were run
+- No browser, live provider, email, production service, push, merge or deployment was used for this candidate. Real-browser visual/keyboard/mobile review and real-provider source fidelity remain separate acceptance gates. Generated final correspondence remains supplementary and does not certify an official packet or agency acceptance
+
 React/shadcn foundation checkpoint (09:33 UTC): production build and seven API/build contracts pass. This is a component preview, not a completed business-page migration. The combined baseline has one legacy localization failure; supported-browser and Docker validation remain pending. See [exact migration evidence](shadcn-migration.md).
 ## Artifact invalidation regression, 10:29 UTC
 

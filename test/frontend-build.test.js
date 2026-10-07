@@ -23,6 +23,9 @@ test('production build contains only explicit allowlisted assets, no TypeScript 
   const files = await readdir(new URL('public/next/', root));
   assert.deepEqual(files.sort(), ['app.js', 'index.css', 'index.html']);
   const html = await readFile(new URL('public/next/index.html', root), 'utf8');
+  const bundle = await readFile(new URL('public/next/app.js', root), 'utf8');
+  assert.ok(bundle.includes('https://sfha.org/files/documents/52517ENG.pdf'), 'Promoted React build includes the official-source registry');
+  assert.ok(bundle.includes('agency-guidance'), 'Promoted React build includes the reference control');
   assert.match(html, /src="\/next\/app\.js"/);
   assert.match(html, /href="\/next\/index\.css"/);
   assert.doesNotMatch(html, /localhost:5173|@vite\/client|main\.jsx/);
