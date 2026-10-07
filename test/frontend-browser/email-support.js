@@ -119,6 +119,8 @@ export async function watchEmailLeaks(page) {
 }
 export async function openLink(page, mail) {
   await page.goto(mail.link); await english(page);
-  expect(new URL(page.url()).hash, 'One-time fragment scrubbed before initial effects').toBe('');
+  await expect.poll(() => new URL(page.url()).hash === '', { message: 'One-time fragment scrubbed' }).toBe(true);
+  const purpose = new URLSearchParams(new URL(mail.link).hash.slice(1)).get('auth');
+  await expect(page.getByRole('button', { name: purpose === 'reset' ? 'Confirm password reset' : 'Confirm email verification', exact: true })).toBeVisible();
   await noHorizontalOverflow(page);
 }

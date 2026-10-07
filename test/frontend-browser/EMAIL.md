@@ -7,7 +7,7 @@ The five `email-auth.spec.js` journeys use compiled React, the actual `server.js
 - `simulated-email-bootstrap.mjs` is a test-only Node preload, never a production import or route. It intercepts only the fixed Alibaba DirectMail endpoint, checks the synthetic request, and returns an explicitly simulated accepted receipt. Every other outbound fetch fails closed. **This is not genuine provider acceptance or inbox delivery.**
 - The actual signing, receipt parsing, asynchronous readiness, activation, and password-reset code still runs. Only public synthetic credentials/addresses are supplied through a sanitized child environment. No ambient provider keys are inherited.
 - Captured one-time messages travel over private child IPC and remain in memory. There is no OTP/debug endpoint, spool file, browser storage, or mail-token logging. Email browser traces are disabled; screenshots are taken only after URL-fragment scrub and credential-field clear.
-- Expiry and resend replacement preparation age only the relevant disposable SQLite timestamp. This establishes real server rejection of expired tokens, not elapsed wall-clock TTL.
+- Expiry and secondary HTTP setup age only the relevant disposable SQLite timestamp. This establishes real server rejection of expired tokens, not elapsed wall-clock TTL. The main browser enrollment scenario separately waits the actual 60-second cooldown and checks UI resend/replacement without advancing a clock.
 - The older product/parser journeys now sign in to explicitly private-seeded legacy fixtures. They continue testing the same parser, case, file, document, isolation, responsive and CSP behavior, but do not claim to test registration. New-user username registration is required to fail.
 
 ## Run on the exact integrated backend + UI + test commit
@@ -32,7 +32,7 @@ Discovery must find 13 tests: the 8 prior gates and 5 new email scenarios. Listi
 
 ## New browser coverage
 
-1. Required email and matching password; generic pending response; no pre-verification login or implicit session; cooldown; explicit keyboard verification; single use; six-character sign-in; ordinary role
+1. Required email and matching password; generic pending response; no pre-verification login or implicit session; actual 60-second cooldown and UI resend/replacement; explicit keyboard verification; single use; six-character sign-in; ordinary role
 2. Forgot/reset forms; preserved mismatching input; no reset until matching submission; invalidation of another active session; old-password rejection, new-password login, and replay rejection
 3. Actual server rejection of missing, malformed and privately aged expired verification/reset tokens; old credential survives expired reset
 4. 320/390-pixel bilingual account/recovery layouts, keyboard activation, retained address, Close and Back/Forward without token resurrection

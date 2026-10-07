@@ -7,6 +7,7 @@ import { startBrowserFixture } from '../helpers/browser-fixture.mjs';
 test.use({ trace: 'off' });
 
 test('required email registration → explicit verification → six-character login; generic responses and single use', async ({ page, emailApp }, testInfo) => {
+  test.setTimeout(120000); // Includes the real 60-second UI resend cooldown.
   const app = emailApp, email = 'synthetic-enrollment@example.invalid';
   const clean = await watchBrowser(page), privateState = await watchEmailLeaks(page);
   const claims = [], registrations = [];
@@ -34,19 +35,29 @@ test('required email registration → explicit verification → six-character lo
   await page.getByLabel('Confirm password', { exact: true }).press('Enter');
   const result = await sent;
   expect(result.status()).toBe(202); expect(await result.json()).toEqual(ACCEPTED);
-  expect(result.headers()['set-cookie']).toBeUndefined();
+  expect(await result.headerValue('set-cookie')).toBeNull();
   expect(registrations).toHaveLength(1);
   await expect(page.getByText('Check your inbox if eligible', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Resend verification email', exact: true })).toBeDisabled();
   await expect(page.getByText(/seconds until another request/u)).toBeVisible();
   expect((await (await page.request.get(app.origin + '/api/status')).json()).authenticated).toBe(false);
-  const mail = await app.mailFor(email, 'verify');
+  const firstMail = await app.mailFor(email, 'verify');
   expect(app.withDatabase(db => db.prepare('SELECT count(*) AS n FROM email_identities WHERE email=?').get(email).n)).toBe(0);
   const premature = await post(app, '/api/login', { email, password: EMAIL_PASSWORD }); expect(premature.status).toBe(401);
   const suppressed = await post(app, '/api/auth/email/resend', { email });
   expect(suppressed.status).toBe(202); expect(await suppressed.json()).toEqual(ACCEPTED);
   expect(app.mailCount(email, 'verify')).toBe(1);
   await screenshot(page, testInfo, 'simulated-mail-registration-pending-mobile');
+  const resend = page.getByRole('button', { name: 'Resend verification email', exact: true });
+  // Deliberately wait real elapsed time; no browser clock or rate-limit bypass.
+  await expect(resend).toBeEnabled({ timeout: 65000 });
+  const resent = page.waitForResponse(response => new URL(response.url()).pathname === '/api/auth/email/resend');
+  await resend.press('Enter');
+  const resendResult = await resent;
+  expect(resendResult.status()).toBe(202); expect(await resendResult.json()).toEqual(ACCEPTED);
+  await expect(resend).toBeDisabled();
+  const mail = await app.mailFor(email, 'verify', 1);
+  expect((await post(app, '/api/auth/email/verify', { token: firstMail.token })).status).toBe(400);
   await openLink(page, mail);
   await expect(page.getByRole('button', { name: 'Confirm email verification', exact: true })).toBeEnabled();
   expect(claims).toHaveLength(0); // Opening/prefetching the link does not consume it.
@@ -72,7 +83,7 @@ test('required email registration → explicit verification → six-character lo
   expect(existing.status).toBe(202); expect(await existing.json()).toEqual(ACCEPTED);
   const unknown = await post(app, '/api/auth/password/forgot', { email: 'unknown@example.invalid' });
   expect(unknown.status).toBe(202); expect(await unknown.json()).toEqual(ACCEPTED);
-  await privateState(app, [mail.token]); await clean();
+  await privateState(app, [firstMail.token, mail.token]); await clean();
 });
 
 test('forgot/reset UI preserves invalid input, invalidates active sessions and rejects reset-token replay', async ({ page, browser, emailApp }, testInfo) => {
@@ -148,7 +159,7 @@ test('invalid and privately aged expired verification/reset links fail without a
   expect((await invalid).status()).toBe(400); await expect(page.getByRole('alert')).toBeVisible();
   await page.goto(app.origin + '/#auth=reset&token=malformed'); await english(page);
   await expect(page.getByRole('button', { name: 'Confirm password reset', exact: true })).toHaveCount(0);
-  expect(new URL(page.url()).hash).toBe('');
+  expect(new URL(page.url()).hash === '', 'No token remains in the address bar').toBe(true);
   await privateState(app, [expired.token, reset.token, missing.token]);
 });
 
@@ -180,7 +191,7 @@ test('email pages retain keyboard/mobile usability, preserve address, and clear 
   await expect(page.getByRole('button', { name: 'Confirm email verification', exact: true })).toHaveCount(0);
   await page.goForward(); await english(page);
   await expect(page.getByRole('button', { name: 'Confirm email verification', exact: true })).toHaveCount(0);
-  expect(new URL(page.url()).hash).toBe('');
+  expect(new URL(page.url()).hash === '', 'No token remains in the address bar').toBe(true);
   expect(claims).toHaveLength(0);
   // A deliberate fresh opening can be closed explicitly without claiming it.
   await openLink(page, mail);
