@@ -352,3 +352,21 @@ for (const [extension, mime] of [
     }
   });
 }
+
+test('email runtime modules are explicitly included in the deny-by-default Docker build context', async () => {
+  const dockerfile = await readFile(new URL('../Dockerfile', import.meta.url), 'utf8');
+  const rules = (await readFile(new URL('../.dockerignore', import.meta.url), 'utf8')).split(/\r?\n/u).map(line => line.trim());
+  assert.ok(rules.includes('**'));
+  for (const module of ['email-auth.js', 'email-auth-domain.js', 'email-auth-storage.js', 'email-delivery.js']) {
+    assert.ok(dockerfile.split('\n').some(line => line.startsWith('COPY --chown=node:node') && line.split(/\s+/u).includes(module)), `${module} is copied into the runtime image`);
+    assert.equal(rules.filter(rule => rule === `!${module}`).length, 1, `${module} has one explicit context allowance`);
+    assert.ok(rules.lastIndexOf(`!${module}`) > rules.lastIndexOf('**'));
+  }
+});
+
+test('legacy enrollment points to root email UI and cannot submit obsolete username registration', async () => {
+  const legacy = await readFile(new URL('../public/app.js', import.meta.url), 'utf8');
+  assert.match(legacy, /id="legacy-email-register" class="link" href="\/"/);
+  assert.doesNotMatch(legacy, /settingsRequest\([^\n]*\/api\/register/);
+  assert.match(legacy, /settingsRequest\('\/api\/login', payload, 'loginSuccess'\)/);
+});

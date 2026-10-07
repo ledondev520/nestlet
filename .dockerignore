@@ -4,6 +4,10 @@
 !package-lock.json
 !server.js
 !auth.js
+!email-auth.js
+!email-auth-domain.js
+!email-auth-storage.js
+!email-delivery.js
 !storage.js
 !telemetry.js
 !chat.js
