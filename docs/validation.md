@@ -4,9 +4,11 @@ Checkpoint: 2026-10-07. This is a development checkpoint, not final acceptance. 
 
 ## Strict acceptance command
 
-`npm test` runs only `test/core.test.js`, `test/server.test.js`, `test/auth.test.js`, `test/agency-guidance.test.js`, and `test/operator-setup.test.js`.
+`npm test` runs only `test/core.test.js`, `test/server.test.js`, `test/auth.test.js`, `test/agency-guidance.test.js`, `test/operator-setup.test.js`, and `test/localization-contract.test.js`.
 
-Current result: **97 passed, 0 failed, 0 skipped**: 52 core behavior tests, 22 real HTTP/file-parser tests, 9 real authentication/session tests, 4 agency-guidance registry tests, and 10 actual-file operator-setup tests. The separately run `node --test test/localization-contract.test.js` adds 5 passing source-contract tests; it is awaiting inclusion in the default script. `npm run check` also passes.
+Current result, clean post-install run at approximately 05:29 UTC on October 7, 2026: **102 passed, 0 failed, 0 skipped**: 52 core behavior tests, 22 real HTTP/file-parser tests, 9 real authentication/session tests, 4 agency-guidance registry tests, 10 actual-file operator-setup tests, and 5 localization source-contract tests. Localization is included in the default command. Pinned `npm ci --ignore-scripts` completed successfully, and `npm run check` passes.
+
+A separate concurrent review run briefly reported workbook unavailability while `npm ci` replaced dependencies. The final result above was rerun after installation finished and concurrent testing stopped; no source fix or weaker assertion was used. Do not run tests against a working tree while its dependencies are being replaced.
 
 This command uses real core functions, disposable actual HTTP servers, actual PDF/XLS/XLSX bytes, and installed real document parsers. It does not replace fetch, HTTP responses, provider calls, or file-reading functions. Server processes use disposable operator test credentials with real scrypt verification, and are deliberately configured without an API key and with live AI disabled. Parser tests log in and send real session/CSRF tokens. The suite verifies that unavailable live extraction is reported truthfully. Test source text and files contain authored non-personal examples only.
 
