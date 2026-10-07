@@ -14,11 +14,13 @@ import {
   unlinkSync,
   existsSync
 } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join, resolve, sep } from 'node:path';
 import { createHash } from 'node:crypto';
 import { preparePrivateDirectory, openAssetVault } from '../private-assets.js';
 import { assetId, ASSET_LIMITS } from '../asset-domain.js';
 const APPLICATION_ID = 0x4e53544c;
+const SUPPORTED_SCHEMAS = [1, 2, 3, 4];
+const schemaVersion = (db) => db.prepare('PRAGMA user_version').get().user_version;
 const fail = (message) => {
   throw new Error(message);
 };
@@ -80,6 +82,13 @@ function privateWrite(path, bytes) {
     closeSync(fd);
   }
 }
+function separateOutput(output, sourceDirectory) {
+  if (
+    resolve(output) === resolve(sourceDirectory) ||
+    resolve(output).startsWith(resolve(sourceDirectory) + sep)
+  )
+    fail('Output must be outside the source originals or backup directory.');
+}
 function newOutput(output) {
   if (typeof output !== 'string' || resolve(output) !== output)
     fail('Output must be a new absolute private directory.');
@@ -99,6 +108,15 @@ function complete(output) {
   } finally {
     closeSync(fd);
   }
+  const parent = openSync(
+    dirname(output),
+    constants.O_RDONLY | constants.O_DIRECTORY | constants.O_NOFOLLOW
+  );
+  try {
+    fsyncSync(parent);
+  } finally {
+    closeSync(parent);
+  }
 }
 function openDatabase(filename) {
   const fd = privateDescriptor(filename);
@@ -112,9 +130,9 @@ function openDatabase(filename) {
     db.exec('PRAGMA trusted_schema=OFF;');
     if (
       db.prepare('PRAGMA application_id').get().application_id !== APPLICATION_ID ||
-      db.prepare('PRAGMA user_version').get().user_version !== 4
+      !SUPPORTED_SCHEMAS.includes(schemaVersion(db))
     )
-      fail('Only a Nestlet schema4 database is supported.');
+      fail('Only a recognized Nestlet schema1–4 database is supported.');
     if (
       db.prepare('PRAGMA integrity_check').get().integrity_check !== 'ok' ||
       db.prepare('PRAGMA foreign_key_check').all().length
@@ -129,6 +147,8 @@ function openDatabase(filename) {
 const assetColumns =
   'id,owner_user_id AS ownerUserId,case_id AS caseId,client_id AS clientId,original_filename AS originalFilename,mime_type AS mimeType,size_bytes AS sizeBytes,sha256,created_at AS createdAt';
 function records(db, userId) {
+  // Earlier releases did not retain original assets. Reading a snapshot never migrates it.
+  if (schemaVersion(db) < 4) return [];
   const rows =
     userId === undefined
       ? db.prepare(`SELECT ${assetColumns} FROM assets ORDER BY id`).all()
@@ -160,13 +180,18 @@ function expectedContents(directory, names) {
     fail('Snapshot contains unexpected or missing files.');
 }
 export async function backupPrivateData({ filename, assetsDirectory, output }) {
-  preparePrivateDirectory(assetsDirectory, { create: false });
-  const sourceVault = openAssetVault({ directory: assetsDirectory });
-  newOutput(output);
+  separateOutput(output, assetsDirectory);
   const source = openDatabase(filename);
+  let sourceVault, sourceVersion;
   const snapshot = join(output, 'nestlet.sqlite');
-  privateWrite(snapshot, Buffer.alloc(0));
   try {
+    sourceVersion = schemaVersion(source);
+    if (sourceVersion === 4 || existsSync(assetsDirectory)) {
+      preparePrivateDirectory(assetsDirectory, { create: false });
+      sourceVault = openAssetVault({ directory: assetsDirectory });
+    }
+    newOutput(output);
+    privateWrite(snapshot, Buffer.alloc(0));
     await backup(source, snapshot);
   } finally {
     source.close();
@@ -182,11 +207,13 @@ export async function backupPrivateData({ filename, assetsDirectory, output }) {
   const destination = openAssetVault({ directory: join(output, 'assets') });
   for (const asset of rows) destination.write(asset.id, sourceVault.read(asset));
   const known = new Set(rows.map((asset) => asset.id + '.blob'));
-  const unreferencedFiles = readdirSync(assetsDirectory).filter((name) => !known.has(name)).length;
+  const unreferencedFiles = sourceVault
+    ? readdirSync(assetsDirectory).filter((name) => !known.has(name)).length
+    : 0;
   const manifest = {
     format: 'nestlet-private-backup',
     version: 1,
-    schemaVersion: 4,
+    schemaVersion: sourceVersion,
     createdAt: new Date().toISOString(),
     databaseSha256: fileDigest(snapshot),
     assetCount: rows.length,
@@ -198,7 +225,13 @@ export async function backupPrivateData({ filename, assetsDirectory, output }) {
   );
   verifyPrivateBackup({ input: output, allowIncomplete: true });
   complete(output);
-  return { output, assetCount: rows.length, unreferencedFiles, verified: true };
+  return {
+    output,
+    schemaVersion: sourceVersion,
+    assetCount: rows.length,
+    unreferencedFiles,
+    verified: true
+  };
 }
 export function verifyPrivateBackup({ input, allowIncomplete = false }) {
   preparePrivateDirectory(input, { create: false });
@@ -218,7 +251,7 @@ export function verifyPrivateBackup({ input, allowIncomplete = false }) {
   if (
     manifest?.format !== 'nestlet-private-backup' ||
     manifest.version !== 1 ||
-    manifest.schemaVersion !== 4 ||
+    !SUPPORTED_SCHEMAS.includes(manifest.schemaVersion) ||
     !Array.isArray(manifest.assets) ||
     manifest.assetCount !== manifest.assets.length
   )
@@ -228,6 +261,8 @@ export function verifyPrivateBackup({ input, allowIncomplete = false }) {
   const db = openDatabase(filename);
   let rows;
   try {
+    if (schemaVersion(db) !== manifest.schemaVersion)
+      fail('Snapshot schema differs from its manifest.');
     rows = records(db);
   } finally {
     db.close();
@@ -241,9 +276,15 @@ export function verifyPrivateBackup({ input, allowIncomplete = false }) {
     rows.map((asset) => asset.id + '.blob')
   );
   for (const asset of rows) vault.read(asset);
-  return { verified: true, assetCount: rows.length, manifest };
+  return {
+    verified: true,
+    schemaVersion: manifest.schemaVersion,
+    assetCount: rows.length,
+    manifest
+  };
 }
 export async function restorePrivateBackup({ input, output }) {
+  separateOutput(output, input);
   const checked = verifyPrivateBackup({ input });
   newOutput(output);
   const filename = join(output, 'nestlet.sqlite');
@@ -259,6 +300,8 @@ export async function restorePrivateBackup({ input, output }) {
   for (const asset of checked.manifest.assets) target.write(asset.id, original.read(asset));
   const restored = openDatabase(filename);
   try {
+    if (schemaVersion(restored) !== checked.schemaVersion)
+      fail('Restored schema differs from its snapshot.');
     const rows = records(restored);
     if (JSON.stringify(rows) !== JSON.stringify(checked.manifest.assets))
       fail('Restored asset inventory differs.');
@@ -271,10 +314,13 @@ export async function restorePrivateBackup({ input, output }) {
     verified: true,
     filename,
     assetsDirectory: target.directory,
+    schemaVersion: checked.schemaVersion,
     assetCount: checked.assetCount
   };
 }
 export function exportUserAssets({ filename, assetsDirectory, userId, output }) {
+  separateOutput(output, assetsDirectory);
+  preparePrivateDirectory(assetsDirectory, { create: false });
   if (userId !== 'owner' && !assetId(userId)) fail('An explicit exact user ID is required.');
   const source = openDatabase(filename);
   let rows;

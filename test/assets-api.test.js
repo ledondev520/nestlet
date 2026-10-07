@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import { randomBytes, scryptSync } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import net from 'node:net';
+import http from 'node:http';
 import jpeg from 'jpeg-js';
 import { openStorage } from '../storage.js';
 const hash = (p) => {
@@ -389,4 +390,59 @@ test('HTTP file-count quota rejects the next upload without deleting or overwrit
     await (await req('/api/assets/' + first.id + '/download', { session })).text(),
     'Synthetic quota record 0'
   );
+});
+
+test('cancelled real streaming uploads release both processing slots and never create partial originals', async () => {
+  const session = sessions['asset-user-b'];
+  const before = (await json('/api/assets', { session })).total;
+  const held = [];
+  try {
+    for (let i = 0; i < 2; i++) {
+      const pending = http.request(origin + '/api/assets', {
+        method: 'POST',
+        headers: {
+          Origin: origin,
+          Cookie: session.cookie,
+          'X-CSRF-Token': session.csrf,
+          'Content-Type': 'text/plain',
+          'X-Asset-Consent': 'persist-private',
+          'X-Asset-Filename': 'cancelled-' + i + '.txt',
+          'Content-Length': '1000'
+        }
+      });
+      pending.on('error', () => {});
+      held.push(pending);
+      pending.write('partial unfinished bytes');
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    const busy = await upload('while-busy.txt', Buffer.from('would be saved'), 'text/plain', {
+      session
+    });
+    assert.equal(busy.status, 429);
+    assert.equal((await busy.json()).code, 'BUSY');
+    for (const pending of held) pending.destroy();
+    const deadline = Date.now() + 2000;
+    let accepted;
+    while (Date.now() < deadline) {
+      const response = await upload(
+        'after-cancel.txt',
+        Buffer.from('Complete after cancellation'),
+        'text/plain',
+        { session }
+      );
+      if (response.status === 201) {
+        accepted = (await response.json()).asset;
+        break;
+      }
+      assert.equal(response.status, 429);
+      await response.arrayBuffer();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+    assert.ok(accepted, 'Cancelled streams must release their upload reservations');
+    assert.equal((await json('/api/assets', { session })).total, before + 1);
+    const download = await req('/api/assets/' + accepted.id + '/download', { session });
+    assert.equal(await download.text(), 'Complete after cancellation');
+  } finally {
+    for (const pending of held) pending.destroy();
+  }
 });
