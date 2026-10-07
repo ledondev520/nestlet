@@ -2,12 +2,14 @@
 
 ## Claim and status
 
-- Status: **In progress**
+- Status: **Acceptance reported — draft PR pending review; final-flow acceptance blocked**
 - Assigned executor: **Local Codex**, started by the project owner
 - Claiming account/person: Local Codex, authorized by owner ledondev520
-- Base commit: `826202ee7da2b072d544c716cba19ac9cf38d6bf`
+- Base commit: `826202ee7da2b072d544c716cba19ac9cf38d6bf`; synchronized documentation from `6678aeaa57c666fcf77b2700653ed391c2034f0d` (runtime unchanged)
 - Branch: `test/local-codex-acceptance`
-- PR URL: not yet created
+- PR URL: pending publication
+- Coordination issue: https://github.com/ledondev520/nestlet/issues/1
+- Evidence: [local acceptance report](../local-acceptance.md); live provider and PDF import not run, final-contract/authentication blockers recorded
 
 Before work, inspect existing claims and tell the owner you are taking this task. Record the claimant, exact base commit and `In progress` on your task branch. If someone else has claimed it, pause for ownership clarification. This file does not send messages between assistants; report progress to the owner explicitly.
 
