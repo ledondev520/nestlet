@@ -2,6 +2,20 @@
 
 Checkpoint: 2026-10-07. This is a development checkpoint, not final acceptance. Deployment and real-browser integration remain separate; rerun after the final source freeze.
 
+## Chat source navigation and read-only lookup, 2026-10-07
+
+Branch `fix/chat-source-navigation`, based on `0ad9184`. Explicit lookup uses existing authenticated GET endpoints to find saved customers and case titles without an AI call, conversation write, or case creation. Search results and structured live retrieval sources offer explicit case selection, fresh version/ownership/association checks, private original links, and text-only historical artifact inspection. App owns case changes and guards unsaved chat/material/document edits. No IDs or URLs are parsed from assistant prose; saved reply citations remain text-only.
+
+- `npm run check`: passed
+- `npm test`: **325/325 passed**, zero failed/skipped
+- `npm run test:frontend`: **284/284 passed**, zero failed/skipped
+- `npm run build`: passed; existing bundle-size advisory remains
+- Six real HTTP/SQLite + React-DOM tests cover duplicate-title customer choices, malformed IDs, stale versions/associations, cross-user 404 and controlled 403, exact original bytes, escaped historical artifact content/stale labels, repeated clicks, cancellation, hidden/account/case changes, dirty-editor decline/approval, read-only search/empty results, and actual empty-App lookup with live AI disabled. The App retrieval test uses controlled SSE envelopes; it is not provider acceptance.
+- Added a Playwright scenario for actual UI lookup, exact selection and dirty guards. The targeted browser command attempted this and the existing chat workflow scenario, but Chromium failed **before either test body** with `socket() failed: Operation not permitted`. Approved escalation produced the same launch failure. Browser interactions/screenshots remain **not run**; the command failed at environment launch, not a proven product assertion failure.
+- Dependencies already present in this task were reused; `npm ls --depth=0` verified installed package versions. No install, live provider, deployed service, auth/schema/security or document-export changes were made.
+
+Remaining boundaries: ordinary AI first-send still uses the existing durable case/conversation creation flow. Users needing lookup only use the explicit read-only lookup. Full natural-language action planning, combined-branch browser acceptance, remote CI, production acceptance and deployment are not established by this checkpoint. Rollback: revert the source-navigation commit; no data migration is required.
+
 ## Official-reference React migration regression, 2026-10-07
 
 Based on exact main `73255d90826e4934b1f0f489d3ed836e076096ed`, the existing official-source registry was previously reachable only in the legacy UI. The promoted React root now exposes a compact bilingual reference disclosure in chat/materials/documents, separate from case facts. Chat sends an allowlisted reference ID; the server supplies bounded registry observations and explicit case-applicability/version uncertainty to both ordinary and library-assisted requests. No new source assertions, official-form mapping, model, network tool, schema or authorization behavior is added. The registry's recorded check dates are reused, not a claim of fresh source verification in this change.
