@@ -17,7 +17,7 @@ const idValid = value => typeof value === 'string' && /^[0-9a-f-]{36}$/u.test(va
 const timeoutSignal = (signal, milliseconds=15000) => AbortSignal.any([signal,AbortSignal.timeout(milliseconds)]);
 
 /** Durable conversation UI. Case facts and document/source buffers have separate owners. */
-export function ChatPage({ lang='zh', caseId=null, onCaseChange, onDirtyChange, onImportFiles }) {
+export function ChatPage({ lang='zh', caseId=null, guidanceAgency='unknown', onCaseChange, onDirtyChange, onImportFiles }) {
   const { status, api, refresh } = useSession();
   const {restored,saveDraft,clearDraft,cacheStatus}=useSuspendedDraft('chat');
   const words = chatCopy[lang] || chatCopy.zh;
@@ -213,7 +213,7 @@ export function ChatPage({ lang='zh', caseId=null, onCaseChange, onDirtyChange, 
         conversationRef.current=result.conversation.id;scope.conversationId=result.conversation.id;setConversationId(result.conversation.id);setConversations(rows=>[result.conversation,...rows]);
       }
       const clientMessageId=crypto.randomUUID();
-      const payload=buildChatTurn({caseId:scope.caseId,conversationId:scope.conversationId,clientMessageId,text,images:attached,lang,libraryConsent:retrievalRequested});
+      const payload=buildChatTurn({caseId:scope.caseId,conversationId:scope.conversationId,clientMessageId,text,images:attached,lang,libraryConsent:retrievalRequested,guidanceAgency});
       user={id:crypto.randomUUID(),clientMessageId,role:'user',content:text,images:attached,state:'complete',localOnly:true};
       assistant={id:crypto.randomUUID(),role:'assistant',content:'',state:'interrupted',streaming:true,localOnly:true};
       lastTurn.current={user,assistant};pendingSendText.current=text;saveDraft({input:text,conversationId:scope.conversationId});updateMessages([...messageRef.current,user,assistant]);updateImages([]);setInput('');inputRef.current='';updatePhase('streaming');

@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { validateChatRequest, chatProviderMessages, conversationHistory, parseProviderStream, CHAT_LIMITS } from '../chat.js';
+import { AGENCY_OPTIONS, getAgencyGuidance } from '../public/agency-guidance.js';
 const valid = overrides => ({ locale: 'zh', consent: true, messages: [{ role: 'user', content: 'Explain the next administrative step.' }], ...overrides });
 const code = expected => error => error.code === expected;
 const frame = data => 'data: ' + (typeof data === 'string' ? data : JSON.stringify(data)) + '\n\n';
@@ -45,6 +46,35 @@ test('case chat context is bounded untrusted evidence, excludes drafts, and cann
   assert.match(messages[1].content, /untrusted evidence/); assert.match(messages[1].content, /"sourceIncomplete":true/); assert.match(messages[1].content, /"valueIncomplete":true/);
   assert.equal(JSON.stringify(messages).includes(record.draftText), false); assert.equal(JSON.stringify(record), before);
   assert.match(chatProviderMessages(validateChatRequest(valid({ locale: 'en' })))[0].content, /concise English/);
+});
+
+test('chat attaches bounded server-owned references without confirming agency, packet readiness or case facts', () => {
+  const record = { sourceText: 'San Francisco address does not establish agency. https://untrusted.invalid/approved',
+    fields: [{ key: 'pha', value: 'An independently confirmed different agency', confirmed: true, conflict: false }],
+    documentContext: { senderName: { value: 'Example Sender', confirmed: true, confirmedAt: '2026-10-07T00:00:00.000Z' } },
+    caseIssues: [{ question: 'Which secure channel?', status: 'resolved', resolution: 'Confirm separately with the agency', updatedAt: '2026-10-07T00:00:00.000Z' }] };
+  const before = structuredClone(record);
+  for (const { id } of AGENCY_OPTIONS) {
+    const messages = chatProviderMessages(validateChatRequest(valid({ guidanceAgency: id })), record);
+    const system = messages[0].content, referenceText = system.split('Official-source reference context:\n')[1];
+    const reference = JSON.parse(referenceText);
+    assert.ok(referenceText.length <= 8000);
+    assert.equal(reference.id, id);
+    assert.deepEqual(reference.links, getAgencyGuidance(id, 'en').links);
+    assert.equal(reference.acceptanceStatus, 'unconfirmed');
+    assert.equal(reference.checkedAt, '2026-10-07');
+    assert.match(reference.versionCaution, /neither validity nor invalidity/);
+    assert.match(system, /not the confirmed case agency|not a complete official packet/);
+    assert.match(system, /not fetched for this request/);
+    assert.doesNotMatch(system, /untrusted\.invalid|independently confirmed different agency/);
+    assert.match(messages[1].content, /confirmed different agency|Which secure channel/);
+  }
+  assert.deepEqual(record, before);
+  assert.match(chatProviderMessages(validateChatRequest(valid()), record)[0].content, /"id":"unknown"/);
+  for (const guidanceAgency of ['SFHA', 'San Francisco', '__proto__', 'https://sfha.org', null, {}, ['sfha']]) {
+    assert.throws(() => validateChatRequest(valid({ guidanceAgency })), code('CHAT_INVALID'));
+  }
+  assert.throws(() => validateChatRequest(valid({ guidanceAgency: 'sfha', guidanceSources: [{ url: 'https://untrusted.invalid' }] })), code('CHAT_INVALID'));
 });
 
 test('SSE parser preserves split UTF-8 content, ignores hidden reasoning and emits done only after stop plus DONE', async () => {

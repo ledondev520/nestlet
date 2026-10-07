@@ -13,11 +13,19 @@ test('chat starts with a genuinely empty saved case and never injects source fac
 });
 test('persistent payload contains one new user turn, fixed consent and IDs, not browser history or previews',()=>{
   const identity=ids();const payload=buildChatTurn({...identity,text:'A new question',lang:'en',images:[{mimeType:'image/png',data:'YWJjZA==',preview:'blob:local',id:'local'}]});
-  assert.deepEqual(payload,{...identity,locale:'en',consent:true,messages:[{role:'user',content:'A new question',images:[{mimeType:'image/png',data:'YWJjZA=='}]}]});
+  assert.deepEqual(payload,{...identity,locale:'en',consent:true,guidanceAgency:'unknown',messages:[{role:'user',content:'A new question',images:[{mimeType:'image/png',data:'YWJjZA=='}]}]});
   assert.throws(()=>buildChatTurn({...identity,conversationId:null,text:'Question'}),{code:'CHAT_INVALID'});
   assert.throws(()=>buildChatTurn({...identity,text:''}),{code:'CHAT_EMPTY'});
   assert.throws(()=>buildChatTurn({...identity,text:'x'.repeat(8001)}),{code:'CHAT_TOO_LARGE'});
   assert.throws(()=>buildChatTurn({...identity,text:'Q',images:Array(3).fill({mimeType:'image/png',data:'YWJjZA=='})}),{code:'CHAT_TOO_LARGE'});
+});
+test('chat sends only an allowlisted reference choice, never reference prose or case confirmation',()=>{
+  const identity=ids();
+  const payload=buildChatTurn({...identity,text:'Which packet should I confirm?',guidanceAgency:'sfha',guidanceSources:[{url:'https://untrusted.invalid'}]});
+  assert.equal(payload.guidanceAgency,'sfha');
+  assert.equal('guidanceSources' in payload,false);
+  assert.equal('fields' in payload,false);
+  for(const guidanceAgency of ['SFHA','San Francisco',null,{},'__proto__'])assert.throws(()=>buildChatTurn({...identity,text:'Question',guidanceAgency}),{code:'CHAT_INVALID'});
 });
 test('real PNG header dimensions are checked before browser decoding, with explicit format and byte limits',()=>{
   const png=new Uint8Array(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j3ioAAAAASUVORK5CYII=','base64'));

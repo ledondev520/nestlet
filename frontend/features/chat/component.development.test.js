@@ -8,7 +8,7 @@ const identity={userId:randomUUID(),authenticated:true,role:'trial',csrfToken:'p
 const response=(body,status=200,headers={})=>new Response(JSON.stringify(body),{status,headers:{'Content-Type':'application/json',...headers}});
 const deferred=()=>{let resolve;const promise=new Promise(done=>resolve=done);return{promise,resolve};};
 const tick=()=>new Promise(resolve=>setTimeout(resolve,0));
-async function mount({caseId=null,fetchHandler,status=identity,recovery=null}={}){
+async function mount({caseId=null,fetchHandler,status=identity,recovery=null,guidanceAgency='unknown'}={}){
   const dom=new JSDOM('<!doctype html><div id="root"></div>',{url:'http://localhost/next/',pretendToBeVisual:true});
   const original=new Map(); const set=(key,value)=>{original.set(key,Object.getOwnPropertyDescriptor(globalThis,key));Object.defineProperty(globalThis,key,{configurable:true,writable:true,value});};
   for(const key of ['window','document','navigator','HTMLElement','Element','Node','MutationObserver','Event','MouseEvent'])set(key,dom.window[key]);
@@ -25,7 +25,7 @@ async function mount({caseId=null,fetchHandler,status=identity,recovery=null}={}
   if(recovery){draftVault.verifyUser(status.userId);assert.equal(draftVault.write({userId:status.userId,workspaceKey,feature:'chat'},recovery),true);draftVault.suspend(status.userId);}
   const root=createRoot(dom.window.document.getElementById('root'));
   let selected=caseId,sessionApi;
-  function Workspace(){const session=useSession();sessionApi=session;return session.status.authenticated?React.createElement(DraftWorkspaceProvider,{userId:session.status.userId,workspaceKey},React.createElement(ChatPage,{lang:'en',caseId:selected,onCaseChange:id=>{selected=id;root.render(render());}})):null;}
+  function Workspace(){const session=useSession();sessionApi=session;return session.status.authenticated?React.createElement(DraftWorkspaceProvider,{userId:session.status.userId,workspaceKey},React.createElement(ChatPage,{lang:'en',caseId:selected,guidanceAgency,onCaseChange:id=>{selected=id;root.render(render());}})):null;}
   const render=()=>React.createElement(SessionProvider,null,React.createElement(Workspace));
   await React.act(async()=>{root.render(render());await tick();});
   const flush=async()=>{await React.act(async()=>{await tick();});};
@@ -74,7 +74,7 @@ test('development React: a late prior-case conversation read cannot populate the
 test('development React: first send persists case and conversation, then sends only the new user turn',async context=>{
   const caseId=randomUUID(),conversationId=randomUUID(),userMessageId=randomUUID(),assistantMessageId=randomUUID(),requestId=randomUUID();let clientMessageId;
   const frame=(name,value)=>`event: ${name}\ndata: ${JSON.stringify(value)}\n\n`;
-  const app=await mount({fetchHandler:async(path,options)=>{
+  const app=await mount({guidanceAgency:'sfha',fetchHandler:async(path,options)=>{
     if(path==='/api/cases'&&options.method==='POST')return response({case:{id:caseId,title:'Synthetic stored case'}});
     if(path===`/api/cases/${caseId}/conversations`&&options.method==='POST')return response({conversation:{id:conversationId,caseId,title:'Synthetic conversation'}});
     if(path==='/api/chat'){
@@ -89,6 +89,8 @@ test('development React: first send persists case and conversation, then sends o
   const posts=app.requests.filter(item=>item.options.method==='POST');assert.equal(posts.filter(item=>item.path==='/api/workflows').length,1,'Case observation starts at most one metadata workflow');
   const calls=posts.filter(item=>item.path!=='/api/workflows');assert.deepEqual(calls.map(item=>item.path),['/api/cases',`/api/cases/${caseId}/conversations`,'/api/chat']);
   const payload=JSON.parse(calls.at(-1).options.body);assert.equal(payload.caseId,caseId);assert.equal(payload.conversationId,conversationId);assert.deepEqual(payload.messages,[{role:'user',content:'Only this new question'}]);assert.ok(payload.clientMessageId);
+  assert.equal(payload.guidanceAgency,'sfha');assert.equal('guidanceSources' in payload,false);
+  const savedCase=JSON.parse(calls[0].options.body);assert.deepEqual(savedCase.fields,[]);assert.equal('guidanceAgency' in savedCase,false);
   assert.equal(app.dom.window.document.querySelector('textarea').value,'');assert.match(app.dom.window.document.body.textContent,/Authored stream fixture; not a live provider result/);
   assert.equal(app.requests.some(item=>item.options.method==='PUT'),false);
 });

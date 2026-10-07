@@ -1,4 +1,5 @@
 import { normalizeLibraryActivity, normalizeLibrarySources } from './retrieval.js';
+import { AGENCY_OPTIONS } from '../../../public/agency-guidance.js';
 /** Bounded chat protocol helpers. No provider simulation or browser persistence. */
 export const CHAT_BOUNDS = Object.freeze({ text: 8000, output: 64000, images: 2, imageBytes: 2 * 1024 * 1024, imageSide: 8192 });
 export class ChatClientError extends Error {
@@ -34,7 +35,8 @@ export function imageDimensions(bytes, mimeType) {
   if(!width||!height||width>CHAT_BOUNDS.imageSide||height>CHAT_BOUNDS.imageSide)fail('CHAT_IMAGE_INVALID');
   return {width,height};
 }
-export function buildChatTurn({ caseId, conversationId, clientMessageId, text, images = [], lang = 'zh', libraryConsent = false }) {
+export function buildChatTurn({ caseId, conversationId, clientMessageId, text, images = [], lang = 'zh', libraryConsent = false, guidanceAgency = 'unknown' }) {
+  if (!AGENCY_OPTIONS.some(option => option.id === guidanceAgency)) fail('CHAT_INVALID');
   if (typeof libraryConsent !== 'boolean' || !uuid(caseId) || !uuid(conversationId) || !uuid(clientMessageId) || !['zh', 'en'].includes(lang) || typeof text !== 'string' || /\u0000/u.test(text)) fail('CHAT_INVALID');
   if (text.length > CHAT_BOUNDS.text || !Array.isArray(images) || images.length > CHAT_BOUNDS.images) fail('CHAT_TOO_LARGE');
   if (!text.trim() && !images.length) fail('CHAT_EMPTY');
@@ -42,7 +44,7 @@ export function buildChatTurn({ caseId, conversationId, clientMessageId, text, i
     if (!['image/png', 'image/jpeg'].includes(image.mimeType) || typeof image.data !== 'string' || !image.data || image.data.length > Math.ceil(CHAT_BOUNDS.imageBytes / 3) * 4 || !/^[A-Za-z0-9+/]+={0,2}$/u.test(image.data)) fail('CHAT_IMAGE_INVALID');
     return { mimeType: image.mimeType, data: image.data };
   });
-  return { caseId, conversationId, clientMessageId, locale: lang, consent: true, ...(libraryConsent ? {libraryConsent:true} : {}),
+  return { caseId, conversationId, clientMessageId, locale: lang, consent: true, guidanceAgency, ...(libraryConsent ? {libraryConsent:true} : {}),
     messages: [{ role: 'user', content: text, ...(cleanImages.length ? { images: cleanImages } : {}) }] };
 }
 export function normalizeMessages(messages) {
