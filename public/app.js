@@ -5,7 +5,8 @@ const copy = {
   zh: {
     workspaceTitle: '从材料到英文草稿', safeShort: '仅限虚构或去标识化资料', inputShort: '放入材料', sampleShort: '试用示例', pasteShort: '或在这里粘贴去标识化文本…', inputHelp: '支持格式与处理方式', nextReview: 'AI 提取并核对', reviewShort: '核对五项事实', sourceHint: '原文可展开查看', check: '确认', editedShort: '人工修改 · 查看出处', missingShort: '待补充：', missingScope: '仅表示本次材料未提供，并非机构缺件通知', nextHelp: '后续事项与导出说明', draftTypeShort: '草稿类型', backInput: '返回材料', backReview: '返回核对', gateShort: '请确认每一项；未知信息可保留空白', draftShort: '可直接编辑。辅助文书，非官方表格；请人工复核后使用。', footerShort: '仅生成草稿 · 不自动发送或提交',
     chatEmpty: '可以直接提问下一步怎么走，或粘贴案例材料后发送。图片与材料也可以拖拽进来。', chatSend: '发送', chatStop: '停止', chatRetry: '重试', chatStreaming: '正在回复…', chatAttachImage: '添加图片', chatImageOnly: '请协助分析附图内容。', chatImageBad: '仅支持 PNG / JPEG 图片，最多 2 张，每张不超过 2 MB、边长不超过 8192 像素。', chatTooLong: '单次对话消息最长 8,000 字符；更长的材料请直接使用提取与核对流程。', chatIncomplete: '回复中断，以上内容不完整。可重试。', errorChat: '对话请求失败。可重试；已输入的内容不会丢失。', chatConsent: '继续会把对话内容、当前材料与所附图片发送给 DeepSeek。仅限虚构或去标识化资料。你是否已确认数据处理条款和授权，并同意发送？', chatYou: '你', chatAssistant: '巢小秘', chatRemoveImage: '移除图片',
-    errorClientInvalid: '客户信息不符合要求，请检查后重试。', errorClientNotFound: '未找到该客户，可能已被删除。', errorClientConflict: '该客户记录已在别处更新。当前输入已保留，请刷新核对后再试。', errorConversationInvalid: '对话内容不符合要求。', errorConversationNotFound: '未找到该对话。', errorMessageInvalid: '消息格式无效。', errorChatBusy: '该对话正在处理上一条回复，请稍候。', errorChatTurnExists: '该轮回复已存在，请刷新查看。', errorChatSaveFailed: '对话保存失败；当前内容未丢失，可重试。', errorChatProvider: '模型服务暂时不可用，请稍后重试。', errorChatOutput: '回复格式不受支持，未显示。请重试。', errorDocContext: '文档上下文无效。', errorDocConflict: '文档信息已在别处更新。当前修改已保留，请刷新核对。', errorDocDetails: '文档信息不符合要求，请检查必填项。', errorDocRequired: '还有必填信息未完成，请先补齐。', errorDocContent: '文档内容无效。', errorDocPlaceholders: '文档仍含待填占位符，不能标记为完成。', errorArtifactInvalid: '文档产物无效。', errorArtifactNotFound: '未找到该文档产物。', errorArtifactSource: '生成依据不完整，请先补齐材料。', errorCapacity: '存储容量已满，请清理后再试。',
+    errorClientInvalid: '客户信息不符合要求，请检查后重试。', errorClientNotFound: '未找到该客户，可能已被删除。', errorClientConflict: '该客户记录已在别处更新。当前输入已保留，请刷新核对后再试。', errorConversationInvalid: '对话内容不符合要求。', errorConversationNotFound: '未找到该对话。', errorMessageInvalid: '消息格式无效。', errorChatBusy: '该对话正在处理上一条回复，请稍候。', errorChatTurnExists: '该轮回复已存在，请刷新查看。', errorChatSaveFailed: '对话保存失败；当前内容未丢失，可重试。', errorChatProvider: '模型服务暂时不可用，请稍后重试。', errorChatOutput: '回复格式不受支持，未显示。请重试。', errorDocContext: '文档上下文无效。', errorDocConflict: '文档信息已在别处更新。当前修改已保留，请刷新核对。', errorDocDetails: '文档信息不符合要求，请检查必填项。', errorDocRequired: '还有必填信息未完成，请先补齐。', errorDocContent: '文档内容无效。', errorDocPlaceholders: '文档仍含待填占位符，不能标记为完成。', errorArtifactInvalid: '文档产物无效。', errorArtifactNotFound: '未找到该文档产物。', errorArtifactSource: '生成依据不完整，请先补齐材料。', errorCapacity: '存储容量已满，请清理后再试。', errorArtifactStale: '该文档版本基于旧案例内容，已不可直接下载；请重新生成新版本。',
+    customerLabel: '客户', customerSearch: '搜索客户姓名…', customerCreate: '新建客户', customerLinked: '已关联：', conversationLabel: '对话', conversationNew: '新对话', conversationMain: '主对话', artifactSave: '保存文档版本', artifactSavedOk: '文档版本已保存', artifactList: '已存文档版本', artifactDownload: '下载', artifactStaleBadge: '内容已过期', artifactStatusDraft: '草稿', artifactStatusFinal: '完成版', readinessMissing: '生成前请补齐以下信息：', readinessReady: '必填信息已齐备', readinessConfirmAll: '确认并保存', readinessAnswer: '填写…',
     settings: '设置', modelLabel: '模型', endpointLabel: '接口', readyStatus: '提取已启用', configStatus: '尚未启用 AI', backendStatus: '后端未连接', checkingStatus: '正在检查连接', configHelp: '在服务器设置 DEEPSEEK_API_KEY，并将 ENABLE_LIVE_AI 设为 true 后重启。密钥仅保留在服务器，不在浏览器保存。', manualAction: '按标签手动整理', errorConfig: 'DeepSeek 尚未启用。请在设置中查看服务器配置步骤；不会自动切换到模拟结果。', errorBackend: '尚未连接到处理服务器。请启动完整服务后再使用 AI 或文件处理。', filePick: '上传文件', workbookHint: 'Excel 文件上传至服务器读取工作表；需选择单行并确认字段映射。不会执行公式或宏。', workbookConsent: '此 Excel 文件将上传至本服务器以读取工作表和单元格，不会自动发送至 DeepSeek。请确认仅含虚构或去标识化资料。继续？', mapTitle: '选择一行，映射字段', sheetLabel: '工作表', rowLabel: '数据行', columnLabel: '列', skipColumn: '不导入', applyMapping: '确认映射并核对', cancelMapping: '取消导入', errorWorkbook: '无法读取此工作簿。请使用未加密的 XLSX / XLS，或导出为单案例 CSV。', errorMapping: '请选择有效数据行和不重复的列；公式、隐藏或合并单元格不能导入。', workbookLimited: '仅预览前 200 行、50 列；其余内容未载入', workbookBlocked: '部分单元格不可导入，请选择普通可见值',
     operatorSetup: '请先配置操作员账户', operatorSetupHelp: '请在服务器配置 NESTLET_OPERATOR_PASSWORD_HASH 与 HTTPS 的 PUBLIC_ORIGIN，再重启服务。', signInRequired: '请先登录', operatorPassword: '登录密码', signIn: '登录', signOut: '退出登录', refreshStatus: '刷新状态', apiKey: 'DeepSeek API Key', replaceKey: '更换 API Key（可选）', keepExistingKey: '留空以保留现有密钥', saveSettings: '保存设置', enableLive: '启用 DeepSeek 提取', keyMemoryNotice: '网页填写的密钥仅存于服务器内存，服务重启后需重新填写；浏览器不保存密钥。', keyEnvironment: '密钥：服务器环境', keyMemory: '密钥：服务器内存', keyMissing: '尚未配置密钥', testConnection: '测试连接', connectionVerified: '模型访问已验证，尚未测试文本生成', settingsSaved: '设置已保存，连接验证状态单独显示', connectionSuccess: '已确认账户可访问 DeepSeek Flash，未调用文本生成', loginSuccess: '已登录，可继续原来的操作', logoutSuccess: '已退出，工作区已清空；已保存案例仍保留', logoutConfirm: '退出登录会清空工作区，未保存的修改会丢失。已保存的案例仍保留。继续？', errorAuth: '请登录后重新执行刚才的操作。', errorSession: '登录状态已失效，请重新登录。', errorHttps: '密码和密钥设置仅在可信 HTTPS 页面开放。请先完成服务器 HTTPS 配置。', errorCredentials: '用户名或密码不正确，或账户尚未配置。', errorRateLimit: '操作过于频繁，请一分钟后重试。', errorSettings: '设置无效，请检查 API Key 格式。', errorKeyRequired: '请先填写并保存 API Key。', errorConnection: '连接验证失败。请检查密钥和账户访问权限；未测试文本生成。', errorModel: '此账户未返回 DeepSeek Flash 的访问权限，请核实后重试。',
     workflowFocus: '资料参考', localLoginNotice: '本机开发登录。API 密钥的网页录入仍要求已认证的 HTTPS 页面。',
@@ -52,7 +53,8 @@ const copy = {
   en: {
     workspaceTitle: 'From document to English draft', safeShort: 'Synthetic or de-identified information only', inputShort: 'Add your document', sampleShort: 'Try sample', pasteShort: 'Or paste de-identified text here…', inputHelp: 'Formats and processing details', nextReview: 'Extract & review with AI', reviewShort: 'Review five facts', sourceHint: 'Expand a source to check it', check: 'Confirm', editedShort: 'Edited · View source', missingShort: 'To confirm:', missingScope: 'Not provided in this review, not an agency missing-document notice', nextHelp: 'Next steps and export details', draftTypeShort: 'Draft type', backInput: 'Back to document', backReview: 'Back to review', gateShort: 'Confirm every field. Unknown information can stay blank.', draftShort: 'Edit directly. Supplementary draft, not an official form. Review before use.', footerShort: 'Drafts only · Nothing is sent or submitted automatically',
     chatEmpty: 'Ask what to do next, or paste case material and send it. You can also drop files or images here.', chatSend: 'Send', chatStop: 'Stop', chatRetry: 'Retry', chatStreaming: 'Replying…', chatAttachImage: 'Add image', chatImageOnly: 'Please help analyze the attached image(s).', chatImageBad: 'Only PNG / JPEG images, at most 2, each up to 2 MB and 8192 px per side.', chatTooLong: 'A chat message is limited to 8,000 characters. Use the extract & review flow for longer material.', chatIncomplete: 'The reply was interrupted; the content above is incomplete. You can retry.', errorChat: 'The conversation request failed. You can retry; your input is preserved.', chatConsent: 'This sends the conversation, current material and attached images to DeepSeek. Use only synthetic or de-identified information. Have you verified the data-processing terms and authorization, and do you agree to send?', chatYou: 'You', chatAssistant: 'Nestlet', chatRemoveImage: 'Remove image',
-    errorClientInvalid: 'Customer details are invalid. Check and try again.', errorClientNotFound: 'Customer not found. It may have been deleted.', errorClientConflict: 'This customer record changed elsewhere. Your input is preserved; reload to reconcile and retry.', errorConversationInvalid: 'The conversation content is invalid.', errorConversationNotFound: 'Conversation not found.', errorMessageInvalid: 'The message is invalid.', errorChatBusy: 'This conversation is still processing the previous reply. Please wait.', errorChatTurnExists: 'That turn already exists. Reload to view it.', errorChatSaveFailed: 'Saving the conversation failed; your content is intact. You can retry.', errorChatProvider: 'The model provider is temporarily unavailable. Try again later.', errorChatOutput: 'The reply format is unsupported and was hidden. Please retry.', errorDocContext: 'The document context is invalid.', errorDocConflict: 'Document details changed elsewhere. Your edits are preserved; reload to reconcile.', errorDocDetails: 'Document details are invalid. Check the required items.', errorDocRequired: 'Required information is still missing. Complete it first.', errorDocContent: 'The document content is invalid.', errorDocPlaceholders: 'The document still contains placeholders and cannot be marked final.', errorArtifactInvalid: 'The artifact is invalid.', errorArtifactNotFound: 'Artifact not found.', errorArtifactSource: 'The source material is incomplete. Add it first.', errorCapacity: 'Storage capacity is reached. Free space and retry.',
+    errorClientInvalid: 'Customer details are invalid. Check and try again.', errorClientNotFound: 'Customer not found. It may have been deleted.', errorClientConflict: 'This customer record changed elsewhere. Your input is preserved; reload to reconcile and retry.', errorConversationInvalid: 'The conversation content is invalid.', errorConversationNotFound: 'Conversation not found.', errorMessageInvalid: 'The message is invalid.', errorChatBusy: 'This conversation is still processing the previous reply. Please wait.', errorChatTurnExists: 'That turn already exists. Reload to view it.', errorChatSaveFailed: 'Saving the conversation failed; your content is intact. You can retry.', errorChatProvider: 'The model provider is temporarily unavailable. Try again later.', errorChatOutput: 'The reply format is unsupported and was hidden. Please retry.', errorDocContext: 'The document context is invalid.', errorDocConflict: 'Document details changed elsewhere. Your edits are preserved; reload to reconcile.', errorDocDetails: 'Document details are invalid. Check the required items.', errorDocRequired: 'Required information is still missing. Complete it first.', errorDocContent: 'The document content is invalid.', errorDocPlaceholders: 'The document still contains placeholders and cannot be marked final.', errorArtifactInvalid: 'The artifact is invalid.', errorArtifactNotFound: 'Artifact not found.', errorArtifactSource: 'The source material is incomplete. Add it first.', errorCapacity: 'Storage capacity is reached. Free space and retry.', errorArtifactStale: 'This artifact version is based on older case content and cannot be downloaded directly; generate a fresh version.',
+    customerLabel: 'Customer', customerSearch: 'Search customer names…', customerCreate: 'Create customer', customerLinked: 'Linked: ', conversationLabel: 'Conversation', conversationNew: 'New', conversationMain: 'Main conversation', artifactSave: 'Save document version', artifactSavedOk: 'Document version saved', artifactList: 'Saved document versions', artifactDownload: 'Download', artifactStaleBadge: 'Stale', artifactStatusDraft: 'Draft', artifactStatusFinal: 'Final', readinessMissing: 'Before generating, please supply:', readinessReady: 'All required information is present', readinessConfirmAll: 'Confirm & save', readinessAnswer: 'Answer…',
     settings: 'Settings', modelLabel: 'Model', endpointLabel: 'Endpoint', readyStatus: 'Extraction enabled', configStatus: 'AI is not enabled', backendStatus: 'Backend not connected', checkingStatus: 'Checking connection', configHelp: 'Set DEEPSEEK_API_KEY and ENABLE_LIVE_AI=true on the server, then restart. Credentials stay on the server and are never stored in the browser.', manualAction: 'Process labels manually', errorConfig: 'DeepSeek is not enabled. Open Settings for server configuration steps. No simulated result will be substituted.', errorBackend: 'The processing backend is not connected. Start the complete service before using AI or server-side file processing.', filePick: 'Upload a file', workbookHint: 'Excel files are read on the server. Select one row and confirm the field mapping. Formulas and macros are not executed.', workbookConsent: 'This Excel file will be uploaded to the server to read worksheets and cells, not automatically sent to DeepSeek. Confirm that it contains only synthetic or de-identified information. Continue?', mapTitle: 'Choose one row and map its fields', sheetLabel: 'Worksheet', rowLabel: 'Data row', columnLabel: 'Column', skipColumn: 'Skip this field', applyMapping: 'Confirm mapping & review', cancelMapping: 'Cancel import', errorWorkbook: 'Could not read this workbook. Use an unencrypted XLSX / XLS file, or export one case as CSV.', errorMapping: 'Choose a valid row and distinct columns. Formula, hidden, or merged cells cannot be imported.', workbookLimited: 'Preview limited to the first 200 rows and 50 columns', workbookBlocked: 'Some cells cannot be imported. Choose ordinary visible values.',
     operatorSetup: 'Operator setup required', operatorSetupHelp: 'Configure NESTLET_OPERATOR_PASSWORD_HASH and an HTTPS PUBLIC_ORIGIN on the server, then restart.', signInRequired: 'Sign in to continue', operatorPassword: 'Access password', signIn: 'Sign in', signOut: 'Sign out', refreshStatus: 'Refresh status', apiKey: 'DeepSeek API Key', replaceKey: 'Replace API key (optional)', keepExistingKey: 'Leave blank to keep the existing key', saveSettings: 'Save settings', enableLive: 'Enable DeepSeek extraction', keyMemoryNotice: 'Keys entered here stay only in server memory and must be entered again after a server restart. The browser does not store them.', keyEnvironment: 'Key: server environment', keyMemory: 'Key: server memory', keyMissing: 'No key configured', testConnection: 'Test connection', connectionVerified: 'Model access verified; text generation not tested', settingsSaved: 'Settings saved. Connection verification is shown separately.', connectionSuccess: 'DeepSeek Flash model access verified. No text generation was called.', loginSuccess: 'Signed in. You can resume your previous action.', logoutSuccess: 'Signed out. The workspace is cleared; saved cases are retained.', logoutConfirm: 'Signing out clears the workspace and loses unsaved changes. Saved cases are retained. Continue?', errorAuth: 'Sign in, then retry your previous action.', errorSession: 'Your session has expired. Sign in again.', errorHttps: 'Password and key settings require a trusted HTTPS page. Configure server HTTPS first.', errorCredentials: 'Incorrect username or password, or the account is not configured.', errorRateLimit: 'Too many attempts. Wait one minute before retrying.', errorSettings: 'Invalid settings. Check the API key format.', errorKeyRequired: 'Enter and save an API key first.', errorConnection: 'Connection verification failed. Check the key and account access. Text generation was not tested.', errorModel: 'DeepSeek Flash was not listed for this account. Verify access before retrying.',
     workflowFocus: 'Reference focus', localLoginNotice: 'Local development sign-in. Browser API-key entry still requires an authenticated HTTPS page.',
@@ -99,7 +101,7 @@ const copy = {
 };
 
 const kinds = DRAFT_TYPES;
-const state = {lang: 'zh', stage: 0, guidanceAgency: DEFAULT_GUIDANCE_AGENCY, guidanceOpen: false, text: '', fields: [], draftText: '', generated: false, error: '', message: '', busy: false, liveEnabled: false, pdfEnabled: false, workbookEnabled: false, workbook: null, sheetIndex: 0, rowIndex: 0, mapping: {}, settingsOpen: false, settingsBusy: false, settingsError: '', settingsMessage: '', authConfigured: false, authenticated: false, role: null, canManageSettings: false, userId: null, workspaceOwnerId: null, username: '', loginUsername: '', authForm: 'login', registrationEnabled: false, secureLogin: false, caseStorageEnabled: false, caseId: null, caseVersion: null, caseTitle: '', savedFingerprint: null, cases: [], selectedCaseId: '', casesOpen: false, caseBusy: false, caseError: '', caseMessage: '', caseEpoch: 0, secureSettings: false, configured: false, csrfToken: '', connectionVerifiedAt: null, keyStorage: 'none', statusChecked: false, statusError: false, model: 'deepseek-flash', providerEndpoint: 'https://api.deepseek.com/chat/completions', mode: 'demo', source: '', sample: false, namesVerified: false, kind: 'followup', generatedKind: 'followup', version: 0, controller: null, chatMessages: [], chatImages: [], chatBusy: false, chatError: '', chatIncomplete: false};
+const state = {lang: 'zh', stage: 0, guidanceAgency: DEFAULT_GUIDANCE_AGENCY, guidanceOpen: false, text: '', fields: [], draftText: '', generated: false, error: '', message: '', busy: false, liveEnabled: false, pdfEnabled: false, workbookEnabled: false, workbook: null, sheetIndex: 0, rowIndex: 0, mapping: {}, settingsOpen: false, settingsBusy: false, settingsError: '', settingsMessage: '', authConfigured: false, authenticated: false, role: null, canManageSettings: false, userId: null, workspaceOwnerId: null, username: '', loginUsername: '', authForm: 'login', registrationEnabled: false, secureLogin: false, caseStorageEnabled: false, caseId: null, caseVersion: null, caseTitle: '', savedFingerprint: null, cases: [], selectedCaseId: '', casesOpen: false, caseBusy: false, caseError: '', caseMessage: '', caseEpoch: 0, secureSettings: false, configured: false, csrfToken: '', connectionVerifiedAt: null, keyStorage: 'none', statusChecked: false, statusError: false, model: 'deepseek-flash', providerEndpoint: 'https://api.deepseek.com/chat/completions', mode: 'demo', source: '', sample: false, namesVerified: false, kind: 'followup', generatedKind: 'followup', version: 0, controller: null, chatMessages: [], chatImages: [], chatBusy: false, chatError: '', chatIncomplete: false, customers: [], customerId: null, customerQuery: '', conversations: [], conversationId: '', artifacts: [], readiness: null, readinessBusy: false};
 let draftEditTracked = false;
 let chatController = null;
 let chatStopRequested = false;
@@ -304,6 +306,7 @@ const authErrorKeys = {
   DOCUMENT_DETAILS_REQUIRED: 'errorDocRequired', DOCUMENT_CONTENT_INVALID: 'errorDocContent', DOCUMENT_ENGLISH_REQUIRED: 'draftEnglishRequired',
   DOCUMENT_PLACEHOLDERS_REMAIN: 'errorDocPlaceholders',
   ARTIFACT_INVALID: 'errorArtifactInvalid', ARTIFACT_NOT_FOUND: 'errorArtifactNotFound', ARTIFACT_SOURCE_INCOMPLETE: 'errorArtifactSource',
+  DOCUMENT_NOT_READY: 'errorDocRequired', ARTIFACT_STALE: 'errorArtifactStale',
   CAPACITY_REACHED: 'errorCapacity'
 };
 function responseError(result, fallback) {
@@ -410,13 +413,13 @@ function updateCaseIndicator() {
 }
 function forgetCaseIdentity() {
   state.caseId = null; state.caseVersion = null; state.caseTitle = ''; state.savedFingerprint = null;
-  state.caseError = ''; state.caseMessage = ''; state.caseEpoch++;
+  state.caseError = ''; state.caseMessage = ''; state.caseEpoch++; state.customerId = null; state.customerQuery = ''; state.conversations = []; state.conversationId = ''; state.artifacts = []; state.readiness = null; state.chatMessages = [];
 }
 function caseControlsMarkup() {
   if (!state.authenticated || !state.caseStorageEnabled) return '';
   const d = t();
   const disabled = state.caseBusy || state.busy ? 'disabled' : '';
-  return `<section class="case-controls" aria-label="${d.savedCases}"><div class="actions"><button id="save-case" class="secondary" ${disabled || !hasCaseContent() ? 'disabled' : ''}>${d.saveCase}</button><details id="case-manager" class="help-details" ${state.casesOpen ? 'open' : ''}><summary>${d.savedCases}</summary><div class="draft-choice"><label for="case-title">${d.caseName}</label><input id="case-title" class="input" maxlength="120" value="${esc(state.caseTitle)}" placeholder="${d.untitledCase}"></div><div class="draft-choice"><label for="saved-case">${d.savedCases}</label><select id="saved-case" ${disabled}><option value="">${d.chooseCase}</option>${state.cases.map(item => `<option value="${esc(item.id)}" ${state.selectedCaseId === item.id ? 'selected' : ''}>${esc(item.title)}</option>`).join('')}</select></div><div class="actions"><button id="open-case" class="secondary" ${disabled || !state.selectedCaseId ? 'disabled' : ''}>${d.openCase}</button><button id="delete-case" class="link" ${disabled || !state.selectedCaseId ? 'disabled' : ''}>${d.deleteCase}</button><button id="refresh-cases" class="link" ${disabled}>${d.refreshStatus}</button></div><p>${d.savedScope}</p></details><span id="case-save-status" class="small" role="status">${caseStatusLabel()}</span></div><div class="error" role="alert">${state.caseError ? d[state.caseError] || d.errorGeneric : ''}</div><div class="success" role="status">${state.caseMessage ? d[state.caseMessage] : ''}</div></section>`;
+  return `<section class="case-controls" aria-label="${d.savedCases}"><div class="actions"><button id="save-case" class="secondary" ${disabled || !hasCaseContent() ? 'disabled' : ''}>${d.saveCase}</button><details id="case-manager" class="help-details" ${state.casesOpen ? 'open' : ''}><summary>${d.savedCases}</summary><div class="draft-choice"><label for="case-title">${d.caseName}</label><input id="case-title" class="input" maxlength="120" value="${esc(state.caseTitle)}" placeholder="${d.untitledCase}"></div><div class="draft-choice"><label for="saved-case">${d.savedCases}</label><select id="saved-case" ${disabled}><option value="">${d.chooseCase}</option>${state.cases.map(item => `<option value="${esc(item.id)}" ${state.selectedCaseId === item.id ? 'selected' : ''}>${esc(item.title)}</option>`).join('')}</select></div><div class="actions"><button id="open-case" class="secondary" ${disabled || !state.selectedCaseId ? 'disabled' : ''}>${d.openCase}</button><button id="delete-case" class="link" ${disabled || !state.selectedCaseId ? 'disabled' : ''}>${d.deleteCase}</button><button id="refresh-cases" class="link" ${disabled}>${d.refreshStatus}</button></div><p>${d.savedScope}</p></details><span id="case-save-status" class="small" role="status">${caseStatusLabel()}</span></div><div class="customer-row"><label for="customer-query">${d.customerLabel}</label><input id="customer-query" class="input" maxlength="120" placeholder="${d.customerSearch}" value="${esc(state.customerQuery)}" ${disabled}><button id="customer-create" class="link" ${disabled || !state.customerQuery.trim() ? 'disabled' : ''}>${d.customerCreate}</button>${state.customerId ? `<span class="small customer-linked">${d.customerLinked}${esc(state.customers.find(c => c.id === state.customerId)?.displayName || state.customerQuery)}</span>` : ''}${state.customers.length ? `<div class="customer-results">${state.customers.map(c => `<button type="button" class="link" data-customer="${esc(c.id)}" data-name="${esc(c.displayName)}">${esc(c.displayName)}</button>`).join('')}</div>` : ''}</div>${state.artifacts.length ? `<div class="artifact-list"><h3>${d.artifactList}</h3>${state.artifacts.map(a => `<div class="artifact-row"><span class="artifact-name">${esc(a.title || a.kind)} · v${a.version}</span><span class="field-status">${a.status === 'final' ? d.artifactStatusFinal : d.artifactStatusDraft}</span>${a.isStale ? `<span class="field-status warning">${d.artifactStaleBadge}</span>` : ''}<a class="link" href="/api/artifacts/${esc(a.id)}/download">${d.artifactDownload}</a></div>`).join('')}</div>` : ''}<div class="error" role="alert">${state.caseError ? d[state.caseError] || d.errorGeneric : ''}</div><div class="success" role="status">${state.caseMessage ? d[state.caseMessage] : ''}</div></section>`;
 }
 const caseErrorKeys = {CASE_LIMIT_REACHED: 'errorCaseLimit', CASE_NOT_FOUND: 'errorCaseNotFound', CASE_INVALID: 'errorCaseInvalid', CASE_TOO_LARGE: 'errorCaseTooLarge', CASE_CONFLICT: 'errorCaseConflict', CASE_STORAGE_UNAVAILABLE: 'errorCaseStorage'};
 async function caseRequest(path, method = 'GET', payload) {
@@ -455,12 +458,13 @@ async function saveCurrentCase() {
   state.caseBusy = true; state.caseError = ''; state.caseMessage = ''; render();
   try {
     const saveStart = performance.now();
-    const result = await caseRequest(id ? `/api/cases/${encodeURIComponent(id)}` : '/api/cases', id ? 'PUT' : 'POST', {...payload, ...(id ? {expectedVersion: state.caseVersion} : {})});
+    const result = await caseRequest(id ? `/api/cases/${encodeURIComponent(id)}` : '/api/cases', id ? 'PUT' : 'POST', {...payload, clientId: state.customerId || null, ...(id ? {expectedVersion: state.caseVersion} : {})});
     if (!validCaseRecord(result.case)) throw new Error('errorCaseStorage');
     if (userId === state.userId && epoch === state.caseEpoch) {
       state.caseId = result.case.id; state.caseVersion = result.case.version; state.savedFingerprint = fingerprint;
       state.selectedCaseId = result.case.id; state.caseMessage = 'caseSaveSuccess';
       track('case.save', 'success', {waitMs: Math.round(performance.now() - saveStart)});
+      await loadCaseExtras();
     }
     await refreshCaseList(false);
   } catch (error) {if (userId === state.userId && epoch === state.caseEpoch) {state.caseError = copy.en[error.message] ? error.message : 'errorCaseStorage'; track('case.save', 'failure', {errorCode: 'UNKNOWN_CLIENT_ERROR'});}}
@@ -486,8 +490,11 @@ async function openSavedCase() {
     state.mode = record.extractionMode === 'live' ? 'live' : 'demo';
     state.caseId = record.id; state.caseVersion = record.version; state.caseTitle = record.title;
     state.savedFingerprint = caseFingerprint(); state.stage = state.generated ? 2 : state.fields.length ? 1 : 0;
+    state.customerId = typeof record.clientId === 'string' ? record.clientId : null;
+    state.customerQuery = '';
     state.caseMessage = 'caseOpened';
     track('case.open', 'success', {waitMs: Math.round(performance.now() - openStart)});
+    await loadCaseExtras();
   } catch (error) {if (userId === state.userId) {state.caseError = copy.en[error.message] ? error.message : 'errorCaseStorage'; track('case.open', 'failure', {errorCode: 'UNKNOWN_CLIENT_ERROR'});}}
   finally {state.caseBusy = false; render();}
 }
@@ -506,6 +513,89 @@ async function deleteSavedCase() {
     await refreshCaseList(false);
   } catch (error) {if (userId === state.userId) {state.caseError = copy.en[error.message] ? error.message : 'errorCaseStorage'; track('case.delete', 'failure', {errorCode: 'UNKNOWN_CLIENT_ERROR'});}}
   finally {state.caseBusy = false; render();}
+}
+
+
+/** Customer library, durable conversations, artifacts and document readiness —
+    docs/customer-case-api.md v1. All routes go through caseRequest (session,
+    CSRF, telemetry headers, mapped bilingual errors). */
+async function loadCustomers(search = '') {
+  if (!state.authenticated || !state.caseStorageEnabled) return;
+  try {
+    const result = await caseRequest('/api/clients?limit=50' + (search ? `&search=${encodeURIComponent(search)}` : ''));
+    if (Array.isArray(result.clients)) state.customers = result.clients;
+  } catch { /* listing failure keeps current state */ }
+}
+async function createCustomer() {
+  const name = state.customerQuery.trim();
+  if (!name || state.caseBusy) return;
+  try {
+    const result = await caseRequest('/api/clients', 'POST', {displayName: name});
+    if (result.client?.id) {
+      state.customerId = result.client.id;
+      state.customerQuery = result.client.displayName;
+      await loadCustomers();
+    }
+  } catch (error) {state.caseError = copy.en[error.message] ? error.message : 'errorClientInvalid';}
+  render();
+}
+async function selectConversation(id) {
+  state.conversationId = id;
+  if (!id) {state.chatMessages = []; render(); return;}
+  try {
+    const result = await caseRequest(`/api/conversations/${encodeURIComponent(id)}`);
+    state.chatMessages = (result.messages || []).map(m => ({role: m.role, content: m.content, incomplete: m.state !== 'complete'}));
+  } catch { /* keep current thread */ }
+  render();
+}
+async function loadReadiness() {
+  if (!state.caseId) {state.readiness = null; return;}
+  try {
+    state.readiness = await caseRequest(`/api/cases/${encodeURIComponent(state.caseId)}/readiness?kind=${state.kind}&locale=${state.lang}`);
+  } catch { state.readiness = null; }
+}
+async function loadCaseExtras() {
+  if (!state.caseId) return;
+  try {
+    const result = await caseRequest(`/api/cases/${encodeURIComponent(state.caseId)}/conversations`);
+    state.conversations = Array.isArray(result.conversations) ? result.conversations : [];
+    if (!state.conversationId && state.conversations.length) await selectConversation(state.conversations[0].id);
+  } catch { /* conversations unavailable */ }
+  try {
+    const result = await caseRequest(`/api/cases/${encodeURIComponent(state.caseId)}/artifacts`);
+    state.artifacts = Array.isArray(result.artifacts) ? result.artifacts : [];
+  } catch { /* artifacts unavailable */ }
+  await loadReadiness();
+}
+async function saveArtifact() {
+  if (!state.caseId || !state.generated || draftNeedsEnglish()) return;
+  try {
+    const result = await caseRequest(`/api/cases/${encodeURIComponent(state.caseId)}/artifacts`, 'POST',
+      {kind: state.generatedKind, status: 'draft', content: exportDraft(), expectedCaseVersion: state.caseVersion});
+    if (result.artifact?.id) {
+      state.artifacts = [result.artifact, ...state.artifacts];
+      state.message = 'artifactSavedOk';
+    }
+  } catch (error) {state.caseError = copy.en[error.message] ? error.message : 'errorArtifactInvalid';}
+  render();
+}
+async function confirmReadiness() {
+  if (!state.caseId || state.readinessBusy) return;
+  const changes = {};
+  document.querySelectorAll('[data-readiness]').forEach(el => {
+    const value = el.value.trim();
+    if (value) changes[el.dataset.readiness] = {value};
+  });
+  if (!Object.keys(changes).length) return;
+  state.readinessBusy = true; render();
+  try {
+    const result = await caseRequest(`/api/cases/${encodeURIComponent(state.caseId)}/document-context`, 'PATCH',
+      {changes, confirm: true, expectedVersion: state.caseVersion});
+    if (result.case && Number.isInteger(result.case.version)) state.caseVersion = result.case.version;
+    state.readiness = result.readiness || null;
+    state.caseMessage = 'caseSaveSuccess';
+  } catch (error) {state.caseError = copy.en[error.message] ? error.message : 'errorDocDetails';}
+  finally {state.readinessBusy = false; render();}
 }
 
 function agencyMarkup() {
@@ -551,6 +641,7 @@ function render() {
     ${caseControlsMarkup()}
     <main id="main" class="grid" ${stage === 2 ? 'hidden' : ''}>
       <section class="panel" id="input-panel" ${stage !== 0 ? 'hidden' : ''}><div class="panel-top"><h2>${d.inputShort}</h2></div>
+        ${state.caseId ? `<div class="conversation-bar"><label for="conversation-select">${d.conversationLabel}</label><select id="conversation-select" ${state.chatBusy || !state.conversations.length ? 'disabled' : ''}>${state.conversations.map(c => `<option value="${esc(c.id)}" ${c.id === state.conversationId ? 'selected' : ''}>${esc(c.title || d.conversationMain)}</option>`).join('')}</select><button id="conversation-new" class="link" ${state.chatBusy ? 'disabled' : ''}>${d.conversationNew}</button></div>` : ''}
         ${chatThread}
         <label class="file ${busy ? 'disabled' : ''}"><span aria-hidden="true">↥</span><span>${d.filePick}<small class="file-formats">TXT · CSV${state.pdfEnabled ? ' · PDF' : ''}${state.workbookEnabled ? ' · XLSX · XLS' : ''}</small></span><input type="file" id="file" accept=".txt,.csv,text/plain,text/csv${state.pdfEnabled ? ',.pdf,application/pdf' : ''}${state.workbookEnabled ? ',.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel' : ''}" ${busy ? 'disabled' : ''}></label>
         <details class="help-details" id="sample-downloads"><summary>${d.sampleDownloads}</summary><div class="actions">${['txt', 'csv', 'pdf', 'xlsx', 'xls'].map(extension => `<a href="/samples/nestlet-synthetic-case.${extension}" download="nestlet-synthetic-case.${extension}">${extension.toUpperCase()}</a>`).join('')}</div><p>${d.sampleDownloadHint}</p><p>${d.sampleWorkbookHint}</p></details>
@@ -571,11 +662,12 @@ function render() {
         ${agencyMarkup()}
         ${nameFields().length ? `<label class="confirm name-preflight"><input type="checkbox" id="names-verified" ${state.namesVerified ? 'checked' : ''} ${busy ? 'disabled' : ''}>${d.nameReview}</label>` : ''}
         <div class="draft-choice"><label for="draft-type">${d.draftTypeShort}</label><select id="draft-type" ${busy ? 'disabled' : ''}>${kinds.map((kind, index) => `<option value="${kind}" ${state.kind === kind ? 'selected' : ''}>${d.types[index]}</option>`).join('')}</select></div>
+        ${state.caseId && state.readiness ? (Array.isArray(state.readiness.missing) && state.readiness.missing.length ? `<div class="readiness"><p class="readiness-title">${d.readinessMissing}</p>${state.readiness.missing.map(m => `<label class="readiness-item"><span>${esc(m.question || m.key)}</span><input class="input" data-readiness="${esc(m.key)}" placeholder="${d.readinessAnswer}" ${state.readinessBusy ? 'disabled' : ''}></label>`).join('')}<button id="readiness-confirm" class="secondary" ${state.readinessBusy ? 'disabled' : ''}>${d.readinessConfirmAll}</button></div>` : `<p class="small readiness-ready">${d.readinessReady}</p>`) : ''}
         <div class="actions"><button id="generate" class="primary" ${canDraft(fields) && !needsEnglish && !busy ? '' : 'disabled'}>${d.generate} →</button><button id="csv" class="link">${d.csv}</button><button id="review-back" class="link push-right">${d.backInput}</button></div>
         ${needsEnglish || !canDraft(fields) ? `<p class="small gate">${needsEnglish ? d.englishRequired : d.gateShort}</p>` : ''}
       </section>
     </main>
-    ${state.generated ? `<section class="panel draft-panel" id="draft-panel" ${stage !== 2 ? 'hidden' : ''}><div class="panel-top"><h2>${d.types[kinds.indexOf(state.generatedKind)]}</h2><span class="draft-tag">ENGLISH · DRAFT</span></div><p class="caption">${d.draftShort}</p><label for="draft" class="sr-only">English draft</label><textarea id="draft" class="input draft" lang="en" spellcheck="true">${esc(state.draftText)}</textarea><div class="print-text" hidden lang="en">${esc(exportDraft())}</div><div class="actions"><button id="copy" class="primary" ${draftNeedsEnglish() ? 'disabled' : ''}>${d.copy}</button><button id="download" class="secondary" ${draftNeedsEnglish() ? 'disabled' : ''}>${d.download}</button><button id="print" class="ghost" ${draftNeedsEnglish() ? 'disabled' : ''}>${d.print}</button><button id="draft-back" class="link push-right">${d.backReview}</button></div><p class="error" id="draft-language-error" role="status">${draftNeedsEnglish() ? d.draftEnglishRequired : ''}</p><div class="success" role="status">${['copied', 'copyFail'].includes(state.message) ? d[state.message] : ''}</div></section>` : ''}
+    ${state.generated ? `<section class="panel draft-panel" id="draft-panel" ${stage !== 2 ? 'hidden' : ''}><div class="panel-top"><h2>${d.types[kinds.indexOf(state.generatedKind)]}</h2><span class="draft-tag">ENGLISH · DRAFT</span></div><p class="caption">${d.draftShort}</p><label for="draft" class="sr-only">English draft</label><textarea id="draft" class="input draft" lang="en" spellcheck="true">${esc(state.draftText)}</textarea><div class="print-text" hidden lang="en">${esc(exportDraft())}</div><div class="actions"><button id="copy" class="primary" ${draftNeedsEnglish() ? 'disabled' : ''}>${d.copy}</button><button id="download" class="secondary" ${draftNeedsEnglish() ? 'disabled' : ''}>${d.download}</button><button id="print" class="ghost" ${draftNeedsEnglish() ? 'disabled' : ''}>${d.print}</button>${state.caseId ? `<button id="save-artifact" class="secondary" ${draftNeedsEnglish() ? 'disabled' : ''}>${d.artifactSave}</button>` : ''}<button id="draft-back" class="link push-right">${d.backReview}</button></div><p class="error" id="draft-language-error" role="status">${draftNeedsEnglish() ? d.draftEnglishRequired : ''}</p><div class="success" role="status">${['copied', 'copyFail'].includes(state.message) ? d[state.message] : ''}</div></section>` : ''}
     <footer><span>${d.footerShort}</span><a href="https://www.hud.gov/helping-americans/housing-choice-vouchers-tenants" target="_blank" rel="noreferrer">${d.reference} ↗</a></footer>
   </div>`;
   bind();
@@ -603,6 +695,10 @@ function cancelProcessing() {
 function replaceText(text, source = '', sample = false) {
   state.caseEpoch++;
   state.stage = 0;
+  state.chatMessages = [];
+  state.conversationId = '';
+  state.artifacts = [];
+  state.readiness = null;
   state.workbook = null;
   cancelProcessing();
   clearReview();
@@ -729,6 +825,10 @@ async function extractLive() {
 /** Chat composer helpers — docs/chat-api.md v1. Real SSE only: no simulated
     streaming, no reasoning fabrication. Partial replies stay marked incomplete. */
 function buildChatPayloadMessages() {
+  if (state.conversationId) {
+    const last = [...state.chatMessages].reverse().find(m => m.role === 'user' && !m.streaming);
+    return last ? [{role: 'user', content: last.content, ...(last.images && last.images.length ? {images: last.images.map(img => ({mimeType: img.mimeType, data: img.data}))} : {})}] : [];
+  }
   const messages = state.chatMessages.filter(m => !m.streaming && !m.incomplete && typeof m.content === 'string');
   const kept = [];
   let total = 0;
@@ -773,6 +873,15 @@ async function sendChat(retry = false) {
     if (!state.authenticated) {state.settingsOpen = true; state.settingsError = 'errorAuth'; render(); return;}
     if (!state.liveEnabled) {state.chatError = state.statusError ? 'errorBackend' : 'errorConfig'; state.settingsOpen = true; render(); return;}
     if (!confirm(t().chatConsent)) return;
+    if (state.caseId && !state.conversationId) {
+      try {
+        const conv = await caseRequest(`/api/cases/${encodeURIComponent(state.caseId)}/conversations`, 'POST', {title: (text || t().chatImageOnly).slice(0, 30)});
+        if (conv.conversation?.id) {
+          state.conversationId = conv.conversation.id;
+          state.conversations = [conv.conversation, ...state.conversations];
+        }
+      } catch { /* fall back to transient chat */ }
+    }
     state.chatMessages.push({role: 'user', content: text || t().chatImageOnly, images: state.chatImages});
     state.chatImages = [];
   } else {
@@ -792,7 +901,7 @@ async function sendChat(retry = false) {
     const response = await fetch('/api/chat', {
       method: 'POST',
       headers: requestHeaders({...telemetryHeaders(), 'Content-Type': 'application/json'}),
-      body: JSON.stringify({locale: state.lang, consent: true, messages: buildChatPayloadMessages(), ...(state.caseId ? {caseId: state.caseId} : {})}),
+      body: JSON.stringify({locale: state.lang, consent: true, messages: buildChatPayloadMessages(), ...(state.caseId ? {caseId: state.caseId} : {}), ...(state.conversationId ? {conversationId: state.conversationId, clientMessageId: crypto.randomUUID()} : {})}),
       signal: chatController.signal
     });
     noteBusinessResponse(response);
@@ -823,6 +932,9 @@ async function sendChat(retry = false) {
           if (el) el.firstChild ? el.childNodes[0].textContent = assistant.content : el.textContent = assistant.content;
         } else if (eventName === 'done') {
           finished = true;
+          if (typeof data.assistantMessageId === 'string') assistant.serverId = data.assistantMessageId;
+        } else if (eventName === 'conversation') {
+          if (typeof data.conversationId === 'string' && !state.conversationId) state.conversationId = data.conversationId;
         } else if (eventName === 'error') {
           throw new Error('errorChat');
         }
@@ -945,6 +1057,14 @@ function bind() {
     if (window.matchMedia('(max-width: 760px)').matches) byId('review-panel').scrollIntoView({behavior: 'smooth', block: 'start'});
   });
   on('live', 'click', extractLive);
+  on('customer-create', 'click', createCustomer);
+  on('customer-query', 'input', event => {state.customerQuery = event.target.value;});
+  on('customer-query', 'change', () => loadCustomers(state.customerQuery.trim()).then(render));
+  document.querySelectorAll('[data-customer]').forEach(button => button.addEventListener('click', () => {state.customerId = button.dataset.customer; state.customerQuery = button.dataset.name; render();}));
+  on('conversation-select', 'change', event => selectConversation(event.target.value));
+  on('conversation-new', 'click', () => {state.conversationId = ''; state.chatMessages = []; render();});
+  on('save-artifact', 'click', saveArtifact);
+  on('readiness-confirm', 'click', confirmReadiness);
   on('chat-send', 'click', () => sendChat(false));
   on('chat-retry', 'click', () => sendChat(true));
   on('chat-stop', 'click', () => {chatStopRequested = true; chatController?.abort();});

@@ -319,3 +319,25 @@ footer a:hover{color:var(--accent-deep)}
 #input-panel.drag-over{outline:2px dashed var(--accent);outline-offset:-6px}
 @media(prefers-reduced-motion:reduce){.chat-cursor{animation:none}}
 @media(max-width:760px){.chat-msg{max-width:96%}.chat-thread{max-height:40vh}}
+
+/* Customer link, durable conversations, artifact versions, readiness */
+.customer-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px;padding-top:13px;border-top:1px solid var(--hairline)}
+.customer-row label{font-size:12px;font-weight:600;white-space:nowrap}
+.customer-row .input{flex:1;min-width:160px;max-width:320px;padding:9px 12px;font-size:13px}
+.customer-linked{color:var(--ok)}
+.customer-results{display:flex;gap:6px;flex-wrap:wrap;flex-basis:100%;margin-top:4px}
+.conversation-bar{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.conversation-bar label{font-size:12px;font-weight:600;white-space:nowrap}
+.conversation-bar select{flex:1;min-width:0;max-width:340px;border:1px solid var(--hairline-strong);border-radius:8px;background:var(--sheet);padding:8px 10px;font-size:12px}
+.artifact-list{margin-top:14px;padding-top:12px;border-top:1px solid var(--hairline)}
+.artifact-list h3{font-family:var(--serif);font-size:13px;margin:0 0 8px}
+.artifact-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:7px 0;font-size:12px;border-top:1px dashed var(--hairline)}
+.artifact-row .artifact-name{flex:1;min-width:0;overflow-wrap:anywhere}
+.readiness{margin-top:16px;padding:13px 15px;background:var(--warn-tint);border:1px solid #eadfc3;border-radius:10px}
+.readiness-title{font-size:12px;font-weight:600;color:var(--warn);margin:0 0 10px}
+.readiness-item{display:block;font-size:12px;color:var(--ink-soft);margin-bottom:10px}
+.readiness-item span{display:block;margin-bottom:5px;line-height:1.6}
+.readiness-item .input{font-size:13px;padding:9px 11px}
+.readiness .secondary{margin-top:2px}
+.readiness-ready{color:var(--ok);margin-top:14px}
+@media(max-width:760px){.customer-row .input{max-width:none;font-size:16px}.conversation-bar select{font-size:16px}.readiness-item .input{font-size:16px}}
