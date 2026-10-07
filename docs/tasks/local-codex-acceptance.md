@@ -70,3 +70,6 @@ Do not use a mock provider, simulated parser or fabricated response for this acc
 Include tested commit, npm ci outcome, Poppler/parser availability, commands, browser details, a compact pass/fail/not-run table, screenshots with synthetic content only, exact reproduction steps, severity, and suggested owner. Keep product correctness separate from maintainability notes. Report whether any failures prevent the primary case workflow. Exclude environment secrets, private paths, raw customer materials and unrelated personal screen content.
 
 Finish only when the reviewable draft PR exists, or report the exact permission/publishing blocker with a local patch/diff available for the owner. Branch creation and a local test pass are not evidence that a remote PR exists.
+
+
+07:08 UTC browser checkpoint on main `443675c`: ordinary registration → manual review → edited draft → explicit save → actual server restart → login/open restores draft; logout clears workspace and a second account has an empty case list. Evidence and remaining Not run branches are in docs/local-acceptance.md. Six-character backend fix remains pending; owner reconfirmed the requirement. No provider call or production change in this acceptance run.
