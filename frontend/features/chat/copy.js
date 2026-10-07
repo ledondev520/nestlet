@@ -1,7 +1,7 @@
 export const chatCopy = {
   zh: {
     title:'围绕一个案例，继续处理', subtitle:'已确认的案例资料会作为上下文使用。聊天输入不会覆盖材料、核对结果或文书。',
-    conversation:'会话', newConversation:'新会话', untitledConversation:'案例会话', untitledCase:'未命名案例',
+    conversation:'已有会话', newConversation:'+ 新建', chooseConversation:'选择已有会话', noConversations:'暂无已保存会话', noConversationsReason:'首次发送消息时会建立并保存会话。', untitledConversation:'案例会话', untitledCase:'未命名案例',
     loading:'正在读取已保存会话…', empty:'从一个问题开始。首次发送会先建立案例和会话，后续可以回来继续。',
     composer:'这次想处理什么？', placeholder:'输入问题，或粘贴 PNG / JPEG 图片…', send:'发送给 DeepSeek', stop:'停止回复',
     sending:'正在等待真实模型回复…', saving:'正在保存案例与会话…', decoding:'正在检查图片…', imageBusy:'上一批图片仍在检查，请完成后再添加。',
@@ -43,7 +43,7 @@ export const chatCopy = {
   },
   en: {
     title:'Continue working on one case', subtitle:'Confirmed case details are reused as context. Chat input never replaces source material, reviewed facts, or documents.',
-    conversation:'Conversation', newConversation:'New conversation', untitledConversation:'Case conversation', untitledCase:'Untitled case',
+    conversation:'Saved conversations', newConversation:'+ New', chooseConversation:'Choose a saved conversation', noConversations:'No saved conversations', noConversationsReason:'Your first send creates and saves a conversation.', untitledConversation:'Case conversation', untitledCase:'Untitled case',
     loading:'Loading saved conversation…', empty:'Start with a question. The first send creates a case and conversation so you can return later.',
     composer:'What would you like to work on?', placeholder:'Enter a question, or paste a PNG / JPEG image…', send:'Send to DeepSeek', stop:'Stop reply',
     sending:'Waiting for the real model response…', saving:'Saving the case and conversation…', decoding:'Checking images…', imageBusy:'The previous images are still being checked. Add more after processing finishes.',

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -264,13 +264,14 @@ export function ChatPage({ lang='zh', caseId=null, onCaseChange, onDirtyChange, 
   return <section className="space-y-5" aria-label={words.title} data-feature="chat">
     <div className="space-y-2"><h1 className="paper-title text-2xl font-semibold">{words.title}</h1><p className="text-sm text-muted-foreground">{words.subtitle}</p></div>
     <Card className="paper-card">
-      <CardHeader className="gap-3"><CardTitle className="paper-title break-words">{title||words.untitledCase}</CardTitle><CardDescription>{caseRef.current?words.saved:words.subtitle}</CardDescription>
+      <CardHeader className="gap-3"><CardTitle className="paper-title break-words">{title||words.untitledCase}</CardTitle>
         <div className="flex flex-wrap items-center gap-3"><Label htmlFor={`${inputId}-conversation`}>{words.conversation}</Label>
-          <NativeSelect id={`${inputId}-conversation`} value={conversationId||''} onChange={event=>chooseConversation(event.target.value)} disabled={phase==='loading'} className="w-48 max-w-full">
-            <NativeSelectOption value="">{words.newConversation}</NativeSelectOption>{conversations.map(item=><NativeSelectOption key={item.id} value={item.id}>{item.title}</NativeSelectOption>)}
+          <NativeSelect id={`${inputId}-conversation`} value={conversationId||''} onChange={event=>chooseConversation(event.target.value)} disabled={phase==='loading'||!conversations.length} aria-describedby={!conversations.length&&phase!=='loading'?`${inputId}-conversation-empty`:undefined} className="w-48 max-w-full">
+            <NativeSelectOption value="" disabled>{conversations.length?words.chooseConversation:words.noConversations}</NativeSelectOption>{conversations.map(item=><NativeSelectOption key={item.id} value={item.id}>{item.title}</NativeSelectOption>)}
           </NativeSelect><Button variant="outline" size="sm" type="button" onClick={()=>chooseConversation('')}>{words.newConversation}</Button>
-          <Button variant="ghost" size="sm" type="button" disabled={busy} onClick={reloadConversation}>{words.reload}</Button>
+          <Button variant="link" size="sm" className="px-0 text-muted-foreground" type="button" disabled={busy} onClick={reloadConversation}>{words.reload}</Button>
         </div>
+        {!conversations.length&&phase!=='loading'&&<p id={`${inputId}-conversation-empty`} className="text-xs text-muted-foreground">{words.noConversationsReason}</p>}
       </CardHeader>
       <CardContent className="space-y-5">
         {phase==='loading'&&<p role="status" className="text-sm text-muted-foreground">{words.loading}</p>}

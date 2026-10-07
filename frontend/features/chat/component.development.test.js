@@ -207,3 +207,35 @@ test('development React: a capability change blocks selected retrieval before an
   assert.equal(app.requests.some(item=>item.options.method==='POST'),false);
   assert.equal(app.dom.window.document.querySelector('textarea').value,'Find synthetic work');
 });
+
+
+test('development React: empty conversation picker explains its disabled state and keeps one explanatory subtitle',async context=>{
+  const app=await mount({fetchHandler:async()=>response({},500)});context.after(app.close);
+  const select=app.dom.window.document.querySelector('select');assert.equal(select.disabled,true);
+  assert.equal(select.options[0].textContent,'No saved conversations');assert.equal(select.options[0].disabled,true);
+  assert.equal(app.dom.window.document.getElementById(select.getAttribute('aria-describedby')).textContent,'Your first send creates and saves a conversation.');
+  assert.ok(app.button('+ New'));
+  const subtitle='Confirmed case details are reused as context. Chat input never replaces source material, reviewed facts, or documents.';
+  assert.equal(app.dom.window.document.body.textContent.split(subtitle).length-1,1);
+  const reload=app.button('Reload conversation');assert.equal(reload.getAttribute('data-variant'),'link');assert.equal(reload.tagName,'BUTTON');
+  reload.focus();assert.equal(app.dom.window.document.activeElement,reload);
+});
+
+test('development React: new action clears the current view while the picker reopens retained saved history',async context=>{
+  const caseId=randomUUID(),conversationId=randomUUID(),messageId=randomUUID();
+  const app=await mount({caseId,fetchHandler:async path=>{
+    if(path===`/api/cases/${caseId}`)return response({case:{id:caseId,title:'Synthetic saved case'}});
+    if(path===`/api/cases/${caseId}/conversations`)return response({conversations:[{id:conversationId,caseId,title:'Saved synthetic thread'}]});
+    if(path===`/api/conversations/${conversationId}`)return response({conversation:{id:conversationId,caseId},messages:[{id:messageId,role:'assistant',content:'Retained synthetic history',state:'complete'}]});
+    return response({},500);
+  }});context.after(app.close);await app.flush();
+  assert.match(app.dom.window.document.body.textContent,/Retained synthetic history/);
+  await app.click(app.button('+ New'));
+  let select=app.dom.window.document.querySelector('select');assert.equal(select.disabled,false);assert.equal(select.value,'');
+  assert.equal(select.options[0].textContent,'Choose a saved conversation');assert.equal(select.options[0].disabled,true);
+  assert.equal(select.options[1].textContent,'Saved synthetic thread');
+  assert.doesNotMatch(app.dom.window.document.body.textContent,/Retained synthetic history/);
+  await import('react').then(React=>React.act(async()=>{select.value=conversationId;select.dispatchEvent(new app.dom.window.Event('change',{bubbles:true}));await tick();}));
+  await app.flush();assert.match(app.dom.window.document.body.textContent,/Retained synthetic history/);
+  assert.equal(app.requests.some(item=>['POST','PUT','DELETE'].includes(item.options.method)),false);
+});
