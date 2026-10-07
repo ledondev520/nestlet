@@ -17,6 +17,12 @@ Kimi's canonical design tokens are copied exactly from `2154dd95e70027b8319586ba
 
 **Remaining gates:** supported real-browser / mobile / keyboard / CSP / clipboard / print / provider acceptance, the final integrated Docker image, and deployment. A generic case save that changes facts while carrying a legacy edited draft is currently explicitly blocked until the coordinated atomic backend archival contract is integrated; it is not claimed successful. Original-file routes require the separately developed assets backend, which must be merged and tested with this candidate.
 
+### Integration follow-up, 10:32 UTC
+
+The original-file backend and current main are now integrated. Exact candidate `9045cd79802529e10b9c5fdfc10e376dbbe4af40` passed syntax/build, 254 backend checks and 121 frontend checks before publication to PR #14. It includes Kimi's mobile masthead correction and semantic overlay/input/status tokens. Separately received browser evidence for earlier `fa6ff5b` verified component CSP/dialog focus but found 320px English masthead overflow; the corrected exact candidate still requires the supported browser retake.
+
+The subsequent atomic case-update and backup-WAL commits are being integrated with targeted regression checks. The unnecessary shadcn CLI development dependency was removed, retaining official components/config/provenance; the complete npm dependency audit now reports zero advisories. This is an audit result, not a security guarantee, and no audit threshold/override was used to suppress findings.
+
 The frontend unit/DOM/HTTP suites are aggregated by `npm run test:frontend`. Controlled-response development tests are labeled in their sources; they do not establish real-browser or live-provider behavior. The single output bundle is approximately 541 kB / 171 kB gzip and produces Vite's 500 kB advisory; the threshold was not raised to conceal it.
 
 ## Historical foundation evidence

@@ -634,9 +634,10 @@ export function IntakeWorkspace({
     const token = begin('saving');
     if (!token) return;
     try {
+      const savedRevision = editVersion.current;
       const payload = casePayload(workRef.current, words.untitled);
-      // The generic-save archive contract is coordinated with the backend owner.
-      if (payload.draftText && changedFacts(baseRef.current, workRef.current)) throw new IntakeError('LEGACY_ARCHIVE_REQUIRED');
+      // The backend atomically archives any invalidated carried-forward draft.
+      // Never clear it here or attempt a separate non-transactional artifact write.
       const oldId = caseRef.current;
       const result = oldId ? await api.put(`/api/cases/${oldId}`, {
         ...payload,
@@ -648,8 +649,10 @@ export function IntakeWorkspace({
       });
       requireCurrent(token.scope);
       if (!validRecord(result.case) || oldId && result.case.id !== oldId) throw new IntakeError('INVALID_RESPONSE');
+      const newerEdits = editVersion.current !== savedRevision;
       updateBase(result.case);
-      updateWork(caseWork(result.case), false);
+      if (!newerEdits) updateWork(caseWork(result.case), false);
+      else updateWork(previous => ({ ...previous, draftText: previous.draftText === payload.draftText ? result.case.draftText : previous.draftText }), false);
       setLatest(null);
       setConflict(false);
       if (!oldId) {
@@ -663,9 +666,10 @@ export function IntakeWorkspace({
       }
       const linked = await linkAssets(result.case.id, token);
       requireCurrent(token.scope);
-      if (linked) clearDraft();
-      setNotice(linked ? 'saved' : 'linkFailed');
-      if (openDocuments) callbacks.current.onOpenDocuments?.(result.case.id);
+      const stillCurrentEdits = editVersion.current === savedRevision;
+      if (linked && stillCurrentEdits) clearDraft();
+      setNotice(!linked ? 'linkFailed' : !stillCurrentEdits ? result.archivedLegacyDraft ? 'archivedNewerEdits' : 'savedNewerEdits' : result.archivedLegacyDraft ? 'archived' : 'saved');
+      if (openDocuments && stillCurrentEdits) callbacks.current.onOpenDocuments?.(result.case.id);
     } catch (failure) {
       if (!aborted(failure) && current(token.scope)) {
         setError(failureFor(failure));

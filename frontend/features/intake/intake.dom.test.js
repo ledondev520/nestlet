@@ -48,7 +48,7 @@ before(async () => {
   for (const key of ['window', 'document', 'navigator', 'HTMLElement', 'Element', 'HTMLInputElement', 'HTMLTextAreaElement', 'Node', 'MutationObserver', 'Event', 'MouseEvent']) Object.defineProperty(globalThis, key, { value: dom.window[key], configurable: true, writable: true });
   globalThis.getComputedStyle = dom.window.getComputedStyle.bind(dom.window); globalThis.IS_REACT_ACT_ENVIRONMENT = true;
   React = await import('react'); ({ createRoot } = await import('react-dom/client'));
-  vite = await createServer({ configFile: 'vite.config.js', server: { middlewareMode: true }, appType: 'custom' });
+  vite = await createServer({ configFile: 'vite.config.js', server: { middlewareMode: true, hmr: false, watch: null, ws: false }, appType: 'custom' });
   ({ IntakeWorkspace } = await vite.ssrLoadModule('/features/intake/workspace.jsx'));
   ({ DraftWorkspaceProvider } = await vite.ssrLoadModule('/lib/suspended-draft.jsx'));
   ({ draftVault } = await vite.ssrLoadModule('/lib/draft-vault.js'));
@@ -144,9 +144,22 @@ test('StrictMode replay retains recovered source and unassociated original IDs',
   draftVault.verifyUser(userId); const cached = recoverySnapshot({ ...caseWork(), sourceText: 'Recovered synthetic source' }, null, null, [asset()]); assert.equal(draftVault.write({ userId, workspaceKey, feature: 'intake' }, cached), true);
   const api = apiFor(({ method, path }) => method === 'GET' && path === '/api/assets/' + C ? { asset: asset() } : undefined); await render(api, {}, 'strict'); assert.equal(labeled('Case source text').value, 'Recovered synthetic source'); assert.ok(host.querySelector(`a[href="/api/assets/${C}/download"]`)); assert.ok(draftVault.read({ userId, workspaceKey, feature: 'intake' }).assetIds.includes(C));
 });
-test('legacy edited draft is never cleared by an unsupported partial save', async () => {
+test('legacy draft changes use one atomic case PUT and adopt returned archive metadata', async () => {
   const previous = blank({ sourceText: 'Property: Synthetic Lane', fields: extract('Property: Synthetic Lane').map(item => ({ ...item, confirmed: true })), draftText: 'Previous carefully edited English draft' });
-  const api = apiFor(({ path }) => path === '/api/cases/' + A ? { case: previous } : undefined); await render(api, { caseId: A }); await change(field('property'), 'Changed synthetic lane'); await click(button('Save case')); assert.match(text(), /prior draft must be archived/); assert.equal(api.calls.filter(call => ['PUT', 'POST'].includes(call.method)).length, 0); assert.equal(field('property').value, 'Changed synthetic lane');
+  const api = apiFor(({ method, path, body }) => method === 'PUT' ? { case: { ...previous, ...body, version: 2, draftText: '' }, archivedLegacyDraft: true, archivedArtifactId: C, legacyDraftInvalidated: true } : path === '/api/cases/' + A ? { case: previous } : undefined);
+  await render(api, { caseId: A }); await change(field('property'), 'Changed synthetic lane'); await click(button('Save case'));
+  assert.match(text(), /previous draft was preserved as a historical version/);
+  const writes = api.calls.filter(call => ['PUT', 'POST'].includes(call.method)); assert.equal(writes.length, 1); assert.equal(writes[0].body.draftText, previous.draftText); assert.equal(writes[0].body.expectedVersion, 1);
+  assert.equal(field('property').value, 'Changed synthetic lane'); assert.match(text(), /Case saved/);
+});
+test('a late atomic save response preserves newer local input and does not navigate away', async () => {
+  const pending = deferred(), opened = []; const previous = blank({ sourceText: 'Original source' });
+  const api = apiFor(({ method, path }) => method === 'PUT' ? pending.promise : path === '/api/cases/' + A ? { case: previous } : undefined);
+  await render(api, { caseId: A, onOpenDocuments: value => opened.push(value) }); await change(labeled('Case source text'), 'Submitted source');
+  await React.act(async () => button('Save case').click()); const sent = api.calls.find(call => call.method === 'PUT').body;
+  await change(labeled('Case source text'), 'Newer local source');
+  await React.act(async () => pending.resolve({ case: { ...previous, ...sent, version: 2, draftText: '' }, archivedLegacyDraft: true, archivedArtifactId: C, legacyDraftInvalidated: true })); await tick();
+  assert.equal(labeled('Case source text').value, 'Newer local source'); assert.match(text(), /newer edits are not saved yet/); assert.deepEqual(opened, []);
 });
 test('new handoff merges with existing unprocessed files rather than replacing them', async () => {
   const api = apiFor(); await render(api); await choose([new File(['First'], 'First.txt')]); await render(api, { importRequest: { id: 'second', userId, caseId: null, files: [new File(['Second'], 'Second.txt')] } }); assert.match(text(), /First.txt/); assert.match(text(), /Second.txt/); assert.equal(api.calls.length, 0);

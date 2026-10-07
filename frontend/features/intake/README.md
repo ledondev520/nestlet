@@ -11,9 +11,9 @@
 5. Case saves use a strict CRUD payload whitelist, preserve customer association and draft history, and omit server-owned document context/issues. New-case saves bind the current workspace and associate its saved originals. Reentry refreshes canonical records without replacing local edits. Version conflicts preserve input and offer a visible three-way reconciliation.
 6. `useSuspendedDraft('intake')` stores only the approved text snapshot, expected case version, and unassociated original IDs in the shared current-tab vault. Files and draft history are never cached. Same-user version mismatch requires reconciliation. Account change and explicit case switching are owned by App; the module still aborts and epoch-guards its own async work.
 
-## Temporary integration boundary
+## Atomic legacy draft preservation
 
-As of 2026-10-07 10:13 UTC, changed facts with a nonempty legacy `draftText` deliberately block generic saving until the backend supplies atomic archival. The module never clears an existing draft as a two-write workaround. This must be resolved before declaring the complete migration accepted.
+The integrated backend now atomically preserves invalidated legacy drafts during the ordinary versioned case PUT. Intake carries the old text unchanged, adopts the returned canonical case and archival metadata, and never performs a separate artifact write or clears text speculatively. Late successful responses leave newer local edits intact. Capacity/version failures preserve both server history and current input.
 
 ## Verification
 

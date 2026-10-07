@@ -54,6 +54,8 @@ The vault is current-tab memory only: 512 KiB per entry, 1 MiB total, 30 minutes
 
 Prefer in-page panels and native selection for core flows while CSP compatibility is verified. Do not add `unsafe-inline` or loosen script security to make an interaction work. Modal/portal controls require actual browser keyboard, focus-return, and CSP checks before acceptance.
 
+The shadcn CLI is not a build/runtime dependency: checked-in official JSX sources, their provenance manifest and license are sufficient. It was removed from the locked development dependencies after its transitive dependency audit reported advisories. Component maintenance can use the pinned-source `scripts/vendor-shadcn.mjs` path; re-check the official CLI's current security/dependency status before any future temporary invocation.
+
 ## Commands and evidence
 
 `npm run build` emits only compiled public assets into `public/next/`; Node backend stays JavaScript. `npm run dev:frontend` starts Vite locally. Production-like browser testing uses a built frontend and the real Node server, so CSP and same-origin checks are exercised. Passing mocks or a preview page cannot certify real-provider, email, full workflow, or deployment acceptance.
