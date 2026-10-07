@@ -43,8 +43,8 @@ async function app(context, { origin = 'https://nestlet-email.invalid', configur
       ...(kind === 'register' ? { passwordHash: makeHash(password) } : { credentialFingerprint: digest(userId === 'owner' ? ownerHash : storage.getUserById(userId).passwordHash) }) });
     if (accepted) storage.emailAuth.markAccepted(action.tokenHash, now); return action;
   });
-  async function login(identity, password = ordinaryPassword) {
-    const response = await post('/api/login', { [identity.includes('@') ? 'email' : 'username']: identity, password });
+  async function login(identity, password = ordinaryPassword, rememberMe = false) {
+    const response = await post('/api/login', { [identity.includes('@') ? 'email' : 'username']: identity, password, rememberMe });
     assert.equal(response.status, 200); const data = await response.json();
     assert.match(response.headers.get('set-cookie'), /HttpOnly; SameSite=Strict/);
     return { ...data, cookie: response.headers.get('set-cookie').split(';')[0] };
@@ -100,15 +100,15 @@ test('verified email account retains its isolated case and identity across actua
 test('password recovery atomically changes a verified trial credential, revokes all old sessions and rejects replay', async t => {
   const site = await app(t), email = 'recover@example.invalid'; const registration = site.pending(email);
   await site.post('/api/auth/email/verify', { token: registration.token });
-  const first = await site.login(email), second = await site.login(email);
+  const first = await site.login(email), second = await site.login(email), remembered = await site.login(email, ordinaryPassword, true);
   const reset = site.pending(email, { kind: 'reset', userId: first.userId });
   const newPassword = 'new-public-test-password';
   const results = await Promise.all([0, 1].map(() => site.post('/api/auth/password/reset', { token: reset.token, password: newPassword, passwordConfirmation: newPassword })));
   assert.deepEqual(results.map(response => response.status).sort(), [200, 400]);
-  for (const session of [first, second]) assert.equal((await site.request('/api/cases', { session })).status, 401);
+  for (const session of [first, second, remembered]) assert.equal((await site.request('/api/cases', { session })).status, 401);
   assert.equal((await site.post('/api/login', { email, password: ordinaryPassword })).status, 401);
   const changed = await site.login(email, newPassword); assert.equal(changed.userId, first.userId);
-  await site.restart(); assert.equal((await site.login(email, newPassword)).userId, first.userId);
+  await site.restart(); assert.equal((await site.request('/api/cases', { session: changed })).status, 401); assert.equal((await site.login(email, newPassword)).userId, first.userId);
   for (const secret of [ordinaryPassword, newPassword, reset.token]) assert.equal(site.output.includes(secret), false);
 });
 
@@ -137,6 +137,9 @@ test('email routes retain exact Origin, CSRF, setup, HTTPS and bounded JSON gate
   assert.equal((await site.post('/api/register', signup(), { headers: { 'Content-Type': 'text/plain' } })).status, 415);
   assert.equal((await site.post('/api/register', 'x'.repeat(4097))).status, 413);
   assert.equal((await site.post('/api/login', { email: 'owner@example.invalid', username: 'owner', password: ownerPassword })).status, 401);
+  for (const rememberMe of ['true', 1, null, {}]) assert.equal((await site.post('/api/login', { username: 'owner', password: ownerPassword, rememberMe })).status, 401);
+  for (const email of ['', 'owner', 'not-an-email']) assert.equal((await site.post('/api/login', { email, password: ownerPassword })).status, 401);
+  for (const rememberMe of [true, false]) assert.equal((await site.post('/api/login', { username: 'owner', password: ownerPassword, rememberMe })).status, 200);
 });
 
 for (const length of [6, 7, 8, 9, 10, 11, 256]) test(`verified ordinary email login accepts ${length}-character password over actual HTTP`, async t => {

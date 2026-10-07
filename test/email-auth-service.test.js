@@ -98,18 +98,21 @@ test('fake-delivery contract: legacy binding requires current password and prese
 
 test('fake-delivery contract: verified password reset invalidates sessions and old tokens, while password rotation during login fails closed', async t => {
   const f = await fixture(t), email = 'reset@example.invalid'; await f.register(email); f.auth.verify({ token: f.token() }, 'ip');
-  const session = await f.sessionAuth.login(password, email); f.advance(61_000);
+  const session = await f.sessionAuth.login(password, email), remembered = await f.sessionAuth.login(password, email, true);
+  await f.register('unrelated@example.invalid'); f.auth.verify({ token: f.token() }, 'ip');
+  const unrelated = await f.sessionAuth.login(password, 'unrelated@example.invalid', true); f.advance(61_000);
   await f.auth.forgot({ email }, 'ip'); await f.auth.whenIdle(); const reset = f.token(); const newPassword = 'changed-public-test';
   assert.equal(new URLSearchParams(new URL(f.messages.at(-1).link).hash.slice(1)).get('auth'), 'reset');
   assert.throws(() => f.auth.verify({ token: reset }, 'ip'), e => e.code === 'EMAIL_TOKEN_INVALID');
   assert.deepEqual(await f.auth.reset({ token: reset, password: newPassword, passwordConfirmation: newPassword }, 'ip'), { reset: true, authenticated: false });
-  assert.equal(f.sessionAuth.getSession({ headers: { cookie: session.cookie.split(';')[0] } }), null);
+  for (const old of [session, remembered]) assert.equal(f.sessionAuth.getSession({ headers: { cookie: old.cookie.split(';')[0] } }), null);
+  assert.equal(f.sessionAuth.getSession({ headers: { cookie: unrelated.cookie.split(';')[0] } }).userId, unrelated.userId);
   await assert.rejects(f.auth.reset({ token: reset, password: newPassword, passwordConfirmation: newPassword }, 'ip'), e => e.code === 'EMAIL_TOKEN_INVALID');
   assert.equal((await f.sessionAuth.login(newPassword, email)).userId, session.userId);
-  const attempt = f.sessionAuth.login(newPassword, email);
-  f.storage.upsertTrialUser({ username: session.username, passwordHash: await hashPassword('another-new-password') });
-  // A scheduling-independent stale credential check is additionally covered by storage CAS tests.
-  const result = await attempt; if (result.cookie) assert.equal(f.sessionAuth.getSession({ headers: { cookie: result.cookie.split(';')[0] } }), null); else assert.equal(result.error, 'INVALID_CREDENTIALS');
+  const replacementHash = await hashPassword('another-new-password');
+  const attempt = f.sessionAuth.login(newPassword, email, true);
+  f.storage.upsertTrialUser({ username: session.username, passwordHash: replacementHash });
+  assert.equal((await attempt).error, 'INVALID_CREDENTIALS', 'A rotation during scrypt cannot issue even a stale remembered cookie');
 });
 
 for (const length of [6, 7, 8, 9, 10, 11, 256]) test(`fake-delivery registration accepts ${length} password characters; verification/login uses actual scrypt`, async t => {

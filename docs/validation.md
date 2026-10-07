@@ -257,3 +257,9 @@ Schema5 backend work is isolated from the frontend rollout. New registrations re
 - Independent security review identified quota consumption after per-IP rejection and lost registration resend state after uncertain mail. Both were fixed with dedicated regressions
 - No real credentials read, configured or transmitted; no actual email sent. New email browser acceptance, combined-final-SHA CI and production service acceptance remain separate required gates
 - Existing schema4 binaries cannot open schema5. Do not reuse the schema4-only code rollback helper or restore a backup without a separate authorized recovery decision
+
+### Email backend integration with chat retrieval and remembered sessions, 12:36 UTC
+
+Rebased backend runtime `d857037` onto resolved retrieval/main integration `431909f`. Preserved upstream library tools/retrieval and exact session semantics: normal idle30 minutes, remembered idle8 hours, absolute8 hours, process-local sessions. The login API accepts strictly Boolean rememberMe and retains verified-email/legacy identity selection. Tests additionally prove reset revokes normal and remembered sessions, leaves another user's session valid, and a credential rotation during asynchronous login prevents a stale remembered cookie. Restart still revokes all cookies.
+
+Integrated local checks passed: syntax, build, **308/308 backend**, **53/53 explicitly simulated email-service contracts**, and **201/201 existing frontend**. This is not the new email frontend/browser or actual inbox acceptance. No production service configuration or real mail send occurred. Both independent security findings from the first review were rechecked as fixed with three focused regressions.

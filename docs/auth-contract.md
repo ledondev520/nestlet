@@ -1,6 +1,6 @@
 # Owner, trial and saved-case authentication contract
 
-The standalone Node app has one owner identity and optional named trial identities. Trial users and SQLite saved cases are implemented at the October 7, 2026 checkpoint, awaiting final CI/browser/deployment verification. Self-service username/password registration is implemented with server-assigned ordinary roles, pending final CI/browser/deployment verification. There is no shared team account, automatic password creation or administrator selection during registration. The operator supplies a password hash privately; API credentials are either supplied in the server environment or entered through the authenticated HTTPS settings screen.
+The standalone Node app has one owner identity and optional named trial identities. Trial users and SQLite saved cases are implemented at the October 7, 2026 checkpoint, awaiting final CI/browser/deployment verification. Self-service email/password registration requires one-time verification before account creation; ordinary verified-email password recovery is implemented, pending final combined CI/browser/deployment and real-mail verification. There is no shared team account, automatic password creation or administrator selection during registration. The operator supplies a password hash privately; API credentials are either supplied in the server environment or entered through the authenticated HTTPS settings screen.
 
 ## Configuration
 
@@ -15,7 +15,7 @@ No parser/extraction/settings endpoint has an unauthenticated development bypass
 
 ## Session and transport
 
-`POST /api/login` accepts JSON `{password,username?,rememberMe?}`; blank/omitted username selects `owner`, while a named trial uses its assigned username. Login requires a matching Origin. Successful authentication returns `{authenticated:true,csrfToken}` and a `nestlet_session` cookie: HttpOnly, SameSite=Strict, host-only, Path=/, Secure for the configured HTTPS deployment. Sessions exist only in server memory, expire after 30 idle minutes or eight absolute hours. Explicit boolean `rememberMe: true` removes the idle cutoff within those same eight absolute hours; omitted, false or non-boolean values retain the default. Sessions are bounded, with at most five sessions per user and 512 total. Ten sign-in attempts per minute are allowed across this small service; no password or hash is logged.
+`POST /api/login` accepts JSON `{email,password,rememberMe?}` or legacy `{password,username?,rememberMe?}`, never both identity fields. Email must be verified; blank/omitted legacy username selects `owner`, while an existing named trial may keep its assigned username. Login requires a matching Origin. Successful authentication returns `{authenticated:true,csrfToken}` and a `nestlet_session` cookie: HttpOnly, SameSite=Strict, host-only, Path=/, Secure for the configured HTTPS deployment. Sessions exist only in server memory, expire after 30 idle minutes or eight absolute hours. Explicit boolean `rememberMe: true` removes the idle cutoff within those same eight absolute hours; omitted or false retains the default; the HTTP API rejects non-Boolean values. Sessions are bounded, with at most five sessions per user and 512 total. Ten sign-in attempts per minute are allowed across this small service; no password or hash is logged.
 
 Authenticated state-changing requests include `X-CSRF-Token` and the session cookie. Cross-site fetch metadata and mismatched Origins are rejected. A same-origin browser Origin is additionally mandatory for login and key-settings writes/tests. The application does not trust an upstream authenticated-user header.
 
@@ -25,7 +25,7 @@ Authenticated state-changing requests include `X-CSRF-Token` and the session coo
 
 | Endpoint | Access and behavior |
 | --- | --- |
-| `POST /api/register` | Bounded same-origin HTTPS registration; assigns ordinary `trial` role, creates session; owner bootstrap required |
+| `POST /api/register` | Mandatory email + matching password; generic 202, no account/session until one-time verification; owner/mail setup required |
 | `GET /api/health` | Public, `{ok:true}` only |
 | `GET /api/status` | Public capabilities and nonsecret connection state; CSRF appears only for a valid session |
 | `GET /api/settings` | Owner session only; same sanitized settings state |
@@ -64,10 +64,10 @@ Saved data survives restart through the dedicated SQLite volume; sessions and RA
 
 Trial AI extraction requests are limited to ten per user/hour and thirty total trial requests/hour in server memory. Restart resets counters. These limits do not establish a hard spending cap, paid subscription or billing guarantee. `TRIAL_LIMIT_REACHED` returns 429. Role/storage errors include `OWNER_REQUIRED`, `CASE_NOT_FOUND`, `CASE_CONFLICT`, `CASE_INVALID`, `CASE_TOO_LARGE` and storage/cap errors emitted by the actual route contract; do not substitute success on failure.
 
-## Implemented registration extension: final QA pending
+## Email registration, binding and recovery: final QA pending
 
-Ordinary/admin product roles and web registration are user-authorized scope. The existing owner identity remains the administrator bootstrap, configured privately. A new registrant provides username/password only; the server hashes the password and assigns an ordinary role. Client-supplied role/user IDs cannot grant privileges. `POST /api/register` accepts exactly `{username,password,passwordConfirmation}`. It returns HTTP 201 and `{csrfToken,role,userId,username}` with an authenticated HttpOnly-cookie session. The server assigns internal role `trial` for ordinary users; `owner` is the administrator. No provider request occurs on registration.
+The former username-only public signup endpoint has been replaced. `POST /api/register` accepts exactly `{email,password,passwordConfirmation}` and returns generic HTTP202 with no cookie or session. Email verification activates a server-assigned ordinary `trial` account. Existing usernames and administrator aliases continue to work; current-password plus email proof can bind a verified email without moving any saved records. A new account is never grandfathered into legacy username enrollment.
 
-Username rules: normalize lowercase, 3–64 ASCII characters matching `[a-z0-9][a-z0-9_.-]*`, with `owner` reserved. Password rules: 6–256 characters, no controls, matching confirmation. Owner bootstrap is required first. Exact Origin and HTTPS are required except narrow loopback development. The body is bounded at 4 KiB, signup attempts at five per ten minutes globally, and ordinary accounts at 100 total. No email, SSO or password reset is included. Status reports `registrationEnabled`, role and `canManageSettings`; provider configuration metadata is owner-only.
+Email canonicalization, one-time trusted-origin fragment links, persistent request limits, verification/resend/reset/bind endpoints, private mail configuration, migration and evidence boundaries are specified in [email authentication](email-auth.md). Passwords remain 6–256 characters without controls; match confirmation. Schema5 leaves the existing users table and owner/trial CHECK unchanged.
 
-Ordinary users can parse/review/generate and save/open/delete only their own cases. They cannot manage provider credentials or inspect another user’s records. The administrator likewise accesses only administrator-owned cases. Existing trial CLI identities remain a separate compatibility path. These interfaces are implemented; registration, ownership, rate limits and final real-browser/deployed behavior still require final QA. See [architecture](architecture.md).
+Ordinary verified-email accounts may recover their password, which revokes every normal or remembered session. The bootstrap owner remains ENV-authoritative and uses private operator recovery; the app does not pretend an email reset can mutate that ENV password. Missing mail configuration disables registration truthfully. Real provider acceptance and actual inbox/browser journeys must be verified separately.

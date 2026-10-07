@@ -23,7 +23,7 @@ All POST routes require the exact configured Origin. HTTPS is required outside l
 | POST /api/register | email, password, passwordConfirmation | 202 generic request acceptance, no session |
 | POST /api/auth/email/resend | email | 202 generic request acceptance |
 | POST /api/auth/email/verify | token | 200 verified:true, authenticated:false |
-| POST /api/login | email,password **or** legacy username,password | 200 authenticated session |
+| POST /api/login | email,password **or** legacy username,password; optional Boolean rememberMe | 200 authenticated session |
 | POST /api/auth/password/forgot | email | 202 generic request acceptance |
 | POST /api/auth/password/reset | token,password,passwordConfirmation | 200 reset:true, authenticated:false |
 | POST /api/auth/email/bind | email,currentPassword | 202 generic request acceptance; session + CSRF required |
@@ -42,7 +42,8 @@ Errors: EMAIL_DELIVERY_UNAVAILABLE (503), EMAIL_AUTH_INVALID (400), EMAIL_TOKEN_
 - Links use only configured PUBLIC_ORIGIN and root fragments: `/#auth=verify&token=...` or `/#auth=reset&token=...`. Request Host/forwarded headers never construct a link. Fragments do not enter HTTP access logs or Referer; the frontend clears them after capture. GET never consumes a token
 - Resend replaces the previous pending registration token. An expired registration requires starting registration again because its password hash is no longer retained
 - Verification, unique identity creation and reset consumption run in SQLite write transactions. Bind/reset links are tied to a credential fingerprint; password rotation invalidates old links
-- Every session checks the effective credential fingerprint; reset invalidates all old sessions. Login rechecks a trial credential after asynchronous scrypt, closing a reset-during-login race
+- Upstream session behavior is preserved: 30-minute normal idle timeout, opt-in remembered sessions up to eight hours, and an eight-hour absolute cap for both. Sessions remain in memory; restart revokes them
+- Every normal and remembered session checks the effective credential fingerprint; reset invalidates all old sessions. Login rechecks a trial credential after asynchronous scrypt, closing a reset-during-login race
 - No password, raw token, email body or recipient enters logs or operational telemetry. Emails, pending password hashes and token hashes remain private database data. Backups require the same access protection as account data
 - There is no durable raw-token outbox. A process restart during a send may leave an unusable pending challenge. Request a new link; the application never fabricates acceptance or silently retries an uncertain send
 
