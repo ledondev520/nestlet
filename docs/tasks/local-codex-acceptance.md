@@ -77,3 +77,5 @@ Finish only when the reviewable draft PR exists, or report the exact permission/
 07:34 UTC: independently tested PR #12 `3bfcaa3`: npm ci/check pass, 179/179 default and 5/5 independent HTTP acceptance pass. Six-character backend/private-helper boundaries and admin alias contract pass; LC-07 backend resolved. Final integrated browser and actual production admin setup remain unverified. Coordinator completed the bounded provider probe separately; no duplicate paid call needed.
 
 07:50 UTC composite2b983da (PR12 3bfcaa3 + PR4 7b74b227): actual six-character signup still rejected by old frontend guard; longer synthetic signup and real XLSX selected mapping→review→draft→save plus admin-alias settings succeed. Seven requested UI screenshots added; 179/179 composite suite. Kimi owns four reported blockers; final integrated journey remains incomplete.
+
+08:08 UTC composite93caef8 (backend d1bcbdd + frontend ace9222): real-browser5reject/6register/relogin passes; nativeChromePDF593/TXT470/CSV197character imports succeed. P1-1 and positive-pathP1-2 closed atthiscomposite;187/187 suite. Telemetry and chat/newpersistence remain separate.

@@ -339,3 +339,16 @@ Screenshots requested by the coordinator, all actual UI and synthetic-only:
 The in-app browser file-picker upload timed out and then became unresponsive; native Chrome plus its actual OS file chooser provided the working upload path. Native screenshots were cropped only to remove browser tabs/toolbars; page contents were not modified. No password was saved to the browser password manager. Task-owned server and native test tab were closed afterward.
 
 **Not run/remaining:** composite TXT/CSV/PDF/XLS positive intake, exports, restart/resume repetition, concurrency/cancel branches, mobile/keyboard and end-to-end telemetry. The known P1-2/P1-3/P1-4 remain with Kimi and were not independently closed by this checkpoint. No chat composer exists in this tested frontend, so live chat streaming/images are not accepted. No live key, provider call or production action occurred in this browser run.
+
+
+## Frontend password and positive file-import fixes — 7 October 2026, 08:08 UTC
+
+Exact isolated composite `93caef8af6037988c8f8b4b06b72f78d5b66a248`: backend PR #12 `d1bcbdd01e674bd7810e6cb2e0bda470710627be` plus frontend PR #4 `ace9222c9a7edf639703731ffa177ee99cf52d0c`. Clean local-only merge, no runtime modifications by Local Codex. Node24/macOS pinned install and syntax pass, default suite **187 passed, 0 failed, 0 skipped**.
+
+**P1-1 closed on this composite:** actual in-app browser registration rejects a five-character synthetic password with the localized error, accepts matching six-character entries, signs in with the ordinary role, logs out and signs in again using that six-character password. Native Chrome independently signs in to the same disposable account with the six-character password. Real HTTP/scrypt/SQLite, no provider or synthetic login response.
+
+**P1-2 closed for the positive TXT/CSV/PDF paths on this composite:** native Chrome/macOS file picker imports actual repository synthetic samples with the unchanged real parser. PDF imports 593 characters and shows the success message; TXT replaces it with 470 characters after the real replacement confirmation; CSV then imports 197 characters after confirmation. Each shows “材料已载入，请选择提取方式”, without the former fileStart ReferenceError/false import-failure status. No private files or provider request were used. This does not claim all malformed-file recovery branches were rerun.
+
+Evidence: [five rejected](../test/local-acceptance-evidence/fixed-five-rejected.png), [six registered](../test/local-acceptance-evidence/fixed-six-registered.png), [PDF imported](../test/local-acceptance-evidence/fixed-pdf-import.png), [CSV imported](../test/local-acceptance-evidence/fixed-csv-import.png). Native captures have only browser chrome cropped away. No test credential was saved to the password manager. Local browser tabs, app process and disposable worktree were cleaned up.
+
+**Still open:** workflow creation media-type/body and asynchronous identity/promise lifecycle concerns recorded by the integration reviewer at Issue #3 comment6033584628; no telemetry completeness claim. Conversation homepage and final expanded persistence flow are not implemented in this tested frontend. This checkpoint does not certify deployment, real administrator setup or email delivery. Local email-feature authorization remains pending and was not treated as a reason to stop browser QA.
