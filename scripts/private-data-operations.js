@@ -124,7 +124,11 @@ function openDatabase(filename) {
   const db = new DatabaseSync(filename, {
     readOnly: true,
     allowExtension: false,
-    enableForeignKeyConstraints: true
+    enableForeignKeyConstraints: true,
+    // Bound native lock contention, including the asynchronous backup's first
+    // read-lock attempt. A zero-timeout source can fail on a brief real writer
+    // lock before copying any page; this is not a retry of backup/file writes.
+    timeout: 5000
   });
   try {
     db.exec('PRAGMA trusted_schema=OFF;');

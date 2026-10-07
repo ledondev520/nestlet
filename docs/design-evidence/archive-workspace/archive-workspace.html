@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DESIGN REFERENCE · Nestlet 档案工作区（Finder 式三栏）</title>
+  <link rel="stylesheet" href="../../design-system/tokens.css">
+  <style>
+    /* Design reference only — not functional product code. Synthetic labels throughout. */
+    body{margin:0;background:var(--bg-canvas);color:var(--text-primary);font:var(--text-body)}
+    .frame-label{font:var(--text-micro);letter-spacing:.08em;color:var(--accent-deep);text-transform:uppercase;padding:18px 18px 8px}
+    .frame{margin:0 18px 34px;border:1px solid var(--border-strong);border-radius:var(--radius-panel);overflow:hidden;background:var(--bg-surface);box-shadow:var(--shadow-sheet)}
+    .frame.mobile{max-width:390px}
+
+    /* Three-region workspace */
+    .workspace{display:grid;grid-template-columns:230px 300px minmax(0,1fr);min-height:560px}
+    .region-nav{border-right:1px solid var(--border-default);background:var(--paper);padding:14px 12px;display:flex;flex-direction:column;gap:12px}
+    .region-list{border-right:1px solid var(--border-default);display:flex;flex-direction:column}
+    .region-preview{display:flex;flex-direction:column;min-width:0}
+
+    .search{display:flex;align-items:center;gap:7px;border:1px solid var(--input-border);border-radius:var(--radius-control);background:var(--input-bg);padding:8px 10px;font-size:12px;color:var(--text-muted)}
+    .nav-title{font-size:10px;letter-spacing:.08em;color:var(--text-muted);font-weight:600;text-transform:none;padding:0 4px}
+    .nav-item{display:flex;align-items:center;gap:8px;height:44px;padding:0 10px;border-radius:var(--radius-control);font-size:13px;cursor:pointer;border:0;background:none;text-align:left;width:100%;color:var(--text-primary)}
+    .nav-item small{display:block;font-size:10px;color:var(--text-muted)}
+    .nav-item.selected{background:var(--accent-tint);box-shadow:inset 2px 0 0 var(--accent)}
+    .nav-item:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px}
+    .nav-item .count{margin-left:auto;font-family:var(--font-mono);font-size:10px;color:var(--text-muted)}
+
+    .list-head{padding:12px 14px;border-bottom:1px solid var(--border-default);font-size:12px;color:var(--text-secondary);display:flex;justify-content:space-between;align-items:baseline}
+    .doc-row{display:flex;flex-direction:column;gap:3px;padding:10px 14px;border:0;border-bottom:1px solid var(--border-default);background:none;text-align:left;cursor:pointer;min-height:44px;color:var(--text-primary)}
+    .doc-row .t{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .doc-row .m{display:flex;gap:8px;align-items:center;font-family:var(--font-mono);font-size:10px;color:var(--text-muted)}
+    .doc-row.selected{background:var(--accent-tint);box-shadow:inset 2px 0 0 var(--accent)}
+    .doc-row:focus-visible{outline:2px solid var(--focus-ring);outline-offset:-2px}
+    .badge{font-size:10px;letter-spacing:.06em;border-radius:var(--radius-badge);padding:2px 7px;border:1px solid transparent}
+    .b-final{background:var(--status-success-bg);color:var(--status-success);border-color:#d3e0c2}
+    .b-draft{background:var(--bg-recessed);color:var(--text-secondary)}
+    .b-stale{background:var(--status-warning-bg);color:var(--status-warning);border-color:#eadfc3}
+
+    .crumbs{display:flex;align-items:center;gap:6px;padding:12px 18px;border-bottom:1px solid var(--border-default);font-size:12px;color:var(--text-muted);flex-wrap:wrap}
+    .crumbs a{color:var(--accent-deep);text-decoration:none}
+    .crumbs .sep{color:var(--faint)}
+    .doc-head{padding:18px 22px 0}
+    .doc-head h3{font:var(--text-title);margin:0 0 6px}
+    .doc-meta{display:flex;gap:8px;align-items:center;font-family:var(--font-mono);font-size:10px;color:var(--text-muted);flex-wrap:wrap}
+    .stale-banner{margin:12px 22px 0;padding:10px 13px;background:var(--status-warning-bg);border:1px solid #eadfc3;border-radius:9px;color:var(--status-warning);font-size:12px;line-height:1.6}
+    .doc-body{margin:14px 22px;flex:1;font:14px/1.85 Georgia,"Times New Roman",serif;background:#fff;border:1px solid var(--border-strong);border-radius:4px;padding:22px 24px;white-space:pre-wrap;max-width:var(--reading-max)}
+    .doc-actions{display:flex;gap:9px;padding:0 22px 18px;align-items:center;flex-wrap:wrap}
+    .btn{border-radius:var(--radius-control);font-size:13px;padding:9px 15px;min-height:40px;cursor:pointer}
+    .btn:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px}
+    .btn-p{background:var(--ink);color:var(--paper);border:1px solid var(--ink);font-weight:600}
+    .btn-s{background:var(--paper-deep);border:1px solid var(--border-strong)}
+    .btn-l{border:0;background:none;color:var(--accent-deep);font-size:12px;text-decoration:underline;text-underline-offset:3px}
+    .btn[disabled]{opacity:.42;cursor:not-allowed}
+    .stamp{font-size:10px;letter-spacing:.14em;color:var(--accent-deep);border:1.5px solid var(--accent);border-radius:4px;padding:4px 8px;font-weight:700;transform:rotate(-1.5deg);background:var(--accent-tint)}
+
+    /* Chat-as-preview variant */
+    .chat-scroll{flex:1;padding:16px 22px;display:flex;flex-direction:column;gap:12px;overflow:hidden}
+    .msg-user{align-self:flex-end;background:var(--bg-recessed);border:1px solid var(--border-default);border-radius:var(--radius-bubble-user);padding:9px 13px;font-size:13px;max-width:85%}
+    .msg-assistant{align-self:flex-start;font-size:13px;max-width:85%;line-height:1.75}
+    .msg-role{display:block;font-size:10px;letter-spacing:.08em;color:var(--text-muted);font-weight:600;margin-bottom:3px}
+    .composer{margin:0 22px 16px;border:1px solid var(--input-border);border-radius:var(--radius-control);background:var(--input-bg);padding:10px 12px;display:flex;gap:10px;align-items:flex-end}
+    .composer .grow{flex:1;font-size:13px;color:var(--text-muted);min-height:44px}
+    .composer .attach{color:var(--text-muted);font-size:11px;border:1px dashed var(--border-strong);border-radius:6px;padding:4px 8px}
+
+    /* State frames */
+    .center-state{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:40px 20px;text-align:center;color:var(--text-secondary);font-size:13px;line-height:1.7}
+    .center-state .glyph{font-family:var(--font-display);font-size:30px;color:var(--faint)}
+    .skel{height:14px;border-radius:6px;background:linear-gradient(90deg,var(--paper-deep) 25%,#f7f3e8 50%,var(--paper-deep) 75%);background-size:200% 100%;animation:shimmer 1.6s infinite}
+    @keyframes shimmer{to{background-position:-200% 0}}
+    .err-banner{margin:12px 14px;padding:11px 14px;background:var(--status-error-bg);border-left:3px solid var(--accent);border-radius:0 8px 8px 0;color:var(--status-error);font-size:12px;line-height:1.6}
+    .mobile-top{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--border-default)}
+    .back{border:0;background:none;color:var(--accent-deep);font-size:13px;padding:8px 4px;min-width:44px;min-height:44px;text-align:left}
+    .mobile-title{font:var(--text-title);font-size:16px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    @media(prefers-reduced-motion:reduce){.skel{animation:none}}
+  </style>
+</head>
+<body>
+
+<div class="frame-label">DESIGN REFERENCE · 桌面三栏 · 选中态（含过期文档横幅）</div>
+<div class="frame" id="frame-1">
+  <div class="workspace">
+    <nav class="region-nav" aria-label="导航">
+      <div class="search">⌕ 搜索客户或案例…</div>
+      <div>
+        <div class="nav-title">客户</div>
+        <button class="nav-item selected"><span>Johnny<small>2 个案例</small></span><span class="count">2</span></button>
+        <button class="nav-item"><span>Example Property LLC<small>1 个案例</small></span><span class="count">1</span></button>
+        <button class="nav-item"><span>Marina Wu（合成）<small>1 个案例</small></span><span class="count">1</span></button>
+      </div>
+      <div>
+        <div class="nav-title">最近案例</div>
+        <button class="nav-item"><span>DEMO-104<small>10 分钟前</small></span></button>
+        <button class="nav-item"><span>DEMO-097<small>昨天</small></span></button>
+      </div>
+    </nav>
+    <div class="region-list" aria-label="案例与文档">
+      <div class="list-head"><span>Johnny 的案例与文档</span><span>4 项</span></div>
+      <button class="doc-row"><span class="t">DEMO-104 · 128 Example Lane</span><span class="m"><span class="badge b-draft">草稿</span><span>跟进函 · v1 · 10:12</span></span></button>
+      <button class="doc-row selected"><span class="t">DEMO-104 · PHA 跟进函</span><span class="m"><span class="badge b-stale">已过期</span><span>v2 · 昨天</span></span></button>
+      <button class="doc-row"><span class="t">DEMO-104 · 案例状态摘要</span><span class="m"><span class="badge b-final">完成版</span><span>v1 · 昨天</span></span></button>
+      <button class="doc-row"><span class="t">DEMO-097 · 9 Test Way</span><span class="m"><span class="badge b-draft">草稿</span><span>v3 · 3 天前</span></span></button>
+    </div>
+    <div class="region-preview">
+      <div class="crumbs"><a href="#">客户</a><span class="sep">/</span><a href="#">Johnny</a><span class="sep">/</span><a href="#">DEMO-104</a><span class="sep">/</span><span>PHA 跟进函 · v2</span></div>
+      <div class="doc-head">
+        <h3>PHA 跟进函 <span class="stamp">ENGLISH · DRAFT</span></h3>
+        <div class="doc-meta"><span>v2</span><span>·</span><span>基于案例第 3 版</span><span>·</span><span>当前案例已是第 4 版</span></div>
+      </div>
+      <div class="stale-banner">此版本基于较早的案例内容，不能直接当作当前文书使用。请回到案例核对事实后生成新版本；历史版本保留可读。</div>
+      <div class="doc-body">DRAFT — FOR HUMAN REVIEW
+
+Date: [Insert date before sending]
+To: [Verify recipient and email/address]
+Subject: Request for lease-up instructions — DEMO-104
+
+Dear [Verified recipient name],</div>
+      <div class="doc-actions">
+        <button class="btn btn-p">重新生成当前版本</button>
+        <button class="btn btn-s">复制历史文本</button>
+        <button class="btn btn-l">下载历史 TXT</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="frame-label">DESIGN REFERENCE · 桌面三栏 · 预览为会话（工作入口）</div>
+<div class="frame" id="frame-2">
+  <div class="workspace">
+    <nav class="region-nav">
+      <div class="search">⌕ 搜索客户或案例…</div>
+      <div>
+        <div class="nav-title">客户</div>
+        <button class="nav-item selected"><span>Johnny<small>2 个案例</small></span><span class="count">2</span></button>
+      </div>
+      <div>
+        <div class="nav-title">最近案例</div>
+        <button class="nav-item"><span>DEMO-104<small>10 分钟前</small></span></button>
+      </div>
+    </nav>
+    <div class="region-list">
+      <div class="list-head"><span>DEMO-104 的会话</span><span>2 场</span></div>
+      <button class="doc-row selected"><span class="t">收件人信息确认</span><span class="m"><span>12 条消息</span><span>· 进行中</span></span></button>
+      <button class="doc-row"><span class="t">初始材料整理</span><span class="m"><span>6 条消息</span><span>· 昨天</span></span></button>
+    </div>
+    <div class="region-preview">
+      <div class="crumbs"><a href="#">客户</a><span class="sep">/</span><a href="#">Johnny</a><span class="sep">/</span><a href="#">DEMO-104</a><span class="sep">/</span><span>会话 · 收件人信息确认</span></div>
+      <div class="chat-scroll">
+        <div class="msg-user"><span class="msg-role" style="color:var(--accent-deep)">你</span>收件人部门还不确定，材料里没有写。</div>
+        <div class="msg-assistant"><span class="msg-role">巢小秘</span>可以先确认负责机构，再向经核实的渠道询问收件部门。需要我把它列为待补信息吗？</div>
+      </div>
+      <div class="composer"><span class="grow">提问或粘贴要点…</span><span class="attach">＋ 附件</span><button class="btn btn-p">发送 →</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="frame-label">DESIGN REFERENCE · 空态 / 加载 / 错误</div>
+<div class="frame" id="frame-3">
+  <div class="workspace">
+    <nav class="region-nav">
+      <div class="search">⌕ 搜索客户或案例…</div>
+      <div>
+        <div class="nav-title">客户</div>
+        <div class="center-state" style="padding:20px 8px"><span class="glyph">巢</span><span>还没有客户。保存第一个案例后可以关联客户。</span></div>
+      </div>
+    </nav>
+    <div class="region-list">
+      <div class="list-head"><span>加载中…</span></div>
+      <div style="padding:12px 14px;display:flex;flex-direction:column;gap:12px">
+        <div class="skel" style="width:70%"></div><div class="skel" style="width:45%"></div><div class="skel" style="width:60%"></div>
+      </div>
+    </div>
+    <div class="region-preview">
+      <div class="err-banner">案例列表加载失败。已保存的内容不受影响。<a href="#" onclick="return false" style="color:var(--accent-deep)">重试</a></div>
+      <div class="center-state"><span class="glyph">◇</span><span>选择一个案例或文档开始阅读。</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="frame-label">DESIGN REFERENCE · 手机 390px · 列表页（单栏 + 返回路径）</div>
+<div class="frame mobile" id="frame-4">
+  <div class="mobile-top"><span class="mobile-title">客户</span><button class="btn btn-s" style="min-height:44px">＋ 新建</button></div>
+  <div style="padding:10px 14px"><div class="search">⌕ 搜索客户或案例…</div></div>
+  <button class="doc-row" style="border-bottom:1px solid var(--border-default)"><span class="t">Johnny</span><span class="m"><span>2 个案例</span><span>· 最近 10 分钟前</span></span></button>
+  <button class="doc-row" style="border-bottom:1px solid var(--border-default)"><span class="t">Example Property LLC</span><span class="m"><span>1 个案例</span><span>· 昨天</span></span></button>
+  <button class="doc-row"><span class="t">Marina Wu（合成）</span><span class="m"><span>1 个案例</span><span>· 3 天前</span></span></button>
+</div>
+
+<div class="frame-label">DESIGN REFERENCE · 手机 390px · 文档阅读（返回在左，操作不挤压）</div>
+<div class="frame mobile" id="frame-5">
+  <div class="mobile-top"><button class="back">‹ DEMO-104</button><span class="mobile-title">PHA 跟进函 · v2</span></div>
+  <div class="stale-banner" style="margin:12px 14px 0">此版本基于较早的案例内容。请生成新版本；历史版本保留可读。</div>
+  <div class="doc-body" style="margin:12px 14px;padding:16px">DRAFT — FOR HUMAN REVIEW
+
+Date: [Insert date before sending]
+To: [Verify recipient and email/address]</div>
+  <div class="doc-actions" style="padding:0 14px 16px">
+    <button class="btn btn-p" style="flex:1;min-height:44px">重新生成当前版本</button>
+    <button class="btn btn-s" style="min-height:44px">复制</button>
+  </div>
+</div>
+
+</body>
+</html>
