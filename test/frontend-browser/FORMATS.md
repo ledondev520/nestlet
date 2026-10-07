@@ -4,7 +4,7 @@ Prepared separately from the accepted homepage build `92dc3a8302520d87893dc425ef
 
 ## Requirements and commands
 
-The supported browser environment must have actual Poppler `pdftotext`, Node 24, the locked SheetJS and Playwright packages, and the matching official Chromium. The existing browser workflow does not explicitly install Poppler; the addon integration must add `poppler-utils` before running this PDF gate. Do not silently skip PDF checks or replace the parser.
+The supported browser environment must have actual Poppler `pdftotext`, Node 24, the locked SheetJS and Playwright packages, and the matching official Chromium. The integrated browser workflow explicitly installs `poppler-utils` before running this PDF gate. Do not silently skip PDF checks or replace the parser.
 
 ```sh
 npm run build

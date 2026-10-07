@@ -26,10 +26,14 @@ jobs:
         run: npm ci --ignore-scripts
       - name: Install official Chromium for the locked Playwright version
         run: npx --no-install playwright install --with-deps chromium
+      - name: Install the actual PDF text parser
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends poppler-utils
       - name: Build the production frontend
         run: npm run build
       - name: Verify the disposable backend fixture over real HTTP
-        run: node test/frontend-browser/fixture.check.mjs
+        run: |
+          node test/frontend-browser/fixture.check.mjs
+          node test/frontend-browser/formats-fixture.check.mjs
       - name: Run real-browser journeys against disposable Node and SQLite
         run: npm run test:browser:frontend
       - name: Describe the exact acceptance boundary
