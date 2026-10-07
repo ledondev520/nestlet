@@ -4,9 +4,9 @@ Checkpoint: 2026-10-07. This is a development checkpoint, not final acceptance. 
 
 ## Strict acceptance command
 
-`npm test` runs only `test/core.test.js`, `test/server.test.js`, and `test/auth.test.js`.
+`npm test` runs only `test/core.test.js`, `test/server.test.js`, `test/auth.test.js`, `test/agency-guidance.test.js`, and `test/operator-setup.test.js`.
 
-Current result: **83 passed, 0 failed, 0 skipped**: 52 core behavior tests, 22 real HTTP/file-parser tests, and 9 real authentication/session tests. `npm run check` also passes.
+Current result: **97 passed, 0 failed, 0 skipped**: 52 core behavior tests, 22 real HTTP/file-parser tests, 9 real authentication/session tests, 4 agency-guidance registry tests, and 10 actual-file operator-setup tests. The separately run `node --test test/localization-contract.test.js` adds 5 passing source-contract tests; it is awaiting inclusion in the default script. `npm run check` also passes.
 
 This command uses real core functions, disposable actual HTTP servers, actual PDF/XLS/XLSX bytes, and installed real document parsers. It does not replace fetch, HTTP responses, provider calls, or file-reading functions. Server processes use disposable operator test credentials with real scrypt verification, and are deliberately configured without an API key and with live AI disabled. Parser tests log in and send real session/CSRF tokens. The suite verifies that unavailable live extraction is reported truthfully. Test source text and files contain authored non-personal examples only.
 
@@ -47,6 +47,27 @@ This command uses real core functions, disposable actual HTTP servers, actual PD
 
 These tests configure an HTTPS public origin while talking to the local upstream over HTTP, as a reverse-proxy application-layer check. They do not prove a TLS deployment.
 
+### Agency-guidance registry: 4 tests
+
+- Explicit agency selection and an unknown fallback; the research default does not assign the case agency
+- Bilingual reference records, official HTTPS host allowlist, and unconfirmed acceptance status
+- Printed expiration metadata never becomes a current-validity or acceptance determination
+- Returned registry objects cannot mutate the underlying source records
+
+These are registry behavior checks, not a fresh independent legal/government compliance review.
+
+### Private operator setup: 10 tests
+
+Real temporary files and actual scrypt derivation verify addition/replacement of exactly the operator hash, preservation of unrelated bytes/BOM/CRLF, private 0600 mode, atomic inode replacement and temporary-file cleanup. Failure paths cover unconfirmed/mismatched/invalid input, stale versions, public permissions, writable directories and ancestors (including an untrusted sticky ancestor above a private child), hard links and symlinks, duplicate declarations, malformed UTF-8, multiline values, NUL/lone-CR content, size limits, invalid paths and noninteractive CLI refusal. No production configuration file or real user credential is used.
+
+### Localization source contract: 5 tests
+
+The actual zh/en dictionaries have matching keys and array lengths. English copy contains no Chinese prose. Every currently emitted backend error code has a bilingual direct mapping or route fallback. Unknown errors resolve to localized copy keys; raw backend error/message/stack content is not rendered. LC05 explicitly verifies that PDF `TEXT_TOO_LARGE` takes priority over generic HTTP 413, with bilingual 50,000-character split/fewer-pages guidance distinct from the 5 MiB binary limit. The actual 35,717-byte PDF fixture still returns `TEXT_TOO_LARGE`. This is source-contract inspection, not browser rendering or event-flow evidence.
+
+### Real-time idle-session expiry: 1 separate long-running test
+
+**Passed.** A real authenticated session received no requests for 30 minutes, then the actual server rejected it with 401 `AUTH_REQUIRED`. Observation began 2026-10-07 04:22:20.111 UTC; completion was approximately 04:52:21 UTC. Test duration: 1,801,203 ms. Command: `node --test test/session-idle.acceptance.js`. No clock, session, HTTP or crypto behavior was mocked. This long-running check is separate from the fast suite.
+
 ## Historical development checks, excluded from acceptance
 
 `test/development-provider.test.js` contains isolated provider-response doubles. `test/app.test.js` uses jsdom with simulated browser-only services. They remain in the separately named `test:development` command as historical development diagnostics and have not been rerun or maintained after the no-mock acceptance requirement and auth redesign; their counts are not included above and they are not evidence of live AI, real-browser behavior, or no-mock acceptance.
@@ -57,7 +78,7 @@ Earlier reports of 86 passing tests included such development doubles. That coun
 
 - Real DeepSeek authentication, entitlement, live `deepseek-flash` responses and quality: **not run; secure API configuration required**
 - Real browser interaction, desktop/mobile pixels, keyboard focus, complete zh-CN/English switching, output download/clipboard/print artifacts, and async reset/cancel behavior: **not established by this suite**
-- Real 30-minute idle-session expiry: separate real-time check is running; not included in the fast suite count. Eight-hour absolute expiry is not time-tested
+- Eight-hour absolute session expiry is not time-tested; the real 30-minute idle expiry check passed separately
 - End-to-end deployed service and externally reachable reverse-proxy configuration
 
 A direct cloud-browser loopback navigation was blocked; no alternate route was used to bypass it. Browser checks must run in the separately authorized browser environment or remain explicitly unverified.

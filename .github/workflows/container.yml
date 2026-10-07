@@ -22,10 +22,25 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+      - name: Reproduce private-permission release checkout
+        run: |
+          chmod 600 Dockerfile .dockerignore package.json package-lock.json server.js auth.js workbook-worker.js
+          find public scripts ops -type d -exec chmod 700 {} +
+          find public scripts ops -type f -exec chmod 600 {} +
       - name: Validate Compose and build actual image
         run: |
           docker compose config --quiet
           docker compose build --pull
+      - name: Check helper module readability for root and arbitrary owner UID
+        run: |
+          for owner in 0:0 12345:12345; do
+            docker run --rm --pull never --network none --read-only \
+              --cap-drop ALL --security-opt no-new-privileges:true \
+              --user "$owner" nestlet:ci \
+              node --input-type=module -e "await import('/app/scripts/operator-setup.js'); await import('node:fs/promises').then(fs => fs.readFile('/app/scripts/setup-operator.js'));"
+          done
+      - name: Exercise disposable Docker helper through a real terminal
+        run: python3 ops/helper-docker-pty.py nestlet:ci
       - name: Start loopback-only runtime
         run: docker compose up -d --no-build --wait --wait-timeout 90
       - name: Check published address and host health

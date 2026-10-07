@@ -7,14 +7,9 @@ if (!process.stdin.isTTY) {
   process.exit(1);
 }
 const hiddenPrompt = prompt => new Promise((resolve, reject) => {
-  process.stderr.write(prompt);
   let value = '';
-  process.stdin.setRawMode(true);
-  process.stdin.resume();
-  process.stdin.setEncoding('utf8');
   const finish = (error) => {
     process.stdin.off('data', onData);
-    process.stdin.setRawMode(false);
     process.stdin.pause();
     process.stderr.write('\n');
     if (error) reject(error); else resolve(value);
@@ -28,8 +23,13 @@ const hiddenPrompt = prompt => new Promise((resolve, reject) => {
     }
   };
   process.stdin.on('data', onData);
+  process.stdin.resume();
+  process.stderr.write(prompt);
 });
+const previousRawMode = Boolean(process.stdin.isRaw);
 try {
+  process.stdin.setRawMode(true);
+  process.stdin.setEncoding('utf8');
   const password = await hiddenPrompt('Choose an operator password (12+ characters, hidden): ');
   const confirm = await hiddenPrompt('Confirm operator password (hidden): ');
   if (password !== confirm || password.length < 12) throw new Error('Passwords must match and contain at least 12 characters.');
@@ -37,3 +37,4 @@ try {
   const key = await promisify(scrypt)(password, salt, 32, { N: 16384, r: 8, p: 1, maxmem: 64 * 1024 * 1024 });
   process.stdout.write(`NESTLET_OPERATOR_PASSWORD_HASH='scrypt$${salt.toString('base64url')}$${key.toString('base64url')}'\n`);
 } catch (error) { process.stderr.write(error.message + '\n'); process.exitCode = 1; }
+finally { try { process.stdin.setRawMode(previousRawMode); } catch {} process.stdin.pause(); }

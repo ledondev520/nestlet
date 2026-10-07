@@ -10,6 +10,15 @@ await assert.rejects(writeFile('/app/public/.ci-write-check', 'must fail'), { co
 for (const path of ['/app/.env', '/app/.git/config', '/app/test/server.test.js']) {
   await assert.rejects(access(path, constants.F_OK), { code: 'ENOENT' });
 }
+// The bundled user-run helper must resolve its support module and reject non-TTY use.
+for (const path of ['/app/scripts/setup-operator.js', '/app/scripts/operator-setup.js']) {
+  await access(path, constants.R_OK);
+  assert.equal(spawnSync(process.execPath, ['--check', path]).status, 0);
+}
+const nonInteractiveSetup = spawnSync(process.execPath, ['scripts/setup-operator.js', '/runtime/runtime.env'], { encoding: 'utf8' });
+assert.equal(nonInteractiveSetup.status, 1);
+assert.match(nonInteractiveSetup.stderr, /interactive terminal/u);
+assert.equal(nonInteractiveSetup.stdout, '');
 const health = await fetch(base + '/api/health');
 assert.equal(health.status, 200);
 assert.deepEqual(await health.json(), { ok: true });

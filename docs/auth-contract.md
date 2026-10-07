@@ -4,7 +4,7 @@ The standalone Node app uses one operator account. It does not create an account
 
 ## Configuration
 
-- `NESTLET_OPERATOR_PASSWORD_HASH`: `scrypt$<base64url 16-byte salt>$<base64url 32-byte derived key>`; fixed N=16384, r=8, p=1. Run `npm run hash-password` privately in an interactive terminal. Put the printed assignment in the server `.env`; preserve its single quotes and never put a password in command arguments or chat
+- `NESTLET_OPERATOR_PASSWORD_HASH`: `scrypt$<base64url 16-byte salt>$<base64url 32-byte derived key>`; fixed N=16384, r=8, p=1. Preferred initial setup: the operator personally runs `npm run setup-operator -- /opt/nestlet/shared/runtime.env` in a private interactive terminal, using the file owner's account (sudo if root-owned). It prompts twice without echo, requests a final `SET OPERATOR` confirmation, and atomically updates only this key without printing the password or hash. The existing file must be mode 0600, regular, owned by the current effective user, and reached without symlinks. Other environment lines remain unchanged. Restart Nestlet afterward. `npm run hash-password` remains an advanced private-owner tool; do not copy its output through chat
 - `PUBLIC_ORIGIN`: the browser's exact HTTPS origin for production, without a path, query, fragment, or credentials. A trailing slash is normalized. HTTP public origins cannot sign in or configure keys. Loopback-only development can sign in over HTTP, but web API-key configuration still requires HTTPS
 - `HOST`: defaults to `127.0.0.1`; containers use `0.0.0.0` behind the configured HTTPS reverse proxy
 - `DEEPSEEK_MODEL`: if supplied, must equal `deepseek-flash`. Other names fail startup; no alias or Pro fallback is selected

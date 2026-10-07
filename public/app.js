@@ -33,7 +33,7 @@ const copy = {
     copied: '英文草稿已复制', copyFail: '复制失败，请手动选中草稿复制', cancelled: '处理已取消，未应用新结果',
     errorFile: '请使用 UTF-8 TXT / 单案例 CSV（最大 50 KB），或当前支持的 PDF / XLSX / XLS。', errorCSV: 'CSV 需要列头 property, owner, pha, caseReference, rent，以及一行案例数据。', errorEmpty: '请先粘贴文本或导入文件。',
     errorLive: '实时 AI 不可用或请求失败。未应用新建议，可重试或选择手动整理。', errorPdf: '无法提取此 PDF。请改为粘贴去标识化文本，或使用可选中文本的 PDF。',
-    errorScanned: '未找到可提取的文本，此 PDF 可能是扫描件。本原型不支持 OCR，请改为粘贴去标识化文本。', errorEncrypted: '不支持加密 PDF。请使用可读取的去标识化文本。', errorSize: '文件过大。TXT / CSV 最大 50 KB，PDF / Excel 最大 5 MB。', errorGeneric: '操作未完成，请重试。',
+    errorScanned: '未找到可提取的文本，此 PDF 可能是扫描件。本原型不支持 OCR，请改为粘贴去标识化文本。', errorEncrypted: '不支持加密 PDF。请使用可读取的去标识化文本。', errorSize: '文件大小超限。TXT / CSV 最大 50 KB；PDF / Excel 最大 5 MiB。请压缩或拆分文件后重试。', errorTextSize: 'PDF 提取后的文本超过 50,000 字符。这与文件大小限制不同；请拆分 PDF、减少页数，或粘贴不超过 50,000 字符的相关文本。', errorGeneric: '操作未完成，请重试。',
     consent: '继续会把本次全部文本发送给 DeepSeek。仅限虚构或去标识化资料；真实敏感资料尚未获得隐私与安全许可。你是否已确认数据处理条款和授权，并同意发送本次文本？',
     pdfConsent: '此 PDF 将上传至本原型服务器，仅用于提取文本，不会自动发送到 DeepSeek。请确认文件仅包含虚构或去标识化资料。继续？',
     footer: '工作名，尚未完成商标核查 · 不筛选租客、不判断资格、不自动发送', reference: 'HUD 官方 HCV 资料',
@@ -72,7 +72,7 @@ const copy = {
     copied: 'English draft copied', copyFail: 'Copy failed. Please select and copy the draft manually.', cancelled: 'Processing cancelled. No new results were applied.',
     errorFile: 'Use UTF-8 TXT / one-case CSV (up to 50 KB), or a currently supported PDF / XLSX / XLS.', errorCSV: 'CSV requires the headers property, owner, pha, caseReference, rent, followed by one case row.', errorEmpty: 'Paste text or import a file first.',
     errorLive: 'Live AI is unavailable or failed. No new suggestions were applied. Retry or choose manual processing.', errorPdf: 'Could not extract this PDF. Paste de-identified text or use a text-based PDF instead.',
-    errorScanned: 'No extractable text found. This may be a scanned PDF. OCR is not supported; paste de-identified text instead.', errorEncrypted: 'Encrypted PDFs are not supported. Use readable, de-identified text instead.', errorSize: 'File too large. TXT / CSV: up to 50 KB. PDF / Excel: up to 5 MB.', errorGeneric: 'Could not complete this action. Please try again.',
+    errorScanned: 'No extractable text found. This may be a scanned PDF. OCR is not supported; paste de-identified text instead.', errorEncrypted: 'Encrypted PDFs are not supported. Use readable, de-identified text instead.', errorSize: 'File-size limit exceeded. TXT / CSV: up to 50 KB; PDF / Excel: up to 5 MiB. Compress or split the file and try again.', errorTextSize: 'The extracted PDF text exceeds 50,000 characters. This is separate from the file-size limit. Split the PDF, use fewer pages, or paste up to 50,000 characters of relevant text.', errorGeneric: 'Could not complete this action. Please try again.',
     consent: 'This sends all the current text to DeepSeek. Use only synthetic or de-identified information; real sensitive documents have not been cleared for privacy and security. Have you verified the data-processing terms and authorization, and do you agree to send this text?',
     pdfConsent: 'This PDF will be uploaded to the prototype server for text extraction. It will not automatically be sent to DeepSeek. Confirm that it contains only synthetic or de-identified information. Continue?',
     footer: 'Working name; not trademark-cleared · No screening, eligibility decisions, or automatic sending', reference: 'Official HUD HCV resources',
@@ -373,10 +373,11 @@ async function importFile(file) {
       const response = await fetch('/api/document', {method: 'POST', headers: requestHeaders({'Content-Type': 'application/pdf', 'X-Document-Consent': 'synthetic-or-deidentified'}), body: file, signal});
       const result = await response.json();
       if (!response.ok) {
-        const codes = {OCR_REQUIRED: 'errorScanned', PDF_ENCRYPTED: 'errorEncrypted', BUSY: 'errorBusy'};
-        throw responseError(result, response.status === 413 ? 'errorSize' : codes[result.code] || 'errorPdf');
+        const codes = {OCR_REQUIRED: 'errorScanned', PDF_ENCRYPTED: 'errorEncrypted', TEXT_TOO_LARGE: 'errorTextSize', BUSY: 'errorBusy'};
+        throw responseError(result, codes[result.code] || (response.status === 413 ? 'errorSize' : 'errorPdf'));
       }
-      if (typeof result.text !== 'string' || result.text.length > 50000) throw new Error('errorPdf');
+      if (typeof result.text !== 'string') throw new Error('errorPdf');
+      if (result.text.length > 50000) throw new Error('errorTextSize');
       next = result.text;
     } else {
       const raw = new TextDecoder('utf-8', {fatal: true}).decode(await file.arrayBuffer());

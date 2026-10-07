@@ -137,7 +137,12 @@ for (const [name, status, code] of [
 ]) {
   test(`PDF route safely rejects ${name} with ${code}`, async context => {
     if (!await requirePdf(context)) return;
-    const response = await documentRequest(await fixture(name));
+    const bytes = await fixture(name);
+    if (name === 'large-text.pdf') {
+      assert.equal(bytes.length, 35717, 'Regression fixture is far below the 5 MiB binary limit');
+      assert.ok(bytes.length < 5 * 1024 * 1024);
+    }
+    const response = await documentRequest(bytes);
     assert.equal(response.status, status);
     const body = await response.json();
     assert.equal(body.code, code);

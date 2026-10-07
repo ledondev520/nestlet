@@ -9,5 +9,8 @@
 !public/**
 !ops/
 !ops/healthcheck.mjs
+!scripts/
+!scripts/setup-operator.js
+!scripts/operator-setup.js
 !Dockerfile
 !.dockerignore
