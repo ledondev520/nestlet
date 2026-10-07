@@ -91,7 +91,7 @@ test('model-access action is explicit and does not claim chat generation passed'
  assert.equal(calls.filter(c=>c.path==='/api/settings/test').length,0);
  await click([...host.querySelectorAll('button')].find(button=>button.textContent==='Verify model access'));
  assert.deepEqual(calls.find(c=>c.path==='/api/settings/test').body,{});
- assert.match(host.textContent,/Chat generation has not been tested/);
+ assert.match(host.textContent,/Model access verified/);
 });
 
 test('remembered login uses native autofill values and stores only username',async()=>{

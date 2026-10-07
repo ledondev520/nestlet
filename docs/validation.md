@@ -263,3 +263,12 @@ Schema5 backend work is isolated from the frontend rollout. New registrations re
 Rebased backend runtime `d857037` onto resolved retrieval/main integration `431909f`. Preserved upstream library tools/retrieval and exact session semantics: normal idle30 minutes, remembered idle8 hours, absolute8 hours, process-local sessions. The login API accepts strictly Boolean rememberMe and retains verified-email/legacy identity selection. Tests additionally prove reset revokes normal and remembered sessions, leaves another user's session valid, and a credential rotation during asynchronous login prevents a stale remembered cookie. Restart still revokes all cookies.
 
 Integrated local checks passed: syntax, build, **308/308 backend**, **53/53 explicitly simulated email-service contracts**, and **201/201 existing frontend**. This is not the new email frontend/browser or actual inbox acceptance. No production service configuration or real mail send occurred. Both independent security findings from the first review were rechecked as fixed with three focused regressions.
+
+
+## Interface copy sweep, October 7, 2026
+
+At the owner's request, local Codex reviewed chat, material intake, customer/file directories, documents, account settings and shared recovery states. Removed implementation-status commentary and redundant permanent notes in both languages. Runtime failures still describe the required next action; unsaved edits, conflicts, file limitations and incomplete responses remain distinguishable.
+
+Material extraction now starts from the explicitly named DeepSeek action without a second consent checkbox. Changing source text or uploading files never starts a provider request; the existing request validation and the consent field remain. Updated the controlled React test to verify this trigger and retained its failure/no-fallback assertions.
+
+Validation: 158 frontend tests passed. Production build passed. Browser smoke, bilingual responsive flows, stored files/documents and account isolation are tested with the existing seven-test suite on a disposable local service. No production material or live provider call was used for validation.
