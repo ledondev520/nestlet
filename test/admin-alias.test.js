@@ -243,3 +243,25 @@ test('private administrator and ordinary setup both reject five characters and c
     assert.equal((await auth.login(ownerPassword)).role, 'owner', 'Existing longer passwords remain compatible');
   } finally { storage.close(); }
 });
+
+test('remember me survives idle time but expires after eight hours and logout revokes it', async () => {
+  const { scryptSync } = await import('node:crypto');
+  const salt=Buffer.alloc(16,7), password='remember-fixture-only';
+  const passwordHash=`scrypt$${salt.toString('base64url')}$${scryptSync(password,salt,32).toString('base64url')}`;
+  const {createOperatorAuth}=await import('../auth.js');
+  const auth=createOperatorAuth({passwordHash});
+  const normal=await auth.login(password,'owner');
+  const remembered=await auth.login(password,'owner',true);
+  const request=session=>({headers:{cookie:session.cookie.split(';')[0]}});
+  const realNow=Date.now, start=realNow();
+  try {
+    Date.now=()=>start+31*60*1000;
+    assert.equal(auth.getSession(request(normal)),null);
+    assert.equal(auth.getSession(request(remembered)).userId,'owner');
+    Date.now=()=>start+8*60*60*1000+1;
+    assert.equal(auth.getSession(request(remembered)),null);
+  } finally { Date.now=realNow; }
+  const signedIn=await auth.login(password,'owner',true);
+  auth.logout(auth.getSession(request(signedIn)));
+  assert.equal(auth.getSession(request(signedIn)),null);
+});

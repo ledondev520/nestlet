@@ -230,3 +230,9 @@ No API/server/storage/package contracts changed in this follow-up. The separate 
 ### October 7, 2026 — atomic generic case-update draft preservation
 
 Isolated branch based on main `2fc15f216714d0331a82456edb1d97b9f76f8498`. New `test/legacy-draft-preservation.test.js` passes 9/9 using actual disposable SQLite files and authenticated HTTP, including concurrent writer processes, optimistic conflicts, cross-user denial, archive/update triggers that force rollback, capacity failure, exact text/provenance retention and response metadata. No provider doubles, paid calls or production records are used. On this isolated candidate, `npm run check` passed and the full default `npm test` passed 240/240 with 0 skipped. Pinned dependency installation succeeded with an explicit temporary npm cache after the default cache path was unavailable. These results are not a browser/deployment or real-provider acceptance claim.
+
+## Chat / sign-in polish, October 7, 2026
+
+Local Codex removed repeated chat consent/footnote/footer prose under the owner's explicit UI request, changed the thread/composer layout and added remembered username/password-manager-compatible native inputs. The opt-in rememberMe flag preserves a session through idle periods within the existing eight-hour absolute expiry. Server restart still invalidates in-memory sessions.
+
+Validation: 266 backend tests and 157 frontend tests passed under Node 24.18.0 with an owned, canonical TMPDIR (the default macOS temporary directory fails this repository's permission checks). Build and syntax checks passed. Actual loopback browser login with a public disposable fixture, refresh recovery and 390px no-horizontal-overflow checks passed. Production password-manager save prompts and a live paid-model call are not established by these checks.

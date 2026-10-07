@@ -6,7 +6,7 @@ import { createServer } from 'vite';
 let server, React, createRoot, SessionProvider, SettingsPage, AccountControls, AuthPanel, root, host;
 const originalFetch=globalThis.fetch;
 const dom=new JSDOM('<!doctype html><html><body></body></html>',{url:'https://fixture.invalid',pretendToBeVisual:true});
-for(const key of ['window','document','navigator','HTMLElement','Element','Node','MutationObserver','getComputedStyle']) Object.defineProperty(globalThis,key,{value: key==='getComputedStyle'?dom.window.getComputedStyle.bind(dom.window):dom.window[key],configurable:true,writable:true});
+for(const key of ['window','document','navigator','HTMLElement','Element','Node','MutationObserver','Event','getComputedStyle']) Object.defineProperty(globalThis,key,{value: key==='getComputedStyle'?dom.window.getComputedStyle.bind(dom.window):dom.window[key],configurable:true,writable:true});
 // Layout is deliberately outside this DOM fixture; real browser verification is separate.
 globalThis.ResizeObserver=class {observe(){} unobserve(){} disconnect(){}};
 globalThis.IS_REACT_ACT_ENVIRONMENT=true;
@@ -91,4 +91,20 @@ test('model-access action is explicit and does not claim chat generation passed'
  await click([...host.querySelectorAll('button')].find(button=>button.textContent==='Verify model access'));
  assert.deepEqual(calls.find(c=>c.path==='/api/settings/test').body,{});
  assert.match(host.textContent,/Chat generation has not been tested/);
+});
+
+test('remembered login uses native autofill values and stores only username',async()=>{
+ const calls=fixture({authenticated:false,authConfigured:true,secureLogin:true,registrationEnabled:true});await render(AuthPanel);
+ const name=host.querySelector('[name=username]'), password=host.querySelector('[name=password]');
+ assert.equal(name.autocomplete,'username');assert.equal(password.autocomplete,'current-password');
+ // Password managers can fill native values without firing a React change event.
+ Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value').set.call(name,'synthetic-user');
+ Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value').set.call(password,'fixture-password');
+ await click(host.querySelector('[role=checkbox]'));
+ assert.equal(name.value,'synthetic-user');assert.equal(password.value,'fixture-password');
+ await React.act(async()=>host.querySelector('form').dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true})));
+ assert.deepEqual(calls.find(c=>c.path==='/api/login').body,{username:'synthetic-user',password:'fixture-password',rememberMe:true});
+ assert.equal(window.localStorage.getItem('nestlet.remembered-account'),'synthetic-user');
+ assert.doesNotMatch(JSON.stringify({...window.localStorage}),/fixture-password/);
+ window.localStorage.clear();
 });

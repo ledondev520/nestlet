@@ -1,5 +1,6 @@
 export const COPY = {
   zh: {
+    remember:'记住账号并保持登录 8 小时', showPassword:'显示密码', hidePassword:'隐藏密码',
     account:'账号', signedIn:'已登录', signedInHint:'继续处理自己的客户、案件和文档', ordinary:'普通账号', administrator:'管理员',
     login:'登录', register:'注册', loginTitle:'回到你的工作区', registerTitle:'创建自己的工作区',
     loginHint:'使用用户名登录，继续上次保存的工作', registerHint:'注册后只可访问自己的客户、案件、对话和文档',
@@ -31,6 +32,7 @@ export const COPY = {
     refreshing:'正在刷新…', refresh:'刷新状态', refreshFailed:'设置操作已返回，但最新状态读取失败；请刷新确认',
   },
   en: {
+    remember:'Remember me for 8 hours', showPassword:'Show password', hidePassword:'Hide password',
     account:'Account', signedIn:'Signed in', signedInHint:'Continue with your own customers, cases, and documents', ordinary:'Ordinary account', administrator:'Administrator',
     login:'Sign in', register:'Register', loginTitle:'Return to your workspace', registerTitle:'Create your workspace',
     loginHint:'Sign in with your username to continue saved work', registerHint:'Your customers, cases, conversations, and documents stay scoped to your account',
@@ -64,6 +66,7 @@ export const COPY = {
 };
 const ERRORS = {
   zh: {
+    remember:'记住账号并保持登录 8 小时', showPassword:'显示密码', hidePassword:'隐藏密码',
     AUTH_USERNAME_REQUIRED:'请输入用户名', AUTH_USERNAME_INVALID:'用户名格式不正确，请按下方规则输入', AUTH_USERNAME_RESERVED:'该用户名不可用于注册，请选择其他用户名',
     PASSWORD_LENGTH:'密码须为 6–256 个字符', PASSWORD_CONTROL:'密码不能包含控制字符', PASSWORD_MISMATCH:'两次输入的密码不一致',
     INVALID_CREDENTIALS:'用户名或密码不正确', LOGIN_RATE_LIMITED:'登录尝试过多，请稍后再试', REGISTRATION_RATE_LIMITED:'注册尝试过多，请等待十分钟后重试',
@@ -75,6 +78,7 @@ const ERRORS = {
     NETWORK_ERROR:'网络连接失败，请检查连接后重试', INVALID_RESPONSE:'服务器响应无法读取，请稍后重试', REQUEST_FAILED:'操作未完成，请重试；请勿在错误反馈中发送密码或 Key',
   },
   en: {
+    remember:'Remember me for 8 hours', showPassword:'Show password', hidePassword:'Hide password',
     AUTH_USERNAME_REQUIRED:'Enter a username', AUTH_USERNAME_INVALID:'The username format is invalid. Follow the rules below', AUTH_USERNAME_RESERVED:'This username cannot be registered. Choose another',
     PASSWORD_LENGTH:'Use 6–256 password characters', PASSWORD_CONTROL:'Control characters are not allowed in passwords', PASSWORD_MISMATCH:'The passwords do not match',
     INVALID_CREDENTIALS:'The username or password is incorrect', LOGIN_RATE_LIMITED:'Too many sign-in attempts. Try again shortly', REGISTRATION_RATE_LIMITED:'Too many registration attempts. Wait ten minutes before retrying',
