@@ -1,0 +1,140 @@
+# Nestlet完整旅程验收矩阵
+
+更新时间：2026-10-07 07:50 UTC。目标验收截止：09:40 UTC（上海17:40）。
+
+**结论：完整用户旅程尚未通过。** 后端与真实HTTP/SQLite检查已有明确证据，最新前后端组合浏览器仍未验收；PR4当前头有已核实源码阻塞，线上仍为旧版本且管理员未初始化。不能将CI、解析fixture、历史截图或一次供应商组件探测换算成整条产品旅程通过。
+
+本矩阵按 [完整旅程指导](nestlet-ux-journey-guidance.md) 的J01–J12、O01–O05、T01–T07逐项拆分。本文仅增加验收记录和测试，不修改前端。Kimi独占前端修复，Local Codex独立执行真实浏览器，集成人固定并发布最终组合SHA。
+
+## 版本与证据账本
+
+| 代号 | 固定版本或来源 | 已证实范围 | 不可推断的内容 |
+|---|---|---|---|
+| B | PR12 `3bfcaa3dc89fa2e6220ea9dd64c3b8aed8c1cf00` | Linux严格179/179；独立macOS179/179及HTTP5/5；该SHA两条CI成功 | 不包含最终Kimi前端；不是浏览器或真实模型验收 |
+| B+QA | B运行代码不变，仅本地新增QA断言，07:49 UTC | 默认187/187，零失败/跳过；syntax通过。新增6–11位逐个HTTP注册/退出/登录、SSE不支持角色拒绝、工作流JSON契约 | 新增测试尚未提交；不能声称远端CI已跑187 |
+| U | PR4 `7b74b227e50a5eaca28fa20043d5a3472da862b4` | PR元数据与指定源码片段已读取；四个既有阻塞及一处新契约缺口可定位 | 作者146绿及截图不代表与B合并后功能通过 |
+| H1 | `e4179b14ae8b2c8051b64d0fad5035d55351d074` | Local Codex历史浏览器：真实文件、跟进函编辑/TXT/原生打印PDF、390px等 | 后续账号、遥测、聊天与新前端不可继承历史通过 |
+| H2 | `443675cf566f3af4932b144dd604317b51063402` | Local Codex历史浏览器：长密码普通注册、保存→实际服务重启→重登打开、第二用户为空 | 当时仍是旧密码规则；未覆盖6–11位或最新组合 |
+| D | 线上 `b431ea59405cbbf9ab6ec9945010f66f655b1781`，集成人状态报告 | 旧容器健康；API key已私密持久配置；`authConfigured=false` | 新SQLite/注册/聊天未据此部署验收，不能宣称可正常网页登录与提取 |
+| P | Issue9评论6033129332，集成人组件探测 | 模型目录200、deepseek-flash列出；一次有界合成生成200，362ms、21tokens | 不是网页链路、真实提取、SSE或图片理解；不要为矩阵重复收费探测 |
+
+证据链接：
+- [B固定PR12及范围](https://github.com/ledondev520/nestlet/pull/12)
+- [B的检查CI](https://github.com/ledondev520/nestlet/actions/runs/37587140497)，[B的真实容器CI](https://github.com/ledondev520/nestlet/actions/runs/37587140500)
+- [B的独立macOS/HTTP验收](https://github.com/ledondev520/nestlet/pull/12#issuecomment-6033216826)
+- [U固定源码](https://github.com/ledondev520/nestlet/blob/7b74b227e50a5eaca28fa20043d5a3472da862b4/public/app.js)，[四个既有阻塞](https://github.com/ledondev520/nestlet/issues/3#issuecomment-6033145469)
+- [H1/H2/B的独立浏览器与测试报告固定文档](https://github.com/ledondev520/nestlet/blob/02ac19dc25b9c8809295a34f930a122792d42384/docs/local-acceptance.md)
+- [P组件探测](https://github.com/ledondev520/nestlet/issues/9#issuecomment-6033129332)，[D私密配置及未初始化状态](https://github.com/ledondev520/nestlet/issues/9#issuecomment-6032703244)
+
+**状态词仅有通过、失败、未运行；证据层必须保留。** “通过·HTTP”不等于“通过·浏览器”。“失败·源码”表示可核实的控制流/契约错误，未伪称已在浏览器复现。历史浏览器通过单列，不能替代最新整合SHA。
+
+## 当前阻塞及最小复验
+
+| ID | 状态与版本 | 精确问题与影响 | 最小关闭条件 | 修复/复验 |
+|---|---|---|---|---|
+| P1-1 | 失败·源码，U；B旧UI也仍有12位客户端guard | U的HTML/minlength提示改6，但submit仍以`input.value.length < 12`拒绝6–11位。B后端接受不代表网页可提交 | 每种6–11位在最终组合页面实际注册→退出→登录；5拒绝，旧长密码继续可用 | Kimi / Local Codex |
+| P1-2 | 失败·源码，U | `fileStart`仅在workbook分支声明，却被成功TXT/CSV/PDF分支使用；成功替换材料后抛ReferenceError，错误/忙碌结束路径受影响 | 实际导入TXT、CSV、文本PDF，各自显示成功且无console错误；失败后旧内容保留，随后有效导入成功 | Kimi / Local Codex |
+| P1-3 | 失败·源码，U | `ensureWorkflow()`已有workflowId时返回null，后续track直接停止 | 一个真实流程至少3个顺序客户端事件持续落库，ID不重复创建且requestId对应正确 | Kimi / Local Codex |
+| P1-4 | 失败·源码，U | reset未撤销pending creating/身份epoch，旧用户延迟resolve/finally可改写当前telemetry状态。未证明正文泄漏 | 延迟真实workflow请求期间退出/换用户/New；旧回调不改当前ID、计时或disabled标志，业务仍可用 | Kimi / Local Codex |
+| QA-WF-JSON | 失败·源码＋真实HTTP契约，U→B | U首次`POST /api/workflows`只有CSRF头，无JSON媒体类型/`{}`；B实际返回415，随后U设置disabled。这是四项之外的独立契约缺口 | 用当前真实session发JSON `{}`得到201；从空流程开始，浏览器实际创建/复用成功，不因415永久停记 | Kimi / Local Codex；后端契约不放宽 |
+| G-INTEGRATED-SHA | 未运行·整合 | B和U仍是不同PR，且U有上述阻塞 | 明确最终组合commit，并只对该SHA留证 | 集成人 |
+| G-ADMIN-DEPLOY | 未运行·线上阻塞，D | 线上旧版本且管理员未初始化；现有key无需重取 | 经授权的人完成管理员私密初始化；精确部署新SHA后健康、角色/会话和普通账号走通 | 所有者/部署负责人 |
+| G-LIVE-APP | 未运行·真实模型应用链路 | P仅组件生成，不是网页提取/聊天/图片 | 在授权配置与合成输入下，正常应用路径分别验证提取、真实SSE和图片；记录请求/返回模型与结果边界 | 授权执行者 / Local Codex |
+
+`QA-WF-JSON`的实际回归为 `test/telemetry-api.test.js` 的“workflow creation requires an explicit JSON object”：相同真实session/CSRF下，无类型/体→415，JSON空体→400，JSON `{}`→201。没有模拟响应。
+
+## 场景级矩阵
+
+### 入口 注册 登录
+
+| 场景 | 最新后端/契约结果 | 最新整合浏览器结果 | 版本与证据 | 必须补的证据 |
+|---|---|---|---|---|
+| J01 首访zh-CN、空案例、无假成功 | 通过·静态资源/无key HTTP | 未运行 | B `server.test.js`；H1有历史空页面 | 最终SHA首屏、语言、普通用户下一步 |
+| J02-6 6位普通注册→退出→登录 | 通过·真实HTTP | 失败·U源码，浏览器未运行 | B+QA `registration-api.test.js`长度6；P1-1 | 201、用户角色及实际页面三步 |
+| J02-7 7位同链路 | 通过·真实HTTP | 失败·U源码，浏览器未运行 | B+QA 长度7；P1-1 | 同上，独立账号 |
+| J02-8 8位同链路 | 通过·真实HTTP | 失败·U源码，浏览器未运行 | B+QA 长度8；P1-1 | 同上，独立账号 |
+| J02-9 9位同链路 | 通过·真实HTTP | 失败·U源码，浏览器未运行 | B+QA 长度9；P1-1 | 同上，独立账号 |
+| J02-10 10位同链路 | 通过·真实HTTP | 失败·U源码，浏览器未运行 | B+QA 长度10；P1-1 | 同上，独立账号 |
+| J02-11 11位同链路 | 通过·真实HTTP | 失败·U源码，浏览器未运行 | B+QA 长度11；P1-1 | 同上，独立账号 |
+| J02-NEG 5位拒绝、256接受/257拒绝、重复/保留名、确认不符 | 通过·真实HTTP/scrypt | 未运行 | B `admin-alias.test.js`、`registration-api.test.js` | 双语表单、正确定位错误、保留非秘密输入 |
+| J02-ROLE 注册不能选择admin；普通账号不能管理key | 通过·HTTP403/严格payload | 未运行 | B `case-api.test.js`、注册套件 | 普通视图没有key表单；owner视图单独留证 |
+| J03 Dirty New/Open/Clear/Logout取消不丢工作 | 核心版本/业务边界通过；UI状态非API结论 | 未运行 | H1仅历史取消/清空；指导J03/J10 | 连续实际编辑与取消；完整字段/草稿比较 |
+
+每个密码长度的HTTP测试使用独立临时SQLite/服务，避免第6次注册的既定限流被误报为密码失败。不记录实际客户凭据。
+
+### 实际材料 导入 核对
+
+| 场景 | 最新后端/解析结果 | 最新整合浏览器结果 | 版本与证据 | 必须补的证据 |
+|---|---|---|---|---|
+| J04-TXT 有效UTF-8 TXT | 通过·实际文件/纯解析 | 失败·U源码，浏览器未运行 | B `server.test.js`下载TXT真实读取；H1历史通过；P1-2 | 文件选择→成功状态→文字逐行比较 |
+| J04-CSV CSV导入与安全roundtrip | 通过·实际CSV/核心 | 失败·U源码，浏览器未运行 | B `core.test.js`、sample HTTP；H1历史roundtrip | 逗号/引号/Unicode/未知值/重新核对；不执行公式 |
+| J04-PDF 文本PDF | 通过·真实HTTP+Poppler | 失败·U源码，浏览器未运行 | B `server.test.js`、H1历史实际PDF；P1-2 | 上传授权、成功文字、忙碌结束、无异常 |
+| J04-XLS 真实旧Excel | 通过·真实HTTP/SheetJS | 未运行 | B及H1历史XLS预览 | 页面选sheet/row/五列→源单元格正确 |
+| J04-XLSX 真实XLSX | 通过·真实HTTP/SheetJS | 未运行 | B及H1历史五列映射 | 切sheet/row、禁止公式/隐藏/合并数据、成功核对 |
+| J04-NEG 无效UTF-8、错CSV、损坏/加密/扫描PDF、Excel超限 | 通过·真实解析/错误码（按测试细分） | 未运行 | B各解析fixture；H1及LC05历史错误恢复 | 每类双语错误后旧工作保持，再导入有效文件成功 |
+| J04-SIZE 小PDF但提取>50000字符 | 通过·35717字节真实PDF、专用TEXT_TOO_LARGE | 未运行 | B回归＋H1后续LC05中英文截图 | 最终UI不再误称5MiB字节超限 |
+| J04-SAMPLES 五种实际下载文件 | 通过·HTTP MIME/attachment＋再用真实解析器读取 | 未运行 | B `server.test.js`五sample场景 | 从实际主页点击下载，再用选择器导入；无自动填样本 |
+| J05 无key/disabled、session、权限错误 | 通过·真实HTTP；不返回伪造事实/回答 | 未运行 | B auth/chat-api/case套件 | 正确对象的指引、保持数据、无静默fallback |
+| J05-LIVE 真实DeepSeek提取 | 未运行·应用链路；P仅组件通过 | 未运行 | P、B契约 | 正常已授权应用请求、五字段/来源/确认状态；无自动覆盖 |
+| J05-RACE 取消/重复点击/切语言/换案例的迟到响应 | 服务端取消有真实HTTP证据；不是UI证明 | 未运行 | H1历史PDF延迟/reset；B telemetry abort | 最终SHA真实延迟输入，旧结果不能复活或串案例 |
+| J06 部分核对、未知、冲突、编辑失效 | 通过·核心函数及存储校验 | 未运行 | B `core.test.js`，H1历史浏览器 | 五项逐一核对，冲突两边来源可见，改值/源后旧草稿失效 |
+
+### 对话 文书 导出
+
+| 场景 | 最新后端/组件结果 | 最新整合浏览器结果 | 版本与证据 | 必须补的证据 |
+|---|---|---|---|---|
+| C01 聊天输入/consent/角色/长度/own-case防护 | 通过·纯校验＋真实HTTP无key | 未运行 | B `chat.test.js`、`chat-api.test.js` | 实际聊天组件、合法请求、错误呈现；不自动改变案例 |
+| C02 原生SSE分块、UTF-8、结束/不完整/工具拒绝 | 通过·纯字节解析fixture；不是provider请求 | 未运行 | B；B+QA额外system/tool/user delta角色拒绝 | 真实上游SSE→网页逐块→done/error；不得人工token动画 |
+| C03 真实文字对话 | P一次组件生成通过，但不是聊天端点 | 未运行 | P；PR12明确前端未完成 | 正常应用发送合成消息、核对返回模型/时间及非空内容 |
+| C04 PNG/JPEG真实视觉 | PNG输入字节与边界通过；真实理解未运行 | 未运行 | B chat输入测试；支持PNG/JPEG，WebP拒绝 | 合成图片预览/移除/授权→正常真实请求；不臆造可读内容 |
+| C05 abort/失败/重试且部分回答不冒充完成 | 纯解析不完整拒绝通过；真实上游取消未运行 | 未运行 | B parser及chat契约 | 中途断开、真实错误、显式重试；不可自动保存部分回答 |
+| J07 跟进函/资料补充/案例摘要三类English预览编辑 | 通过·核心模板 | 未运行 | B core；H1历史三类生成，后次仅跟进函导出复核 | 每个实际可见类型；编辑一句、切语言、回核对/再生成不静默丢编辑 |
+| J08-COPY 复制当前编辑稿 | 浏览器clipboard不属于HTTP证据 | 未运行 | H1仅真实动作toast；clipboard字节未独立读取 | 合成标记与实际剪贴板一致；权限拒绝有可用手动路径 |
+| J08-TXT 下载当前编辑稿 | 核心文案/警示通过 | 未运行 | H1实际TXT历史证据 | 重新打开下载文件，含最新标记、English正文和不可删警示 |
+| J08-PDF 原生打印/保存PDF | 不是PDF上传解析的同一功能 | 未运行 | H1 `design-native-print.pdf`历史证据 | 最终print预览/实际PDF仅文书，无导航、设置、中文内注 |
+| J08-CSV 字段导出/再导入 | 通过·核心真实字节 | 未运行 | B与H1历史 | 新版UI下载/再导入，明确安全apostrophe行为和核对重置 |
+
+### 持久化 权限 管理员
+
+| 场景 | 最新后端结果 | 最新整合浏览器结果 | 版本与证据 | 必须补的证据 |
+|---|---|---|---|---|
+| J09 显式save仅在成功后标Saved | 通过·HTTP/SQLite真实持久化 | 未运行 | B `case-api.test.js`/registration；H2历史浏览器 | 真实点击、version、dirty→saved；失败不能假成功 |
+| J10 退出→重登→open保持源/确认/编辑稿 | 通过·HTTP/SQLite | 未运行 | B；H2实际浏览器历史通过 | 最终SHA同一保存对象逐项比较，退出后工作区/列表清空 |
+| J10-RESTART 真停服务/重开同DB→登录打开 | 通过·真实进程重启 | 未运行 | B；H2有实际浏览器历史记录 | 最终集成服务器隔离重启，不操作生产；key RAM与case生命周期区分 |
+| J11 双标签stale save/delete 409 | 通过·真实并发HTTP/版本保护 | 未运行 | B case/storage套件 | 两实际标签，B本地编辑保留，A新版本存活，明确重新打开 |
+| J12 用户A/B/owner互相不能读改删案例 | 通过·真实HTTP所有组合；owner也404 | 未运行 | B case-api；H2第二账号空列表历史 | 三个浏览器身份各列表/打开；同时保留HTTP越权探测 |
+| J12-DELETE 取消与确认删除 | HTTP正确版本删除通过；取消是UI行为 | 未运行 | B API；指导J12 | 指明目标，取消不变，确认只删选中项，过期删除拒绝 |
+| O01/O02 角色与配置状态、管理入口 | 通过·owner-only HTTP；公开/普通隐藏私密metadata | 未运行 | B auth/admin套件 | 普通账号无key控件；owner能区分configured/model-access/live状态 |
+| O03 可信HTTPS私密key配置 | D既有配置通过（授权人已完成），最新UI未运行 | 未运行 | D来源记录；不公开路径/凭据 | 管理员本人使用获准私密流程；不可为测试复制或索取key |
+| O04 /models连接验证与配置变更竞态 | P目录组件通过；完整UI未运行 | 未运行 | P；B guard仅防护 | 不将/models成功标为对话完成；切key时不错误认证新配置 |
+| O05 关闭设置、会话过期与返回工作 | HTTP logout/30分钟历史观察通过 | 未运行 | B＋早期真实30分钟HTTP；不是本版浏览器计时 | 保留安全可恢复工作，换身份清旧缓存，设置关闭不丢案例 |
+
+### 遥测 无障碍 发布
+
+| 场景 | 后端证据 | 当前界面状态 | 必须补的证据 |
+|---|---|---|---|
+| T01 连续完整流程/请求/案例关联 | B真实SQLite/HTTP通过 | 失败·U源码P1-3及QA-WF-JSON | 最终页面至少3顺序step并扩展到完整旅程，真实事件列表 |
+| T02 前台/隐藏/idle计时 | server/client字段分离通过，不证明浏览器计时 | 未运行 | 实际隐藏标签跨idle阈值，说明定义与容差；不得把停留当卡顿 |
+| T03 实际慢请求 | B实际延迟body测得serverElapsedMs通过 | 未运行·浏览器等待计时 | 实际parse延迟的clientWait与server耗时分开，不能模拟provider |
+| T04 失败/取消/重试/不重复终态 | B真实abort单499、日志故障不影响save通过 | 未运行 | 页面错误恢复及终态事件，不因丢日志重发收费请求 |
+| T05 切case/双标签/换账号 | B服务端所有权通过 | 失败·U源码P1-4 | 延迟旧回调不能改新身份ID、时间和事件归属 |
+| T06 内容/文件名/凭据不进日志 | B白名单及admin metadata实际检查通过 | 未运行·浏览器payload | 各输入放不同安全marker，检查真实上报，不截图秘密 |
+| T07 重载/遥测断网后业务可用 | B真实SQLite写日志失败不破坏save通过 | 未运行 | 浏览器重载、丢事件、恢复不造成功/负耗时；报告丢失边界 |
+| A01 Desktop/390px/320px、键盘/焦点/对比度 | 后端测试不适用 | 未运行·最新完整过程；H1有390px有限历史 | 最终组合逐核心动作，320px回流，键盘可达与焦点，真实颜色测量 |
+| R01 发布SHA/可信TLS/正常入口 | B固定CI通过；D仍旧版 | 未运行·最终发布 | 精确部署SHA、保留配置/数据、health、普通注册与管理员入口 |
+| R02 schema2迁移与回滚 | B真实迁移逐列/hash保留通过 | 不属浏览器；部署回滚仍需策略 | 不把schema2数据库直接回滚到schema1-only镜像；保留独立备份策略 |
+
+## 最快并行执行顺序
+
+1. **立即并行，不等生产初始化。** Kimi先修P1-1/P1-2/P1-3/P1-4/QA-WF-JSON，发布实际修复SHA；Local Codex用真实本地Node24/Poppler/SQLite和合成账号准备独立组合worktree；QA保持B回归与本矩阵，不改前端。
+2. **首个组合SHA冒烟优先。** 6位及7–11位注册/登录，实际TXT/CSV/PDF成功，再做XLS/XLSX映射。先证明入口可用，再做聊天装饰或新样式。
+3. **两个普通账号并行。** A走导入→核对→三类文书→实际copy/TXT/PDF→save/logout/open；B检查空列表与越权，owner仅管理API、不读取A案例。用两个标签做409，再授权隔离服务重启验证恢复。
+4. **遥测与主旅程同时留证。** 在同一真实操作上查看workflow/request/case关联、隐藏标签计时、marker隐私与失败恢复；遥测不可用不得让业务假失败或自动重复收费。
+5. **单独解锁真实模型链路。** 既有key不要重取；P组件探测不要重复。只在获准管理员初始化/可信入口后，以合成文本与图片验证应用提取、SSE、视觉和取消；没有授权或入口就写未运行及明确阻塞。
+6. **09:40交付条件。** 冻结组合SHA后，所有上表必需行均有该版本证据或明确接受的限制。不能用单一“187通过”覆盖浏览器未运行/源码失败项。
+
+## 每次复验必须填的记录
+
+`场景ID / 日期UTC / runtime或组合完整SHA / OS与浏览器版本 / origin类别 / viewport与zoom / locale / 角色 / 合成fixture / 操作 / 实际结果 / 状态与证据层 / 截图或文件路径 / 修复SHA / 复验者 / 剩余限制`。
+
+本轮新增测试仅在B上改变QA文件；不改业务运行文件、前端、配置或真实账户。尚无新提交、合并、部署或付费请求。后续证据到达时逐行更新，保留旧版本失败记录。

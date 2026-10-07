@@ -214,3 +214,18 @@ test('an actually aborted request records one cancelled backend event without cr
   const cases = await (await site.request('/api/cases', { session })).json(); assert.equal(cases.cases.length, 0);
   const recheck = await (await site.request(`/api/workflows/${workflowId}/events`, { session })).json(); assert.equal(recheck.events.length, 1);
 });
+
+test('workflow creation requires an explicit JSON object and succeeds when the client sends the documented contract', async t => {
+  const site = await app(t), session = site.sessions['telemetry-a'];
+  // This is the exact request shape currently used by PR4 7b74b227's ensureWorkflow:
+  // authenticated POST with CSRF, but no JSON media type or body.
+  let response = await site.request('/api/workflows', { method: 'POST', session });
+  assert.equal(response.status, 415);
+  assert.equal((await response.json()).code, 'UNSUPPORTED_MEDIA_TYPE');
+  response = await site.request('/api/workflows', { method: 'POST', session, body: '', extra: { 'Content-Type': 'application/json' } });
+  assert.equal(response.status, 400);
+  assert.equal((await response.json()).code, 'INVALID_JSON');
+  response = await site.request('/api/workflows', { method: 'POST', session, body: {} });
+  assert.equal(response.status, 201);
+  assert.match((await response.json()).workflowId, uuid);
+});

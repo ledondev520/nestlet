@@ -66,3 +66,12 @@ test('SSE parser rejects incomplete, malformed, tool, truncated and oversized ou
   await assert.rejects(parse([Buffer.from('data: ' + 'x'.repeat(65537))]), code('CHAT_STREAM_FAILED'));
   await assert.rejects(parse([Buffer.from([0xff])]), code('CHAT_STREAM_FAILED'));
 });
+
+test('SSE parser rejects explicit system or tool delta roles before yielding any content', async () => {
+  for (const role of ['system', 'tool', 'user']) {
+    const iterator = parseProviderStream([Buffer.from(frame({ choices: [{ delta: { role, content: 'MUST_NOT_BE_FORWARDED' } }] }) + frame(stop) + frame('[DONE]'))]);
+    await assert.rejects(iterator.next(), code('CHAT_UNSUPPORTED_OUTPUT'));
+  }
+  const supported = frame({ choices: [{ delta: { role: 'assistant', content: 'Supported role' } }] }) + frame(stop) + frame('[DONE]');
+  assert.deepEqual(await parse([Buffer.from(supported)]), [{ type: 'delta', text: 'Supported role' }, { type: 'done' }]);
+});

@@ -274,3 +274,25 @@ test('two actual processes racing for the final SQLite account slot allow exactl
   assert.equal(rejected.code, 'USER_LIMIT_REACHED');
   assert.equal(rejected.status, 409);
 });
+
+for (const length of [6, 7, 8, 9, 10, 11]) {
+  test(`ordinary registration and subsequent login accept exactly ${length} password characters over real HTTP`, async context => {
+    // One isolated real server/database per length avoids mistaking the five-attempt
+    // registration rate limit for a password-boundary failure.
+    const site = await app(context);
+    const password = 'A1' + 'x'.repeat(length - 2);
+    assert.equal(password.length, length);
+    const username = `password-length-${length}`;
+    const response = await site.register(username, { password, passwordConfirmation: password });
+    assert.equal(response.status, 201);
+    const created = await sessionFrom(response);
+    assert.equal(created.role, 'trial');
+    const logout = await site.request('/api/logout', { method: 'POST', session: created, body: {} });
+    assert.equal(logout.status, 200);
+    const returned = await site.login(username, password);
+    assert.equal(returned.userId, created.userId);
+    assert.equal(returned.role, 'trial');
+    const settings = await site.request('/api/settings', { session: returned });
+    assert.equal(settings.status, 403);
+  });
+}
