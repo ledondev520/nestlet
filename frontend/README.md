@@ -11,7 +11,7 @@ This directory is the JavaScript/JSX frontend. No TypeScript application source 
 - `@/lib/session`: `SessionProvider`, `useSession`
 - `styles.css`: Kimi's Working Paper colors and typefaces mapped to semantic shadcn tokens; no legacy CSS import
 
-`useSession()` returns `{status, loading, error, api, refresh, login, register, logout}`.
+`useSession()` returns `{status, loading, error, recovery, api, journey, refresh, login, register, logout}`.
 
 - `status` is the `/api/status` body, including `authenticated`, `userId`, `username`, `role`, `canManageSettings`, `authConfigured`, `registrationEnabled`, `secureLogin`, `secureSettings`, and provider capabilities
 - `api.get(path, {signal})`; `api.post/put/patch/delete(path, body, {signal})`; `api.request(path, {method, body, signal})`
@@ -20,6 +20,7 @@ This directory is the JavaScript/JSX frontend. No TypeScript application source 
 - The session stores only current account/capability state in memory. Do not write passwords, keys, or CSRF tokens to local/session storage
 - Settings updates use `api.post('/api/settings', payload)` then `refresh()`
 - Raw local files use `api.upload(path, file, {contentType, filename, assetConsent: true, signal})`; `/api/assets` persists the original only after the feature's explicit save action. The helper URL-encodes `filename`, sends exact raw bytes/MIME and adds `X-Asset-Consent: persist-private`. Legacy PDF/workbook parser routes use `documentConsent: true` instead. This does not imply AI transmission consent
+- `journey` is the optional bounded, current-tab first-party action observer. See `docs/react-journey-observability.md`; it accepts fixed metadata only. Shared API observes exact parser/case writes. Background reads are omitted; an explicit case-open read may use `{telemetry: true}`. Feature-owned operations use `{telemetry: false}` to avoid duplicates. Observer failure never changes business success
 - Streaming chat uses its own streaming fetch and the current `status.csrfToken`. Do not send the token anywhere except the same-origin application API
 
 ## Feature boundaries

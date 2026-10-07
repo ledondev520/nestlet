@@ -24,3 +24,9 @@ Run from the repository root:
 At 2026-10-07 10:13 UTC, 8 pure and 25 React/jsdom DOM checks passed. They cover bilingual empty states, official component rendering, import consent/bounds, no-OCR/truncation, one-row Excel mapping, CSV bytes, no AI fallback, explicit fact conflicts, optimistic versions, scope/abort races, first-save cross-page binding, queue merging, original-link retries, same-user text recovery, StrictMode replay, and prior-draft preservation. `npm run check` also passed.
 
 API responses and provider calls in DOM checks are controlled doubles. These are not real-provider, production HTTP, browser/CSP, visual-layout, or deployment acceptance. The shared frontend owner is responsible for the integrated build and browser acceptance.
+
+## Action observations
+
+The optional shared journey observer receives fixed names and result flags only. File input/fact-review/save controls activate visible-step timing on focus, not navigation or typing. Each explicit file processing attempt emits one `input.file` observation across private storage and parsing; workbook parser calls suppress duplicate API telemetry. Applying one mapped row emits `input.mapping`; explicitly confirming a fact emits `review.confirm`. Unchecking/editing a field does not emit a confirmation. Case saves are observed once by the shared API. A saved scan without usable text is still a successful original-file operation, not a claim of OCR.
+
+The four controlled React DOM regressions verify those boundaries, suppression, failures, hidden-page behavior and exception isolation. They do not establish real-browser dwell accuracy or delivery. Text paste, manual extraction and AI extraction are not relabeled as unrelated legacy actions. No names, filenames, file contents, source text, mapping values or raw errors are passed to the observer.

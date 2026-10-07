@@ -23,6 +23,7 @@ const validRecord = record => isUuid(record?.id) && Number.isSafeInteger(record.
 export function IntakeWorkspace({
   api,
   status,
+  journey,
   lang = 'zh',
   caseId = null,
   onCaseChange,
@@ -32,6 +33,14 @@ export function IntakeWorkspace({
   onOpenDocuments,
   active = true
 }) {
+  const activeRef = useRef(active); activeRef.current = active;
+  // Fixed action names only. Observability is optional and never changes work.
+  const activate = event => { try { journey?.activateStep(activeRef.current ? event : null); } catch {} };
+  const observe = (event, signal) => {
+    let observation;
+    try { if (activeRef.current) observation = journey?.beginAction(event, { signal }); } catch {}
+    return detail => { try { observation?.finish(detail); } catch {} };
+  };
   const words = wordsFor(lang),
     id = useId();
   const {
@@ -388,7 +397,8 @@ export function IntakeWorkspace({
       for (const item of queueRef.current.filter(entry => entry.file)) {
         requireCurrent(token.scope);
         if (token.controller.signal.aborted) throw new DOMException('Aborted', 'AbortError');
-        let asset = item.asset;
+        let asset = item.asset, operationFailure = null;
+        const observed = observe('input.file', token.controller.signal);
         try {
           const type = fileType(item.file);
           updateItem(item.id, {
@@ -417,6 +427,7 @@ export function IntakeWorkspace({
             const result = validateWorkbook(await api.upload('/api/workbook', item.file, {
               contentType: type.mime,
               documentConsent: true,
+              telemetry: false, // The whole file operation has one feature-owned observation.
               signal: timeout(token.controller.signal, 60000)
             }));
             requireCurrent(token.scope);
@@ -489,6 +500,7 @@ export function IntakeWorkspace({
           });
           setNotice('textAdded');
         } catch (failure) {
+          operationFailure = failure;
           if (aborted(failure) || !current(token.scope)) throw failure;
           updateItem(item.id, {
             state: 'error',
@@ -497,6 +509,8 @@ export function IntakeWorkspace({
           });
           // Stop on a failed file so the operator can inspect its exact saved state.
           break;
+        } finally {
+          observed({ ok: !operationFailure, cancelled: token.controller.signal.aborted || aborted(operationFailure) });
         }
       }
     } catch (failure) {
@@ -506,6 +520,7 @@ export function IntakeWorkspace({
     }
   }
   function closeMapping() {
+    activate(null);
     if (workbook) updateItem(workbook.queueId, {
       file: null,
       state: 'saved'
@@ -513,6 +528,8 @@ export function IntakeWorkspace({
     setWorkbook(null);
   }
   function applyMapping(result) {
+    const observed = observe('input.mapping');
+    try {
     const sourceText = appendSource(workRef.current.sourceText, result.text);
     const next = applySuggestions({
       ...workRef.current,
@@ -527,6 +544,9 @@ export function IntakeWorkspace({
     });
     setWorkbook(null);
     setNotice('mappingDone');
+    observed({ ok: true });
+    activate(null);
+    } catch (failure) { observed({ ok: false }); throw failure; }
   }
   function manualExtract() {
     try {
@@ -574,6 +594,7 @@ export function IntakeWorkspace({
     }
   }
   function editField(key, patch) {
+    const observed = patch.confirmed === true ? observe('review.confirm') : null;
     updateWork(previous => ({
       ...previous,
       namesVerified: false,
@@ -583,6 +604,7 @@ export function IntakeWorkspace({
       } : field)
     }));
     setNotice('');
+    observed?.({ ok: true });
   }
   async function linkAssets(savedId, token) {
     let failed = false;
@@ -706,7 +728,9 @@ export function IntakeWorkspace({
   const sourceTooLong = work.sourceText.length > LIMITS.source;
   const reviewed = work.fields.filter(field => field.confirmed && !field.conflict).length;
   const hasLegacyChange = Boolean(work.draftText && changedFacts(base, work));
-  return <section className="space-y-7 py-8" aria-labelledby={`${id}-title`}>
+  return <section className="space-y-7 py-8" aria-labelledby={`${id}-title`}
+    onFocusCapture={event => activate(event.target.closest('[data-journey-action]')?.dataset.journeyAction || null)}
+    onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget)) activate(null); }}>
     <header className="space-y-3"><p className="font-mono text-xs tracking-widest text-muted-foreground">{words.eyebrow}</p><div className="flex flex-wrap items-center justify-between gap-3"><h1 id={`${id}-title`} className="paper-title text-3xl font-bold tracking-tight">{words.title}</h1><Badge variant="outline">{base ? `${words.version} ${base.version}` : words.notSaved}</Badge></div><p className="max-w-2xl text-sm leading-7 text-muted-foreground">{words.intro}</p></header>
     {error && <Alert variant="destructive"><AlertDescription>{errorText(error, words)}</AlertDescription></Alert>}
     {notice && <Alert><Check className="size-4" aria-hidden="true" /><AlertDescription>{words[notice] || notice}</AlertDescription></Alert>}
@@ -720,7 +744,7 @@ export function IntakeWorkspace({
         ...previous,
         title: event.target.value
       }))} /></div>
-    <Card><CardHeader><CardTitle className="flex items-center gap-2"><Upload className="size-4" aria-hidden="true" />{words.materialTitle}</CardTitle><CardDescription>{words.materialHelp}</CardDescription></CardHeader><CardContent className="space-y-5"><div className="paper-note flex gap-3 rounded-md p-4 text-sm leading-6"><ShieldCheck className="mt-1 size-4 shrink-0" aria-hidden="true" /><p>{words.safeOnly}</p></div><div className="rounded-lg border border-dashed border-input bg-background p-5"><Label htmlFor={`${id}-files`} className="mb-3 block">{words.chooseFiles}</Label><Input id={`${id}-files`} type="file" multiple accept=".txt,.csv,.pdf,.xlsx,.xls,.png,.jpg,.jpeg" disabled={blocked || Boolean(workbook)} aria-describedby={`${id}-formats`} onChange={event => {
+    <Card data-journey-action="input.file"><CardHeader><CardTitle className="flex items-center gap-2"><Upload className="size-4" aria-hidden="true" />{words.materialTitle}</CardTitle><CardDescription>{words.materialHelp}</CardDescription></CardHeader><CardContent className="space-y-5"><div className="paper-note flex gap-3 rounded-md p-4 text-sm leading-6"><ShieldCheck className="mt-1 size-4 shrink-0" aria-hidden="true" /><p>{words.safeOnly}</p></div><div className="rounded-lg border border-dashed border-input bg-background p-5"><Label htmlFor={`${id}-files`} className="mb-3 block">{words.chooseFiles}</Label><Input id={`${id}-files`} type="file" multiple accept=".txt,.csv,.pdf,.xlsx,.xls,.png,.jpg,.jpeg" disabled={blocked || Boolean(workbook)} aria-describedby={`${id}-formats`} onChange={event => {
             addFiles(event.target.files);
             event.target.value = '';
           }} /><p id={`${id}-formats`} className="mt-3 text-xs text-muted-foreground">{words.formats}</p></div>
@@ -728,15 +752,15 @@ export function IntakeWorkspace({
       <div className="flex flex-wrap gap-2"><Button type="button" disabled={blocked || Boolean(workbook) || !queue.some(item => item.file)} onClick={processFiles}>{phase === 'processing' ? words.processing : words.saveFiles}</Button>{busy && phase !== 'saving' && <Button variant="outline" onClick={() => operation.current?.abort()}>{words.cancel}</Button>}</div>
       {!base && assets.some(asset => !asset.caseId) && <p className="text-xs text-muted-foreground">{words.standalone}</p>}
     </CardContent></Card>
-    {workbook && <WorkbookMapping key={workbook.queueId} workbook={workbook} words={words} disabled={blocked} onApply={result => {
+    {workbook && <div data-journey-action="input.mapping"><WorkbookMapping key={workbook.queueId} workbook={workbook} words={words} disabled={blocked} onApply={result => {
       try {
         applyMapping(result);
       } catch (failure) {
         setError(failure);
       }
-    }} onClose={closeMapping} />}
+    }} onClose={closeMapping} /></div>}
     <Card><CardHeader><CardTitle>{words.sourceTitle}</CardTitle><CardDescription>{words.sourceHelp}</CardDescription></CardHeader><CardContent className="space-y-4"><Label className="sr-only" htmlFor={`${id}-source`}>{words.sourceTitle}</Label><Textarea id={`${id}-source`} className="min-h-64 resize-y font-mono text-sm leading-7" value={work.sourceText} placeholder={words.sourcePlaceholder} disabled={blocked} aria-invalid={sourceTooLong} aria-describedby={`${id}-source-count`} onChange={event => markSource(event.target.value)} /><p id={`${id}-source-count`} className={`text-right font-mono text-xs ${sourceTooLong ? 'text-destructive' : 'text-muted-foreground'}`}>{work.sourceText.length.toLocaleString(lang === 'zh' ? 'zh-CN' : 'en-US')} / 50,000 {words.chars}</p>{sourceTooLong && <p role="alert" className="text-sm text-destructive">{words.sourceTooLong}</p>}<div className="flex flex-wrap items-center gap-3"><Button variant="secondary" disabled={blocked || sourceTooLong || !work.sourceText.trim()} onClick={manualExtract}>{words.manual}</Button><p className="max-w-lg text-xs leading-5 text-muted-foreground">{words.manualHelp}</p></div><Separator /><div className="space-y-3"><h3 className="text-sm font-medium">{words.aiTitle}</h3><p className="text-xs leading-6 text-muted-foreground">{words.aiHelp}</p>{!status.liveEnabled && <p className="text-sm text-muted-foreground">{words.aiUnavailable}</p>}<div className="flex items-start gap-3"><Checkbox id={`${id}-ai-consent`} checked={aiConsent} disabled={blocked || !status.liveEnabled} onCheckedChange={value => setAiConsent(value === true)} /><Label htmlFor={`${id}-ai-consent`} className="text-sm leading-6">{words.aiConsent}</Label></div><Button disabled={blocked || !status.liveEnabled || !aiConsent || sourceTooLong || !work.sourceText.trim()} onClick={liveExtract}>{phase === 'extracting' ? words.extracting : words.aiExtract}</Button></div></CardContent></Card>
-    <Card><CardHeader><div className="flex items-center justify-between gap-3"><CardTitle>{words.factsTitle}</CardTitle><Badge variant="secondary">{reviewed} / 5 {words.reviewed}</Badge></div><CardDescription>{words.factsHelp}</CardDescription></CardHeader><CardContent className="space-y-6">{work.fields.map((field, index) => <div key={field.key} className="space-y-3 border-b pb-6 last:border-0 last:pb-0"><div className="flex flex-wrap items-center gap-2"><span className="font-mono text-xs text-muted-foreground">0{index + 1}</span><Label className="text-base font-medium" htmlFor={`${id}-${field.key}`}>{words.fieldLabels[field.key]}</Label><Badge variant={field.conflict ? 'destructive' : 'outline'}>{field.conflict ? words.conflict : field.confirmed ? words.reviewed : words.needsReview}</Badge>{field.edited && <span className="text-xs text-muted-foreground">{words.edited}</span>}</div><Input id={`${id}-${field.key}`} value={field.value} maxLength={3000} placeholder={words.unknown} disabled={blocked} onChange={event => editField(field.key, {
+    <Card data-journey-action="review.confirm"><CardHeader><div className="flex items-center justify-between gap-3"><CardTitle>{words.factsTitle}</CardTitle><Badge variant="secondary">{reviewed} / 5 {words.reviewed}</Badge></div><CardDescription>{words.factsHelp}</CardDescription></CardHeader><CardContent className="space-y-6">{work.fields.map((field, index) => <div key={field.key} className="space-y-3 border-b pb-6 last:border-0 last:pb-0"><div className="flex flex-wrap items-center gap-2"><span className="font-mono text-xs text-muted-foreground">0{index + 1}</span><Label className="text-base font-medium" htmlFor={`${id}-${field.key}`}>{words.fieldLabels[field.key]}</Label><Badge variant={field.conflict ? 'destructive' : 'outline'}>{field.conflict ? words.conflict : field.confirmed ? words.reviewed : words.needsReview}</Badge>{field.edited && <span className="text-xs text-muted-foreground">{words.edited}</span>}</div><Input id={`${id}-${field.key}`} value={field.value} maxLength={3000} placeholder={words.unknown} disabled={blocked} onChange={event => editField(field.key, {
             value: event.target.value,
             confirmed: false,
             edited: true
@@ -752,6 +776,6 @@ export function IntakeWorkspace({
               confirmed: checked === true
             })} /><Label htmlFor={`${id}-${field.key}-confirm`} className="text-sm leading-6">{words.confirm}</Label></div>}</div>)}</CardContent></Card>
     {assets.length > 0 && <Card><CardHeader><CardTitle className="flex items-center gap-2"><FileText className="size-4" aria-hidden="true" />{words.assets}</CardTitle></CardHeader><CardContent><ul className="space-y-3">{assets.map(asset => <li key={asset.id} className="flex flex-wrap items-center justify-between gap-2 border-b pb-3 text-sm last:border-0"><span className="min-w-0 break-all">{asset.originalFilename}</span><div className="flex gap-3"><a className="text-accent-foreground underline underline-offset-4" href={`/api/assets/${asset.id}/preview`} target="_blank" rel="noopener noreferrer">{words.preview}</a><a className="text-accent-foreground underline underline-offset-4" href={`/api/assets/${asset.id}/download`}>{words.download}</a></div></li>)}</ul>{base && assets.some(asset => !asset.caseId) && <Button className="mt-4" variant="outline" disabled={blocked} onClick={retryLinks}>{words.archiveLink}</Button>}</CardContent></Card>}
-    <footer className="space-y-3 rounded-xl border bg-card p-5">{hasLegacyChange && <p className="text-sm leading-6 text-muted-foreground">{words.draftNotice}</p>}<div className="flex flex-wrap items-center justify-between gap-3"><p className="text-xs text-muted-foreground" role="status">{localDirty ? words.unsaved : base ? words.caseSaved : words.notSaved}</p><div className="flex flex-wrap gap-2"><Button variant="outline" disabled={blocked || conflict || sourceTooLong} onClick={() => saveCase(false)}>{phase === 'saving' ? words.saving : words.save}</Button><Button disabled={blocked || conflict || sourceTooLong || Boolean(workbook) || queue.some(item => item.file)} onClick={() => localDirty || !base ? saveCase(true) : onOpenDocuments?.(base.id)}>{localDirty || !base ? words.saveDocuments : words.documents}<ArrowRight aria-hidden="true" /></Button></div></div></footer>
+    <footer data-journey-action="case.save" className="space-y-3 rounded-xl border bg-card p-5">{hasLegacyChange && <p className="text-sm leading-6 text-muted-foreground">{words.draftNotice}</p>}<div className="flex flex-wrap items-center justify-between gap-3"><p className="text-xs text-muted-foreground" role="status">{localDirty ? words.unsaved : base ? words.caseSaved : words.notSaved}</p><div className="flex flex-wrap gap-2"><Button variant="outline" disabled={blocked || conflict || sourceTooLong} onClick={() => saveCase(false)}>{phase === 'saving' ? words.saving : words.save}</Button><Button disabled={blocked || conflict || sourceTooLong || Boolean(workbook) || queue.some(item => item.file)} onClick={() => localDirty || !base ? saveCase(true) : onOpenDocuments?.(base.id)}>{localDirty || !base ? words.saveDocuments : words.documents}<ArrowRight aria-hidden="true" /></Button></div></div></footer>
   </section>;
 }
