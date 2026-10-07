@@ -1,8 +1,8 @@
 # Current delivery contract
 
-Revision: **2026-10-07-r4** · acceptance checkpoint **09:40 UTC / 17:40 Asia/Shanghai**
+Revision: **2026-10-07-r5** · acceptance checkpoint **14:00 UTC / 22:00 Asia/Shanghai**
 
-This is the current product scope and coordination index. It supersedes older one-shot-upload-only scope and organization-layer proposals. It is a requirement list, not a completion claim. Exact implementation evidence belongs in [the acceptance matrix](acceptance-matrix-2026-10-07.md).
+Owner updated deadline and responsibilities at09:06–09:14 UTC. This is the current product scope and coordination index. It supersedes older one-shot-upload-only scope and organization-layer proposals. It is a requirement list, not a completion claim. Exact implementation evidence belongs in [the acceptance matrix](acceptance-matrix-2026-10-07.md).
 
 ## One user journey
 
@@ -12,6 +12,13 @@ This is the current product scope and coordination index. It supersedes older on
 4. Extract available facts from supplied materials. Ask targeted questions for required missing information. Preserve confirmed facts, corrections, provenance, and resolved questions; do not repeatedly ask questions already answered unless information conflicts or is stale.
 5. Produce an English document from sufficient verified case information. Show readiness and missing items first. Do not call a document complete while required names, recipients, dates or other material facts are placeholders. Optional unavailable fields can be omitted. Never invent a person, agency, deadline, attachment, approval or housing determination.
 6. Preview/edit/copy/download the artifact. Persist the customer, case, conversations, confirmed facts and artifacts under the authenticated user. Reopen after logout and service restart, then continue the same case.
+
+## Design system and migration
+
+- Use real shadcn/ui components with a reproducible React/Vite JavaScript/JSX build, not renamed custom CSS. Migrate the complete product journey incrementally and report actual coverage.
+- Preserve Kimi’s design direction and define reusable tokens, component states and responsive rules; see [design system contract](design-system-contract.md).
+- Verify desktop keyboard/focus and mobile320/390px, soft keyboard, safe-area, touch and long-document behavior. A component library alone does not establish accessibility compliance.
+- An isolated migration preview is not the production release. Switch the default entry only after integrated functional, visual and deployment checks.
 
 ## Data and authority boundaries
 
@@ -26,14 +33,15 @@ This is the current product scope and coordination index. It supersedes older on
 
 | Lane | Owner | Immediate deliverable |
 |---|---|---|
-| All frontend | Kimi | Fix the five verified integration defects, implement conversation-first journey and customer/case/document entry points, actual screenshots |
+| Design direction | Kimi | Visual language, UI/UX, layout, semantic design tokens, desktop/mobile reference states |
+| Frontend engineering | Root engineering | Chat/account/case isolation, real API wiring, durable customer journey, final artifacts, telemetry, shadcn/ui migration |
 | Persistence and chat/backend integration | Root backend lane | One published API/storage contract, backward-compatible cases, customer search, conversations/artifacts, per-user authorization |
 | Document completion | Root document lane | Validated document details, bilingual missing-item questions, readiness, confirmed provenance, no placeholder-filled final artifacts |
 | Email authentication | Local Codex | Compatible email/password verification/recovery module and tests, actual mail readiness through approved configuration; UI contract to Kimi |
 | Browser acceptance and release | Local Codex | Exact combined SHA, actual end-to-end evidence, rollout verification through its existing authorized environment |
 | Coordination/integration | Root | Contract updates, received acknowledgments, review, CI, safe merge and verified delivery report |
 
-Frontend active handoff: [Issue3 current comment](https://github.com/ledondev520/nestlet/issues/3#issuecomment-6033437433). Email lane: [Issue1 assignment](https://github.com/ledondev520/nestlet/issues/1#issuecomment-6033507865).
+Design/frontend coordination: [Issue3 current comment](https://github.com/ledondev520/nestlet/issues/3#issuecomment-6033437433). Email lane: [Issue1 assignment](https://github.com/ledondev520/nestlet/issues/1#issuecomment-6033507865).
 
 ## Integration rules
 

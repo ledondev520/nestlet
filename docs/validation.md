@@ -6,9 +6,14 @@ React/shadcn foundation checkpoint (09:33 UTC): production build and seven API/b
 
 ## Strict acceptance command
 
+Engineering integration checkpoint, **09:27 UTC**: strict **231/231 passed, 0 failed/skipped**, and syntax passes after both frontend engineering owners froze their scoped changes. The prior missing error maps are resolved in this candidate. Its app.js SHA256 is `90df9e4b34fc622c1358816e821db0c895d4d31da793238a047fcdbfb2576950`, based on local integration `4a015b7030596401cd3c70243f41f38c6ff69d52` plus engineering edits awaiting commit. The one new strict test exercises actual first-action server-created workflow headers through case/conversation/no-key chat and verifies case/user/request linkage without private content in logs.
+
+Separately, **13 development DOM diagnostics passed** (8 chat lifecycle,5 library). They use explicit response/stream scheduling doubles and simulated image decode. They are excluded from strict231, not real-browser/provider evidence, and are not part of the user's no-mock end-to-end acceptance claim. The actual browser handoff is [engineering-browser-acceptance.md](engineering-browser-acceptance.md). The user extended the final checkpoint to **14:00 UTC / 22:00 Shanghai**. Real upstream streaming/vision, final browser lifecycle, email and deployment remain separate pending evidence.
+
+
 `npm test` runs the strict core, HTTP parser/authentication, agency registry, private setup, localization, SQLite storage, case-isolation, web-registration, telemetry, administrator-alias/password, and bounded case-chat suites listed in `package.json`. Historical development doubles are excluded.
 
-Latest frozen Linux run at **08:48 UTC, October 7, 2026: 230 total, 229 passed, 1 failed, 0 skipped** in default `npm test`; `npm run check` passes. The one failure is the new backend-error bilingual inventory (`test/localization-contract.test.js:76`, first unresolved code `CHAT_TOO_LARGE`); the current frontend has not completed the expanded error mapping. It is not skipped or weakened. Runtime was frozen by backend/storage owners, with no installation or duplicate aggregate overlapping this run. This is the worktree based on `8959bb9f82f6c7d2e1ea0ba0d616a04498ab6a2a`, with subsequent reviewed persistence/freshness fixes awaiting the integrator's commit.
+Historical frozen Linux run at **08:48 UTC, October 7, 2026: 230 total, 229 passed, 1 failed, 0 skipped** in default `npm test`; `npm run check` passes. The one failure is the new backend-error bilingual inventory (`test/localization-contract.test.js:76`, first unresolved code `CHAT_TOO_LARGE`); the current frontend has not completed the expanded error mapping. It is not skipped or weakened. Runtime was frozen by backend/storage owners, with no installation or duplicate aggregate overlapping this run. This is the worktree based on `8959bb9f82f6c7d2e1ea0ba0d616a04498ab6a2a`, with subsequent reviewed persistence/freshness fixes awaiting the integrator's commit.
 
 Historical checkpoints remain: 07:20 strict179/179; QA additions187/187 on `3ed564218ac1592f7d85ea83b928fe95991aa850`; 08:28 development snapshot221 total/219 pass/2 fail (UI inventory plus obsolete schema2 assertion). The schema assertion is now correctly3 and actual schema migrations are tested. Earlier146/146 and132/132 checkpoints did not include the newer scope. See [the scenario-level matrix](acceptance-matrix-2026-10-07.md) for exact evidence layers, historical browser SHAs and open journey gaps.
 
@@ -185,3 +190,18 @@ A direct cloud-browser loopback navigation was blocked; no alternate route was u
 ## Limits
 
 Source-substring validation does not prove semantic truth or discover every contradiction. Sensitive-identifier pattern checks are not comprehensive de-identification. PDF text extraction does not verify reading order or official form fields; no OCR is supported. CSV prefix bytes are tested, but actual Excel/Google Sheets formula execution has not been exercised. Named-trial access can be revoked by rotating the credential; no account-disable endpoint is implemented in this scope. These tests establish neither agency-specific compliance nor production security/privacy readiness. No real customer records, housing decisions, external communication, or official submissions were used.
+
+## Private originals / schema4 candidate — October 7, 2026, 10:11 UTC
+
+On the dedicated private-assets feature branch based on 8a7f5de:
+
+- `npm run check`: passed; all new server/parser/operations modules included
+- `npm test`: 250 tests, 249 passed, one known existing legacy bilingual-route fallback failure (`CHAT_TOO_LARGE` in `test/localization-contract.test.js`); frontend/integration lane owns that mapping. No full-release pass is claimed
+- New private-assets coverage: 20 passing tests with real disposable SQLite, HTTP sessions, original byte uploads/downloads, real Poppler/SheetJS/PNG/JPEG parsing, PNG malformed-filter/palette/Adam7 rejection, Unicode literal search, ordinary/admin isolation, CSRF/Origin/explicit-save checks, quotas (including actual 51×5 MiB stored files), unsafe symlink/hardlink paths, digest corruption, process restart and preserving originals when a case is deleted
+- Genuine baseline schema3 DDL migration to schema4 preserved users/customers/cases/conversations/messages/artifacts/telemetry rows exactly; failure rollback and future-schema fail-closed checks passed. Existing schema1/2 migration checks now target schema4 and passed
+- Manual backup, verify, restore-to-new-directory after simulated source loss, exact-user export without credential tables, corrupt/missing/unexpected snapshot rejection, CLI execution and orphan reporting without deletion passed using synthetic data
+- FTS5 was directly verified available in Node24; bounded Unicode-normalized literal substring SQL search was deliberately selected for this version. No FTS query language, semantic search, OCR or automatic AI library access is claimed
+- Existing parser resource limits remain; image decoding runs in an isolated process with stripped environment, timeout/address/CPU/heap and pixel/decode-memory limits. No private file/model transmission or third-party viewer is involved
+- Skills `orbit:software-engineering`, upstream implement/TDD/code-review guidance were read; targeted real-interface tests and an independent security review were used. A complete test-first workflow or full two-axis upstream review ritual is not claimed
+
+This is local backend evidence. The standalone feature branch does not include the separately owned Docker allowlist/COPY or React changes. Integrated image startup, real-browser PDF/image preview/CSP, end-to-end UI, exact-SHA release CI and deployment remain separate verification. No production files, credentials or database were read or modified; no backup job was scheduled and no deployment was performed.

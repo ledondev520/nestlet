@@ -10,6 +10,10 @@
 !document-context.js
 !case-records.js
 !workbook-worker.js
+!asset-domain.js
+!asset-records.js
+!private-assets.js
+!asset-image-worker.js
 !public/
 !public/**
 # Build from source; do not trust a developer's stale compiled output.
@@ -26,5 +30,7 @@ public/next/
 !scripts/operator-setup.js
 !scripts/setup-trial-user.js
 !scripts/trial-user-setup.js
+!scripts/private-data.js
+!scripts/private-data-operations.js
 !Dockerfile
 !.dockerignore

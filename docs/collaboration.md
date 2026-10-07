@@ -1,6 +1,6 @@
 # Collaboration contract
 
-Current assignments follow [the delivery contract](current-delivery-contract.md), revision **2026-10-07-r4**. Kimi exclusively owns all frontend work. Local Codex owns browser QA, email authentication, and deployment within the project owner's existing authorization. Root coordinates requirements, backend/document integration, review, and release evidence. Coco's assignment is cancelled; do not dispatch work to Coco.
+Current assignments follow [the delivery contract](current-delivery-contract.md), revision **2026-10-07-r5**. Kimi owns aesthetics, UI/UX design language and layout. Root engineering owns frontend/backend implementation and hardening under the owner’s09:06 clarification. Local Codex owns browser QA, email authentication, and deployment within the project owner's existing authorization. Root coordinates requirements, backend/document integration, review, and release evidence. Coco's assignment is cancelled; do not dispatch work to Coco.
 
 Each participant uses their own account and authorized environment; private conversations, credentials, browser sessions and implicit authority are not shared. The repository and reviewable Issues/PRs carry shared project state. Existing approvals apply only within their stated scope; a role or task record does not grant additional permissions.
 
@@ -13,9 +13,9 @@ The delivery contract defines current product scope and lane boundaries. New ass
 | Role | Primary ownership | Required second review |
 | --- | --- | --- |
 | Project owner | Product decisions, consequential approvals, merge/deploy authority | Root checks implementation feasibility and evidence |
-| Kimi | All frontend, bilingual interactions, customer/case/document entry points | Local Codex checks actual browser behavior; root checks contracts |
+| Kimi | Visual design system, UI/UX, layouts and responsive design direction | Local Codex checks actual browser behavior; root checks contracts |
 | Local Codex | Email authentication, browser acceptance, exact-SHA QA, authorized deployment | Root reviews integration and release evidence; Kimi implements frontend changes |
-| Root | Requirements, backend/document integration, API/storage contracts, coordination and review | Local Codex verifies the combined build independently |
+| Root | Requirements, frontend/backend/document integration, shadcn/ui migration, API/storage contracts, coordination and review | Local Codex verifies the combined build independently |
 
 One person is release integrator. The author does not solely approve their own sensitive-boundary change. Product decisions and merge/deploy permissions remain with the project owner.
 
@@ -29,7 +29,7 @@ One person is release integrator. The author does not solely approve their own s
 6. Re-run affected checks after rebasing or resolving conflicts; inspect the exact remote commit and CI before claiming publication
 7. Merge and deploy only with the project owner's authorization; never force-push shared main or overwrite another person's work
 
-Use explicit file ownership wherever a checkout is shared, and separate clones/worktrees for independent lanes. Do not switch the shared checkout's branch under another worker. Frontend fixes found by QA go to Kimi; Local Codex and root do not silently take over frontend files. Agree email/backend interface changes before editing shared server or storage files.
+Use explicit file ownership wherever a checkout is shared, and separate clones/worktrees for independent lanes. Do not switch the shared checkout's branch under another worker. Visual design decisions go to Kimi; frontend engineering fixes may be assigned to root engineers. Announce explicit file ownership before concurrent changes, preserve the agreed design, and never overwrite another lane. Agree email/backend interface changes before editing shared server or storage files.
 
 ## Handoff contents
 

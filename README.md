@@ -20,7 +20,7 @@ The initial private loopback deployment of `8b429` was reported successful at 04
 
 Use explicit **Save / Open / Delete** for a case. The page’s preview, editing, copy, download and print remain primary; saving is optional. Saved source text, reviewed fields and drafts belong to the signed-in user. The owner also sees only their own cases; trial users cannot manage the API key or provider settings. Web username/password registration is implemented with a server-assigned ordinary role; administrators bootstrap privately and cannot be selected at registration. Shared teams, CRM and cross-user case administration are not included.
 
-Node.js 24 is required. Configure `NESTLET_DB_PATH` to an explicit private absolute path for direct launch. Docker uses `/data/nestlet.sqlite` on the dedicated `case_data` volume. Saved cases survive process/container restart when that volume is preserved; raw binary uploads are not retained. No automatic backups exist yet. Never remove/prune the data volume as routine deployment or rollback. [SQLite runtime](docs/sqlite-runtime.md)
+Node.js 24 is required. Configure `NESTLET_DB_PATH` to an explicit private absolute path for direct launch. Docker uses `/data/nestlet.sqlite` on the dedicated `case_data` volume. Saved cases and explicitly saved original files survive process/container restart when that volume is preserved. Private originals default to the assets directory beside SQLite, with optional NESTLET_ASSETS_PATH configuration. Manual verified backup/restore/export commands are implemented; no automatic backups are configured. Never remove/prune the data volume as routine deployment or rollback. [SQLite runtime](docs/sqlite-runtime.md)
 
 ## Install and run
 
@@ -86,7 +86,7 @@ The owner selected the same VPS as the existing Jiesong service, with Nestlet is
 
 ## Data boundaries
 
-SQLite stores explicitly saved case text, reviewed fields and drafts per authenticated user. Unsaved browser changes remain transient; downloads/clipboard contents remain where the operator saves them. Raw binary imports are processed but not retained. Imported bytes reach the backend and consented extraction text reaches DeepSeek. Own-user query isolation and deletion do not establish a complete production retention, backup or privacy program.
+SQLite stores explicitly saved case text, reviewed fields and drafts per authenticated user. Unsaved browser changes remain transient; downloads/clipboard contents remain where the operator saves them. Explicit private-file uploads retain original PDF, Excel, TXT, CSV, PNG and JPEG bytes under the authenticated user, with local text indexing where supported. Transient parser/chat requests do not silently retain binaries. Private-file saving and search do not call a model; only separately consented extraction text reaches DeepSeek. Own-user query isolation does not establish a complete production retention, backup or privacy program. Original-file deletion is not enabled pending a confirmed recovery policy. See [private assets](docs/private-assets-api.md) and [manual backup/recovery](docs/private-data-operations.md).
 
 No real personal records, raw customer materials, secret values or private infrastructure details belong in the public repo. No messages, signatures, official submissions, housing eligibility decisions or rent approvals are automated.
 

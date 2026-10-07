@@ -1,12 +1,16 @@
 import http from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { createRequire } from 'node:module';
+import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readFile } from 'node:fs/promises';
 import { spawn, spawnSync } from 'node:child_process';
 import { validateSuggestions } from './public/core.js';
 import { createOperatorAuth } from './auth.js';
 import { openStorage, StorageError } from './storage.js';
+import { AssetError, isAssetRecordsPath, handleAssetRecords } from './asset-records.js';
+import { openAssetVault } from './private-assets.js';
+import { ASSET_LIMITS, ASSET_TYPES } from './asset-domain.js';
 import { CaseRecordsError, isCaseRecordsPath, handleCaseRecords } from './case-records.js';
 import { DocumentContextError } from './document-context.js';
 import { createTelemetry, TelemetryError, telemetryId, telemetryPageOptions } from './telemetry.js';
@@ -28,6 +32,10 @@ let enabled = process.env.ENABLE_LIVE_AI === 'true' && Boolean(apiKey);
 let connectionVerifiedAt = null;
 let configurationRevision = 0;
 const storage = openStorage({ filename: process.env.NESTLET_DB_PATH || fileURLToPath(new URL('./data/nestlet.sqlite', import.meta.url)) });
+const assetDirectory = process.env.NESTLET_ASSETS_PATH || resolve(dirname(process.env.NESTLET_DB_PATH || fileURLToPath(new URL('./data/nestlet.sqlite', import.meta.url))), 'assets');
+const publicDirectory = fileURLToPath(root);
+if (assetDirectory === publicDirectory.slice(0,-1) || assetDirectory.startsWith(publicDirectory)) throw new Error('Private assets must be outside the public directory.');
+const assetVault = openAssetVault({directory:assetDirectory});
 const telemetry = createTelemetry(storage);
 const auth = createOperatorAuth({ passwordHash: process.env.NESTLET_OPERATOR_PASSWORD_HASH, operatorUsername: process.env.NESTLET_OPERATOR_USERNAME, publicOrigin, host: process.env.HOST,
   findTrialUser: username => storage.findUserByUsername(username), findTrialUserById: id => storage.getUserById(id),
@@ -100,6 +108,7 @@ function settingsStatus(request) {
     secureSettings: auth.secure && auth.configured && (!session || owner),
     role: session?.role || null, canManageSettings: owner, caseStorageEnabled: true,
     registrationEnabled: auth.configured && (auth.secure || auth.localTransportAllowed),
+    assetStorageEnabled: true, assetLimits: ASSET_LIMITS, assetTypes: Object.keys(ASSET_TYPES),
     chatEnabled: true, chatImageTypes: CHAT_IMAGE_TYPES, chatLimits: CHAT_LIMITS,
     ...(session ? { csrfToken: session.csrfToken, userId: session.userId, username: session.username } : {}) };
   if (!owner) return common;
@@ -482,6 +491,17 @@ const server = http.createServer(async (request, response) => {
         throw new TelemetryError('TELEMETRY_UNAVAILABLE', 503);
       }
     }
+    if (isAssetRecordsPath(telemetryUrl.pathname)) {
+      verifyOrigin(request);
+      const mutation = request.method !== 'GET';
+      if (mutation && !request.headers.origin) throw new RequestError(403,'ORIGIN_REJECTED','A same-origin browser request is required.');
+      const session = requireSession(request,mutation);
+      return await handleAssetRecords({request,response,url:telemetryUrl,session,storage,vault:assetVault,readBody,readJson,json,signal:cancel.signal,
+        parsers:{pdfEnabled,workbookEnabled,
+          pdfText:async(bytes,signal)=>{if(activePdfExtractions>=2)throw new RequestError(429,'BUSY','Document processing is busy.');activePdfExtractions++;try{return await pdfText(bytes,signal);}finally{activePdfExtractions--;}},
+          workbookPreview:async(bytes,signal)=>{if(activeWorkbookExtractions>=2)throw new RequestError(429,'BUSY','Workbook processing is busy.');activeWorkbookExtractions++;try{return await workbookPreview(bytes,signal);}finally{activeWorkbookExtractions--;}}
+        }});
+    }
     if (isCaseRecordsPath(telemetryUrl.pathname)) {
       const mutation = request.method !== 'GET';
       if (mutation) verifyOrigin(request);
@@ -659,7 +679,7 @@ const server = http.createServer(async (request, response) => {
     if (file.startsWith('samples/')) response.setHeader('Content-Disposition', `attachment; filename="${file.slice('samples/'.length)}"`);
     response.end(await readFile(new URL(file, root)));
   } catch (error) {
-    if (error instanceof RequestError || error instanceof StorageError || error instanceof TelemetryError || error instanceof ChatError || error instanceof CaseRecordsError || error instanceof DocumentContextError) return json(error.status, { error: error.message, code: error.code, ...(error.details ? {details:error.details} : {}) });
+    if (error instanceof AssetError || error instanceof RequestError || error instanceof StorageError || error instanceof TelemetryError || error instanceof ChatError || error instanceof CaseRecordsError || error instanceof DocumentContextError) return json(error.status, { error: error.message, code: error.code, ...(error.details ? {details:error.details} : {}) });
     return json(500, { error: 'Request could not be completed', code: 'INTERNAL_ERROR' });
   }
 });

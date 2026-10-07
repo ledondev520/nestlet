@@ -22,12 +22,12 @@ RUN apt-get update \
 WORKDIR /app
 COPY --from=dependencies --chown=node:node /app/node_modules ./node_modules
 # Explicit copies prevent an accidental .env, upload or private document inclusion.
-COPY --chown=node:node package.json server.js auth.js storage.js telemetry.js chat.js document-context.js case-records.js workbook-worker.js ./
+COPY --chown=node:node package.json server.js auth.js storage.js telemetry.js chat.js document-context.js case-records.js workbook-worker.js asset-domain.js asset-records.js private-assets.js asset-image-worker.js ./
 COPY --chown=node:node public ./public
 COPY --from=frontend-build --chown=node:node /app/public/next ./public/next
 COPY --chown=node:node ops/healthcheck.mjs ./ops/healthcheck.mjs
 # User-run operator setup uses the same Node runtime; no host Node/npm required.
-COPY --chown=node:node scripts/setup-operator.js scripts/operator-setup.js scripts/setup-trial-user.js scripts/trial-user-setup.js ./scripts/
+COPY --chown=node:node scripts/setup-operator.js scripts/operator-setup.js scripts/setup-trial-user.js scripts/trial-user-setup.js scripts/private-data.js scripts/private-data-operations.js ./scripts/
 # Source checkouts may use umask 077. All image contents are public code,
 # so any file-owner UID used by the isolated setup helper must be able to read it.
 # This never touches bind-mounted runtime.env or other host paths.
