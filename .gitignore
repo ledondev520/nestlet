@@ -19,3 +19,6 @@ artifacts/
 *.db-wal
 *.db-shm
 *.db-journal
+
+# Machine-local agent tooling state (generated, per-workstation).
+.gstack/

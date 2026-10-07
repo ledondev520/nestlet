@@ -1,6 +1,6 @@
 # Nestlet design system — "working paper" v1
 
-Status: implemented and browser-verified in `public/style.css` on `design/kimi-k3-frontend` (tip `d137191`, 2026-10-07). This document is the reusable contract for the React/Vite/shadcn migration. `tokens.css` is canonical; `tokens.json` mirrors it for JS consumption.
+Status: canonical on main. v1.1 (2026-10-07): ratified the chat-polish floating composer and 20px user-bubble radius as intentional roles after design review of the merged build (PR #17), and documents the responsive composer variant exactly as shipped — 20px radius on desktop, 16px at ≤640px (`frontend/styles.css`, consumed via `frontend/design-system/tokens.css` since the runtime token sync in PR #25). This document is the reusable contract for the React/Vite/shadcn migration. `tokens.css` is canonical; `tokens.json` mirrors it for JS consumption.
 
 ## Principles
 
@@ -48,7 +48,7 @@ Every interactive component ships: default / hover / active (`scale(.97–.98)`)
 - **Badges** (review status): square-ish 4px radius, 10px, tinted backgrounds — reviewed = ok-tint, conflict = accent-tint + accent-deep text, unknown/needs-review = paper-deep.
 - **Inputs/textareas/selects:** recessed bg → sheet bg on focus; border strengthens to ink. Never placeholder-as-label.
 - **Disclosures** (`<details>`): small accent-deep summary; content indented with hairline-left source blocks (mono) for evidence.
-- **Chat:** user bubbles right-aligned, recessed fill, `--radius-bubble-user`; assistant replies left, unboxed, serif-adjacent calm; streaming cursor is a cinnabar caret (disabled under reduced-motion); interrupted replies keep partial text + a warning line, never a success style.
+- **Chat:** user bubbles right-aligned, recessed fill, `--radius-bubble-user` (20px floating idiom, ratified from the merged chat-polish implementation); assistant replies left, unboxed, calm body text; the composer docks sticky at the bottom as a floating bar with a soft warm shadow — 20px radius (`--radius-composer`) on desktop, 16px (`--radius-composer-mobile`) at ≤640px — attachment action left, send right, keyboard hint between (hidden ≤640px); streaming cursor is a cinnabar caret (disabled under reduced-motion); interrupted replies keep partial text + a warning line, never a success style.
 - **DRAFT stamp:** the only rotated element in the system (−1.5deg), cinnabar border + tint, letterspaced Latin small-caps. Use once per artifact panel.
 
 ## Motion
@@ -123,7 +123,9 @@ CJK: no uppercase transform, letter-spacing ≤ .02em. Latin micro-labels: ≤ .
 | Role | Value | Usage |
 | --- | --- | --- |
 | 控件 control | 8px | buttons, inputs, chips |
-| 容器 container | 12–14px | panels, drawers, bubbles |
+| 容器 container | 12–14px | panels, drawers |
+| 气泡 bubble | 20px 20px 4px 20px (`--radius-bubble-user`) | user chat bubbles (floating-composer idiom) |
+| 输入条 composer | 20px desktop / 16px ≤640px (`--radius-composer` / `--radius-composer-mobile`) | sticky chat composer |
 | 徽章 badge | 4px | status tags (never pills; pill = static model label only) |
 | 浮层 overlay | 12px + `--shadow-overlay` + scrim | dialogs/popovers |
 | 分隔 separator | 1px `--hairline` | preferred over shadows for grouping |
