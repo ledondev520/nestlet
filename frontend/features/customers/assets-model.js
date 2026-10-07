@@ -6,7 +6,8 @@ export function assetPath(id, action) {
   return `/api/assets/${id}/${action}`;
 }
 export function assetSearchPath({ clientId, caseId = '', q = '', offset = 0 }) {
-  const params = new URLSearchParams({ clientId, q: q.trim(), limit: String(ASSET_PAGE_SIZE), offset: String(offset) });
+  const params = new URLSearchParams({ q: q.trim(), limit: String(ASSET_PAGE_SIZE), offset: String(offset) });
+  if (clientId) params.set('clientId', clientId);
   if (caseId) params.set('caseId', caseId);
   return `/api/assets?${params}`;
 }

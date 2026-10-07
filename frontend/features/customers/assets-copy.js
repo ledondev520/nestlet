@@ -1,6 +1,7 @@
 export const assetCopy = {
   zh: {
     warnings: count => `提取说明（${count}）`,
+    allTitle: '全部原件', allIntro: '当前账户保存的所有原件，包括尚未关联客户或事项的资料。', allScopes: '全部原件（含未关联）', unassignedOriginal: '未关联客户或事项',
     title: '原始资料', intro: '按事项查找这位客户保存的原件。原件、对话与生成文档分别保留。',
     search: '搜索原始资料', searchPlaceholder: '搜索文件名或可搜索的提取文本',
     searchHint: '仅搜索已保存的文件名和可用提取文本；未做 OCR 的图片文字不会被搜索。',
@@ -27,6 +28,7 @@ export const assetCopy = {
   },
   en: {
     warnings: count => `Extraction notes (${count})`,
+    allTitle: 'All originals', allIntro: 'Every original saved in this account, including files not yet linked to a customer or case.', allScopes: 'All originals, including unassigned', unassignedOriginal: 'No customer or case linked',
     title: 'Original materials', intro: 'Find this customer’s saved originals by case. Originals, conversations, and generated documents remain separate records.',
     search: 'Search original materials', searchPlaceholder: 'Search filenames or available extracted text',
     searchHint: 'Search covers saved filenames and available extracted text. Image text without OCR is not searchable.',

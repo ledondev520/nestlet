@@ -11,6 +11,8 @@ import { cn } from '@/lib/utils';
 import { clientSearchPath, emptyCasePayload, errorCopy, formatDate, localeCopy, validLabel } from './copy';
 import { useApiResource, useReturnFocus, useScopedMutation } from './hooks';
 import { OriginalMaterials } from './original-materials';
+import { SavedCases } from './saved-cases';
+import { casesCopy } from './saved-cases-copy';
 
 function ErrorNotice({ error, t, onRetry, write = false }) {
   if (!error) return null;
@@ -100,7 +102,7 @@ function CreateCase({ api, clientId, t, onCreated, onCancel }) {
   </form>;
 }
 
-function CustomerDetail({ api, customerId, lang, onOpenCase, onRenamed, active }) {
+function CustomerDetail({ api, customerId, lang, onOpenCase, onRenamed, onCreatedCase, active }) {
   const t = localeCopy(lang);
   const activeRef = useRef(active); activeRef.current = active;
   const wasActive = useRef(active);
@@ -124,7 +126,7 @@ function CustomerDetail({ api, customerId, lang, onOpenCase, onRenamed, active }
   function refresh() { client.refresh(); cases.refresh(); artifacts.refresh(); setAssetRevision(value => value + 1); setNotice(''); }
   function renamed(record) { client.replace(record); setRenaming(false); setNotice('renamed'); onRenamed(record); }
   function created(record) {
-    cases.refresh();
+    cases.refresh(); onCreatedCase?.(record);
     setCreatingCase(false); setNotice('caseCreated'); if (activeRef.current) onOpenCase?.(record.id);
   }
   return <section aria-label={t.customerRecord} className="min-w-0 space-y-5">
@@ -181,6 +183,11 @@ export function CustomerWorkspace({ api, lang = 'zh', onOpenCase, active = true 
   const searchId = useId();
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState(null);
+  const [caseRevision, setCaseRevision] = useState(0);
+  const [allCases, setAllCases] = useState([]);
+  const [originalsOpen, setOriginalsOpen] = useState(false);
+  const [originalsRevision, setOriginalsRevision] = useState(0);
+  const archiveCopy = casesCopy(lang);
   const [creating, setCreating] = useState(false);
   const createTrigger = useRef(null);
   useReturnFocus(creating, createTrigger);
@@ -188,7 +195,7 @@ export function CustomerWorkspace({ api, lang = 'zh', onOpenCase, active = true 
   const intent = useRef(0);
   const directory = useApiResource(api, clientSearchPath(query), 'clients', { delay: query ? 180 : 0 });
   const wasActive = useRef(active);
-  useEffect(() => { if (active && !wasActive.current) directory.refresh(); wasActive.current = active; }, [active, directory.refresh]);
+  useEffect(() => { if (active && !wasActive.current) { directory.refresh(); setOriginalsRevision(value => value + 1); } wasActive.current = active; }, [active, directory.refresh]);
   function search(value) { intent.current++; setQuery(value); setNotice(''); }
   function select(id) { intent.current++; setSelectedId(id); setNotice(''); }
   function created(record, startedIntent) {
@@ -197,6 +204,8 @@ export function CustomerWorkspace({ api, lang = 'zh', onOpenCase, active = true 
   }
   return <div className="space-y-7">
     <header><div className="mb-3 flex flex-wrap items-center justify-between gap-2"><p className="text-[11px] font-medium tracking-[.16em] text-muted-foreground">{t.eyebrow}</p><span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"><ShieldCheck className="size-3.5" aria-hidden="true" />{t.private}</span></div><h1 className="paper-title text-3xl leading-tight sm:text-4xl">{t.title}</h1><p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">{t.intro}</p></header>
+    <SavedCases api={api} lang={lang} onOpenCase={onOpenCase} active={active} refreshKey={caseRevision} onRecords={setAllCases} />
+    <details className="rounded-xl border bg-card p-5" onToggle={event => setOriginalsOpen(event.currentTarget.open)}><summary className="cursor-pointer rounded-sm text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring">{archiveCopy.allOriginals}</summary><p className="mt-2 text-xs leading-relaxed text-muted-foreground">{archiveCopy.originalsHint}</p>{originalsOpen && <div className="mt-4"><OriginalMaterials api={api} cases={allCases} lang={lang} refreshKey={originalsRevision} /></div>}</details>
     <div className="grid items-start gap-6 md:grid-cols-[260px_minmax(0,1fr)]">
       <Card className="paper-card min-w-0 gap-4">
         <CardHeader><div className="flex items-center justify-between gap-2"><h2 className="paper-title text-xl">{t.directory}</h2><Button type="button" size="icon-sm" variant="ghost" aria-label={t.refresh} disabled={directory.loading} onClick={directory.refresh}><RefreshCw aria-hidden="true" /></Button></div></CardHeader>
@@ -210,7 +219,7 @@ export function CustomerWorkspace({ api, lang = 'zh', onOpenCase, active = true 
           {directory.data && <><p className="text-xs text-muted-foreground" role="status">{t.results(directory.data.length)}</p>{directory.data.length === 0 ? <Empty icon={Users} title={query.trim() ? t.noMatches : t.customersEmpty} description={query.trim() ? t.noMatchesHint : t.customersEmptyHint} /> : <ul className="space-y-1" aria-label={t.directory}>{directory.data.map(client => <li key={client.id}><Button type="button" variant="ghost" aria-pressed={selectedId === client.id} onClick={() => select(client.id)} className={cn('h-auto min-h-16 w-full items-start justify-start gap-3 px-3 py-3 text-left whitespace-normal', selectedId === client.id && 'border-l-2 border-primary bg-secondary')}><UserRound className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" /><span className="min-w-0"><span className="block break-words text-sm font-medium">{client.displayName}</span><span className="mt-1 block break-all text-[10px] font-normal text-muted-foreground">{t.recordId}: {client.id.slice(-8)}</span><span className="mt-1 block text-[10px] font-normal text-muted-foreground">{formatDate(client.updatedAt, lang)}</span></span></Button></li>)}</ul>}</>}
         </CardContent>
       </Card>
-      {selectedId ? <CustomerDetail key={selectedId} api={api} customerId={selectedId} lang={lang} onOpenCase={onOpenCase} onRenamed={() => directory.refresh()} active={active} /> : <Card className="paper-card min-h-80 justify-center"><CardContent><Empty icon={FolderOpen} title={t.selectedEmpty} description={t.selectedEmptyHint} /></CardContent></Card>}
+      {selectedId ? <CustomerDetail key={selectedId} api={api} customerId={selectedId} lang={lang} onOpenCase={onOpenCase} onRenamed={() => directory.refresh()} onCreatedCase={() => setCaseRevision(value => value + 1)} active={active} /> : <Card className="paper-card min-h-80 justify-center"><CardContent><Empty icon={FolderOpen} title={t.selectedEmpty} description={t.selectedEmptyHint} /></CardContent></Card>}
     </div>
   </div>;
 }

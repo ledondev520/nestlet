@@ -120,3 +120,47 @@ Operation not permitted`. No browser steps or screenshots were completed. The
 script remains available for an environment that supports Chromium. Even a future
 pass of this component's Vite-development check is not whole-App production-CSP,
 provider, deployment, or end-to-end release acceptance.
+
+## Continuity P1: reopen unassigned work (2026-10-07, 10:38 UTC)
+
+The customer page now has an always-visible saved-case overview, independent of
+customer selection. It reads the existing own-user `GET /api/cases` endpoint,
+includes `clientId:null` records, and offers All, Latest 10 and Unassigned views.
+Title/ID search and 10-row pagination are local over the API's bounded 100-case
+list; no unsupported query API is invented. Opening calls the existing
+`onOpenCase` so App's unsaved-work confirmation still controls navigation.
+
+The expandable All originals entry likewise works without customer selection.
+An absent customer ID is omitted from `GET /api/assets`, so originals saved with
+both `caseId:null` and `clientId:null` remain discoverable after reload/login.
+These rows are explicitly labeled unassigned and retain the same authenticated
+text-preview/download controls. No upload, association, deletion or sharing
+happens automatically.
+
+Both global directories remain account-keyed, abort stale reads and refresh
+when the cached customer page becomes active. Creating a customer-linked case
+also refreshes the global case overview. Closing the originals disclosure
+unmounts its pending read/preview boundary.
+
+New regression checks:
+
+```sh
+node --test frontend/features/customers/saved-cases.dom.test.js
+node --test frontend/features/customers/saved-archive.http-dom.test.js
+```
+
+Seven controlled-response development DOM checks pass. Two additional checks use
+real authenticated HTTP, disposable SQLite/private files, the actual
+SessionProvider/CustomersPage and a jsdom DOM. They create an unassigned case and
+standalone original, restart the server, mount a fresh page, and prove the same
+owner can rediscover/open the case and preview/download the exact original.
+Actual logout clears the DOM; a different ordinary account and the administrator
+cannot discover the records and receive 404 for their IDs; the original owner
+can sign back in and recover them again. These are not real-browser/CSP evidence.
+
+At this checkpoint all 41 customer-feature checks passed (including the explicit
+assets HTTP check), `npm run check` passed, and `npm test` passed 264/264. A full
+production frontend build to an isolated temporary output directory passed; its
+existing >500 kB single-bundle warning remains. No shared build output, App,
+package, lockfile or backend source was edited. No Chromium retry was attempted
+for this P1 fix. Exact integrated browser/deployment acceptance remains separate.
