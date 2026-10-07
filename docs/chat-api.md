@@ -1,6 +1,6 @@
 # Case chat / native streaming API v1
 
-`POST /api/chat` uses the existing authenticated session, exact allowed Origin, `X-CSRF-Token`, configured/enabled administrator API key, and ordinary-account AI quota. Optional `X-Workflow-Id` correlates operational metadata. No registration, credential, extraction, or case-save API is replaced.
+`POST /api/chat` uses the existing authenticated session, exact allowed Origin, `X-CSRF-Token`, configured/enabled administrator API key, and ordinary-account AI quota. Chat returns a real request ID but is not persisted in the schema2 workflow-event log in this release. `X-Workflow-Id` does not turn a chat request into an extraction event; no fabricated telemetry association is made. No registration, credential, extraction, or case-save API is replaced.
 
 ## Request
 
@@ -17,7 +17,7 @@
 
 Allowed top-level keys are exactly `caseId`, `locale`, `consent`, `messages`. `locale` is `zh` or `en`; `consent` must be true. Only `user` and `assistant` message roles are accepted, with a user message last. At most 12 messages, 8,000 characters per message and 24,000 characters in total. No client system prompt, tools, arbitrary provider options or API key is accepted.
 
-When caseId is provided, ownership is checked before any provider request. Only bounded working-copy fields and up to 12,000 characters of the case source text are attached. Case source beyond that limit is explicitly marked incomplete in the model context. Full drafts are not attached automatically. Chat never changes facts, review confirmations, drafts, or saved cases automatically. Conversation history is supplied by the browser for each request and is not saved to SQLite by this endpoint.
+When caseId is provided, ownership is checked before any provider request. Only bounded working-copy fields (with an explicit valueIncomplete flag when shortened) and up to 12,000 characters of the case source text are attached. Case source beyond that limit is explicitly marked incomplete in the model context. Full drafts are not attached automatically. Chat never changes facts, review confirmations, drafts, or saved cases automatically. Conversation history is supplied by the browser for each request and is not saved to SQLite by this endpoint.
 
 Official Flash image support is verified; this product accepts only PNG/JPEG inline images, at most 2 total per request, 2 MiB decoded bytes each, and 8192 pixels per side: a user message may carry `images:[{mimeType,data}]`, where data is raw base64 (not a remote URL). Other formats, remote URLs and provider file IDs are rejected explicitly, never silently omitted. Images are sent only with the user's explicit consent and are not persisted or logged. PDF/Excel/TXT/CSV drag/drop should use existing parsers and add reviewed text; binary documents are not sent as if they were images.
 

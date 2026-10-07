@@ -24,7 +24,7 @@ jobs:
           persist-credentials: false
       - name: Reproduce private-permission release checkout
         run: |
-          chmod 600 Dockerfile .dockerignore package.json package-lock.json server.js auth.js storage.js workbook-worker.js
+          chmod 600 Dockerfile .dockerignore package.json package-lock.json server.js auth.js storage.js telemetry.js chat.js workbook-worker.js
           find public scripts ops -type d -exec chmod 700 {} +
           find public scripts ops -type f -exec chmod 600 {} +
       - name: Validate Compose and build actual image
@@ -53,6 +53,8 @@ jobs:
           curl --fail --silent --show-error http://127.0.0.1:4173/api/health | python3 -c 'import json,sys; assert json.load(sys.stdin)=={"ok":True}'
       - name: Check runtime dependencies and fail-closed endpoints
         run: docker compose exec -T nestlet node --input-type=module < ops/container-smoke.mjs
+      - name: Verify genuine schema1 migration preserves users and cases
+        run: docker compose exec -T nestlet node --input-type=module < ops/container-migration-smoke.mjs
       - name: Write disposable SQLite persistence fixture
         run: docker compose exec -T nestlet node --input-type=module - write < ops/container-sqlite-smoke.mjs
       - name: Recreate only the CI service and verify persisted SQLite data

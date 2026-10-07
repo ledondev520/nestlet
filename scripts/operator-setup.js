@@ -4,10 +4,13 @@ import { open, lstat, realpath, rename, unlink } from 'node:fs/promises';
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
 import { createHash, randomBytes, scrypt } from 'node:crypto';
 import { promisify } from 'node:util';
+import { normalizeOperatorUsername } from '../auth.js';
 
 const derive = promisify(scrypt);
 const KEY = 'NESTLET_OPERATOR_PASSWORD_HASH';
+const USERNAME_KEY = 'NESTLET_OPERATOR_USERNAME';
 const declaration = /^(?:export[ \t]+)?NESTLET_OPERATOR_PASSWORD_HASH[ \t]*=/u;
+const usernameDeclaration = /^(?:export[ \t]+)?NESTLET_OPERATOR_USERNAME[ \t]*=/u;
 const fail = message => { throw new Error(message); };
 
 async function readTarget(target) {
@@ -58,6 +61,8 @@ async function readTarget(target) {
     const version = `${stat.dev}:${stat.ino}:${createHash('sha256').update(bytes).digest('hex')}`;
     const definitions = text.split(/\r?\n/u).filter(line => declaration.test(line.trimStart()));
     if (definitions.length > 1) fail('runtime.env contains duplicate operator-password declarations. Resolve them privately before setup.');
+    if (text.split(/\r?\n/u).filter(line => usernameDeclaration.test(line.trimStart())).length > 1)
+      fail('runtime.env contains duplicate administrator-username declarations. Resolve them privately before setup.');
     return { text, version, mode: stat.mode, configured: definitions.some(line => !/^\s*(?:export\s+)?NESTLET_OPERATOR_PASSWORD_HASH\s*=\s*(?:''|""|)\s*(?:#.*)?$/u.test(line)), path: target };
   } finally { await handle.close(); }
 }
@@ -69,9 +74,12 @@ export async function inspectOperatorTarget(target) {
 }
 
 /** Only test fixtures or an explicitly confirmed user-run CLI should call this seam. */
-export async function setOperatorPassword({ target, password, passwordConfirmation, confirmed, expectedVersion }) {
+export async function setOperatorPassword({ target, username, password, passwordConfirmation, confirmed, expectedVersion }) {
   if (confirmed !== true) fail('Setup was not confirmed; no file was changed.');
-  if (typeof password !== 'string' || password.length < 12 || password.length > 256 || /[\u0000-\u001f\u007f]/u.test(password)) fail('Use an operator password containing 12 to 256 characters and no control characters.');
+  const operatorUsername = username === undefined ? undefined : normalizeOperatorUsername(username);
+  if (username !== undefined && (!operatorUsername || typeof username !== 'string' || !username.trim()))
+    fail('Use an administrator username of 3 to 64 ASCII letters, digits, dots, underscores or hyphens, starting with a letter or digit.');
+  if (typeof password !== 'string' || password.length < 6 || password.length > 256 || /[\u0000-\u001f\u007f]/u.test(password)) fail('Use an operator password containing 6 to 256 characters and no control characters.');
   if (password !== passwordConfirmation) fail('Passwords do not match; no file was changed.');
   const before = await readTarget(target);
   if (typeof expectedVersion !== 'string' || before.version !== expectedVersion) fail('runtime.env changed after the setup prompt. Restart setup; no file was changed.');
@@ -80,14 +88,19 @@ export async function setOperatorPassword({ target, password, passwordConfirmati
   const assignment = `${KEY}='scrypt$${salt.toString('base64url')}$${key.toString('base64url')}'`;
   // Preserve all unrelated bytes, line endings, whitespace, comments and key values.
   const newline = before.text.includes('\r\n') ? '\r\n' : '\n';
-  let replaced = false;
+  const updates = [
+    { declaration, assignment, replaced: false },
+    ...(operatorUsername === undefined ? [] : [{ declaration: usernameDeclaration, assignment: `${USERNAME_KEY}='${operatorUsername}'`, replaced: false }]),
+  ];
   let next = before.text.replace(/^[^\r\n]*(?:\r\n|\n|$)/gmu, line => {
-    if (!declaration.test(line.trimStart())) return line;
-    replaced = true;
+    const update = updates.find(item => item.declaration.test(line.trimStart()));
+    if (!update) return line;
+    update.replaced = true;
     const ending = line.endsWith('\r\n') ? '\r\n' : line.endsWith('\n') ? '\n' : '';
-    return (line.startsWith('\uFEFF') ? '\uFEFF' : '') + assignment + ending;
+    return (line.startsWith('\uFEFF') ? '\uFEFF' : '') + update.assignment + ending;
   });
-  if (!replaced) next += (next && !next.endsWith('\n') ? newline : '') + assignment + newline;
+  for (const update of updates) if (!update.replaced)
+    next += (next && !next.endsWith('\n') ? newline : '') + update.assignment + newline;
   const temporary = join(dirname(target), `.runtime.env.setup-${randomBytes(12).toString('hex')}.tmp`);
   let temporaryExists = false;
   try {

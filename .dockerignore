@@ -5,6 +5,8 @@
 !server.js
 !auth.js
 !storage.js
+!telemetry.js
+!chat.js
 !workbook-worker.js
 !public/
 !public/**

@@ -62,11 +62,11 @@ Allowed client events:
 
 Allowed outcomes: `success`, `failure`.
 
-`clientActiveMs`: integer 0–86,400,000; self-reported active interaction time. Pause accumulation when the page is hidden or the relevant step is inactive. Do not emit an event for every keystroke.
+`clientActiveMs`: integer 0–86,400,000; self-reported active-step dwell time while the page/step is considered active; it does not prove continuous human interaction. Pause accumulation when the page is hidden or the relevant step is inactive. Do not emit an event for every keystroke.
 
 `clientWaitMs`: integer 0–300,000; self-reported elapsed wait around a relevant request or browser operation. It is not server processing time.
 
-`requestId`, when supplied, must reference a previously recorded server request owned by the same user and workflow. The client cannot attach its event to another user's request.
+`requestId`, when supplied, must reference a previously recorded server request owned by the same user and workflow. Only reuse a response ID when `X-Telemetry-Status: active` and the returned `X-Workflow-Id` matches the current workflow. Login, workflow-management and static-download request IDs are diagnostic headers only and are not recorded as business events. The client cannot attach its event to another user's request.
 
 Client `errorCode` is optional and limited to: `CLIENT_CANCELLED`, `CLIENT_VALIDATION`, `CLIPBOARD_FAILED`, `DOWNLOAD_FAILED`, `PRINT_FAILED`, `UNKNOWN_CLIENT_ERROR`. Use the related requestId to inspect the authoritative backend error code instead of copying arbitrary error text.
 
@@ -93,7 +93,7 @@ Client `errorCode` is optional and limited to: `CLIENT_CANCELLED`, `CLIENT_VALID
 
 Server event names are fixed: `request.pdf_parse`, `request.workbook_parse`, `request.extract`, `request.case_create`, `request.case_read`, `request.case_update`, `request.case_delete`, `request.case_list`.
 
-`serverElapsedMs` is measured by the server from handling the request to completion/abort. It includes body receipt, parsing and upstream waits where applicable; it is not CPU time. Only the server writes this field and the authoritative HTTP/error result. Client observations are explicitly marked `source:"client"` and cannot overwrite server results. Active dwell time alone is never described as a stall or performance failure.
+`serverElapsedMs` is measured by the server from handling the request to response preparation or abort (excluding the final network flush and the telemetry write itself). It includes body receipt, parsing and upstream waits where applicable; it is not CPU time. Only the server writes this field and the authoritative HTTP/error result. Client observations are explicitly marked `source:"client"` and cannot overwrite server results. Active dwell time alone is never described as a stall or performance failure.
 
 ## Bounds and errors
 
@@ -101,7 +101,7 @@ Default retention: 30 days. Caps: 200 events per workflow, 2,000 per user, 20,00
 
 Client event submissions are limited to 60 events per user per minute; workflow creation is limited to 20 per user per minute. Reads return at most 100 rows, newest first, with a descending numeric cursor. Request/bind IDs must be UUIDs. No arbitrary text search or metadata field is accepted.
 
-Errors: `TELEMETRY_INVALID`400, `WORKFLOW_NOT_FOUND`404, `CASE_NOT_FOUND`404, `WORKFLOW_ALREADY_BOUND`409, `TELEMETRY_REQUEST_MISMATCH`400, `TELEMETRY_RATE_LIMITED`429, `TELEMETRY_UNAVAILABLE`503; existing authentication/CSRF/origin errors remain applicable. Administrator-only reads return `OWNER_REQUIRED`403 for ordinary accounts.
+Errors: `TELEMETRY_INVALID`400, `WORKFLOW_NOT_FOUND`404, `CASE_NOT_FOUND`404, `WORKFLOW_ALREADY_BOUND`409, `TELEMETRY_REQUEST_MISMATCH`400, `TELEMETRY_RATE_LIMITED`429, `TELEMETRY_UNAVAILABLE`503; existing authentication/CSRF/origin and JSON/media/body-size errors remain applicable (`INVALID_JSON`, `UNSUPPORTED_MEDIA_TYPE`, `INPUT_TOO_LARGE`). Administrator-only reads return `OWNER_REQUIRED`403 for ordinary accounts.
 
 ## Integration order
 

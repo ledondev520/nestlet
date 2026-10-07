@@ -19,6 +19,7 @@ services:
       # Single-quote the scrypt hash in .env to preserve literal dollar signs.
       # Empty means authentication is unconfigured: paid AI and settings stay disabled.
       NESTLET_OPERATOR_PASSWORD_HASH: ${NESTLET_OPERATOR_PASSWORD_HASH:-}
+      NESTLET_OPERATOR_USERNAME: ${NESTLET_OPERATOR_USERNAME:-owner}
       DEEPSEEK_MODEL: deepseek-flash
       ENABLE_LIVE_AI: ${ENABLE_LIVE_AI:-false}
       # Optional server-provided key. Prefer the authenticated, RAM-only settings flow.

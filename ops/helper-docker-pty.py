@@ -17,12 +17,13 @@ import time
 import uuid
 
 IMAGE = sys.argv[1] if len(sys.argv) == 2 else 'nestlet:ci'
-PASSWORD = 'ci-disposable-operator-password'
+# Public six-character fixtures exercise the user-selected minimum; never production credentials.
+PASSWORD = 'ci-123'
 INITIAL = b'# Public test fixture only\nNESTLET_OPERATOR_PASSWORD_HASH=\nDEEPSEEK_API_KEY=\nENABLE_LIVE_AI=false\n'
 
 
 def exercise(directory, cancel=False, trial_username=None):
-    password = 'ci-disposable-trial-password' if trial_username else PASSWORD
+    password = 'ct-123' if trial_username else PASSWORD
     first = b'Trial password' if trial_username else b'New operator password'
     second = b'Confirm trial password' if trial_username else b'Confirm operator password'
     confirmation = b'SET TRIAL USER' if trial_username else b'SET OPERATOR'
@@ -153,7 +154,7 @@ with tempfile.TemporaryDirectory(prefix='nestlet-trial-private-') as directory:
         assert row and row[1] == 'trial'
         kind, salt, expected = row[2].split('$')
         assert kind == 'scrypt'
-        actual = hashlib.scrypt(b'ci-disposable-trial-password', salt=base64.urlsafe_b64decode(salt+'=='), n=16384, r=8, p=1, dklen=32, maxmem=64*1024*1024)
+        actual = hashlib.scrypt(b'ct-123', salt=base64.urlsafe_b64decode(salt+'=='), n=16384, r=8, p=1, dklen=32, maxmem=64*1024*1024)
         assert actual == base64.urlsafe_b64decode(expected+'=')
     database.close()
     exercise(directory, cancel=True, trial_username='ci-cancelled')

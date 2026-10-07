@@ -145,7 +145,7 @@ test('registration rejects reserved administrator names, requested roles, and in
     { username: 'missing-confirmation', password: ordinaryPassword },
     { ...valid, passwordConfirmation: 'a-different-public-password' },
     { ...valid, username: 'ab' }, { ...valid, username: 'contains spaces' }, { ...valid, username: 'x'.repeat(65) },
-    { ...valid, password: 'too-short', passwordConfirmation: 'too-short' },
+    { ...valid, password: 'short', passwordConfirmation: 'short' },
     { ...valid, password: 'x'.repeat(257), passwordConfirmation: 'x'.repeat(257) },
     { ...valid, password: 'control\u0000characters', passwordConfirmation: 'control\u0000characters' },
     { ...valid, password: [] },

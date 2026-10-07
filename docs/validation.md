@@ -4,9 +4,9 @@ Checkpoint: 2026-10-07. This is a development checkpoint, not final acceptance. 
 
 ## Strict acceptance command
 
-`npm test` runs the strict core, HTTP parser/authentication, agency registry, private setup, localization, SQLite storage, case-isolation, and web-registration suites listed in `package.json`. Historical development doubles are excluded.
+`npm test` runs the strict core, HTTP parser/authentication, agency registry, private setup, localization, SQLite storage, case-isolation, web-registration, telemetry, administrator-alias/password, and bounded case-chat suites listed in `package.json`. Historical development doubles are excluded.
 
-Current frozen run at approximately 06:23 UTC on October 7, 2026: **146 passed, 0 failed, 0 skipped**: 52 core, 27 HTTP/file-parser/sample-download, 9 authentication/session, 4 agency registry, 11 private operator-setup, 5 localization, 12 actual SQLite storage, 10 case-API isolation, 7 private trial-user setup, and 9 web-registration lifecycle tests. All are included in default `npm test`; `npm run check` also passes. No dependency installation overlapped this run. The earlier 06:10 pre-registration checkpoint was 132/132.
+Current frozen run at approximately 07:20 UTC on October 7, 2026: **179 passed, 0 failed, 0 skipped** in default `npm test`; `npm run check` passes. This includes the 161-test telemetry checkpoint, 8 administrator-alias/password tests, and 10 chat validation/guard tests. No dependency installation overlapped this run. Earlier pre-telemetry and pre-registration checkpoints were 146/146 and 132/132 respectively.
 
 A separate concurrent review run briefly reported workbook unavailability while `npm ci` replaced dependencies. The final result above was rerun after installation finished and concurrent testing stopped; no source fix or weaker assertion was used. Do not run tests against a working tree while its dependencies are being replaced.
 
@@ -102,6 +102,41 @@ Actual private SQLite and real scrypt cover creation, sanitized metadata, role r
 
 The first account-cap regression returned 201 for the 101st user. That failure was preserved until the storage creation transaction was fixed; the successful sequential and two-process checks above were run afterward. No provider response or registration result was simulated.
 
+### Telemetry SQLite, privacy and bounds: 7 tests
+
+- Actual schema1→2 migration preserves every users/cases column, credential hash, stable identity and case version; the preexisting schema-version assertion is updated to the new documented version
+- Fixed metadata shape rejects arbitrary text, filenames, credentials, URLs, exception details and client-supplied authoritative timing/status
+- Workflow/case binding checks both owners, permits idempotent rebinding to the same case, and rejects another case; request correlation requires the same user and workflow
+- Actual rate windows, descending pagination and query whitelist enforce their specified limits
+- Actual SQLite writes enforce 200 events/workflow, 2,000/user, 20,000 globally and 100 workflows/user; oldest metadata is removed without deleting case contents
+- Actual dated SQLite fixtures older than 30 days are removed on read and startup. No clock is replaced or accelerated
+
+### Actual HTTP telemetry: 8 tests
+
+- Server-generated request IDs correlate only to the owning workflow; administrators can read cross-user metadata but still cannot read customer case bodies
+- Real delayed/chunked request delivery produces measured server elapsed time; client active/wait measurements remain independent and cannot overwrite it
+- Foreign workflow headers are ignored for tracking while the authorized business save succeeds; explicit foreign/rebinding attempts fail
+- Real SQLite `BEFORE INSERT` failure on telemetry events leaves successful case creation/update committed. Dedicated telemetry writes report their own 503 error
+- Actual auth/CSRF/Origin, fixed-field, batch-count/byte-limit, pagination and per-user rate boundaries are enforced
+- Real PDF/Excel parsing and a genuinely disabled extraction attempt record only fixed backend outcomes and timing; no document content or filename appears in returned metadata
+- An actually aborted request produces one cancelled 499 event, does not create a case, and is not double-recorded on close
+
+These tests establish backend telemetry contracts. Browser step instrumentation and any administrator dashboard are separate work and are not claimed present or verified here. Client dwell time is self-reported activity, never proof of a stall. The new schema cannot be opened by the older schema1-only application; deployment rollback must account for that independently.
+
+### Administrator alias and password boundary: 8 tests
+
+The implementation owner's actual HTTP/private-helper tests were independently rerun unchanged. They cover configured alias binding to the immutable owner, legacy login compatibility, reserved administrator names, collision refusal and session invalidation, private alias persistence, and the user-requested password boundary: 5 characters rejected, 6 accepted, 256 accepted, 257 rejected. Older longer passwords remain usable.
+
+### Bounded chat input and pure SSE parsing: 5 tests
+
+These are **parser/input tests using authored byte fixtures, not a live provider conversation**. They verify strict roles/consent/options and history limits, sensitive-pattern rejection, actual tracked PNG bytes and image count/size restrictions, rejection of remote image URLs and unsupported WebP/PDF payloads, bounded untrusted own-case context with explicit source/field truncation markers and without automatically attaching drafts, incremental split-UTF-8/CRLF SSE parsing, omission of reasoning_content, valid stop/DONE completion, and refusal of malformed, incomplete, tool, truncated or oversized streams. The shipped accepted image types are PNG and JPEG; actual model image understanding is unverified.
+
+### Actual chat HTTP barriers without a key: 5 tests
+
+Real sessions, CSRF and Origin checks protect `/api/chat`; a request without any Origin header is explicitly rejected. A foreign case returns 404 before provider availability checks; no foreign content is exposed. With an authorized own-case request and no configured key, the endpoint returns explicit 503 JSON with no fabricated answer or SSE and leaves the case unchanged. Client system roles/options, absent consent, overlong text, obvious sensitive identifiers and invalid/disguised image inputs are rejected before a provider call.
+
+No API key, provider call, paid conversation, upstream network mock, simulated token animation or claimed native-vision result is used in this acceptance. Browser chat composition, actual native streaming, disconnect cancellation against a real provider and account entitlement still need separately authorized live acceptance.
+
 ### Real-time idle-session expiry: 1 separate long-running test
 
 **Passed.** A real authenticated session received no requests for 30 minutes, then the actual server rejected it with 401 `AUTH_REQUIRED`. Observation began 2026-10-07 04:22:20.111 UTC; completion was approximately 04:52:21 UTC. Test duration: 1,801,203 ms. Command: `node --test test/session-idle.acceptance.js`. No clock, session, HTTP or crypto behavior was mocked. This long-running check is separate from the fast suite. Its later temporary-SQLite isolation adjustment was syntax-checked only; the 30-minute observation was not rerun and remains evidence of the earlier checkpoint.
@@ -114,6 +149,8 @@ Earlier reports of 86 passing tests included such development doubles. That coun
 
 ## Still unverified / pending
 
+- Real provider chat/vision, native upstream streaming and browser chat UX are not verified by the parser/guard tests
+- Frontend workflow instrumentation and administrator telemetry UI are not covered by this backend acceptance
 - Real-browser registration, save/reopen and role-isolation UI flows on this latest build remain separate acceptance. The HTTP lifecycle tests above do not establish browser rendering, keyboard behavior or deployment TLS
 - Real DeepSeek authentication, entitlement, live `deepseek-flash` responses and quality: **not run; secure API configuration required**
 - Real browser interaction, desktop/mobile pixels, keyboard focus, complete zh-CN/English switching, output download/clipboard/print artifacts, and async reset/cancel behavior: **not established by this suite**

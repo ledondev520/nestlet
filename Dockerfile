@@ -13,7 +13,7 @@ RUN apt-get update \
 WORKDIR /app
 COPY --from=dependencies --chown=node:node /app/node_modules ./node_modules
 # Explicit copies prevent an accidental .env, upload or private document inclusion.
-COPY --chown=node:node package.json server.js auth.js storage.js workbook-worker.js ./
+COPY --chown=node:node package.json server.js auth.js storage.js telemetry.js chat.js workbook-worker.js ./
 COPY --chown=node:node public ./public
 COPY --chown=node:node ops/healthcheck.mjs ./ops/healthcheck.mjs
 # User-run operator setup uses the same Node runtime; no host Node/npm required.
