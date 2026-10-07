@@ -1,5 +1,6 @@
 export const chatCopy = {
   "zh": {
+    "caseSaveUncertain": "未能确认新案例是否已保存。请先在客户库检查并打开已保存的案例，避免重复创建；当前输入仍保留。",
     "keyboardHint": "Enter 发送 · Shift+Enter 换行",
     "title": "对话",
     "conversation": "已有会话",
@@ -22,7 +23,7 @@ export const chatCopy = {
     "assistant": "助手",
     "incomplete": "回复已中断",
     "localOnly": "尚未确认保存，请复制保留。",
-    "oldImage": "如需再次查看图片，请重新添加。",
+    "oldImage": "本对话不保留图片原始文件。已另存的原图可在「材料与事实」查看；否则请重新添加。",
     "openingDocuments": "文档已交给材料与事实页面处理；聊天内容没有覆盖案例材料。",
     "documents": "请在「材料与事实」页导入文件。",
     "signIn": "请先登录，再打开自己的案例会话。",
@@ -100,6 +101,7 @@ export const chatCopy = {
     "libraryCitation": "模型给出了未核实的来源引用，不能把本次结果当作已核实结论。"
   },
   "en": {
+    "caseSaveUncertain": "The new case may already be saved. Check Customers and open the saved case before trying again to avoid duplicates. Your input is preserved.",
     "keyboardHint": "Enter to send · Shift+Enter for a new line",
     "title": "Conversation",
     "conversation": "Saved conversations",
@@ -122,7 +124,7 @@ export const chatCopy = {
     "assistant": "Assistant",
     "incomplete": "Reply interrupted",
     "localOnly": "Save not confirmed. Copy this reply to keep it.",
-    "oldImage": "Attach the image again to view it.",
+    "oldImage": "This conversation does not retain image bytes. Previously saved originals may be in Materials; otherwise reattach.",
     "openingDocuments": "Documents were handed to Materials and Facts. Chat did not replace the case source.",
     "documents": "Import files on the Materials & facts page.",
     "signIn": "Sign in before opening your case conversations.",
@@ -208,7 +210,7 @@ const errorKeys = {
   CHAT_EMPTY:'emptyError', CHAT_TOO_LARGE:'tooLarge', INPUT_TOO_LARGE:'tooLarge', CHAT_IMAGE_INVALID:'imageError', CHAT_IMAGE_UNSUPPORTED:'imageError', CHAT_IMAGE_BUSY:'imageBusy',
   AUTH_REQUIRED:'authError', CSRF_REJECTED:'authError', OPERATOR_SETUP_REQUIRED:'authError', HTTPS_REQUIRED:'authError', ORIGIN_REJECTED:'authError',
   LIVE_DISABLED:'unavailable', API_KEY_REQUIRED:'unavailable', CASE_INVALID:'storageError', CONVERSATION_INVALID:'storageError', INVALID_RESPONSE:'storageError',
-  CASE_CONFLICT:'conflict', CASE_NOT_FOUND:'notFound', CONVERSATION_NOT_FOUND:'notFound', BUSY:'busy', CHAT_CONVERSATION_BUSY:'busy',
+  CASE_SAVE_UNCERTAIN:'caseSaveUncertain', CASE_CONFLICT:'conflict', CASE_NOT_FOUND:'notFound', CONVERSATION_NOT_FOUND:'notFound', BUSY:'busy', CHAT_CONVERSATION_BUSY:'busy',
   TRIAL_LIMIT_REACHED:'quota', SENSITIVE_DATA:'sensitive', CHAT_PROVIDER_FAILED:'streamError', CHAT_STREAM_FAILED:'streamError', CHAT_INCOMPLETE:'streamError', CHAT_UNSUPPORTED_OUTPUT:'streamError',
   CHAT_SAVE_FAILED:'saveError', CHAT_TURN_EXISTS:'duplicate', CAPACITY_REACHED:'capacity', CASE_LIMIT_REACHED:'capacity', NETWORK_ERROR:'network'
 };

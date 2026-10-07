@@ -82,3 +82,12 @@ The email UI requires the schema5 API in the same release. Registration is email
 Authenticated existing accounts bind email with their current password and the current CSRF token. They remain pending until explicit inbox verification and status refresh. Wrong binding passwords do not expire an otherwise valid session; genuine AUTH_REQUIRED does. Password reset invalidates previous sessions on the server. Administrator/bootstrap recovery is explicitly unavailable by email in this release and must be performed by the administrator personally in the private server setup flow.
 
 See `features/auth/README.md` for test scope. Real browser, DirectMail delivery, and deployment acceptance remain separate gates.
+
+## Explicit chat workflow bridge
+
+Chat additionally accepts `onReviewMessage(request)`, `onOpenMaterials()`, `onOpenDocuments({userId,caseId})` and `active`. App owns the short-lived account/case/message-scoped text-review request and passes `textReviewRequest`/`onTextReviewHandled(id)` to Intake. Intake previews it separately, then only appends its unreviewed source text on an explicit action. It never replaces a buffer or confirms a fact. Chat's document continuation returns to pending material first and otherwise opens the already-mounted Documents editor without changing its edits. Complete assistant messages may explicitly save source-linked, unreviewed draft artifacts; final generation remains in the established reviewed workflow. See `features/chat/WORKFLOW.md` and `features/chat/ORIGINAL-RETENTION.md` for invariants, evidence and limits.
+
+
+## Owner account management and bounded administrator diagnostics
+
+The unified schema6 candidate mounts `AccountAdministration` and `OperationalDiagnostics` inside Account and settings. Account management requires the immutable owner identity plus the explicit capability; delegated administrators receive only the separately gated read-only diagnostics. Inactive settings unmount the privileged inner panels and discard pending permission intent. Settings labels distinguish Owner, Administrator and Ordinary user without changing the owner/trial authentication roles. Owner recovery copy is specific to the bootstrap owner; delegated accounts retain verified-email recovery. See `../docs/account-administration.md` for the migration/release boundary and `features/account-administration/README.md` for the API contract.

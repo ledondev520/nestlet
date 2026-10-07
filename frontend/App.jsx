@@ -12,6 +12,7 @@ import { draftVault } from '@/lib/draft-vault';
 import { captureAuthFragment } from '@/features/auth/auth-route';
 import { DraftWorkspaceProvider } from '@/lib/suspended-draft';
 import { AgencyGuidance } from '@/components/agency-guidance';
+import { handoffMatches } from '@/lib/conversation-handoff';
 import { DEFAULT_GUIDANCE_AGENCY } from '../public/agency-guidance.js';
 
 // Bundled modules let migration lanes land independently. Missing lanes remain
@@ -35,6 +36,8 @@ function AccountWorkspace({ lang, view, navigate }) {
   const [guidanceAgency, setGuidanceAgency] = useState(DEFAULT_GUIDANCE_AGENCY);
   const [visited, setVisited] = useState(() => new Set([view]));
   const [importRequest, setImportRequest] = useState(null);
+  const [textReviewRequest, setTextReviewRequest] = useState(null);
+  const textReviewRef = useRef(null); textReviewRef.current = textReviewRequest;
   const dirty = useRef({ chat: false, documents: false, intake: false });
   const userIdRef = useRef(status.userId);
   const caseIdRef = useRef(caseId);
@@ -60,6 +63,7 @@ function AccountWorkspace({ lang, view, navigate }) {
       draftVault.clearWorkspace(userIdRef.current, workspaceKey);
       setWorkspaceKey(crypto.randomUUID());
       setImportRequest(null);
+      setTextReviewRequest(null);
       setWorkspaceEpoch(value => value + 1);
       setGuidanceAgency(DEFAULT_GUIDANCE_AGENCY);
       setCaseId(nextId);
@@ -82,9 +86,29 @@ function AccountWorkspace({ lang, view, navigate }) {
   const imported = useCallback(id => setImportRequest(request => request?.id === id ? null : request), []);
   const openIntake = useCallback(() => navigate('intake'), [navigate]);
   const openDocuments = useCallback(() => navigate('documents'), [navigate]);
+  const reviewConversation = useCallback(request => {
+    if (!handoffMatches(request, userIdRef.current, caseIdRef.current)) return false;
+    const pending = textReviewRef.current;
+    if (pending && pending.messageId !== request.messageId && !window.confirm(lang === 'zh' ? '已有另一段对话待核对。改为核对本段？现有材料不会改变。' : 'Review this message instead of the pending conversation text? Existing material will stay unchanged.')) return false;
+    if (!pending || pending.messageId !== request.messageId) { textReviewRef.current = request; setTextReviewRequest(request); }
+    navigate('intake');
+    return true;
+  }, [lang, navigate]);
+  const reviewedConversation = useCallback(id => setTextReviewRequest(request => request?.id === id ? null : request), []);
+  const continueDocument = useCallback(scope => {
+    if (scope && (scope.userId !== userIdRef.current || scope.caseId !== caseIdRef.current)) return false;
+    // The existing materials editor owns its unsaved facts and file work. Finish
+    // that work first rather than generate a document from an older saved case.
+    if (dirty.current.intake || textReviewRef.current) {
+      navigate('intake');
+      return false;
+    }
+    navigate('documents');
+    return true;
+  }, [navigate]);
   const slots = {
-    chat: [modules.chat?.ChatPage, { caseId, guidanceAgency, onCaseChange: bindCurrentCase, onDirtyChange: markChatDirty, onImportFiles: importFiles }],
-    intake: [modules.intake?.IntakePage, { caseId, onCaseChange: bindCurrentCase, onDirtyChange: markIntakeDirty, importRequest, onImportHandled: imported, onOpenDocuments: openDocuments, active: view === 'intake' }],
+    chat: [modules.chat?.ChatPage, { caseId, guidanceAgency, onCaseChange: bindCurrentCase, onDirtyChange: markChatDirty, onImportFiles: importFiles, onReviewMessage: reviewConversation, onOpenMaterials: openIntake, onOpenDocuments: continueDocument, active: view === 'chat' }],
+    intake: [modules.intake?.IntakePage, { caseId, onCaseChange: bindCurrentCase, onDirtyChange: markIntakeDirty, importRequest, onImportHandled: imported, textReviewRequest, onTextReviewHandled: reviewedConversation, onOpenDocuments: openDocuments, active: view === 'intake' }],
     customers: [modules.customers?.CustomersPage, { onOpenCase: openCase, active: view === 'customers' }],
     documents: [modules.documents?.DocumentsPage, { caseId, onDirtyChange: markDocumentsDirty, onOpenIntake: openIntake, active: view === 'documents' }],
     settings: [modules.auth?.SettingsPage, { active: view === 'settings' }]

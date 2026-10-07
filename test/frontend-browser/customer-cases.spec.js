@@ -172,7 +172,8 @@ test('customer → two cases → resolved question and document versions → rea
       expect((await apiWrite(page, app, `/api/clients/${client.id}`, 'PUT', { displayName: 'Forbidden rename', expectedVersion: client.version })).status()).toBe(404);
       expect((await apiWrite(page, app, `/api/cases/${first.id}`, 'DELETE', { expectedVersion: first.version })).status()).toBe(404);
       await page.getByRole('button', { name: 'Account and settings', exact: true }).click();
-      await expect(page.getByText(username === 'owner' ? 'Administrator' : 'Ordinary account', { exact: true }).first()).toBeVisible();
+      await expect(page.getByTestId('account-access')).toBeVisible();
+      await expect(page.getByTestId('account-access')).toHaveText(username === 'owner' ? 'Owner' : 'Ordinary user');
       await expect(page.getByText('DeepSeek connection', { exact: true })).toHaveCount(username === 'owner' ? 1 : 0);
       expect((await page.request.get(app.origin + '/api/settings')).status()).toBe(username === 'owner' ? 200 : 403);
       await navigate(page, 'Customers');
