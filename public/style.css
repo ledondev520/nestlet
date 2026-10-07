@@ -194,24 +194,25 @@ html[lang=zh-CN] .source-details summary{text-transform:none;letter-spacing:.02e
 .draft-choice label{margin:0;white-space:nowrap;font-size:12px;font-weight:600}
 .draft-choice select{flex:1;min-width:0;max-width:100%;border:1px solid var(--hairline-strong);border-radius:9px;background:var(--sheet);color:var(--ink);padding:11px 12px;font-size:13px}
 
-/* Saved-case controls (functional lane owns registration/storage; visual hooks only).
-   Everything wraps and shrinks cleanly, including long saved-case titles on phones. */
-#case-manager{border:1px solid var(--hairline);background:var(--paper);border-radius:10px;padding:14px 16px;margin-top:16px;font-size:12px;line-height:1.7;min-width:0}
-#case-manager label{display:block;font-size:12px;font-weight:600;margin-bottom:7px}
-#case-title{width:100%;min-width:0;max-width:100%;border:1px solid var(--hairline-strong);border-radius:8px;background:var(--sheet);padding:10px 12px;font-size:14px}
+/* Saved-case controls (PR #11 markup: .case-controls > .actions + details#case-manager).
+   Rows reuse .draft-choice; everything shrinks and wraps, long titles included. */
+.case-controls{margin-top:18px}
+.case-controls>.actions{flex-wrap:wrap;align-items:flex-start}
+.draft-choice input.input{flex:1;min-width:0;max-width:100%}
+#case-manager{flex:1 1 420px;min-width:0;margin-top:0;padding:12px 14px;border:1px solid var(--hairline);border-radius:9px;background:var(--paper)}
+#case-manager .draft-choice{margin-top:12px}
 #case-manager .actions{margin-top:12px}
 #case-manager button{max-width:100%;white-space:normal}
-.saved-case{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 0;border-top:1px solid var(--hairline);min-width:0}
-.saved-case:first-of-type{border-top:0}
-.saved-case .saved-case-title,.saved-case span:first-child{flex:1;min-width:0;overflow-wrap:anywhere;font-size:13px}
-.saved-case button{flex-shrink:0;font-size:12px;padding:7px 11px;min-height:34px}
-#case-save-status{font-size:12px;line-height:1.6;margin-top:8px;overflow-wrap:anywhere}
+#case-title,#saved-case{min-width:0;max-width:100%}
+#case-save-status{display:inline-block;margin-top:8px;overflow-wrap:anywhere}
 #case-save-status:empty{display:none}
+#sample-downloads .actions{gap:8px}
+#sample-downloads .actions a{display:inline-block;border:1px solid var(--hairline-strong);border-radius:7px;background:var(--sheet);color:var(--ink-soft);padding:7px 12px;font-size:11px;letter-spacing:.06em;text-decoration:none;transition:border-color .18s var(--ease),color .18s var(--ease)}
+#sample-downloads .actions a:hover{border-color:var(--accent);color:var(--accent-deep)}
 @media(max-width:760px){
   #case-manager{padding:12px}
   #case-title{font-size:16px}
-  .saved-case{align-items:flex-start}
-  .saved-case .saved-case-title,.saved-case span:first-child{flex-basis:100%}
+  #case-manager .draft-choice{flex-wrap:wrap;gap:9px}
 }
 
 /* Draft sheet */
