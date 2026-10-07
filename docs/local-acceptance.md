@@ -131,3 +131,19 @@ Browser automation occasionally reported a detached element after filling a valu
 The primary **real AI** workflow remains blocked by unavailable authorized configuration, independently of successful manual/template paths. PDF import is blocked by missing Poppler. Resolve LC-01 and LC-03 with explicit runtime file ownership, implement/clarify the newly added authentication scope, then repeat acceptance on the resulting exact commit with Node 24, Poppler and separately authorized live-provider access. Prepare an encrypted workbook fixture and exercise real async cancellation and native print/clipboard limits separately.
 
 This PR changes only the task record, this report, new acceptance tests and their evidence assets. No runtime fixes, dependency/config changes, deployment, merge or edits to existing QA tests/`docs/validation.md` are included relative to current main. Maintainability note: package scripts deliberately remain unchanged, so the new failing contract test must be invoked explicitly. Rollback is removal of these acceptance-only files and reversal of the task-record update. See [existing validation](validation.md) for the main QA owner's separate evidence.
+
+## Follow-up — 2026-10-07 12:22 Asia/Shanghai
+
+The coordinator's [new handoff comment](https://github.com/ledondev520/nestlet/issues/1#issuecomment-6030762005) requests a fixed, CI-passed revision for the next round. Observed main was `993676bdbd8797919cde187528e01aaa796f1f11`, adding only the separate frontend redesign handoff since `6678aea`; no new runtime revision was supplied. The acceptance branch remains on its recorded runtime; no moving development checkout was tested and no runtime/design ownership was assumed.
+
+**Environment blocker resolved:** installed Poppler 26.09.0 through the existing official Homebrew core formula (`brew install poppler`, automatic Homebrew update and cleanup disabled). This installed/upgraded its OS-level dependencies; no repository manifest, lockfile, runtime, workflow or configuration was changed. `pdftotext -v` succeeds. A real parser-only smoke check on the existing synthetic `test/fixtures/text.pdf` matched all six nonblank lines in `expected.txt` using `pdftotext -layout ... -`. This is environment readiness evidence, **not** a new browser/API PDF-import pass. The first-round skipped counts above remain historical and unchanged pending the fixed retest revision.
+
+The next acceptance will follow these user stories, retaining a precise SHA and separate results for each:
+
+1. First arrival without configuration: empty case, truthful setup path and no fabricated result.
+2. Operator sign-in, authorized non-production settings, logout and return. Real model credentials/provider calls remain Not run until separately authorized securely.
+3. Actual PDF/CSV/XLSX/XLS import, sheet/row/mapping, missing and conflicting evidence, and human confirmation.
+4. Generate, edit, copy, download and print an English working document under both UI locales; no official SFHA acceptance claim.
+5. Recovery from invalid files, expired login, provider failure where authorized and reproducible, cancel/reset and stale asynchronous work.
+
+Requested from the coordinator in Issue #1: fixed retest SHA, non-production authentication initialization instructions, a reproducible session-expiry path, and the confirmed decision on whether explicit manual parsing remains. Current evidence describes that route truthfully as deterministic parsing, never a successful AI call; LC-01 remains a snapshot contract finding until that decision is resolved. Check frequency is now ten minutes; comments are posted only for substantive changes.
