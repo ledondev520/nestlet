@@ -179,3 +179,11 @@ test('signed-in accounts can open verification and close it without consuming a 
   await render(App, { initialAuthLink }); assert.match(host.textContent, /确认验证邮箱/); assert.equal(posts(calls).length, 0);
   await click('关闭链接页面'); assert.equal(initialAuthLink.takeToken(), ''); assert.equal(posts(calls).filter(call => call.path.startsWith('/api/auth/')).length, 0);
 });
+
+
+test('same-URL Back traversal discards a captured token even between adjacent scrubbed root entries', async () => {
+  const calls = fixture(); const initialAuthLink = link(); await render(App, { initialAuthLink });
+  assert.equal(window.location.hash, ''); assert.match(host.textContent, /确认验证邮箱/);
+  await React.act(async () => window.dispatchEvent(new window.PopStateEvent('popstate')));
+  assert.doesNotMatch(host.textContent, /确认验证邮箱/); assert.equal(initialAuthLink.takeToken(), ''); assert.equal(posts(calls).length, 0);
+});

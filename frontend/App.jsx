@@ -109,9 +109,14 @@ export default function App({ initialAuthLink = null }) {
     handledUrl.current = window.location.href;
   }, [replaceAuthLink]);
   useEffect(() => {
-    const followHistory = () => {
+    const followHistory = event => {
       // A history traversal may dispatch both popstate and hashchange. Capture once.
-      if (window.location.href === handledUrl.current) return;
+      if (window.location.href === handledUrl.current) {
+        // Back/Forward can traverse adjacent scrubbed root entries. Even when
+        // the URL is unchanged, that navigation must discard a live link.
+        if (event.type === 'popstate') { replaceAuthLink(null); setView(currentView()); }
+        return;
+      }
       const next = captureAuthFragment(window);
       handledUrl.current = window.location.href;
       replaceAuthLink(next); setView(currentView());
