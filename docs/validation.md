@@ -10,6 +10,8 @@ Current result, clean post-install run at approximately 05:29 UTC on October 7, 
 
 A separate concurrent review run briefly reported workbook unavailability while `npm ci` replaced dependencies. The final result above was rerun after installation finished and concurrent testing stopped; no source fix or weaker assertion was used. Do not run tests against a working tree while its dependencies are being replaced.
 
+LC-06 portability follow-up, 05:41 UTC: canonicalized only test fixture roots and added a real symlink-root regression that still asserts production rejects aliased targets. Linux strict suite: **103 passed, 0 failed, 0 skipped**, including 11 setup tests. Syntax passes. The prior macOS default-TMPDIR failure remains historical evidence; the corrected default-macOS rerun is pending Local Codex. Runtime security guards are unchanged.
+
 This command uses real core functions, disposable actual HTTP servers, actual PDF/XLS/XLSX bytes, and installed real document parsers. It does not replace fetch, HTTP responses, provider calls, or file-reading functions. Server processes use disposable operator test credentials with real scrypt verification, and are deliberately configured without an API key and with live AI disabled. Parser tests log in and send real session/CSRF tokens. The suite verifies that unavailable live extraction is reported truthfully. Test source text and files contain authored non-personal examples only.
 
 ## Coverage established by strict tests

@@ -1,16 +1,19 @@
 // STRICT ACCEPTANCE: actual private temporary files and real scrypt, no filesystem mocks.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, writeFile, readFile, chmod, stat, readdir, rm, symlink, link, mkdir } from 'node:fs/promises';
+import { mkdtemp, writeFile, readFile, chmod, stat, readdir, rm, symlink, link, mkdir, realpath } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, basename } from 'node:path';
 import { scryptSync, timingSafeEqual } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { inspectOperatorTarget, setOperatorPassword } from '../scripts/operator-setup.js';
 
 const password = 'public-test-only-setup-password';
-async function fixture(context, contents = 'HOST=127.0.0.1\nPORT=4173\n') {
-  const directory = await mkdtemp(join(tmpdir(), 'nestlet-setup-acceptance-'));
+async function fixture(context, contents = 'HOST=127.0.0.1\nPORT=4173\n', temporaryRoot = tmpdir()) {
+  // macOS may expose its temporary directory through a symlink alias.
+  // Canonicalize only fixture placement; production target guards remain strict.
+  const canonicalRoot = await realpath(temporaryRoot);
+  const directory = await mkdtemp(join(canonicalRoot, 'nestlet-setup-acceptance-'));
   await chmod(directory, 0o700);
   context.after(() => rm(directory, { recursive: true, force: true }));
   const target = join(directory, 'runtime.env');
@@ -183,4 +186,24 @@ test('setup rejects a writable ancestor above a private child without changing t
   }
   await chmod(ancestor, 0o700);
   assert.equal((await inspectOperatorTarget(target)).version, metadata.version);
+});
+
+test('setup fixtures canonicalize symlinked temporary roots while production target aliases remain rejected', async context => {
+  const container = await mkdtemp(join(await realpath(tmpdir()), 'nestlet-temp-alias-'));
+  await chmod(container, 0o700);
+  context.after(() => rm(container, { recursive: true, force: true }));
+  const physicalRoot = join(container, 'physical');
+  await mkdir(physicalRoot, { mode: 0o700 });
+  const aliasRoot = join(container, 'alias');
+  await symlink(physicalRoot, aliasRoot, 'dir');
+  const { directory, target } = await fixture(context, undefined, aliasRoot);
+  assert.equal(directory, await realpath(directory), 'Test fixture paths must be canonical before passing to production setup');
+  assert.ok(directory.startsWith(physicalRoot + '/'));
+  const metadata = await inspectOperatorTarget(target);
+  assert.equal(metadata.path, target);
+  assert.equal(metadata.configured, false);
+  await update(target);
+  verifyHash(await readFile(target, 'utf8'));
+  const aliasedTarget = join(aliasRoot, basename(directory), 'runtime.env');
+  await assert.rejects(inspectOperatorTarget(aliasedTarget), /symlink/);
 });
