@@ -96,6 +96,111 @@ const copy = {
 
 const kinds = DRAFT_TYPES;
 const state = {lang: 'zh', stage: 0, guidanceAgency: DEFAULT_GUIDANCE_AGENCY, guidanceOpen: false, text: '', fields: [], draftText: '', generated: false, error: '', message: '', busy: false, liveEnabled: false, pdfEnabled: false, workbookEnabled: false, workbook: null, sheetIndex: 0, rowIndex: 0, mapping: {}, settingsOpen: false, settingsBusy: false, settingsError: '', settingsMessage: '', authConfigured: false, authenticated: false, role: null, canManageSettings: false, userId: null, workspaceOwnerId: null, username: '', loginUsername: '', authForm: 'login', registrationEnabled: false, secureLogin: false, caseStorageEnabled: false, caseId: null, caseVersion: null, caseTitle: '', savedFingerprint: null, cases: [], selectedCaseId: '', casesOpen: false, caseBusy: false, caseError: '', caseMessage: '', caseEpoch: 0, secureSettings: false, configured: false, csrfToken: '', connectionVerifiedAt: null, keyStorage: 'none', statusChecked: false, statusError: false, model: 'deepseek-flash', providerEndpoint: 'https://api.deepseek.com/chat/completions', mode: 'demo', source: '', sample: false, namesVerified: false, kind: 'followup', generatedKind: 'followup', version: 0, controller: null};
+let draftEditTracked = false;
+/** Nonblocking client telemetry per docs/telemetry-api.md v1.
+    Operational metadata only: never records document text, draft text, filenames,
+    passwords, keys, or arbitrary metadata. A telemetry failure must never change
+    business state, clear work, or mark anything as failed. */
+let workflowId = null;
+let correlationRequestId = null;
+let creating = null;
+let disabled = false;
+let activeMs = 0;
+let activeSince = null;
+let hooks = { isAuthenticated: () => false, getCsrf: () => '' };
+
+const clock = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
+const isVisible = () => typeof document === 'undefined' || document.visibilityState !== 'hidden';
+function pauseActive() {
+  if (activeSince !== null) {
+    activeMs += clock() - activeSince;
+    activeSince = null;
+  }
+}
+function resumeActive() {
+  if (activeSince === null && isVisible()) activeSince = clock();
+}
+function takeActiveMs() {
+  pauseActive();
+  const value = Math.min(Math.round(activeMs), 86400000);
+  activeMs = 0;
+  resumeActive();
+  return value;
+}
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => (isVisible() ? resumeActive() : pauseActive()));
+  resumeActive();
+}
+
+function configureTelemetry(options) {
+  hooks = {...hooks, ...options};
+}
+
+/** Start a fresh journey: next event lazily creates a new workflow. */
+function resetTelemetry() {
+  workflowId = null;
+  correlationRequestId = null;
+  disabled = false;
+}
+
+/** Headers for business requests that support workflow correlation. */
+function telemetryHeaders() {
+  return workflowId ? { 'X-Workflow-Id': workflowId } : {};
+}
+
+/** Observe a business response. A request ID is only correlated when telemetry
+    is active AND the server used this exact workflow. */
+function noteBusinessResponse(response) {
+  try {
+    const get = response?.headers?.get?.bind(response.headers);
+    if (!get) return;
+    const returnedWorkflow = get('X-Workflow-Id');
+    if (returnedWorkflow) {
+      if (!workflowId) workflowId = returnedWorkflow;
+      if (returnedWorkflow !== workflowId) { correlationRequestId = null; return; }
+    }
+    correlationRequestId = get('X-Telemetry-Status') === 'active' ? get('X-Request-Id') : null;
+  } catch { /* telemetry is best-effort */ }
+}
+
+async function ensureWorkflow() {
+  if (workflowId || disabled || !hooks.isAuthenticated()) return null;
+  if (!creating) {
+    creating = (async () => {
+      try {
+        const response = await fetch('/api/workflows', { method: 'POST', headers: { 'X-CSRF-Token': hooks.getCsrf() } });
+        if (!response.ok) { disabled = true; return null; }
+        const result = await response.json();
+        workflowId = typeof result.workflowId === 'string' ? result.workflowId : null;
+        if (!workflowId) disabled = true;
+      } catch { disabled = true; }
+      return workflowId;
+    })().finally(() => { creating = null; });
+  }
+  return creating;
+}
+
+/** Fire-and-forget client event. `extra` may carry waitMs and a fixed errorCode. */
+function track(event, outcome, extra = {}) {
+  if (disabled || !hooks.isAuthenticated()) return;
+  const payload = { event, outcome, clientActiveMs: takeActiveMs() };
+  if (Number.isInteger(extra.waitMs)) payload.clientWaitMs = Math.min(Math.max(extra.waitMs, 0), 300000);
+  if (correlationRequestId) payload.requestId = correlationRequestId;
+  if (typeof extra.errorCode === 'string') payload.errorCode = extra.errorCode;
+  void (async () => {
+    const id = await ensureWorkflow();
+    if (!id) return;
+    try {
+      await fetch(`/api/workflows/${encodeURIComponent(id)}/events`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': hooks.getCsrf() },
+        body: JSON.stringify({ events: [payload] })
+      });
+    } catch { /* never surface telemetry failures */ }
+  })();
+}
+
+configureTelemetry({isAuthenticated: () => state.authenticated, getCsrf: () => state.csrfToken});
 const t = () => copy[state.lang];
 const esc = value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
 const byId = id => document.getElementById(id);
@@ -226,7 +331,7 @@ async function settingsRequest(path, payload, successKey) {
       if (result.ok !== true || result.check !== 'model-access' || result.chatCompletionTested !== false || result.model !== 'deepseek-flash' || typeof result.verifiedAt !== 'string' || !Number.isFinite(Date.parse(result.verifiedAt))) throw new Error('errorConnection');
       state.connectionVerifiedAt = result.verifiedAt;
     } else if (path === '/api/logout') {
-      replaceText(''); forgetCaseIdentity(); state.workspaceOwnerId = null; state.cases = []; state.selectedCaseId = ''; state.authenticated = false; state.csrfToken = ''; await refreshStatus();
+      replaceText(''); forgetCaseIdentity(); state.workspaceOwnerId = null; state.cases = []; state.selectedCaseId = ''; state.authenticated = false; state.csrfToken = ''; resetTelemetry(); await refreshStatus();
     } else if (path === '/api/login' || path === '/api/register') {
       state.csrfToken = typeof result.csrfToken === 'string' ? result.csrfToken : '';
       await refreshStatus();
@@ -273,7 +378,8 @@ function caseControlsMarkup() {
 }
 const caseErrorKeys = {CASE_LIMIT_REACHED: 'errorCaseLimit', CASE_NOT_FOUND: 'errorCaseNotFound', CASE_INVALID: 'errorCaseInvalid', CASE_TOO_LARGE: 'errorCaseTooLarge', CASE_CONFLICT: 'errorCaseConflict', CASE_STORAGE_UNAVAILABLE: 'errorCaseStorage'};
 async function caseRequest(path, method = 'GET', payload) {
-  const response = await fetch(path, {method, cache: 'no-store', headers: requestHeaders(payload ? {'Content-Type': 'application/json'} : {}), ...(payload ? {body: JSON.stringify(payload)} : {})});
+  const response = await fetch(path, {method, cache: 'no-store', headers: requestHeaders({...telemetryHeaders(), ...(payload ? {'Content-Type': 'application/json'} : {})}), ...(payload ? {body: JSON.stringify(payload)} : {})});
+  noteBusinessResponse(response);
   const result = await response.json();
   if (!response.ok) throw responseError(result, caseErrorKeys[result.code] || 'errorCaseStorage');
   return result;
@@ -306,14 +412,16 @@ async function saveCurrentCase() {
   const id = state.caseId;
   state.caseBusy = true; state.caseError = ''; state.caseMessage = ''; render();
   try {
+    const saveStart = performance.now();
     const result = await caseRequest(id ? `/api/cases/${encodeURIComponent(id)}` : '/api/cases', id ? 'PUT' : 'POST', {...payload, ...(id ? {expectedVersion: state.caseVersion} : {})});
     if (!validCaseRecord(result.case)) throw new Error('errorCaseStorage');
     if (userId === state.userId && epoch === state.caseEpoch) {
       state.caseId = result.case.id; state.caseVersion = result.case.version; state.savedFingerprint = fingerprint;
       state.selectedCaseId = result.case.id; state.caseMessage = 'caseSaveSuccess';
+      track('case.save', 'success', {waitMs: Math.round(performance.now() - saveStart)});
     }
     await refreshCaseList(false);
-  } catch (error) {if (userId === state.userId && epoch === state.caseEpoch) state.caseError = copy.en[error.message] ? error.message : 'errorCaseStorage';}
+  } catch (error) {if (userId === state.userId && epoch === state.caseEpoch) {state.caseError = copy.en[error.message] ? error.message : 'errorCaseStorage'; track('case.save', 'failure', {errorCode: 'UNKNOWN_CLIENT_ERROR'});}}
   finally {state.caseBusy = false; render();}
 }
 async function openSavedCase() {
@@ -325,6 +433,7 @@ async function openSavedCase() {
   const userId = state.userId;
   state.caseBusy = true; state.caseError = ''; state.caseMessage = ''; render();
   try {
+    const openStart = performance.now();
     const result = await caseRequest(`/api/cases/${encodeURIComponent(selected)}`);
     if (!validCaseRecord(result.case)) throw new Error('errorCaseStorage');
     if (userId !== state.userId || epoch !== state.caseEpoch || before !== caseFingerprint()) throw new Error('errorCaseChanged');
@@ -336,7 +445,8 @@ async function openSavedCase() {
     state.caseId = record.id; state.caseVersion = record.version; state.caseTitle = record.title;
     state.savedFingerprint = caseFingerprint(); state.stage = state.generated ? 2 : state.fields.length ? 1 : 0;
     state.caseMessage = 'caseOpened';
-  } catch (error) {if (userId === state.userId) state.caseError = copy.en[error.message] ? error.message : 'errorCaseStorage';}
+    track('case.open', 'success', {waitMs: Math.round(performance.now() - openStart)});
+  } catch (error) {if (userId === state.userId) {state.caseError = copy.en[error.message] ? error.message : 'errorCaseStorage'; track('case.open', 'failure', {errorCode: 'UNKNOWN_CLIENT_ERROR'});}}
   finally {state.caseBusy = false; render();}
 }
 async function deleteSavedCase() {
@@ -350,8 +460,9 @@ async function deleteSavedCase() {
     if (userId !== state.userId) return;
     if (state.caseId === item.id) {state.caseId = null; state.caseVersion = null; state.savedFingerprint = null;}
     state.selectedCaseId = ''; state.caseMessage = 'caseDeleted';
+    track('case.delete', 'success');
     await refreshCaseList(false);
-  } catch (error) {if (userId === state.userId) state.caseError = copy.en[error.message] ? error.message : 'errorCaseStorage';}
+  } catch (error) {if (userId === state.userId) {state.caseError = copy.en[error.message] ? error.message : 'errorCaseStorage'; track('case.delete', 'failure', {errorCode: 'UNKNOWN_CLIENT_ERROR'});}}
   finally {state.caseBusy = false; render();}
 }
 
@@ -509,7 +620,9 @@ async function importFile(file) {
   try {
     let next;
     if (isWorkbook) {
-      const response = await fetch('/api/workbook', {method: 'POST', headers: requestHeaders({'Content-Type': /\.xlsx$/i.test(file.name) ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : 'application/vnd.ms-excel', 'X-Document-Consent': 'synthetic-or-deidentified'}), body: file, signal});
+      const fileStart = performance.now();
+      const response = await fetch('/api/workbook', {method: 'POST', headers: requestHeaders({...telemetryHeaders(), 'Content-Type': /\.xlsx$/i.test(file.name) ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : 'application/vnd.ms-excel', 'X-Document-Consent': 'synthetic-or-deidentified'}), body: file, signal});
+      noteBusinessResponse(response);
       const result = await response.json();
       if (ticket !== state.version) return;
       if (!response.ok) throw responseError(result, response.status === 413 ? 'errorSize' : 'errorWorkbook');
@@ -519,9 +632,11 @@ async function importFile(file) {
       state.rowIndex = result.sheets[state.sheetIndex].rows.length > 1 ? 1 : 0;
       state.mapping = Object.fromEntries(FIELDS.map(key => [key, null]));
       state.stage = 0;
+      track('input.file', 'success', {waitMs: Math.round(performance.now() - fileStart)});
       return;
     } else if (isPdf) {
-      const response = await fetch('/api/document', {method: 'POST', headers: requestHeaders({'Content-Type': 'application/pdf', 'X-Document-Consent': 'synthetic-or-deidentified'}), body: file, signal});
+      const response = await fetch('/api/document', {method: 'POST', headers: requestHeaders({...telemetryHeaders(), 'Content-Type': 'application/pdf', 'X-Document-Consent': 'synthetic-or-deidentified'}), body: file, signal});
+      noteBusinessResponse(response);
       const result = await response.json();
       if (!response.ok) {
         const codes = {OCR_REQUIRED: 'errorScanned', PDF_ENCRYPTED: 'errorEncrypted', TEXT_TOO_LARGE: 'errorTextSize', BUSY: 'errorBusy'};
@@ -536,6 +651,7 @@ async function importFile(file) {
     }
     if (ticket !== state.version) return;
     replaceText(next, file.name);
+    track('input.file', 'success', {waitMs: Math.round(performance.now() - fileStart)});
     state.message = 'loaded';
     render();
   } catch (error) {
@@ -550,7 +666,8 @@ async function extractLive() {
   if (!confirm(t().consent)) return;
   const {ticket, signal} = beginProcessing();
   try {
-    const response = await fetch('/api/extract', {method: 'POST', headers: requestHeaders({'Content-Type': 'application/json'}), body: JSON.stringify({text: state.text, consent: true}), signal});
+    const response = await fetch('/api/extract', {method: 'POST', headers: requestHeaders({...telemetryHeaders(), 'Content-Type': 'application/json'}), body: JSON.stringify({text: state.text, consent: true}), signal});
+    noteBusinessResponse(response);
     const result = await response.json();
     if (ticket !== state.version) return;
     if (!response.ok) throw responseError(result, result.code === 'SENSITIVE_DATA' ? 'errorSensitive' : result.code === 'BUSY' ? 'errorBusy' : 'errorLive');
@@ -620,7 +737,7 @@ function bind() {
   on('language', 'click', () => {state.lang = state.lang === 'zh' ? 'en' : 'zh'; render();});
   on('reset', 'click', () => {
     if ((state.text || state.fields.length || state.busy) && !confirm(t().resetAsk)) return;
-    replaceText(''); forgetCaseIdentity(); state.kind = 'followup'; render(); byId('input').focus();
+    replaceText(''); forgetCaseIdentity(); state.kind = 'followup'; resetTelemetry(); render(); byId('input').focus();
   });
   on('cancel', 'click', () => {cancelProcessing(); state.message = 'cancelled'; render();});
   on('input', 'input', event => {
@@ -651,12 +768,13 @@ function bind() {
       replaceText(result.text, filename);
       state.fields = result.fields;
       state.stage = 1;
+      track('input.mapping', 'success');
       render();
     } catch {state.error = 'errorMapping'; render();}
   });
   on('extract', 'click', () => {
     if (!state.text.trim()) {state.error = 'errorEmpty'; render(); byId('input').focus(); return;}
-    clearReview(); state.fields = extract(state.text); state.stage = 1; render();
+    clearReview(); state.fields = extract(state.text); state.stage = 1; track('input.paste', 'success'); render();
     if (window.matchMedia('(max-width: 760px)').matches) byId('review-panel').scrollIntoView({behavior: 'smooth', block: 'start'});
   });
   on('live', 'click', extractLive);
@@ -672,6 +790,7 @@ function bind() {
     render();
   }));
   document.querySelectorAll('[data-confirm]').forEach(element => element.addEventListener('change', () => {
+    if (element.checked) track('review.confirm', 'success');
     state.fields[Number(element.dataset.confirm)].confirmed = element.checked;
     state.draftText = ''; state.generated = false; state.message = '';
     render();
@@ -682,17 +801,17 @@ function bind() {
     if (!canDraft(state.fields) || fieldsNeedEnglish()) return;
     state.draftText = draft(state.fields, state.kind).split('\n').filter(line => !['DRAFT — FOR HUMAN REVIEW', 'DE-IDENTIFIED WORKING COPY — NOT FOR SUBMISSION', 'Operator-prepared supplementary document; not an official government form', 'Supplementary correspondence; not an official government form'].includes(line)).join('\n').trimStart();
     state.generatedKind = state.kind;
-    state.generated = true; state.stage = 2; state.message = ''; render();
+    state.generated = true; state.stage = 2; state.message = ''; draftEditTracked = false; track('draft.generate', 'success'); render();
     byId('draft-panel').scrollIntoView({behavior: 'smooth', block: 'start'});
     byId('draft').focus({preventScroll: true});
   });
   on('csv', 'click', () => download(exportCSV(state.fields, {includeNotice: true}), 'nestlet-case-DRAFT.csv', 'text/csv;charset=utf-8'));
-  on('draft', 'input', event => {state.draftText = event.target.value; state.message = ''; document.querySelector('.print-text').textContent = exportDraft(); document.querySelector('#draft-panel .success').textContent = ''; const blocked = draftNeedsEnglish(); ['copy', 'download', 'print'].forEach(id => byId(id).disabled = blocked); byId('draft-language-error').textContent = blocked ? t().draftEnglishRequired : ''; updateCaseIndicator();});
-  on('download', 'click', () => download(exportDraft(), `nestlet-${state.generatedKind}-DRAFT.txt`, 'text/plain;charset=utf-8'));
-  on('print', 'click', () => window.print());
+  on('draft', 'input', event => {if (!draftEditTracked) {draftEditTracked = true; track('draft.edit', 'success');} state.draftText = event.target.value; state.message = ''; document.querySelector('.print-text').textContent = exportDraft(); document.querySelector('#draft-panel .success').textContent = ''; const blocked = draftNeedsEnglish(); ['copy', 'download', 'print'].forEach(id => byId(id).disabled = blocked); byId('draft-language-error').textContent = blocked ? t().draftEnglishRequired : ''; updateCaseIndicator();});
+  on('download', 'click', () => {download(exportDraft(), `nestlet-${state.generatedKind}-DRAFT.txt`, 'text/plain;charset=utf-8'); track('export.download', 'success');});
+  on('print', 'click', () => {window.print(); track('export.print', 'success');});
   on('copy', 'click', async () => {
-    try {await navigator.clipboard.writeText(exportDraft()); state.message = 'copied';}
-    catch {state.message = 'copyFail';}
+    try {await navigator.clipboard.writeText(exportDraft()); state.message = 'copied'; track('export.copy', 'success');}
+    catch {state.message = 'copyFail'; track('export.copy', 'failure', {errorCode: 'CLIPBOARD_FAILED'});}
     render();
   });
 }

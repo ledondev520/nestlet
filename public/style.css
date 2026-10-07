@@ -53,8 +53,9 @@ header:after{content:"";position:absolute;left:0;right:0;bottom:-5px;border-bott
 .wordmark{font-family:var(--serif);font-weight:700;font-size:23px;letter-spacing:.01em;line-height:1.1}
 .wordmark .small{display:block;font-family:var(--sans);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin-top:3px}
 .tools{display:flex;gap:8px;align-items:center}
+/* O1: the pill is a static model name, not a connection state — no status dot.
+   Real connection state lives only in the settings panel. */
 .pill{border:1px solid var(--hairline-strong);border-radius:999px;padding:6px 12px;font-size:11px;letter-spacing:.04em;display:inline-flex;align-items:center;gap:7px;color:var(--ink-soft);background:var(--sheet)}
-.pill:before{content:"";width:6px;height:6px;border-radius:50%;background:var(--ok)}
 .ghost{border:1px solid var(--hairline-strong);background:var(--sheet);border-radius:8px;padding:8px 13px;font-size:12px;color:var(--ink);transition:border-color .18s var(--ease),transform .18s var(--ease),background .18s var(--ease)}
 .ghost:hover{border-color:var(--ink);background:#fff}
 .ghost:active{transform:scale(.97)}
