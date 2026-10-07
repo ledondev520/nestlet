@@ -134,13 +134,13 @@ function fixture(t) {
   db.close();
   return { dir, file, user, record, before };
 }
-test('schema3→4 is additive, preserves every old row, and keeps original case/history after restart', (t) => {
+test('schema3→5 is additive, preserves every old row, and keeps original case/history after restart', (t) => {
   const f = fixture(t);
   const storage = openStorage({ filename: f.file });
   assert.equal(storage.getCase(f.user, f.record).version, 4);
   storage.close();
   const db = new DatabaseSync(f.file);
-  assert.equal(db.prepare('PRAGMA user_version').get().user_version, 4);
+  assert.equal(db.prepare('PRAGMA user_version').get().user_version, 5);
   for (const [n, rows] of Object.entries(f.before))
     assert.equal(
       JSON.stringify(db.prepare('SELECT * FROM ' + n + ' ORDER BY rowid').all()),
@@ -171,7 +171,7 @@ test('failed schema4 transaction leaves original rows/version intact; future sch
       rows,
       n
     );
-  db.exec('PRAGMA user_version=5;');
+  db.exec('PRAGMA user_version=6;');
   db.close();
   const before = readFileSync(f.file);
   assert.throws(

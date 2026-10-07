@@ -1,9 +1,9 @@
 import { test, expect } from '@playwright/test';
-import { ENTRY_PATH, register, navigate, reload, openSavedCase, downloadedBytes, watchBrowser, screenshot } from './support.js';
+import { ENTRY_PATH, legacyLogin, navigate, reload, openSavedCase, downloadedBytes, watchBrowser, screenshot } from './support.js';
 import { FORMAT_SOURCE_REVISION, SYNTHETIC_VALUES, publicFormat, blockedWorkbook, PIXEL, BAD_CSV, BAD_PDF, sha256 } from './format-fixtures.js';
 
-// One extra ordinary account keeps the complete suite within the real five-account
-// registration budget. No retry, preseeded successful parse, or mocked API is used.
+// A privately seeded legacy account isolates NON-email product acceptance.
+// No successful parse or product API response is preseeded or mocked.
 test('real CSV/PDF/XLSX/XLS parsing, mapping, exact originals, image honesty, and rejected-input preservation', async ({ page }, testInfo) => {
   test.setTimeout(180000);
   testInfo.annotations.push({ type: 'fixture-source-revision', description: FORMAT_SOURCE_REVISION });
@@ -16,7 +16,7 @@ test('real CSV/PDF/XLSX/XLS parsing, mapping, exact originals, image honesty, an
     if (url.hostname === 'untrusted.invalid') externalRequests.push(url.href);
   });
   await page.goto(ENTRY_PATH);
-  await register(page, 'synthetic-file-formats');
+  await legacyLogin(page, 'synthetic-file-formats');
   const status = await (await page.request.get('/api/status')).json();
   expect(status.liveEnabled).toBe(false);
   // Ordinary status intentionally omits administrator parser capabilities. The

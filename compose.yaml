@@ -20,16 +20,17 @@ services:
       # Empty means authentication is unconfigured: paid AI and settings stay disabled.
       NESTLET_OPERATOR_PASSWORD_HASH: ${NESTLET_OPERATOR_PASSWORD_HASH:-}
       NESTLET_OPERATOR_USERNAME: ${NESTLET_OPERATOR_USERNAME:-owner}
+      # Existing Alibaba DirectMail service, injected privately by the operator.
+      # Empty configuration disables enrollment/recovery without fabricating delivery.
+      ALIBABA_CLOUD_ACCESS_KEY_ID: ${ALIBABA_CLOUD_ACCESS_KEY_ID:-}
+      ALIBABA_CLOUD_ACCESS_KEY_SECRET: ${ALIBABA_CLOUD_ACCESS_KEY_SECRET:-}
+      ALIBABA_CLOUD_SECURITY_TOKEN: ${ALIBABA_CLOUD_SECURITY_TOKEN:-}
+      NESTLET_EMAIL_FROM: ${NESTLET_EMAIL_FROM:-}
       DEEPSEEK_MODEL: deepseek-flash
       ENABLE_LIVE_AI: ${ENABLE_LIVE_AI:-false}
       # Optional server-provided key. Prefer the authenticated, RAM-only settings flow.
       # Never bake keys into this file or an image; do not share rendered Compose config.
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
-      # Optional DirectMail transport for email account flows.
-      ALIBABA_CLOUD_ACCESS_KEY_ID: ${ALIBABA_CLOUD_ACCESS_KEY_ID:-}
-      ALIBABA_CLOUD_ACCESS_KEY_SECRET: ${ALIBABA_CLOUD_ACCESS_KEY_SECRET:-}
-      ALIBABA_CLOUD_SECURITY_TOKEN: ${ALIBABA_CLOUD_SECURITY_TOKEN:-}
-      NESTLET_EMAIL_FROM: ${NESTLET_EMAIL_FROM:-}
     volumes:
       - case_data:/data
     read_only: true

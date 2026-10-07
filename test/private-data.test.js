@@ -220,7 +220,7 @@ test('pre-upgrade schema3 backup remains schema3 and leaves source unchanged thr
     migrated.close();
   }
   check = new DatabaseSync(restored.filename, { readOnly: true });
-  assert.equal(check.prepare('PRAGMA user_version').get().user_version, 4);
+  assert.equal(check.prepare('PRAGMA user_version').get().user_version, 5);
   check.close();
   assert.deepEqual(readFileSync(filename), before);
   assert.equal(verifyPrivateBackup({ input: output }).schemaVersion, 3);
@@ -364,4 +364,39 @@ test('backup waits for a bounded real exclusive writer and verifies its committe
     assert.deepEqual(openAssetVault({ directory: restored.assetsDirectory }).read(asset), f.bytes);
     assert.equal(store.listAssets('owner').total, 1);
   } finally { store.close(); }
+});
+
+test('schema5 private snapshot preserves verified email binding, pending hash-only actions and rate limits on restore', async t => {
+  const f = await fixture(t), store = openStorage({ filename: f.filename });
+  const { createHash } = await import('node:crypto');
+  const fingerprint = createHash('sha256').update(store.getUserById(f.user.id).passwordHash).digest('hex');
+  const email = 'synthetic-backup@example.invalid', now = Date.now();
+  const binding = store.emailAuth.createAction({ kind: 'bind', email, userId: f.user.id, credentialFingerprint: fingerprint, now });
+  store.emailAuth.markAccepted(binding.tokenHash, now); assert.equal(store.emailAuth.verify(binding.tokenHash, { now }), true);
+  const reset = store.emailAuth.createAction({ kind: 'reset', email, userId: f.user.id, credentialFingerprint: fingerprint, now });
+  store.emailAuth.markAccepted(reset.tokenHash, now); assert.equal(store.emailAuth.reserveRequest(email, 'synthetic-ip', now), 'allowed');
+  store.close();
+  const output = join(f.root, 'email-snapshot');
+  const backed = await backupPrivateData({ ...f, output }); assert.equal(backed.schemaVersion, 5);
+  const restored = await restorePrivateBackup({ input: output, output: join(f.root, 'email-restored') });
+  const recovered = openStorage({ filename: restored.filename });
+  try {
+    assert.equal(recovered.emailAuth.findByEmail(email).id, f.user.id);
+    assert.equal(recovered.emailAuth.getAction(reset.tokenHash).ready, 1);
+    assert.equal(recovered.emailAuth.reserveRequest(email, 'other-synthetic-ip', now + 1), 'suppressed');
+    assert.equal(recovered.getCase(f.user.id, f.record.id).sourceText, 'Synthetic source');
+    assert.equal(recovered.getUserById('owner').passwordHash, null);
+  } finally { recovered.close(); }
+  assert.equal(readFileSync(join(output, 'nestlet.sqlite')).includes(Buffer.from(reset.token)), false);
+});
+
+
+test('schema5 backups require the private originals directory even when no asset rows exist', async t => {
+  const root = mkdtempSync(join(realpathSync(tmpdir()), 'nestlet-schema5-vault-guard-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const filename = join(root, 'nestlet.sqlite'), assetsDirectory = join(root, 'missing-assets'), output = join(root, 'snapshot');
+  const store = openStorage({ filename }); store.close();
+  await assert.rejects(backupPrivateData({ filename, assetsDirectory, output }), error => error.code === 'ENOENT');
+  assert.equal(readdirSync(root).includes('snapshot'), false);
+  assert.equal(readdirSync(root).includes('missing-assets'), false);
 });

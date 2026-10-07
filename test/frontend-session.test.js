@@ -158,3 +158,20 @@ test('explicit logout discards the recovery cache even when the network result i
   await act(async () => app.session.refresh());
   assert.equal(draftVault.read(key), null);
 });
+
+test('email registration202 never changes identity, capability state, or authenticates the draft vault', async context => {
+  const calls = [];
+  const app = await setup(async (path, options) => {
+    calls.push({ path, options });
+    return response(path === '/api/status' ? { ...signedOut, secureLogin: true, emailDeliveryConfigured: true } : { accepted: true, authenticated: false, next: 'check-email-if-eligible', retryAfter: 60 }, path === '/api/status' ? 200 : 202);
+  });
+  context.after(app.close);
+  let result;
+  await act(async () => { result = await app.session.register({ email: 'synthetic@example.invalid', password: '123456', passwordConfirmation: '123456' }); });
+  assert.equal(result.accepted, true);
+  assert.equal(app.session.status.authenticated, false);
+  assert.equal(app.session.status.emailDeliveryConfigured, true);
+  assert.equal(app.session.status.accepted, undefined);
+  assert.equal(calls.filter(call => call.path === '/api/status').length, 1);
+  assert.equal(window.localStorage.length, 0); assert.equal(window.sessionStorage.length, 0);
+});

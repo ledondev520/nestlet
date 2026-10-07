@@ -35,8 +35,8 @@ try {
     child.once('exit', code => { clearTimeout(timer); reject(new Error(`Fixture exited: ${code}`)); });
     child.stdout.on('data', () => { if (output.includes('Nestlet available')) { clearTimeout(timer); resolve(); } });
   });
-  const signedIn = await request('/api/register', { method: 'POST', mimeType: 'application/json', data: JSON.stringify({ username: 'synthetic-formats-http', password: 'Case26', passwordConfirmation: 'Case26' }) });
-  assert.equal(signedIn.status, 201); cookie = signedIn.headers.get('set-cookie').split(';')[0]; csrf = (await signedIn.json()).csrfToken;
+  const signedIn = await request('/api/login', { method: 'POST', mimeType: 'application/json', data: JSON.stringify({ username: 'synthetic-formats-http', password: 'Case26' }) });
+  assert.equal(signedIn.status, 200); cookie = signedIn.headers.get('set-cookie').split(';')[0]; csrf = (await signedIn.json()).csrfToken;
   assert.equal((await (await request('/api/status')).json()).liveEnabled, false);
   const records = [];
   for (const extension of ['csv', 'pdf', 'xlsx', 'xls']) {
@@ -86,7 +86,7 @@ try {
   const deniedAsset = await request('/api/assets', { method: 'POST', mimeType: PIXEL.mimeType, data: PIXEL.buffer, headers: { 'X-Asset-Filename': PIXEL.name } });
   assert.equal(deniedAsset.status, 400); assert.equal((await deniedAsset.json()).code, 'ASSET_CONSENT_REQUIRED');
   assert.equal((await (await request('/api/assets?limit=100')).json()).total, records.length);
-  console.log('PASS: actual Poppler PDF, CSV, SheetJS XLSX/XLS, blocked workbook cells, image no-OCR, consent/error rejection, and seven exact private-original hashes. Browser/provider NOT RUN.');
+  console.log('PASS: privately seeded legacy login; actual Poppler PDF, CSV, SheetJS XLSX/XLS, blocked workbook cells, image no-OCR, consent/error rejection, and seven exact private-original hashes. Browser/provider NOT RUN.');
 } finally {
   if (child.exitCode === null && child.signalCode === null) { const exited = new Promise(resolve => child.once('exit', resolve)); child.kill('SIGTERM'); await exited; }
 }

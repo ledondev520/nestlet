@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useSession } from '@/lib/session';
 import { AccountControls } from './account-controls.jsx';
+import { EmailAccount } from './email-account.jsx';
 import { AuthPanel } from './auth-panel.jsx';
 import { canManageProvider, providerStatus, settingsPayload } from './auth-model.js';
 import { authCopy, authErrorMessage, language } from './copy.js';
@@ -107,11 +108,12 @@ function ProviderSettings({ lang, session }) {
   </Card>;
 }
 
-export function SettingsPage({ lang = 'zh' }) {
+export function SettingsPage({ lang = 'zh', active = true }) {
   const session=useSession(), t=authCopy(lang);
   if(!session.status?.authenticated)return <AuthPanel lang={lang} />;
   return <section className="space-y-6" aria-label={canManageProvider(session.status)?t.settingsTitle:t.account}>
     <Card className="paper-card"><CardHeader><CardTitle className="paper-title text-xl">{canManageProvider(session.status)?t.settingsTitle:t.account}</CardTitle></CardHeader><CardContent className="flex flex-wrap items-center justify-between gap-3"><AccountControls lang={lang} /><span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">{session.status.role==='owner' && <ShieldCheck className="size-4" aria-hidden="true" />}{session.status.role==='owner'?t.administrator:t.ordinary}</span></CardContent></Card>
+    <EmailAccount key={`email:${session.status.userId}`} session={session} lang={lang} active={active} />
     {canManageProvider(session.status) && <ProviderSettings key={session.status.userId || 'owner'} session={session} lang={lang} />}
   </section>;
 }

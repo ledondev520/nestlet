@@ -21,7 +21,8 @@ The dedicated `Nestlet browser acceptance` workflow runs these steps at the prom
 ## Coverage
 
 - Existing component palette, bilingual text, escaped input, repeated Radix modal keyboard/focus/scroll-lock lifecycles, static allowlist, strict production CSP, and fresh style-only document nonces matching the official injected modal styles
-- Actual six-character registration and later sign-in through the UI
+- Privately seeded legacy-account six-character sign-in through the UI; this is explicitly not new-user registration
+- Five independent required-email verification/recovery journeys with real HTTP/SQLite and explicitly simulated accepted mail transport; see [email evidence boundary](EMAIL.md)
 - Standalone original upload before creating any case, full page reload, global discovery, safe text preview, focus return, and byte-for-byte browser download
 - Manually reviewed, unassigned case save, full reload, global discovery, and real application reopen with saved source/facts
 - Genuine readiness questions, explicit user answers, deterministic supplementary English final generation, and exact identity between displayed text, server-saved final, and browser download
@@ -33,4 +34,4 @@ The dedicated `Nestlet browser acceptance` workflow runs these steps at the prom
 
 ## Explicitly not established
 
-No API, product response, or provider success is mocked in these browser tests. Manual explicit-label organization and deterministic document templates do not establish AI acceptance. Live DeepSeek extraction, streamed chat, image understanding, provider errors/cancellation, email verification/delivery/recovery, browser recovery across service restart, production deployment, real device soft keyboard/safe-area behavior, and full accessibility conformance require separate evidence.
+The pre-existing product/parser journeys do not mock APIs or parsing. The new email journeys explicitly simulate the mail provider receipt only; no genuine delivery is established. Manual explicit-label organization and deterministic document templates do not establish AI acceptance. Live DeepSeek extraction, streamed chat, image understanding, provider errors/cancellation, genuine production email provider acceptance/delivery, browser recovery across service restart, production deployment, real device soft keyboard/safe-area behavior, and full accessibility conformance require separate evidence.

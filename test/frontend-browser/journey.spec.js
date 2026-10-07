@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
-import { ENTRY_PATH, screenshot, noHorizontalOverflow, PASSWORD, SOURCE, ORIGINAL_NAME, ORIGINAL_BYTES, register, login, navigate, reload, logout, saveCase, openSavedCase, openOriginals, downloadedBytes, watchBrowser } from './support.js';
+import { ENTRY_PATH, screenshot, noHorizontalOverflow, PASSWORD, SOURCE, ORIGINAL_NAME, ORIGINAL_BYTES, legacyLogin, login, navigate, reload, logout, saveCase, openSavedCase, openOriginals, downloadedBytes, watchBrowser } from './support.js';
 
-test('six-character account → standalone original → unassigned case → final document → logout isolation', async ({ page }, testInfo) => {
+test('legacy six-character account → standalone original → unassigned case → final document → logout isolation', async ({ page }, testInfo) => {
   test.setTimeout(120000);
   const assertBrowserClean = await watchBrowser(page);
   const username = 'synthetic-journey-a';
@@ -9,9 +9,9 @@ test('six-character account → standalone original → unassigned case → fina
   let original, record, artifact, content;
   await page.goto(ENTRY_PATH);
 
-  await test.step('Register through the real form using the six-character boundary', async () => {
+  await test.step('Sign in to the privately seeded legacy fixture using the six-character boundary', async () => {
     expect(PASSWORD).toHaveLength(6);
-    await register(page, username);
+    await legacyLogin(page, username);
     expect((await (await page.request.get('/api/cases')).json()).cases).toEqual([]);
     expect((await (await page.request.get('/api/clients')).json()).clients).toEqual([]);
     await screenshot(page, testInfo, 'desktop-home-conversation');
@@ -104,7 +104,7 @@ test('six-character account → standalone original → unassigned case → fina
     await logout(page);
     await expect(page.locator('body')).not.toContainText(title);
     expect((await page.request.get(`/api/cases/${record.id}`)).status()).toBe(401);
-    await register(page, 'synthetic-journey-b');
+    await legacyLogin(page, 'synthetic-journey-b');
     await navigate(page, 'Customers');
     await expect(page.getByRole('heading', { name: 'No saved cases yet', exact: true })).toBeVisible();
     const originals = await openOriginals(page);

@@ -244,6 +244,26 @@ Local Codex removed repeated chat consent/footnote/footer prose under the owner'
 Validation: 266 backend tests and 158 frontend tests passed under Node 24.18.0 with an owned, canonical TMPDIR (the default macOS temporary directory fails this repository's permission checks). Build and syntax checks passed. Actual loopback browser login with a public disposable fixture, refresh recovery and 390px no-horizontal-overflow checks passed. Production password-manager save prompts and a live paid-model call are not established by these checks.
 
 Independent Standards and Spec reviews found no release blockers; duplicate control copy and the session contract documentation were corrected. Seven existing real-browser acceptance tests passed, including bilingual 320/390px layouts and account isolation. An additional controlled-React keyboard test passed for Enter versus Shift+Enter/IME; this is not a physical IME-device test.
+## Email-first backend checkpoint, 2026-10-07 12:29 UTC
+
+Schema5 backend work is isolated from the frontend rollout. New registrations require email and verification; username-only public registration is intentionally removed. Existing usernames, administrator aliases and saved records remain compatible. See [email authentication](email-auth.md) for contract/security/rollback details.
+
+- Syntax checks and production frontend build: passed; frontend build is the unchanged base UI and does not certify the new email interface
+- Backend aggregate before the final small loopback-compatibility addition: 282/282 passed. The initial clean-worktree run failed the promoted-root static check because build assets were absent; building resolved it without changing the assertion
+- Focused real HTTP/SQLite/migration checks: 32/32 passed. Verification/reset HTTP fixtures explicitly seed synthetic accepted challenges; they do not send mail or establish real inbox delivery
+- Existing frontend suite: 156/156 passed against the unchanged base UI, not the forthcoming email UI
+- Separate `npm run test:email-contracts`: 53/53 passed with explicitly simulated provider delivery. Adapter signing, receipt validation, bounded timeout/response, sanitization, generic responses, pending accounts, trusted fragments, bind and reset are covered; these are not real-provider evidence
+- Historical schema4→5 migration preserves all old users/data/schema objects and foreign keys. Failed migration rolls back; schema6 fails closed. Actual child-process token/email races admit only one winner. Persistent quotas and session credential fingerprints are tested
+- Independent security review identified quota consumption after per-IP rejection and lost registration resend state after uncertain mail. Both were fixed with dedicated regressions
+- No real credentials read, configured or transmitted; no actual email sent. New email browser acceptance, combined-final-SHA CI and production service acceptance remain separate required gates
+- Existing schema4 binaries cannot open schema5. Do not reuse the schema4-only code rollback helper or restore a backup without a separate authorized recovery decision
+
+### Email backend integration with chat retrieval and remembered sessions, 12:36 UTC
+
+Rebased backend runtime `d857037` onto resolved retrieval/main integration `431909f`. Preserved upstream library tools/retrieval and exact session semantics: normal idle30 minutes, remembered idle8 hours, absolute8 hours, process-local sessions. The login API accepts strictly Boolean rememberMe and retains verified-email/legacy identity selection. Tests additionally prove reset revokes normal and remembered sessions, leaves another user's session valid, and a credential rotation during asynchronous login prevents a stale remembered cookie. Restart still revokes all cookies.
+
+Integrated local checks passed: syntax, build, **308/308 backend**, **53/53 explicitly simulated email-service contracts**, and **201/201 existing frontend**. This is not the new email frontend/browser or actual inbox acceptance. No production service configuration or real mail send occurred. Both independent security findings from the first review were rechecked as fixed with three focused regressions.
+
 
 ## Interface copy sweep, October 7, 2026
 
@@ -252,3 +272,13 @@ At the owner's request, local Codex reviewed chat, material intake, customer/fil
 Material extraction now starts from the explicitly named DeepSeek action without a second consent checkbox. Changing source text or uploading files never starts a provider request; the existing request validation and the consent field remain. Updated the controlled React test to verify this trigger and retained its failure/no-fallback assertions.
 
 Validation: 158 frontend tests passed. Production build passed. Browser smoke, bilingual responsive flows, stored files/documents and account isolation are tested with the existing seven-test suite on a disposable local service. No production material or live provider call was used for validation.
+
+## Combined email release candidate, 2026-10-07 12:53 UTC
+
+Combined the email frontend/backend with the resolved framework base `2d5d0d6` (including the owner's shorter copy and existing native-autofill/remembered-session behavior). Required local checks pass: JavaScript syntax, production React build, **311 backend tests**, **223 frontend/API/React DOM tests**, **53 explicitly simulated mail contracts**, real HTTP email/legacy/format fixtures, and the HTTP/DOM artifact lifecycle. Playwright discovers **13 scenarios**; official Chromium and container acceptance are still pending for the final published head.
+
+New real HTTP/SQLite/React coverage verifies explicit activation, email login, reset, stable identity, token replay rejection and old-session revocation with deliberately seeded accepted synthetic challenges. Separate simulated-transport HTTP fixtures cover generic enrollment/resend/forgot, actual cooldown/rate rules and binding. Neither establishes real DirectMail or inbox delivery. No production signup, recipient send or credential entry was performed by this implementation work.
+
+Review found and fixed same-URL Back traversal retaining a captured link, schema5 backups not requiring the originals directory when empty, and missing Docker-context allowances for the four new email modules. Legacy enrollment now links to the root email flow instead of posting the removed username-registration contract. Owner recovery stays private-bootstrap-only. Manual snapshot restoration's password/token consequences are explicit in email-auth.md.
+
+An extra run of the old sample-driven `test/app.test.js` reports three failures. The same three failures were independently reproduced on unchanged framework base `2d5d0d6`; that deprecated development suite assumes the retired local/sample extraction flow. It is not included in current required acceptance and was not altered to claim a pass. Current required suites pass as stated above. Local Docker/Chromium execution was not available/run; official CI remains authoritative for those gates.

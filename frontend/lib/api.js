@@ -63,7 +63,8 @@ export function createApiClient({ fetchImpl = (...args) => fetch(...args), getCs
     observed({ ok: response.ok, httpStatus: response.status, headers: response.headers });
     if (!response.ok) {
       // A delayed old-account request must not log out a newer session.
-      if (response.status === 401 && !path.startsWith('/api/login') && requestCsrf === getCsrfToken()) onUnauthorized();
+      const rejectedBindingPassword = path === '/api/auth/email/bind' && data?.code === 'INVALID_CREDENTIALS';
+      if (response.status === 401 && !path.startsWith('/api/login') && !rejectedBindingPassword && requestCsrf === getCsrfToken()) onUnauthorized();
       // Never render arbitrary backend exception text as interface copy.
       throw new ApiError(typeof data?.code === 'string' ? data.code : 'REQUEST_FAILED', response.status, data?.details);
     }
