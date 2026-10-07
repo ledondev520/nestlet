@@ -83,3 +83,5 @@ Finish only when the reviewable draft PR exists, or report the exact permission/
 08:15 UTC composite200a58d (b68e857 + 5381f13): real browser→SQLite one workflow/9 sequential client events, save request correlation and bounded content-marker exclusion pass. Sanitized JSON+UI evidence added. Stale business-response identity race remains open; full timing/failure coverage not claimed.
 
 08:36 UTC compositecc9c9f2 (8959bb9 + b8f789a):223tests/220pass3fail: actualfact-revocationCASE_INVALID, oldschema2assertion, missingnewUIerrors. ReportedPR12. Realchat-homeauth/disabled-key gates pass withoutanswerfabrication; livechat/imageandexpandedUI remainNotrun.
+
+08:56 UTC backend8a7f5de + frontendb2de3d4 composite78091a4:230tests229pass1fail. Actual fact-revocation/archive/schema3 fixes pass; missing CASE_ISSUE_NOT_FOUND/ARTIFACT_STALE UI mappings remain. Chat isolation/persistence UI not accepted.

@@ -387,3 +387,14 @@ Live streaming, stop/retry with real deltas, image interpretation, customer/conv
 Targeted source-contract retest on local composite `4654ccb3752fcf653bfb804194c5dcdb6314bd44` (unchanged backend `8959bb9f82f6c7d2e1ea0ba0d616a04498ab6a2a` plus frontend `b2de3d4bfabd79ccf29e47f5d59cf659960d3181`): `node --test test/localization-contract.test.js` **5/5 passed**. The new backend error-code coverage failure is resolved at this pair. This verifies explicit bilingual mappings and safe fallbacks, not every new endpoint's rendered browser error/recovery behavior.
 
 The unchanged backend fact-revocation failure and schema-test mismatch are not closed by this targeted run; the full 223-test suite was not repeated. Additional chat source/fact preservation, account-switch cleanup and durable-conversation wiring issues identified by root in Issue #3 comment6034241545 remain with Kimi and are not claimed independently reproduced or resolved here. Wait for fixed backend/interaction SHAs before retesting those paths. No provider or production action.
+
+
+## Fact revocation, archival and schema3 fix — 7 October 2026, 08:56 UTC
+
+Fixed local composite `78091a4c39f8194f77460dcc45f6d114ba5ce416`: backend `8a7f5de5346ce6005bb08f483a466873a0460dcc` plus frontend `b2de3d4bfabd79ccf29e47f5d59cf659960d3181`. Default macOS/Node24 pinned install and syntax pass. Full default suite: **230 total, 229 pass, 1 fail, 0 skip**.
+
+The previous real HTTP fact-revocation regression now passes: correcting/withdrawing a reviewed legacy fact clears its mutable draft while preserving immutable artifact history. Explicit document edits atomically archive prior draft content and do not discard it after failed updates. Final artifacts become visibly stale after facts change; historical content remains readable while stale downloads are blocked. Actual schema1/2→3 migration, original user/case data preservation, rollback/sequence checks, Unicode literal customer search, owner/ordinary isolation, persistent conversations/artifact records and restart checks pass. The obsolete schema2 assertion is also corrected.
+
+The single failing source-contract test now identifies newly added error codes. A complete enumeration against the current frontend maps finds exactly **CASE_ISSUE_NOT_FOUND** and **ARTIFACT_STALE** missing. Kimi owns their explicit bilingual UI handling. The former CLIENT_INVALID-family mapping fix remains valid for its prior source set; the present failure is additional contract coverage.
+
+This is independent execution of the existing real HTTP/SQLite/migration tests, not a new browser acceptance or successful provider-stream claim. Current chat fact preservation/account-switch/durable-conversation issues remain open. No runtime edits, production actions or provider calls were performed. The task-owned detached worktree was removed after preserving the local composite revision.
