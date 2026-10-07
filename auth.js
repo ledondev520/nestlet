@@ -34,7 +34,7 @@ export function createOperatorAuth({ passwordHash = '', operatorUsername = 'owne
   const cookie = (token, clear = false) => `${COOKIE}=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${clear ? 0 : ABSOLUTE_MS / 1000}${secure ? '; Secure' : ''}`;
   const prune = () => {
     const now = Date.now();
-    for (const [id, session] of sessions) if (now - session.lastUsed > IDLE_MS || now - session.created > ABSOLUTE_MS) sessions.delete(id);
+    for (const [id, session] of sessions) if (now - session.lastUsed > (session.rememberMe ? ABSOLUTE_MS : IDLE_MS) || now - session.created > ABSOLUTE_MS) sessions.delete(id);
   };
   const getSession = request => {
     if (!isConfigured()) return null;
@@ -55,7 +55,7 @@ export function createOperatorAuth({ passwordHash = '', operatorUsername = 'owne
     return Boolean(session && typeof token === 'string' && /^[A-Za-z0-9_-]{43}$/u.test(token) &&
       timingSafeEqual(Buffer.from(token), Buffer.from(session.csrfToken)));
   };
-  const issueSession = (target, now = Date.now()) => {
+  const issueSession = (target, now = Date.now(), rememberMe = false) => {
     // A private account helper could create a collision during an asynchronous KDF.
     // Never promote, overwrite, or sign in as that ordinary identity.
     if (!isConfigured()) return { error: 'OPERATOR_SETUP_REQUIRED' };
@@ -66,7 +66,7 @@ export function createOperatorAuth({ passwordHash = '', operatorUsername = 'owne
     if (sessions.size >= 512) return { error: 'LOGIN_RATE_LIMITED' };
     const token = randomBytes(32).toString('base64url');
     const csrfToken = randomBytes(32).toString('base64url');
-    sessions.set(token, { csrfToken, created: now, lastUsed: now, userId: target.id, username: target.username, role: target.role, credentialFingerprint: fingerprint(target.passwordHash) });
+    sessions.set(token, { rememberMe, csrfToken, created: now, lastUsed: now, userId: target.id, username: target.username, role: target.role, credentialFingerprint: fingerprint(target.passwordHash) });
     return { csrfToken, cookie: cookie(token), userId: target.id, username: target.username, role: target.role };
   };
   return {
@@ -74,7 +74,7 @@ export function createOperatorAuth({ passwordHash = '', operatorUsername = 'owne
     get setupInvalid() { return Boolean((passwordHash && !match) || !operatorLogin || aliasCollision()); },
     secure, localTransportAllowed: !publicOrigin && ['127.0.0.1', 'localhost', '::1'].includes(host),
     getSession, csrfValid,
-    async login(password, username = '') {
+    async login(password, username = '', rememberMe = false) {
       if (!isConfigured()) return { error: 'OPERATOR_SETUP_REQUIRED' };
       const now = Date.now();
       while (attempts.length && now - attempts[0] > 60000) attempts.shift();
@@ -93,7 +93,7 @@ export function createOperatorAuth({ passwordHash = '', operatorUsername = 'owne
       const actual = await derive(password, Buffer.from(comparison[1], 'base64url'), 32, { N: 16384, r: 8, p: 1, maxmem: 64 * 1024 * 1024 });
       const matches = timingSafeEqual(actual, Buffer.from(comparison[2], 'base64url'));
       if (!targetMatch || !matches) return { error: 'INVALID_CREDENTIALS' };
-      return issueSession(target, now);
+      return issueSession(target, now, rememberMe === true);
     },
     async register({ username, password, passwordConfirmation }) {
       if (!isConfigured() || typeof createTrialUser !== 'function') return { error: 'OPERATOR_SETUP_REQUIRED' };

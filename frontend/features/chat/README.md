@@ -30,7 +30,7 @@ Question text remains recoverable while a send is awaiting confirmation, then cl
 
 ## Optional saved-library retrieval
 
-The second consent checkbox explicitly allows relevant excerpts from the signed-in user's saved library to be sent to DeepSeek **for one send**. It defaults off and resets when a send starts, on expiry, account/case/conversation changes, and unmount. It is never written to the suspended-draft vault. Existing ordinary consent, image handling, and the separate Intake handoff are unchanged.
+The dedicated library-permission checkbox explicitly allows relevant excerpts from the signed-in user's saved library to be sent to DeepSeek **for one send**. It defaults off and resets when a send starts, on expiry, account/case/conversation changes, and unmount. It is never written to the suspended-draft vault. The merged main branch uses an explicit Send action for ordinary chat, without its former extra checkbox. The separate library permission remains unchecked by default. Image handling and the separate Intake handoff are preserved.
 
 `/api/status.libraryRetrievalEnabled === true` enables the option. An absent/false capability shows an unavailable explanation and ordinary chat stays usable. `buildChatTurn` omits the optional field when false for strict legacy-backend compatibility; true is sent only after the live capability guard. Opt-in responses must acknowledge `X-Library-Retrieval: enabled`; a missing acknowledgement is a visible error, never an ordinary-chat success. Request headers and the shared API client are unchanged.
 
@@ -47,3 +47,7 @@ October 7, 2026: the Chat feature's 24 focused tests pass (23 pure/protocol/cont
 The HTTP test uses actual application routes, sessions and SQLite with no provider key. It establishes failure/capability boundaries, **not** a successful retrieval/tool call. SSE fixtures in the development tests are authored test data, not real provider output. Combined backend retrieval/persistence integration and authorized Local browser/provider acceptance remain separate gates. No standalone Chromium was launched for this change.
 
 To validate on an authorized browser after combining the backend: open `/next/`, verify the library option begins unchecked, opt in and send one safe synthetic lookup, inspect truthful activity and source states, copy the reply, reload the conversation and compare the single retained source appendix. Confirm the option resets after sending and after expiry/relogin, and switching accounts/cases cannot show the old request's sources. Ordinary text/image chat and document handoff should still work with the option off.
+
+### Main-branch polish integration
+
+The main-branch chat layout, role-aligned messages, compact composer, explicit Send/Attach controls, Enter versus Shift+Enter/IME behavior, and accessible icon-only reload control are retained. The saved-conversation picker still distinguishes no saved history from the New conversation action. Library permission/activity/source handling remains separate, and source cards never claim persistence before the reply save state is confirmed.

@@ -415,7 +415,7 @@ const server = http.createServer(async (request, response) => {
       if (!request.headers.origin) throw new RequestError(403, 'ORIGIN_REJECTED', 'A same-origin browser request is required.');
       if (!auth.secure && !auth.localTransportAllowed) throw new RequestError(403, 'HTTPS_REQUIRED', 'Operator sign-in requires HTTPS outside loopback development.');
       const body = await readJson(request);
-      const result = await auth.login(body.password, body.username);
+      const result = await auth.login(body.password, body.username, body.rememberMe === true);
       if (result.error) throw new RequestError(result.error === 'LOGIN_RATE_LIMITED' ? 429 : result.error === 'OPERATOR_SETUP_REQUIRED' ? 503 : 401, result.error, result.error === 'LOGIN_RATE_LIMITED' ? 'Too many sign-in attempts. Wait a minute before retrying.' : 'Operator sign-in failed. Check the password or server setup.');
       response.setHeader('Set-Cookie', result.cookie);
       return json(200, { authenticated: true, csrfToken: result.csrfToken, role: result.role, userId: result.userId, username: result.username });

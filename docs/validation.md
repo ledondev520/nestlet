@@ -236,3 +236,11 @@ Isolated branch based on main `2fc15f216714d0331a82456edb1d97b9f76f8498`. New `t
 Isolated candidate based on unified head `d3a762d05c1a3a12c9c567421ee18b0fb0e50651`, with the reviewed library helper. Pinned install completed with `npm ci --ignore-scripts` and a temporary npm cache. `npm run check` passed; the expanded default suite passed **287/287, 0 skipped**. This includes 12 real-SQLite helper tests and 11 explicitly isolated local-HTTP/provider-protocol fixture tests. The latter exercise actual authenticated chat HTTP, SQLite persistence, cancellation, rollback/error behavior and exact-once source appendices, but are not DeepSeek or paid-provider acceptance.
 
 Independent read-only review reproduced assistant-insert failure/deduplication and a shortened test deadline in an isolated copy, then reported no remaining blocker on the frozen runtime bytes. Live provider tool calling, actual retrieval UI/browser acceptance and deployment remain separate release gates. No production API credential or paid call was used for this work.
+
+## Chat / sign-in polish, October 7, 2026
+
+Local Codex removed repeated chat consent/footnote/footer prose under the owner's explicit UI request, changed the thread/composer layout and added remembered username/password-manager-compatible native inputs. The opt-in rememberMe flag preserves a session through idle periods within the existing eight-hour absolute expiry. Server restart still invalidates in-memory sessions.
+
+Validation: 266 backend tests and 158 frontend tests passed under Node 24.18.0 with an owned, canonical TMPDIR (the default macOS temporary directory fails this repository's permission checks). Build and syntax checks passed. Actual loopback browser login with a public disposable fixture, refresh recovery and 390px no-horizontal-overflow checks passed. Production password-manager save prompts and a live paid-model call are not established by these checks.
+
+Independent Standards and Spec reviews found no release blockers; duplicate control copy and the session contract documentation were corrected. Seven existing real-browser acceptance tests passed, including bilingual 320/390px layouts and account isolation. An additional controlled-React keyboard test passed for Enter versus Shift+Enter/IME; this is not a physical IME-device test.

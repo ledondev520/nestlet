@@ -21,18 +21,18 @@ test('real CSV/PDF/XLSX/XLS parsing, mapping, exact originals, image honesty, an
   // Ordinary status intentionally omits administrator parser capabilities. The
   // successful real uploads below establish availability without a fake fallback.
 
-  await test.step('Real file chooser decodes an image preview, rejects invalid bytes, and preserves unsent text without consent', async () => {
+  await test.step('Real file chooser decodes an image preview, rejects invalid bytes, and preserves unsent text without library permission or provider requests', async () => {
     const chat = page.locator('[data-feature="chat"]');
     const composer = chat.getByLabel('What would you like to work on?', { exact: true });
     await composer.fill('Synthetic unsent question must remain intact.');
     const chooserEvent = page.waitForEvent('filechooser');
-    await chat.getByRole('button', { name: 'Add images or documents', exact: true }).click();
+    await chat.getByRole('button', { name: 'Attach', exact: true }).click();
     await (await chooserEvent).setFiles(PIXEL);
     const preview = chat.getByRole('img', { name: 'Question with images', exact: true });
     await expect(preview).toBeVisible();
     await expect.poll(() => preview.evaluate(image => image.complete && image.naturalWidth === 1 && image.naturalHeight === 1)).toBe(true);
-    await expect(chat.getByRole('checkbox', { name: /^I am authorized to send this conversation/u })).not.toBeChecked();
-    await expect(chat.getByRole('button', { name: 'Send to DeepSeek', exact: true })).toBeDisabled();
+    await expect(chat.getByRole('checkbox', { name: /^For this send only: allow AI/u })).not.toBeChecked();
+    await expect(chat.getByRole('button', { name: 'Send', exact: true })).toBeDisabled();
     await screenshot(page, testInfo, 'file-formats-chat-local-image-preview');
     await chat.getByRole('button', { name: 'Remove image', exact: true }).click();
     await expect(preview).toHaveCount(0);

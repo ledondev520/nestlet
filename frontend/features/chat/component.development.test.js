@@ -30,7 +30,7 @@ async function mount({caseId=null,fetchHandler,status=identity,recovery=null}={}
   await React.act(async()=>{root.render(render());await tick();});
   const flush=async()=>{await React.act(async()=>{await tick();});};
   const setCase=async id=>{selected=id;await React.act(async()=>{root.render(render());await tick();});};
-  const button=text=>[...dom.window.document.querySelectorAll('button')].find(node=>node.textContent===text);
+  const button=text=>[...dom.window.document.querySelectorAll('button')].find(node=>node.textContent===text||node.getAttribute('aria-label')===text);
   const click=async element=>{assert.ok(element,'Expected control');await React.act(async()=>{element.click();await tick();});};
   const type=async text=>{const input=dom.window.document.querySelector('textarea');assert.ok(input);await React.act(async()=>{Object.getOwnPropertyDescriptor(dom.window.HTMLTextAreaElement.prototype,'value').set.call(input,text);input.dispatchEvent(new dom.window.Event('input',{bubbles:true}));await tick();});};
   const close=async()=>{await React.act(async()=>root.unmount());await vite.close();dom.window.close();for(const[key,descriptor]of original){if(descriptor)Object.defineProperty(globalThis,key,descriptor);else delete globalThis[key];}};
@@ -40,8 +40,8 @@ async function mount({caseId=null,fetchHandler,status=identity,recovery=null}={}
 test('development React: failed case creation retains composer and cannot fall back to transient chat',async context=>{
   const app=await mount({fetchHandler:async(path)=>path==='/api/cases'?response({code:'CASE_CONFLICT'},409):response({},500)});context.after(app.close);
   await app.type('Synthetic question retained after failed creation');
-  await app.click(app.dom.window.document.querySelector('[role="checkbox"]'));
-  await app.click(app.button('Send to DeepSeek'));await app.flush();
+
+  await app.click(app.button('Send'));await app.flush();
   assert.equal(app.requests.filter(item=>item.path==='/api/cases'&&item.options.method==='POST').length,1);
   assert.equal(app.requests.some(item=>item.path==='/api/chat'),false);
   assert.equal(app.dom.window.document.querySelector('textarea').value,'Synthetic question retained after failed creation');
@@ -85,7 +85,7 @@ test('development React: first send persists case and conversation, then sends o
     if(path===`/api/conversations/${conversationId}`)return response({conversation:{id:conversationId,caseId},messages:[{id:userMessageId,clientMessageId,requestId,role:'user',content:'Only this new question',state:'complete'},{id:assistantMessageId,requestId,role:'assistant',content:'Authored stream fixture; not a live provider result.',state:'complete'}]});
     return response({},500);
   }});context.after(app.close);
-  await app.type('Only this new question');await app.click(app.dom.window.document.querySelector('[role="checkbox"]'));await app.click(app.button('Send to DeepSeek'));await app.flush();
+  await app.type('Only this new question');await app.click(app.button('Send'));await app.flush();
   const posts=app.requests.filter(item=>item.options.method==='POST');assert.equal(posts.filter(item=>item.path==='/api/workflows').length,1,'Case observation starts at most one metadata workflow');
   const calls=posts.filter(item=>item.path!=='/api/workflows');assert.deepEqual(calls.map(item=>item.path),['/api/cases',`/api/cases/${caseId}/conversations`,'/api/chat']);
   const payload=JSON.parse(calls.at(-1).options.body);assert.equal(payload.caseId,caseId);assert.equal(payload.conversationId,conversationId);assert.deepEqual(payload.messages,[{role:'user',content:'Only this new question'}]);assert.ok(payload.clientMessageId);
@@ -102,7 +102,7 @@ test('development React: stream errors keep received text visibly incomplete aft
     if(path==='/api/chat'){sent=true;clientMessageId=JSON.parse(options.body).clientMessageId;return new Response('event: delta\ndata: {"text":"Retained partial fixture"}\n\nevent: error\ndata: {"code":"CHAT_INCOMPLETE"}\n\n',{headers:{'Content-Type':'text/event-stream'}});}
     return response({},500);
   }});context.after(app.close);
-  await app.flush();await app.type('Question before interrupted fixture');await app.click(app.dom.window.document.querySelector('[role="checkbox"]'));await app.click(app.button('Send to DeepSeek'));await app.flush();
+  await app.flush();await app.type('Question before interrupted fixture');await app.click(app.button('Send'));await app.flush();
   assert.match(app.dom.window.document.body.textContent,/Retained partial fixture/);assert.match(app.dom.window.document.body.textContent,/This reply is incomplete/);
   assert.equal(app.requests.filter(item=>item.path==='/api/chat').length,1);assert.ok(app.button('Edit this question again'));
 });
@@ -132,12 +132,12 @@ test('development React: library opt-in is off by default, explicit for one send
     return response({},500);
   }});context.after(app.close);await app.flush();
   const boxes=()=>app.dom.window.document.querySelectorAll('[role="checkbox"]');
-  assert.equal(boxes()[1].getAttribute('data-state'),'unchecked');
-  await app.type('Find synthetic saved work');await app.click(boxes()[0]);await app.click(boxes()[1]);
+  assert.equal(boxes()[0].getAttribute('data-state'),'unchecked');
+  await app.type('Find synthetic saved work');await app.click(boxes()[0]);
   assert.equal('libraryConsent' in app.readDraft(),false);
-  await app.click(app.button('Send to DeepSeek'));
+  await app.click(app.button('Send'));
   const request=app.requests.find(item=>item.path==='/api/chat');assert.equal(JSON.parse(request.options.body).libraryConsent,true);
-  assert.equal(boxes()[1].getAttribute('data-state'),'unchecked');
+  assert.equal(boxes()[0].getAttribute('data-state'),'unchecked');
   streamController.enqueue(new TextEncoder().encode(frame('activity',{phase:'searching',state:'completed',count:1,message:'PRIVATE TOOL PROSE',reasoning:'RAW REASONING'})));
   await app.flush();assert.match(app.dom.window.document.body.textContent,/Saved-record search finished/);assert.doesNotMatch(app.dom.window.document.body.textContent,/PRIVATE TOOL PROSE|RAW REASONING/);
   const refs={requestId,items:[{sourceId:'S1',kind:'artifact',id:randomUUID(),version:1,title:'<img src=x onerror=alert(1)>',titleTruncated:false,retrievalState:'metadata',status:'draft',isStale:true,url:'https://untrusted.invalid',snippet:'PRIVATE SNIPPET'}],appendix};
@@ -146,16 +146,16 @@ test('development React: library opt-in is off by default, explicit for one send
   assert.equal(app.dom.window.document.querySelectorAll('a,img').length,0);assert.doesNotMatch(app.dom.window.document.body.textContent,/PRIVATE SNIPPET|untrusted.invalid/);
   stored=true;streamController.enqueue(new TextEncoder().encode(frame('done',{requestId,assistantMessageId,conversationId})));streamController.close();await app.flush();await app.flush();
   const assistant=app.dom.window.document.querySelector('article[aria-label="Assistant"]');assert.equal(assistant.textContent.split(appendix).length-1,1);
-  await app.click(boxes()[1]);await app.setStatus({...status,authenticated:false,userId:null});
-  await app.setStatus(status);await app.flush();assert.equal(boxes()[1].getAttribute('data-state'),'unchecked');
+  await app.click(boxes()[0]);await app.setStatus({...status,authenticated:false,userId:null});
+  await app.setStatus(status);await app.flush();assert.equal(boxes()[0].getAttribute('data-state'),'unchecked');
   assert.equal(app.dom.window.document.querySelector('[aria-label="Sources for this request"]'),null);
 });
 
 test('development React: legacy capability absence disables retrieval while ordinary chat remains usable',async context=>{
   const app=await mount({fetchHandler:async()=>response({code:'CASE_CONFLICT'},409)});context.after(app.close);
-  const boxes=app.dom.window.document.querySelectorAll('[role="checkbox"]');assert.equal(boxes[1].disabled,true);
+  const boxes=app.dom.window.document.querySelectorAll('[role="checkbox"]');assert.equal(boxes[0].disabled,true);
   assert.match(app.dom.window.document.body.textContent,/does not support library retrieval/);
-  await app.type('Ordinary synthetic question');await app.click(boxes[0]);assert.equal(app.button('Send to DeepSeek').disabled,false);
+  await app.type('Ordinary synthetic question');assert.equal(app.button('Send').disabled,false);
 });
 
 test('development React: missing retrieval acknowledgement is an honest error with no false success',async context=>{
@@ -168,7 +168,7 @@ test('development React: missing retrieval acknowledgement is an honest error wi
     return response({},500);
   }});context.after(app.close);await app.flush();await app.type('Find saved synthetic work');
   for(const box of app.dom.window.document.querySelectorAll('[role="checkbox"]'))await app.click(box);
-  await app.click(app.button('Send to DeepSeek'));await app.flush();
+  await app.click(app.button('Send'));await app.flush();
   assert.match(app.dom.window.document.body.textContent,/does not support library retrieval/);assert.doesNotMatch(app.dom.window.document.body.textContent,/FALSE RETRIEVAL SUCCESS/);
   assert.equal(app.requests.filter(item=>item.path==='/api/chat').length,1);
 });
@@ -187,13 +187,13 @@ test('development React: delayed retrieval from a former case/account cannot add
     }});
     try{
       await app.flush();await app.type('Read synthetic old work');for(const box of app.dom.window.document.querySelectorAll('[role="checkbox"]'))await app.click(box);
-      await app.click(app.button('Send to DeepSeek'));
+      await app.click(app.button('Send'));
       if(transition==='case')await app.setCase(second);else await app.setStatus({...status,userId:randomUUID(),csrfToken:'new-public-csrf'});
       const id=randomUUID();const frame=(name,value)=>`event: ${name}\ndata: ${JSON.stringify(value)}\n\n`;
       pending.resolve(new Response(frame('activity',{phase:'reading',state:'completed',count:1})+frame('sources',{requestId:id,items:[{sourceId:'S1',kind:'case',id:first,version:1,title:'OLD SOURCE MUST NOT APPEAR',titleTruncated:false,retrievalState:'read'}],appendix:'OLD APPENDIX MUST NOT APPEAR'})+frame('done',{requestId:id,assistantMessageId:randomUUID()}),{headers:{'Content-Type':'text/event-stream','X-Library-Retrieval':'enabled'}}));
       await app.flush();await app.flush();
       assert.doesNotMatch(app.dom.window.document.body.textContent,/OLD SOURCE MUST NOT APPEAR|OLD APPENDIX MUST NOT APPEAR/);
-      assert.equal(app.dom.window.document.querySelectorAll('[role="checkbox"]')[1].getAttribute('data-state'),'unchecked');
+      assert.equal(app.dom.window.document.querySelectorAll('[role="checkbox"]')[0].getAttribute('data-state'),'unchecked');
       assert.equal(app.requests.filter(item=>item.path==='/api/chat').length,1);
     }finally{await app.close();}
   }
@@ -203,22 +203,22 @@ test('development React: a capability change blocks selected retrieval before an
   const status={...identity,libraryRetrievalEnabled:true};
   const app=await mount({status,fetchHandler:async()=>response({},500)});context.after(app.close);
   await app.type('Find synthetic work');for(const box of app.dom.window.document.querySelectorAll('[role="checkbox"]'))await app.click(box);
-  await app.setStatus({...status,libraryRetrievalEnabled:false});await app.click(app.button('Send to DeepSeek'));
+  await app.setStatus({...status,libraryRetrievalEnabled:false});await app.click(app.button('Send'));
   assert.match(app.dom.window.document.body.textContent,/does not support library retrieval/);
   assert.equal(app.requests.some(item=>item.options.method==='POST'),false);
   assert.equal(app.dom.window.document.querySelector('textarea').value,'Find synthetic work');
 });
 
 
-test('development React: empty conversation picker explains its disabled state and keeps one explanatory subtitle',async context=>{
+test('development React: empty conversation picker explains its disabled state without repeating introductory prose',async context=>{
   const app=await mount({fetchHandler:async()=>response({},500)});context.after(app.close);
   const select=app.dom.window.document.querySelector('select');assert.equal(select.disabled,true);
   assert.equal(select.options[0].textContent,'No saved conversations');assert.equal(select.options[0].disabled,true);
   assert.equal(app.dom.window.document.getElementById(select.getAttribute('aria-describedby')).textContent,'Your first send creates and saves a conversation.');
-  assert.ok(app.button('+ New'));
+  assert.ok(app.button('New conversation'));
   const subtitle='Confirmed case details are reused as context. Chat input never replaces source material, reviewed facts, or documents.';
-  assert.equal(app.dom.window.document.body.textContent.split(subtitle).length-1,1);
-  const reload=app.button('Reload conversation');assert.equal(reload.getAttribute('data-variant'),'link');assert.equal(reload.tagName,'BUTTON');
+  assert.equal(app.dom.window.document.body.textContent.split(subtitle).length-1,0);
+  const reload=app.button('Reload conversation');assert.equal(reload.getAttribute('data-variant'),'ghost');assert.equal(reload.tagName,'BUTTON');
   reload.focus();assert.equal(app.dom.window.document.activeElement,reload);
 });
 
@@ -231,7 +231,7 @@ test('development React: new action clears the current view while the picker reo
     return response({},500);
   }});context.after(app.close);await app.flush();
   assert.match(app.dom.window.document.body.textContent,/Retained synthetic history/);
-  await app.click(app.button('+ New'));
+  await app.click(app.button('New conversation'));
   let select=app.dom.window.document.querySelector('select');assert.equal(select.disabled,false);assert.equal(select.value,'');
   assert.equal(select.options[0].textContent,'Choose a saved conversation');assert.equal(select.options[0].disabled,true);
   assert.equal(select.options[1].textContent,'Saved synthetic thread');
@@ -256,9 +256,20 @@ test('development React: source cards never claim persistence when assistant sav
     return response({},500);
   }});context.after(app.close);
   await app.flush();await app.type('Read synthetic source');for(const box of app.dom.window.document.querySelectorAll('[role="checkbox"]'))await app.click(box);
-  await app.click(app.button('Send to DeepSeek'));await app.flush();await app.flush();
+  await app.click(app.button('Send'));await app.flush();await app.flush();
   const sources=app.dom.window.document.querySelector('[aria-label="Sources for this request"]');assert.ok(sources);
   assert.match(sources.textContent,/check its save status/);assert.doesNotMatch(sources.textContent,/references are saved/i);
   assert.match(app.dom.window.document.body.textContent,/saved state is not yet confirmed|could not be confirmed as saved/i);
   assert.match(app.dom.window.document.body.textContent,/Synthetic reference received before save failure/);
+});
+
+test('Enter sends once, while Shift+Enter and IME confirmation never send',async context=>{
+  const app=await mount({fetchHandler:async()=>response({code:'CASE_CONFLICT'},409)});context.after(app.close);
+  await app.type('Synthetic keyboard message');
+  const React=await import('react'), input=app.dom.window.document.querySelector('textarea');
+  const press=async options=>{await React.act(async()=>input.dispatchEvent(new app.dom.window.KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true,...options})));await app.flush();};
+  await press({shiftKey:true});await press({isComposing:true});await press({keyCode:229});
+  assert.equal(app.requests.filter(item=>item.options.method==='POST').length,0);
+  await press({});
+  assert.equal(app.requests.filter(item=>item.path==='/api/cases'&&item.options.method==='POST').length,1);
 });

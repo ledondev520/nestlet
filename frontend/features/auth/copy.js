@@ -1,5 +1,6 @@
 export const COPY = {
   zh: {
+    remember:'记住账号并保持登录 8 小时', showPassword:'显示密码', hidePassword:'隐藏密码',
     account:'账号', signedIn:'已登录', signedInHint:'继续处理自己的客户、案件和文档', ordinary:'普通账号', administrator:'管理员',
     login:'登录', register:'注册', loginTitle:'回到你的工作区', registerTitle:'创建自己的工作区',
     loginHint:'使用用户名登录，继续上次保存的工作', registerHint:'注册后只可访问自己的客户、案件、对话和文档',
@@ -31,6 +32,7 @@ export const COPY = {
     refreshing:'正在刷新…', refresh:'刷新状态', refreshFailed:'设置操作已返回，但最新状态读取失败；请刷新确认',
   },
   en: {
+    remember:'Remember me for 8 hours', showPassword:'Show password', hidePassword:'Hide password',
     account:'Account', signedIn:'Signed in', signedInHint:'Continue with your own customers, cases, and documents', ordinary:'Ordinary account', administrator:'Administrator',
     login:'Sign in', register:'Register', loginTitle:'Return to your workspace', registerTitle:'Create your workspace',
     loginHint:'Sign in with your username to continue saved work', registerHint:'Your customers, cases, conversations, and documents stay scoped to your account',
