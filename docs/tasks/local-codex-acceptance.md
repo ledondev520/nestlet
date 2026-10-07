@@ -87,3 +87,5 @@ Finish only when the reviewable draft PR exists, or report the exact permission/
 08:56 UTC backend8a7f5de + frontendb2de3d4 composite78091a4:230tests229pass1fail. Actual fact-revocation/archive/schema3 fixes pass; missing CASE_ISSUE_NOT_FOUND/ARTIFACT_STALE UI mappings remain. Chat isolation/persistence UI not accepted.
 
 09:09 UTC composite3ce0cff (8a7f5de+a2417b6): realbrowser reproducesreadinessconfirmfailure+answerscleared, andfollowupreplacessource/disablesreviewbeforeSend. Kimirootgates1/4 supportedwith2screenshots;CASE_ISSUE_NOT_FOUNDstillmissing4/5localization.
+
+09:27 UTC compositee01db90 (8a7f5de+d137191):230/230 passes. Actualbrowser followup/auth-disabled-send preservesoriginalsource5confirmationsandmanualdraft. Gate1observedregressionclosed forthesepaths; livestreampathsnotrun. Newownershiprootfrontendlogic/Kimidesign; otherreadiness/isolation/final/navigationgatesremain.
