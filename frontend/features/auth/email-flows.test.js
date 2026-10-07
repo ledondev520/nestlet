@@ -107,7 +107,7 @@ test('leaving a mounted settings view clears binding password and aborts the for
 });
 test('verified bootstrap owner explicitly has handoff-only recovery despite a bound email', async () => {
   fixture({ ...ordinary, role: 'owner', canManageSettings: false, email: 'synthetic@example.invalid', emailVerified: true, passwordRecoveryMethod: 'private-bootstrap' }); await render(SettingsPage);
-  assert.match(host.textContent, /Email password reset is unavailable for administrators/); assert.match(host.textContent, /private server terminal/);
+  assert.match(host.textContent, /Email password reset is unavailable for the owner account/); assert.match(host.textContent, /private server terminal/);
   assert.doesNotMatch(host.textContent, /This account can recover its password through/); assert.equal(host.querySelector('input'), null);
 });
 

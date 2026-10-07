@@ -2,7 +2,7 @@
 
 ## Local implementation status
 
-2026-10-07: this schema6 feature is prepared on a separate local branch based on `5335312`. It is not deployed or merged and must not be included implicitly in the independent schema4→5 email-authentication release. No real account was created or granted privileges by this implementation work. The frontend is an isolated, unmounted module; integration and real-browser acceptance remain separate gates.
+2026-10-07: this schema6 feature is prepared on a separate local branch based on `5335312`. It is not deployed or merged and must not be included implicitly in the independent schema4→5 email-authentication release. No real account was created or granted privileges by this implementation work. The frontend module is now mounted in the unified local candidate’s Account and settings surface. Actual HTTP/SQLite/React DOM integration is verified; exact-combination official CI, Chromium and deployment acceptance remain separate gates.
 
 ## Permission contract
 
@@ -41,7 +41,7 @@ The response is `{ account, changed }`. A successful state change increments tha
 
 ## Frontend integration boundary
 
-Root integration must import the isolated module and mount it inside the existing session provider on the authenticated settings/account surface. Do not infer administrator status from `role === 'trial'`; use the returned capability fields. Owner controls must additionally require `userId === 'owner'` and `role === 'owner'`. The panel does not write permissions from edit/toggle events: users choose an account, review its explicit permission scope and confirm the desired grant/revoke. Session changes, inactivity, unmount and page exit clear/abort pending work. A sent write may still complete after abort; reload is the authority when returning.
+The unified candidate mounts the module inside the existing session provider on the authenticated Account and settings surface. Do not infer administrator status from `role === 'trial'`; use the returned capability fields. Owner controls must additionally require `userId === 'owner'` and `role === 'owner'`. The panel does not write permissions from edit/toggle events: users choose an account, review its explicit permission scope and confirm the desired grant/revoke. Session changes, inactivity, unmount and page exit clear/abort pending work. A sent write may still complete after abort; reload is the authority when returning.
 
 No App, chat, intake, source-retention or existing account/provider-settings files are owned by this feature's isolated UI lane. See its README for exact component exports and acceptance evidence.
 

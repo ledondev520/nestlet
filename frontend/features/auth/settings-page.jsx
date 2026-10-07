@@ -12,6 +12,9 @@ import { AuthPanel } from './auth-panel.jsx';
 import { canManageProvider, providerStatus, settingsPayload } from './auth-model.js';
 import { authCopy, authErrorMessage, language } from './copy.js';
 import { useOperation } from './use-operation.js';
+import { AccountAdministration, OperationalDiagnostics } from '../account-administration/index.jsx';
+import { accountLabel } from '../account-administration/model.js';
+import { accountAdministrationCopy } from '../account-administration/copy.js';
 
 function checkedStatus(value) {
   if (!value || typeof value.configured !== 'boolean' || typeof value.liveEnabled !== 'boolean' || typeof value.secureSettings !== 'boolean') throw { code:'INVALID_RESPONSE' };
@@ -109,11 +112,13 @@ function ProviderSettings({ lang, session }) {
 }
 
 export function SettingsPage({ lang = 'zh', active = true }) {
-  const session=useSession(), t=authCopy(lang);
+  const session=useSession(), t=authCopy(lang), accessCopy=accountAdministrationCopy(lang);
   if(!session.status?.authenticated)return <AuthPanel lang={lang} />;
   return <section className="space-y-6" aria-label={canManageProvider(session.status)?t.settingsTitle:t.account}>
-    <Card className="paper-card"><CardHeader><CardTitle className="paper-title text-xl">{canManageProvider(session.status)?t.settingsTitle:t.account}</CardTitle></CardHeader><CardContent className="flex flex-wrap items-center justify-between gap-3"><AccountControls lang={lang} /><span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">{session.status.role==='owner' && <ShieldCheck className="size-4" aria-hidden="true" />}{session.status.role==='owner'?t.administrator:t.ordinary}</span></CardContent></Card>
+    <Card className="paper-card"><CardHeader><CardTitle className="paper-title text-xl">{canManageProvider(session.status)?t.settingsTitle:t.account}</CardTitle></CardHeader><CardContent className="flex flex-wrap items-center justify-between gap-3"><AccountControls lang={lang} /><span data-testid="account-access" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">{session.status.role==='owner' && <ShieldCheck className="size-4" aria-hidden="true" />}{accessCopy[accountLabel(session.status)]}</span></CardContent></Card>
     <EmailAccount key={`email:${session.status.userId}`} session={session} lang={lang} active={active} />
     {canManageProvider(session.status) && <ProviderSettings key={session.status.userId || 'owner'} session={session} lang={lang} />}
+    <OperationalDiagnostics lang={lang} active={active} />
+    <AccountAdministration lang={lang} active={active} />
   </section>;
 }

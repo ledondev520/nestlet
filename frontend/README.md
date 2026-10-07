@@ -86,3 +86,8 @@ See `features/auth/README.md` for test scope. Real browser, DirectMail delivery,
 ## Explicit chat workflow bridge
 
 Chat additionally accepts `onReviewMessage(request)`, `onOpenMaterials()`, `onOpenDocuments({userId,caseId})` and `active`. App owns the short-lived account/case/message-scoped text-review request and passes `textReviewRequest`/`onTextReviewHandled(id)` to Intake. Intake previews it separately, then only appends its unreviewed source text on an explicit action. It never replaces a buffer or confirms a fact. Chat's document continuation returns to pending material first and otherwise opens the already-mounted Documents editor without changing its edits. Complete assistant messages may explicitly save source-linked, unreviewed draft artifacts; final generation remains in the established reviewed workflow. See `features/chat/WORKFLOW.md` and `features/chat/ORIGINAL-RETENTION.md` for invariants, evidence and limits.
+
+
+## Owner account management and bounded administrator diagnostics
+
+The unified schema6 candidate mounts `AccountAdministration` and `OperationalDiagnostics` inside Account and settings. Account management requires the immutable owner identity plus the explicit capability; delegated administrators receive only the separately gated read-only diagnostics. Inactive settings unmount the privileged inner panels and discard pending permission intent. Settings labels distinguish Owner, Administrator and Ordinary user without changing the owner/trial authentication roles. Owner recovery copy is specific to the bootstrap owner; delegated accounts retain verified-email recovery. See `../docs/account-administration.md` for the migration/release boundary and `features/account-administration/README.md` for the API contract.

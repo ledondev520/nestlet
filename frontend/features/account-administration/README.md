@@ -1,8 +1,8 @@
-# Owner account administration (isolated frontend module)
+# Owner account administration
 
 ## Integration contract
 
-Import `AccountAdministration` and optional `OperationalDiagnostics` from `./features/account-administration/index.jsx`. Both accept `{ lang = 'zh', active = true }` and must be inside the existing `SessionProvider`. This module does not mount either component or alter application navigation. The integrator owns those decisions.
+Import `AccountAdministration` and optional `OperationalDiagnostics` from `./features/account-administration/index.jsx`. Both accept `{ lang = 'zh', active = true }` and must be inside the existing `SessionProvider`. The unified frontend mounts both components from `features/auth/settings-page.jsx` on Account and settings and passes its `active` state. The wrappers still own capability gating and inactive cleanup; no separate privileged route or navigation role inference was added.
 
 For controlled API fixtures or composition, `AccountAdministrationPanel` and `OperationalDiagnosticsPanel` take `{ api, status, lang = 'zh', active = true }`. `api` is the existing same-origin client (`get(path, { signal })` and `put(path, body, { signal })`); its session-cookie, CSRF and unauthorized-session behavior remain authoritative.
 
@@ -33,3 +33,5 @@ Chinese is the default; English covers loading, empty, errors, access descriptio
 `model.test.js` validates response boundaries and capability rules. `panel.dom.test.js` uses actual React through Vite with JSDOM and synthetic controlled API responses; its wrapper check exercises the existing API client's CSRF and same-origin request construction. It does not contact an actual API, real provider or production service, and is not Chromium, responsive-layout, CSP or screen-reader acceptance.
 
 Run focused checks with `node --test frontend/features/account-administration/*.test.js`. The repository's `npm run test:frontend` glob includes these files. Real HTTP integration, final application mounting, real-browser desktop/mobile/keyboard/CSP checks, backend capability enforcement and deployment each need separate evidence.
+
+`settings.http-dom.test.js` exercises the mounted full App through actual local HTTP/SQLite and React DOM events: owner entry, immutable owner/unverified legacy eligibility, keyboard-focus target, cancel/no PUT, inactive roster removal, explicit grant/revoke with one audit per change, same-cookie delegated diagnostics, ordinary UI, account isolation, and no provider calls. Enrollment uses a disclosed simulated mail transport. The official-CI browser scenario is prepared separately and remains unrun locally.

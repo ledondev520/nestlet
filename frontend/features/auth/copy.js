@@ -75,7 +75,7 @@ Object.assign(COPY.zh, {
   bind:'绑定邮箱', bindBusy:'正在请求绑定…', currentPassword:'当前密码',
   bindingPending:'如果此邮箱符合条件，会发送验证邮件。绑定尚未完成；请验证后刷新此页面',
   emailRecovery:'此账号可通过已验证邮箱找回密码',
-  bootstrapRecovery:'管理员密码由服务器私有配置管理，本版本不支持管理员邮箱重置。需要找回时，请由管理员本人在私有服务器终端完成恢复；不要在聊天中发送密码',
+  bootstrapRecovery:'所有者账号的密码由服务器私有配置管理，不支持邮箱重置。需要找回时，请由所有者本人在私有服务器终端完成恢复；不要在聊天中发送密码',
 });
 Object.assign(COPY.en, {
   remember:'Remember me for 8 hours', showPassword:'Show password', hidePassword:'Hide password',
@@ -100,7 +100,7 @@ Object.assign(COPY.en, {
   bind:'Bind email', bindBusy:'Requesting binding…', currentPassword:'Current password',
   bindingPending:'If this email is eligible, a verification email will be sent. Binding is not complete. Verify, then refresh this page',
   emailRecovery:'This account can recover its password through its verified email',
-  bootstrapRecovery:'The administrator password is managed by private server configuration. Email password reset is unavailable for administrators in this release. The administrator must complete recovery personally in the private server terminal. Never send passwords through chat',
+  bootstrapRecovery:'The bootstrap owner password is managed by private server configuration. Email password reset is unavailable for the owner account. The owner must complete recovery personally in the private server terminal. Never send passwords through chat',
 });
 const ERRORS = {
   zh: {
@@ -109,7 +109,7 @@ const ERRORS = {
     INVALID_CREDENTIALS:'邮箱、用户名或密码不正确', LOGIN_RATE_LIMITED:'登录尝试过多，请稍后再试', REGISTRATION_RATE_LIMITED:'注册尝试过多，请等待十分钟后重试',
     REGISTRATION_INVALID:'无法注册，请核对邮箱和两次密码', USER_INVALID:'该用户名不可用，请重新选择', USER_EXISTS:'该用户名已被使用，请选择其他用户名', USER_LIMIT_REACHED:'当前账号名额已满，请联系管理员',
     OPERATOR_SETUP_REQUIRED:'管理员尚未完成初始化，暂时不能使用此功能', HTTPS_REQUIRED:'请通过已配置的 HTTPS 地址操作',
-    AUTH_REQUIRED:'登录已失效，请重新登录', CSRF_REJECTED:'会话状态已变化，请刷新状态后重试', ORIGIN_REJECTED:'当前访问地址与服务器配置不符，请使用正确的站点地址', OWNER_REQUIRED:'此操作只允许管理员执行',
+    AUTH_REQUIRED:'登录已失效，请重新登录', CSRF_REJECTED:'会话状态已变化，请刷新状态后重试', ORIGIN_REJECTED:'当前访问地址与服务器配置不符，请使用正确的站点地址', OWNER_REQUIRED:'此操作只允许所有者执行',
     API_KEY_REQUIRED:'开启模型请求前，请先配置 Key', API_KEY_INVALID:'Key 格式不正确，请检查后重新输入', INVALID_SETTINGS:'请检查设置内容后重试',
     SETTINGS_RATE_LIMITED:'设置操作过于频繁，请等待一分钟后重试', CONNECTION_FAILED:'连接验证失败，请检查 Key、账户权限和网络', MODEL_UNAVAILABLE:'此账号未返回 deepseek-flash 模型权限，请检查服务账户', SETTINGS_CHANGED:'验证期间设置已变化，请重新验证当前设置', BUSY:'已有操作正在进行，请稍后重试',
     NETWORK_ERROR:'网络连接失败，请检查连接后重试', INVALID_RESPONSE:'服务器响应无法读取，请稍后重试', REQUEST_FAILED:'操作未完成，请重试；请勿在错误反馈中发送密码或 Key',
@@ -120,7 +120,7 @@ const ERRORS = {
     INVALID_CREDENTIALS:'The email, username, or password is incorrect', LOGIN_RATE_LIMITED:'Too many sign-in attempts. Try again shortly', REGISTRATION_RATE_LIMITED:'Too many registration attempts. Wait ten minutes before retrying',
     REGISTRATION_INVALID:'Registration failed. Check the email and both passwords', USER_INVALID:'This username is unavailable. Choose another', USER_EXISTS:'This username is already in use. Choose another', USER_LIMIT_REACHED:'The account limit has been reached. Contact the administrator',
     OPERATOR_SETUP_REQUIRED:'Administrator setup must be completed before this feature is available', HTTPS_REQUIRED:'Use the configured HTTPS address',
-    AUTH_REQUIRED:'Your sign-in has expired. Sign in again', CSRF_REJECTED:'Session state changed. Refresh status and retry', ORIGIN_REJECTED:'This address does not match the server configuration. Use the correct site address', OWNER_REQUIRED:'Only the administrator can perform this action',
+    AUTH_REQUIRED:'Your sign-in has expired. Sign in again', CSRF_REJECTED:'Session state changed. Refresh status and retry', ORIGIN_REJECTED:'This address does not match the server configuration. Use the correct site address', OWNER_REQUIRED:'Only the owner can perform this action',
     API_KEY_REQUIRED:'Configure a key before enabling model requests', API_KEY_INVALID:'The key format is invalid. Check it and enter it again', INVALID_SETTINGS:'Check the settings and try again',
     SETTINGS_RATE_LIMITED:'Too many settings requests. Wait a minute before retrying', CONNECTION_FAILED:'Verification failed. Check the key, account access, and connection', MODEL_UNAVAILABLE:'This account did not list deepseek-flash. Check model access with the provider', SETTINGS_CHANGED:'Settings changed during verification. Verify the current settings again', BUSY:'Another operation is in progress. Try again shortly',
     NETWORK_ERROR:'The network request failed. Check your connection and retry', INVALID_RESPONSE:'The server response could not be read. Please retry', REQUEST_FAILED:'The operation did not complete. Retry without sending passwords or keys in error reports',

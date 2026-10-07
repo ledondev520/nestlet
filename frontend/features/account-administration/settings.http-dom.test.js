@@ -1,0 +1,74 @@
+// Integrated App/settings over actual HTTP + SQLite and React DOM events.
+// Disposable synthetic accounts; email transport is explicitly simulated.
+// No real grants, credentials, provider, inbox, browser rendering or deployment.
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { JSDOM } from 'jsdom';
+import { createServer } from 'vite';
+import { startBrowserFixture } from '../../../test/helpers/browser-fixture.mjs';
+
+test('integrated settings expose owner-only versioned account controls and delegated read-only diagnostics without cross-account UI', {timeout:45000}, async context => {
+  const app=await startBrowserFixture({simulatedMail:true,legacyUsers:['synthetic-admin-legacy']});
+  const realFetch=globalThis.fetch,email='synthetic-admin-integrated@example.invalid',password='Case26';
+  const publicPost=(path,body)=>realFetch(app.origin+path,{method:'POST',headers:{Origin:app.origin,'Content-Type':'application/json'},body:JSON.stringify(body)});
+  assert.equal((await publicPost('/api/register',{email,password,passwordConfirmation:password})).status,202);
+  const mail=await app.mailFor(email,'verify');
+  assert.equal((await publicPost('/api/auth/email/verify',{token:mail.token})).status,200);
+  const login=async(username,password)=>{const response=await publicPost('/api/login',{[username.includes('@')?'email':'username']:username,password});assert.equal(response.status,200);return {...await response.json(),cookie:response.headers.get('set-cookie').split(';')[0]};};
+  const owner=await login('owner','public-browser-owner-fixture'),ordinary=await login(email,password),legacy=await login('synthetic-admin-legacy',password);
+  const path=`/api/admin/accounts/${ordinary.userId}/administrator`;
+  let actor=owner;
+  const requests=[];
+  const http=async(path,options={})=>{const response=await realFetch(app.origin+path,{...options,headers:{...options.headers,Origin:app.origin,Cookie:actor.cookie}});requests.push({actor:actor.userId,path,method:options.method||'GET',status:response.status,body:options.body});return response;};
+  const read=async(path,session=owner)=>{const response=await realFetch(app.origin+path,{headers:{Cookie:session.cookie}});assert.equal(response.status,200,path);return response.json();};
+  const dom=new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>',{url:app.origin,pretendToBeVisual:true});
+  const original=new Map(),set=(key,value)=>{original.set(key,Object.getOwnPropertyDescriptor(globalThis,key));Object.defineProperty(globalThis,key,{configurable:true,writable:true,value});};
+  for(const key of ['window','document','navigator','HTMLElement','Element','Node','MutationObserver','Event','MouseEvent'])set(key,dom.window[key]);
+  set('getComputedStyle',dom.window.getComputedStyle.bind(dom.window));set('IS_REACT_ACT_ENVIRONMENT',true);set('ResizeObserver',class{observe(){}unobserve(){}disconnect(){}});set('fetch',http);
+  dom.window.confirm=()=>true;dom.window.HTMLElement.prototype.scrollIntoView=function(){};
+  const React=await import('react'),{createRoot}=await import('react-dom/client');
+  const vite=await createServer({server:{middlewareMode:true,hmr:false,ws:false,watch:null},logLevel:'error'});
+  const {SessionProvider,useSession}=await vite.ssrLoadModule('/lib/session.jsx'),{default:App}=await vite.ssrLoadModule('/App.jsx');
+  let root=createRoot(document.getElementById('root')),session;
+  function Harness(){session=useSession();return React.createElement(App);}
+  context.after(async()=>{if(root)await React.act(async()=>root.unmount());await vite.close();dom.window.close();for(const[key,descriptor]of original){if(descriptor)Object.defineProperty(globalThis,key,descriptor);else delete globalThis[key];}await app.stop();});
+  const flush=async()=>React.act(async()=>new Promise(resolve=>setTimeout(resolve,10)));
+  const wait=async(predicate,label)=>{for(let end=Date.now()+6000;!predicate();){if(Date.now()>end)throw new Error(label+': '+document.body.textContent);await flush();}};
+  const button=label=>[...document.querySelectorAll('button')].find(node=>!node.closest('[hidden]')&&(node.textContent===label||node.getAttribute('aria-label')===label));
+  const click=async node=>{assert.ok(node,'Expected button');assert.equal(node.disabled,false,node.textContent);await React.act(async()=>node.click());await flush();};
+  const refresh=async sessionActor=>{actor=sessionActor;await React.act(async()=>{await session.refresh();});await flush();};
+  const checkRead=async(path,sessionActor=owner)=>{let result;await React.act(async()=>{result=await read(path,sessionActor);});return result;};
+  await React.act(async()=>root.render(React.createElement(SessionProvider,null,React.createElement(Harness))));
+  await wait(()=>button('Switch interface to English'),'App mounted');await click(button('Switch interface to English'));
+  assert.equal(requests.some(row=>row.path==='/api/admin/accounts'),false,'Conversation does not read the directory');
+  await click(button('Account and settings'));await wait(()=>button('Grant administrator access: '+ordinary.username),'Owner directory mounted');
+  assert.equal(document.querySelector('[data-testid="account-access"]').textContent,'Owner');
+  assert.ok(button('Refresh operational status'));assert.equal(button('Grant administrator access: owner'),undefined);assert.equal(button('Grant administrator access: synthetic-admin-legacy'),undefined);
+  assert.match(document.body.textContent,/bind and verify an email/);
+  await click(button('Grant administrator access: '+ordinary.username));
+  assert.equal(document.activeElement.textContent,'Confirm access change');
+  await click(button('Cancel'));assert.equal(requests.filter(row=>row.method==='PUT').length,0);
+  await click(button('Grant administrator access: '+ordinary.username));
+  await click(button('Conversation'));assert.equal(document.querySelector('[aria-label="Account directory"]'),null,'Inactive settings discards the sensitive roster');
+  await click(button('Account and settings'));await wait(()=>button('Grant administrator access: '+ordinary.username),'Reentry rereads directory');
+  assert.equal(button('Confirm grant'),undefined,'Navigation discards pending grant');
+  await click(button('Grant administrator access: '+ordinary.username));const confirmation=button('Confirm grant');
+  await React.act(async()=>{confirmation.click();confirmation.click();});
+  await wait(()=>button('Revoke administrator access: '+ordinary.username),'Grant acknowledged and reread');
+  assert.equal(requests.filter(row=>row.path===path&&row.method==='PUT').length,1);
+  let audit=await checkRead('/api/admin/account-audit');assert.equal(audit.events.length,1);
+  const granted=await checkRead('/api/status',ordinary);assert.equal(granted.role,'trial');assert.equal(granted.userId,ordinary.userId);assert.equal(granted.canViewDiagnostics,true);assert.equal(granted.canManageAccounts,false);
+  const before=requests.length;await refresh(ordinary);await wait(()=>button('Refresh operational status'),'Delegated diagnostics mounted');
+  assert.equal(document.querySelector('[data-testid="account-access"]').textContent,'Administrator');
+  assert.equal(document.querySelector('[aria-label="Account directory"]'),null);assert.equal(button('Reload accounts'),undefined);assert.equal(document.querySelector('input[name="deepseek-api-key"]'),null);
+  assert.equal(requests.slice(before).some(row=>row.path==='/api/admin/accounts'||row.path==='/api/settings'),false,'Delegated account requests no owner surfaces');
+  assert.match(document.body.textContent,/This account can recover its password through its verified email/);
+  await refresh(owner);await wait(()=>button('Revoke administrator access: '+ordinary.username),'Owner restored');
+  await click(button('Revoke administrator access: '+ordinary.username));await click(button('Confirm revocation'));await wait(()=>button('Grant administrator access: '+ordinary.username),'Revocation saved');
+  audit=await checkRead('/api/admin/account-audit');assert.equal(audit.events.length,2);
+  await refresh(ordinary);await wait(()=>document.querySelector('[data-testid="account-access"]')?.textContent==='Ordinary user','Ordinary label restored');
+  assert.equal(button('Refresh operational status'),undefined);assert.equal(button('Reload accounts'),undefined);assert.equal(document.querySelector('[aria-label="Account directory"]'),null);
+  const last=requests.length;await refresh(legacy);await flush();assert.equal(requests.slice(last).some(row=>row.path.startsWith('/api/admin/')),false);
+  assert.equal(window.localStorage.length,0);assert.equal(window.sessionStorage.length,0);
+  assert.equal(requests.some(row=>row.path==='/api/chat'||row.path==='/api/extract'||row.path==='/api/settings/test'),false);
+});
