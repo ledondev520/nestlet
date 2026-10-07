@@ -2,7 +2,7 @@
 
 **First-round disposition (historical): final workflow not accepted.** A real local browser exercised the available UI with synthetic inputs. Parsing, human review and English exports work on the tested paths, but the final AI-only contract is not met; live-provider and PDF-import acceptance remain blocked. This is not production certification or an official-form/agency acceptance claim.
 
-**Latest update:** authentication and model restrictions passed on `8b42962`; explicit manual parsing was clarified as intentional. See the second-round results at the end. Live-provider/HTTPS settings remain unverified, and real idle expiry is still running.
+**Latest update:** authentication and model restrictions passed on `8b42962`; explicit manual parsing was clarified as intentional. See the second-round results at the end. Live-provider/HTTPS settings remain unverified. Real 30-minute idle HTTP expiry subsequently passed; see the final observation below.
 
 ## Snapshot and environment
 
@@ -162,7 +162,7 @@ Environment: Node **24.19.0** for installation, checks, HTTP tests **and browser
 | `npm test` | **87 pass, 0 fail, 0 skip**, including actual PDF and encrypted XLS/XLSX parsing, authentication, CSRF and source-linked agency guidance |
 | `node --test test/local-acceptance.test.js` | **5 pass, 0 fail, 0 skip**; real configured operator login precedes parser-negative tests. Signed-out assertion is exactly 401 + `AUTH_REQUIRED`, not a broadened status allowance. |
 | Legacy model startup | Pass: a real subprocess with `DEEPSEEK_MODEL=deepseek-chat`, no key and AI disabled exits 1 with the Flash-only error. No outbound provider request. |
-| Optional real idle-session test | **Running / not yet passed**. `node --test test/session-idle.acceptance.js` started at approximately 12:34 Asia/Shanghai; requires 30 real idle minutes. Result will be recorded separately. |
+| Optional real idle-session test | **1 pass, 0 fail, 0 skip**. `node --test test/session-idle.acceptance.js` used 30 real idle minutes; exact timing and limits recorded below. |
 
 ### User-story observations in the actual browser
 
@@ -178,7 +178,7 @@ Environment: Node **24.19.0** for installation, checks, HTTP tests **and browser
 - **LC-02 resolved on this snapshot:** missing operator setup fails closed (503), configured signed-out access fails closed (401), invalid CSRF/origin fails closed (403). Parser-negative tests authenticate before reaching the parser. Real browser login/logout and revoked-session recovery passed.
 - **LC-03 resolved on this snapshot:** unsupported model is rejected at startup; independently reproduced without any provider credential or mock.
 
-Remaining **Not run**: actual trusted HTTPS browser key entry/save and model-access check, actual DeepSeek extraction/provider failure, native print-dialog save, clipboard permission-denied case, and timed-expiry browser recovery. No fabricated/provider-double results count toward these. The separate real idle HTTP observation is still pending and cannot be inferred from revocation recovery.
+Remaining **Not run**: actual trusted HTTPS browser key entry/save and model-access check, actual DeepSeek extraction/provider failure, native print-dialog save, clipboard permission-denied case, and timed-expiry browser recovery. No fabricated/provider-double results count toward these. The separate real idle HTTP observation has now passed as recorded below; timed-expiry browser recovery remains untested and cannot be inferred from revocation recovery.
 
 ### New bounded follow-ups for the main owners
 
@@ -186,3 +186,12 @@ Remaining **Not run**: actual trusted HTTPS browser key entry/save and model-acc
 - **LC-05 — misleading extracted-text limit error (P2, UI owner):** import `test/fixtures/large-text.pdf` (35,717 bytes) while authenticated. It exceeds 50,000 extracted characters, but browser says the file is too large and lists the 5 MB PDF byte limit. It correctly refuses the document, but should distinguish the extracted-character limit and suggest shortening/splitting the text. Exact reproduction is safe with the committed synthetic fixture. Runtime wording remains owned by the main/UI lane.
 
 Second-round evidence (synthetic page content only): [unconfigured setup](../test/local-acceptance-evidence/auth-unconfigured.png), [real authenticated PDF import](../test/local-acceptance-evidence/pdf-import-auth.png), [390px authenticated draft](../test/local-acceptance-evidence/auth-mobile.png), [actual TXT](../test/local-acceptance-evidence/auth-export.txt), [actual browser PDF](../test/local-acceptance-evidence/auth-export.pdf). First-round assets remain unchanged.
+
+
+## Real idle-session expiry completed — 2026-10-07 13:04 Asia/Shanghai
+
+On unchanged runtime `8b42962e55305e3cc70b7c20ce5d7e4d74ed13c7`, Node 24.19.0 completed `node --test test/session-idle.acceptance.js` with **1 pass, 0 fail, 0 skip**, process exit 0. The actual observation started at `2026-10-07T04:34:04.254Z` (12:34:04 Asia/Shanghai); test duration was **1,801,165.736 ms**, with total runner duration **1,801,306.631 ms**.
+
+The test genuinely signed in to an isolated loopback server, confirmed authenticated settings access (HTTP 200), made no session requests for at least 30 minutes, and then received HTTP **401** with **`AUTH_REQUIRED`**. No accelerated clock, mocked authentication or provider was used. The test's cleanup terminated its own server and the runner exited.
+
+This closes the server-side idle-expiry observation only. It does not certify an eight-hour absolute timeout, the timed-expiry browser interaction, trusted HTTPS key entry or real DeepSeek behavior. LC-04/LC-05 remain pending main-owner coordination; no additional runtime revision or review response was present at this check.
