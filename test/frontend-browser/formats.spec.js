@@ -117,13 +117,13 @@ test('real CSV/PDF/XLSX/XLS parsing, mapping, exact originals, image honesty, an
     await expect(mapping.getByLabel('Data row', { exact: true })).toHaveValue('1');
     await expect(mapping.getByRole('table')).toContainText(SYNTHETIC_VALUES[0]);
     await expect(source).toHaveValue(before);
-    await mapping.getByLabel('Property address · Mapped column', { exact: true }).selectOption('0');
-    await mapping.getByLabel('Owner · Mapped column', { exact: true }).selectOption('0');
+    await mapping.getByLabel('Property address · Mapped column', { exact: true }).selectOption({ value: '0' });
+    await mapping.getByLabel('Owner · Mapped column', { exact: true }).selectOption({ value: '0' });
     await mapping.getByRole('button', { name: 'Append this row and review facts', exact: true }).click();
     await expect(mapping.getByRole('alert')).toContainText('Map at least one field to distinct valid columns');
     await expect(source).toHaveValue(before);
     const labels = ['Property address', 'Owner', 'Housing authority', 'Case reference', 'Proposed rent'];
-    for (const [index, label] of labels.entries()) await mapping.getByLabel(`${label} · Mapped column`, { exact: true }).selectOption(String(index));
+    for (const [index, label] of labels.entries()) await mapping.getByLabel(`${label} · Mapped column`, { exact: true }).selectOption({ value: String(index) });
     await screenshot(page, testInfo, `file-formats-${extension}-real-mapping-preview`);
     await mapping.getByRole('button', { name: 'Append this row and review facts', exact: true }).click();
     await expect(mapping).toHaveCount(0);
@@ -143,7 +143,12 @@ test('real CSV/PDF/XLSX/XLS parsing, mapping, exact originals, image honesty, an
     await upload(file, { workbook: true });
     const mapping = materials.locator('[data-slot="card"]').filter({ has: page.getByText('Choose one worksheet and row', { exact: true }) });
     await expect(mapping.getByLabel('Worksheet', { exact: true }).locator('option[value="1"]')).toBeDisabled();
-    await mapping.getByLabel('Data row', { exact: true }).selectOption('2');
+    const dataRow = mapping.getByLabel('Data row', { exact: true });
+    // String selectors match value OR label. Label 2 is value 1 here; explicitly
+    // select value 2 (the third row) before asserting its blocked cells.
+    expect(await dataRow.selectOption({ value: '2' })).toEqual(['2']);
+    await expect(dataRow).toHaveValue('2');
+    await expect(mapping.locator('caption')).toHaveText('Visible cases · Data row 3');
     const columns = mapping.getByLabel('Property address · Mapped column', { exact: true });
     for (const column of (extension === 'xlsx' ? [1, 2, 3, 4] : [2, 3, 4])) await expect(columns.locator(`option[value="${column}"]`)).toBeDisabled();
     if (extension === 'xlsx') await expect(mapping.getByRole('table')).not.toContainText('CACHED VALUE MUST NOT IMPORT');
