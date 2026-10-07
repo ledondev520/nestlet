@@ -411,3 +411,9 @@ Isolated local candidate combines the reviewed source navigation, test-only desk
 - Independent code review found and verified fixes for React StrictMode effect replay, already-unconfirmed conflicts and terminal conversation binding; its combined backend/frontend/localization focused suite passed **30/30**.
 - Source-navigation and document-export test commits are included; the new browser scenarios remain **NOT RUN** here. The previously reported Chromium IPC launch denial was respected without retry or alternate browser route. Exact-commit official CI, Chromium rendering, real provider tool execution, live-account journeys and production rollout remain separate gates.
 - Existing pinned dependencies were reused from the backend candidate with an identical lockfile. No dependency package or lockfile change was introduced by the UI work.
+
+### PR28 frontend container-input repair, 2026-10-07 23:58 UTC
+
+The first exact-head container CI exposed a packaging omission: the new browser-side proposal validator imports root `document-context.js`, but the Docker frontend build stage had not copied that file. Its sole transitive dependency, `public/core.js`, was already included. The minimal repair adds `COPY document-context.js ./` to that stage; the Docker context allowlist and runtime stage already include it.
+
+A new regression constructs an isolated source tree using the frontend stage's actual COPY declarations and runs Vite against that restricted tree with the same pinned installed dependencies. It reproduced the missing-module failure before the fix and passed afterward. This checks build inputs without claiming an actual Docker image/container run. The nine packaging/action-focused checks, syntax checks, full-worktree production build, **293/293 frontend** checks and diff checks passed with zero skipped tests. New exact-head official container/browser results are still required; no merge or deployment was performed.

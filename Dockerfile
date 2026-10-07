@@ -11,6 +11,7 @@ COPY package.json package-lock.json ./
 RUN npm ci --ignore-scripts
 COPY vite.config.js jsconfig.json components.json ./
 COPY frontend ./frontend
+COPY document-context.js ./
 COPY public/core.js public/agency-guidance.js ./public/
 RUN npm run build
 
