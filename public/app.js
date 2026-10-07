@@ -4,6 +4,7 @@ import {AGENCY_OPTIONS, DEFAULT_GUIDANCE_AGENCY, GUIDANCE_COPY, getAgencyGuidanc
 const copy = {
   zh: {
     workspaceTitle: '从材料到英文草稿', safeShort: '仅限虚构或去标识化资料', inputShort: '放入材料', sampleShort: '试用示例', pasteShort: '或在这里粘贴去标识化文本…', inputHelp: '支持格式与处理方式', nextReview: 'AI 提取并核对', reviewShort: '核对五项事实', sourceHint: '原文可展开查看', check: '确认', editedShort: '人工修改 · 查看出处', missingShort: '待补充：', missingScope: '仅表示本次材料未提供，并非机构缺件通知', nextHelp: '后续事项与导出说明', draftTypeShort: '草稿类型', backInput: '返回材料', backReview: '返回核对', gateShort: '请确认每一项；未知信息可保留空白', draftShort: '可直接编辑。辅助文书，非官方表格；请人工复核后使用。', footerShort: '仅生成草稿 · 不自动发送或提交',
+    chatEmpty: '可以直接提问下一步怎么走，或粘贴案例材料后发送。图片与材料也可以拖拽进来。', chatSend: '发送', chatStop: '停止', chatRetry: '重试', chatStreaming: '正在回复…', chatAttachImage: '添加图片', chatImageOnly: '请协助分析附图内容。', chatImageBad: '仅支持 PNG / JPEG 图片，最多 2 张，每张不超过 2 MB、边长不超过 8192 像素。', chatTooLong: '单次对话消息最长 8,000 字符；更长的材料请直接使用提取与核对流程。', chatIncomplete: '回复中断，以上内容不完整。可重试。', errorChat: '对话请求失败。可重试；已输入的内容不会丢失。', chatConsent: '继续会把对话内容、当前材料与所附图片发送给 DeepSeek。仅限虚构或去标识化资料。你是否已确认数据处理条款和授权，并同意发送？', chatYou: '你', chatAssistant: '巢小秘', chatRemoveImage: '移除图片',
     settings: '设置', modelLabel: '模型', endpointLabel: '接口', readyStatus: '提取已启用', configStatus: '尚未启用 AI', backendStatus: '后端未连接', checkingStatus: '正在检查连接', configHelp: '在服务器设置 DEEPSEEK_API_KEY，并将 ENABLE_LIVE_AI 设为 true 后重启。密钥仅保留在服务器，不在浏览器保存。', manualAction: '按标签手动整理', errorConfig: 'DeepSeek 尚未启用。请在设置中查看服务器配置步骤；不会自动切换到模拟结果。', errorBackend: '尚未连接到处理服务器。请启动完整服务后再使用 AI 或文件处理。', filePick: '上传文件', workbookHint: 'Excel 文件上传至服务器读取工作表；需选择单行并确认字段映射。不会执行公式或宏。', workbookConsent: '此 Excel 文件将上传至本服务器以读取工作表和单元格，不会自动发送至 DeepSeek。请确认仅含虚构或去标识化资料。继续？', mapTitle: '选择一行，映射字段', sheetLabel: '工作表', rowLabel: '数据行', columnLabel: '列', skipColumn: '不导入', applyMapping: '确认映射并核对', cancelMapping: '取消导入', errorWorkbook: '无法读取此工作簿。请使用未加密的 XLSX / XLS，或导出为单案例 CSV。', errorMapping: '请选择有效数据行和不重复的列；公式、隐藏或合并单元格不能导入。', workbookLimited: '仅预览前 200 行、50 列；其余内容未载入', workbookBlocked: '部分单元格不可导入，请选择普通可见值',
     operatorSetup: '请先配置操作员账户', operatorSetupHelp: '请在服务器配置 NESTLET_OPERATOR_PASSWORD_HASH 与 HTTPS 的 PUBLIC_ORIGIN，再重启服务。', signInRequired: '请先登录', operatorPassword: '登录密码', signIn: '登录', signOut: '退出登录', refreshStatus: '刷新状态', apiKey: 'DeepSeek API Key', replaceKey: '更换 API Key（可选）', keepExistingKey: '留空以保留现有密钥', saveSettings: '保存设置', enableLive: '启用 DeepSeek 提取', keyMemoryNotice: '网页填写的密钥仅存于服务器内存，服务重启后需重新填写；浏览器不保存密钥。', keyEnvironment: '密钥：服务器环境', keyMemory: '密钥：服务器内存', keyMissing: '尚未配置密钥', testConnection: '测试连接', connectionVerified: '模型访问已验证，尚未测试文本生成', settingsSaved: '设置已保存，连接验证状态单独显示', connectionSuccess: '已确认账户可访问 DeepSeek Flash，未调用文本生成', loginSuccess: '已登录，可继续原来的操作', logoutSuccess: '已退出，工作区已清空；已保存案例仍保留', logoutConfirm: '退出登录会清空工作区，未保存的修改会丢失。已保存的案例仍保留。继续？', errorAuth: '请登录后重新执行刚才的操作。', errorSession: '登录状态已失效，请重新登录。', errorHttps: '密码和密钥设置仅在可信 HTTPS 页面开放。请先完成服务器 HTTPS 配置。', errorCredentials: '用户名或密码不正确，或账户尚未配置。', errorRateLimit: '操作过于频繁，请一分钟后重试。', errorSettings: '设置无效，请检查 API Key 格式。', errorKeyRequired: '请先填写并保存 API Key。', errorConnection: '连接验证失败。请检查密钥和账户访问权限；未测试文本生成。', errorModel: '此账户未返回 DeepSeek Flash 的访问权限，请核实后重试。',
     workflowFocus: '资料参考', localLoginNotice: '本机开发登录。API 密钥的网页录入仍要求已认证的 HTTPS 页面。',
@@ -49,6 +50,7 @@ const copy = {
   },
   en: {
     workspaceTitle: 'From document to English draft', safeShort: 'Synthetic or de-identified information only', inputShort: 'Add your document', sampleShort: 'Try sample', pasteShort: 'Or paste de-identified text here…', inputHelp: 'Formats and processing details', nextReview: 'Extract & review with AI', reviewShort: 'Review five facts', sourceHint: 'Expand a source to check it', check: 'Confirm', editedShort: 'Edited · View source', missingShort: 'To confirm:', missingScope: 'Not provided in this review, not an agency missing-document notice', nextHelp: 'Next steps and export details', draftTypeShort: 'Draft type', backInput: 'Back to document', backReview: 'Back to review', gateShort: 'Confirm every field. Unknown information can stay blank.', draftShort: 'Edit directly. Supplementary draft, not an official form. Review before use.', footerShort: 'Drafts only · Nothing is sent or submitted automatically',
+    chatEmpty: 'Ask what to do next, or paste case material and send it. You can also drop files or images here.', chatSend: 'Send', chatStop: 'Stop', chatRetry: 'Retry', chatStreaming: 'Replying…', chatAttachImage: 'Add image', chatImageOnly: 'Please help analyze the attached image(s).', chatImageBad: 'Only PNG / JPEG images, at most 2, each up to 2 MB and 8192 px per side.', chatTooLong: 'A chat message is limited to 8,000 characters. Use the extract & review flow for longer material.', chatIncomplete: 'The reply was interrupted; the content above is incomplete. You can retry.', errorChat: 'The conversation request failed. You can retry; your input is preserved.', chatConsent: 'This sends the conversation, current material and attached images to DeepSeek. Use only synthetic or de-identified information. Have you verified the data-processing terms and authorization, and do you agree to send?', chatYou: 'You', chatAssistant: 'Nestlet', chatRemoveImage: 'Remove image',
     settings: 'Settings', modelLabel: 'Model', endpointLabel: 'Endpoint', readyStatus: 'Extraction enabled', configStatus: 'AI is not enabled', backendStatus: 'Backend not connected', checkingStatus: 'Checking connection', configHelp: 'Set DEEPSEEK_API_KEY and ENABLE_LIVE_AI=true on the server, then restart. Credentials stay on the server and are never stored in the browser.', manualAction: 'Process labels manually', errorConfig: 'DeepSeek is not enabled. Open Settings for server configuration steps. No simulated result will be substituted.', errorBackend: 'The processing backend is not connected. Start the complete service before using AI or server-side file processing.', filePick: 'Upload a file', workbookHint: 'Excel files are read on the server. Select one row and confirm the field mapping. Formulas and macros are not executed.', workbookConsent: 'This Excel file will be uploaded to the server to read worksheets and cells, not automatically sent to DeepSeek. Confirm that it contains only synthetic or de-identified information. Continue?', mapTitle: 'Choose one row and map its fields', sheetLabel: 'Worksheet', rowLabel: 'Data row', columnLabel: 'Column', skipColumn: 'Skip this field', applyMapping: 'Confirm mapping & review', cancelMapping: 'Cancel import', errorWorkbook: 'Could not read this workbook. Use an unencrypted XLSX / XLS file, or export one case as CSV.', errorMapping: 'Choose a valid row and distinct columns. Formula, hidden, or merged cells cannot be imported.', workbookLimited: 'Preview limited to the first 200 rows and 50 columns', workbookBlocked: 'Some cells cannot be imported. Choose ordinary visible values.',
     operatorSetup: 'Operator setup required', operatorSetupHelp: 'Configure NESTLET_OPERATOR_PASSWORD_HASH and an HTTPS PUBLIC_ORIGIN on the server, then restart.', signInRequired: 'Sign in to continue', operatorPassword: 'Access password', signIn: 'Sign in', signOut: 'Sign out', refreshStatus: 'Refresh status', apiKey: 'DeepSeek API Key', replaceKey: 'Replace API key (optional)', keepExistingKey: 'Leave blank to keep the existing key', saveSettings: 'Save settings', enableLive: 'Enable DeepSeek extraction', keyMemoryNotice: 'Keys entered here stay only in server memory and must be entered again after a server restart. The browser does not store them.', keyEnvironment: 'Key: server environment', keyMemory: 'Key: server memory', keyMissing: 'No key configured', testConnection: 'Test connection', connectionVerified: 'Model access verified; text generation not tested', settingsSaved: 'Settings saved. Connection verification is shown separately.', connectionSuccess: 'DeepSeek Flash model access verified. No text generation was called.', loginSuccess: 'Signed in. You can resume your previous action.', logoutSuccess: 'Signed out. The workspace is cleared; saved cases are retained.', logoutConfirm: 'Signing out clears the workspace and loses unsaved changes. Saved cases are retained. Continue?', errorAuth: 'Sign in, then retry your previous action.', errorSession: 'Your session has expired. Sign in again.', errorHttps: 'Password and key settings require a trusted HTTPS page. Configure server HTTPS first.', errorCredentials: 'Incorrect username or password, or the account is not configured.', errorRateLimit: 'Too many attempts. Wait one minute before retrying.', errorSettings: 'Invalid settings. Check the API key format.', errorKeyRequired: 'Enter and save an API key first.', errorConnection: 'Connection verification failed. Check the key and account access. Text generation was not tested.', errorModel: 'DeepSeek Flash was not listed for this account. Verify access before retrying.',
     workflowFocus: 'Reference focus', localLoginNotice: 'Local development sign-in. Browser API-key entry still requires an authenticated HTTPS page.',
@@ -95,8 +97,10 @@ const copy = {
 };
 
 const kinds = DRAFT_TYPES;
-const state = {lang: 'zh', stage: 0, guidanceAgency: DEFAULT_GUIDANCE_AGENCY, guidanceOpen: false, text: '', fields: [], draftText: '', generated: false, error: '', message: '', busy: false, liveEnabled: false, pdfEnabled: false, workbookEnabled: false, workbook: null, sheetIndex: 0, rowIndex: 0, mapping: {}, settingsOpen: false, settingsBusy: false, settingsError: '', settingsMessage: '', authConfigured: false, authenticated: false, role: null, canManageSettings: false, userId: null, workspaceOwnerId: null, username: '', loginUsername: '', authForm: 'login', registrationEnabled: false, secureLogin: false, caseStorageEnabled: false, caseId: null, caseVersion: null, caseTitle: '', savedFingerprint: null, cases: [], selectedCaseId: '', casesOpen: false, caseBusy: false, caseError: '', caseMessage: '', caseEpoch: 0, secureSettings: false, configured: false, csrfToken: '', connectionVerifiedAt: null, keyStorage: 'none', statusChecked: false, statusError: false, model: 'deepseek-flash', providerEndpoint: 'https://api.deepseek.com/chat/completions', mode: 'demo', source: '', sample: false, namesVerified: false, kind: 'followup', generatedKind: 'followup', version: 0, controller: null};
+const state = {lang: 'zh', stage: 0, guidanceAgency: DEFAULT_GUIDANCE_AGENCY, guidanceOpen: false, text: '', fields: [], draftText: '', generated: false, error: '', message: '', busy: false, liveEnabled: false, pdfEnabled: false, workbookEnabled: false, workbook: null, sheetIndex: 0, rowIndex: 0, mapping: {}, settingsOpen: false, settingsBusy: false, settingsError: '', settingsMessage: '', authConfigured: false, authenticated: false, role: null, canManageSettings: false, userId: null, workspaceOwnerId: null, username: '', loginUsername: '', authForm: 'login', registrationEnabled: false, secureLogin: false, caseStorageEnabled: false, caseId: null, caseVersion: null, caseTitle: '', savedFingerprint: null, cases: [], selectedCaseId: '', casesOpen: false, caseBusy: false, caseError: '', caseMessage: '', caseEpoch: 0, secureSettings: false, configured: false, csrfToken: '', connectionVerifiedAt: null, keyStorage: 'none', statusChecked: false, statusError: false, model: 'deepseek-flash', providerEndpoint: 'https://api.deepseek.com/chat/completions', mode: 'demo', source: '', sample: false, namesVerified: false, kind: 'followup', generatedKind: 'followup', version: 0, controller: null, chatMessages: [], chatImages: [], chatBusy: false, chatError: '', chatIncomplete: false};
 let draftEditTracked = false;
+let chatController = null;
+let chatStopRequested = false;
 /** Nonblocking client telemetry per docs/telemetry-api.md v1.
     Operational metadata only: never records document text, draft text, filenames,
     passwords, keys, or arbitrary metadata. A telemetry failure must never change
@@ -525,6 +529,8 @@ function render() {
   const needsEnglish = fieldsNeedEnglish();
   const stage = state.stage;
   document.documentElement.lang = state.lang === 'zh' ? 'zh-CN' : 'en';
+  const chatThread = state.chatMessages.length || state.chatError ? `<div class="chat-thread" id="chat-thread" aria-live="polite">${state.chatMessages.map(m => `<div class="chat-msg ${m.role}"><span class="chat-role">${m.role === 'user' ? d.chatYou : d.chatAssistant}</span>${m.images && m.images.length ? `<span class="chat-msg-images">${m.images.map(img => `<img src="${img.preview}" alt="">`).join('')}</span>` : ''}<p${m.streaming ? ' id="chat-streaming"' : ''}>${esc(m.content)}${m.streaming ? '<span class="chat-cursor" aria-hidden="true">▍</span>' : ''}</p>${m.incomplete ? `<p class="chat-incomplete">${d.chatIncomplete}</p>` : ''}</div>`).join('')}${state.chatError ? `<div class="error" role="alert">${d[state.chatError] || d.errorChat}${!state.chatBusy && state.chatMessages.some(m => m.role === 'user') ? ` <button type="button" id="chat-retry" class="link">${d.chatRetry}</button>` : ''}</div>` : ''}</div>` : `<p class="chat-empty">${d.chatEmpty}</p>`;
+  const chatChips = state.chatImages.length ? `<div class="chat-chips">${state.chatImages.map((img, i) => `<span class="chat-chip"><img src="${img.preview}" alt=""><button type="button" data-chip="${i}" aria-label="${d.chatRemoveImage}">×</button></span>`).join('')}</div>` : '';
   byId('app').innerHTML = `<div class="shell compact-shell">
     <header><a class="brand" href="#main" aria-label="Nestlet"><img src="/logo.svg" alt=""><div class="wordmark">${d.brand}<span class="small">${state.lang === 'zh' ? ' Nestlet' : ''}</span></div></a><div class="tools"><span class="pill mode">DeepSeek Flash</span><button class="ghost" id="settings" aria-expanded="${state.settingsOpen}">${!state.authenticated ? d.signInOrRegister : managesSettings() ? d.manageAccount : d.account}</button><button class="ghost" id="language" lang="${state.lang === 'zh' ? 'en' : 'zh-CN'}" aria-label="${state.lang === 'zh' ? 'Switch interface to English' : '切换界面为中文'}">${state.lang === 'zh' ? 'English' : '中文'}</button></div></header>
     ${settingsMarkup()}
@@ -533,13 +539,14 @@ function render() {
     ${caseControlsMarkup()}
     <main id="main" class="grid" ${stage === 2 ? 'hidden' : ''}>
       <section class="panel" id="input-panel" ${stage !== 0 ? 'hidden' : ''}><div class="panel-top"><h2>${d.inputShort}</h2></div>
+        ${chatThread}
         <label class="file ${busy ? 'disabled' : ''}"><span aria-hidden="true">↥</span><span>${d.filePick}<small class="file-formats">TXT · CSV${state.pdfEnabled ? ' · PDF' : ''}${state.workbookEnabled ? ' · XLSX · XLS' : ''}</small></span><input type="file" id="file" accept=".txt,.csv,text/plain,text/csv${state.pdfEnabled ? ',.pdf,application/pdf' : ''}${state.workbookEnabled ? ',.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel' : ''}" ${busy ? 'disabled' : ''}></label>
         <details class="help-details" id="sample-downloads"><summary>${d.sampleDownloads}</summary><div class="actions">${['txt', 'csv', 'pdf', 'xlsx', 'xls'].map(extension => `<a href="/samples/nestlet-synthetic-case.${extension}" download="nestlet-synthetic-case.${extension}">${extension.toUpperCase()}</a>`).join('')}</div><p>${d.sampleDownloadHint}</p><p>${d.sampleWorkbookHint}</p></details>
         ${state.workbook || state.source ? `<div class="document-name">${esc(state.workbook?.filename || state.source)}</div>` : ''}
         ${state.workbook ? workbookMarkup() : `
-        <label class="sr-only" for="input">${d.input}</label><textarea class="input" id="input" maxlength="50000" placeholder="${d.pasteShort}" ${busy ? 'disabled' : ''}>${esc(state.text)}</textarea>
+        ${chatChips}<label class="sr-only" for="input">${d.input}</label><textarea class="input" id="input" maxlength="50000" placeholder="${d.pasteShort}" ${busy || state.chatBusy ? 'disabled' : ''}>${esc(state.text)}</textarea>
         <div class="input-meta"><details class="help-details"><summary>${d.inputHelp}</summary><p>${d.inputHint}</p><p>${state.pdfEnabled ? d.pdfHint : d.noPdfHint}</p><p>${state.workbookEnabled ? d.workbookHint : ''}</p><p>${d.localHint}</p><p class="label-list">Property: · Owner: · PHA: · Case reference: · Proposed rent:</p><p>${d.privacy}</p></details><span class="small char-count" id="char-count">${state.text.length.toLocaleString()} / 50,000</span></div>
-        <div class="actions"><button class="primary" id="live" ${busy ? 'disabled' : ''}>${d.nextReview} →</button><button class="link" id="extract" ${busy ? 'disabled' : ''}>${d.manualAction}</button>${busy ? `<button class="secondary" id="cancel">${d.cancel}</button>` : ''}<button class="link push-right" id="reset">${d.reset}</button></div>
+        <div class="actions"><button class="primary" id="chat-send" ${busy || state.chatBusy ? 'disabled' : ''}>${state.chatBusy ? d.chatStreaming : d.chatSend + ' →'}</button><button class="ghost" id="chat-image" ${busy || state.chatBusy ? 'disabled' : ''}>${d.chatAttachImage}</button><input type="file" id="image-file" accept="image/png,image/jpeg" multiple class="sr-only" ${busy || state.chatBusy ? 'disabled' : ''}><button class="secondary" id="live" ${busy || state.chatBusy ? 'disabled' : ''}>${d.nextReview}</button><button class="link" id="extract" ${busy || state.chatBusy ? 'disabled' : ''}>${d.manualAction}</button>${state.chatBusy ? `<button class="secondary" id="chat-stop">${d.chatStop}</button>` : ''}${busy ? `<button class="secondary" id="cancel">${d.cancel}</button>` : ''}<button class="link push-right" id="reset">${d.reset}</button></div>
         `}
         <div class="error" role="alert">${state.error ? d[state.error] || d.errorGeneric : ''}</div><div class="success" role="status">${busy ? d.busy : ['loaded', 'cancelled'].includes(state.message) ? d[state.message] : ''}</div>
       </section>
@@ -706,6 +713,129 @@ async function extractLive() {
   finally {finishProcessing(ticket);}
 }
 
+
+/** Chat composer helpers — docs/chat-api.md v1. Real SSE only: no simulated
+    streaming, no reasoning fabrication. Partial replies stay marked incomplete. */
+function buildChatPayloadMessages() {
+  const messages = state.chatMessages.filter(m => !m.streaming && !m.incomplete && typeof m.content === 'string');
+  const kept = [];
+  let total = 0;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i];
+    const next = total + m.content.length;
+    if (kept.length && (kept.length >= 11 || next > 24000)) break;
+    kept.unshift(m);
+    total = next;
+  }
+  return kept.map(m => ({role: m.role, content: m.content, ...(m.images && m.images.length ? {images: m.images.map(img => ({mimeType: img.mimeType, data: img.data}))} : {})}));
+}
+
+async function addChatImages(files) {
+  let changed = false;
+  for (const file of files) {
+    if (state.chatImages.length >= 2) {state.chatError = 'chatImageBad'; break;}
+    if (!/^image\/(png|jpeg)$/i.test(file.type) || file.size > 2097152) {state.chatError = 'chatImageBad'; continue;}
+    try {
+      const buffer = await file.arrayBuffer();
+      const bitmap = await createImageBitmap(new Blob([buffer]));
+      const tooBig = bitmap.width > 8192 || bitmap.height > 8192;
+      bitmap.close();
+      if (tooBig) {state.chatError = 'chatImageBad'; continue;}
+      const bytes = new Uint8Array(buffer);
+      let binary = '';
+      for (let i = 0; i < bytes.length; i += 8192) binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
+      state.chatImages.push({mimeType: file.type.toLowerCase() === 'image/jpg' ? 'image/jpeg' : file.type.toLowerCase(), data: btoa(binary), preview: URL.createObjectURL(file)});
+      state.chatError = '';
+      changed = true;
+    } catch {state.chatError = 'chatImageBad';}
+  }
+  if (changed || state.chatError) render();
+}
+
+async function sendChat(retry = false) {
+  if (state.chatBusy) return;
+  if (!retry) {
+    const text = state.text.trim();
+    if (!text && !state.chatImages.length) {state.chatError = 'errorEmpty'; render(); return;}
+    if (text.length > 8000) {state.chatError = 'chatTooLong'; render(); return;}
+    if (!state.authenticated) {state.settingsOpen = true; state.settingsError = 'errorAuth'; render(); return;}
+    if (!state.liveEnabled) {state.chatError = state.statusError ? 'errorBackend' : 'errorConfig'; state.settingsOpen = true; render(); return;}
+    if (!confirm(t().chatConsent)) return;
+    state.chatMessages.push({role: 'user', content: text || t().chatImageOnly, images: state.chatImages});
+    state.chatImages = [];
+  } else {
+    const last = state.chatMessages[state.chatMessages.length - 1];
+    if (last && last.role === 'assistant') state.chatMessages.pop();
+    if (!state.chatMessages.length || state.chatMessages[state.chatMessages.length - 1].role !== 'user') return;
+  }
+  state.chatBusy = true;
+  state.chatError = '';
+  chatStopRequested = false;
+  state.chatMessages.push({role: 'assistant', content: '', streaming: true, incomplete: false});
+  render();
+  byId('chat-thread')?.scrollIntoView({behavior: 'smooth', block: 'end'});
+  chatController = new AbortController();
+  const assistant = state.chatMessages[state.chatMessages.length - 1];
+  try {
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: requestHeaders({...telemetryHeaders(), 'Content-Type': 'application/json'}),
+      body: JSON.stringify({locale: state.lang, consent: true, messages: buildChatPayloadMessages(), ...(state.caseId ? {caseId: state.caseId} : {})}),
+      signal: chatController.signal
+    });
+    noteBusinessResponse(response);
+    if (!response.ok) {
+      const result = await response.json().catch(() => ({}));
+      const codes = {CHAT_TOO_LARGE: 'chatTooLong', CHAT_INVALID: 'errorChat', CHAT_IMAGE_INVALID: 'chatImageBad', CHAT_IMAGE_UNSUPPORTED: 'chatImageBad', LIVE_DISABLED: 'errorConfig', BUSY: 'errorBusy'};
+      throw responseError(result, codes[result?.code] || 'errorChat');
+    }
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let finished = false;
+    for (;;) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, {stream: true});
+      let cut;
+      while ((cut = buffer.indexOf('\n\n')) >= 0) {
+        const frame = buffer.slice(0, cut);
+        buffer = buffer.slice(cut + 2);
+        const eventName = frame.match(/^event: (.+)$/m)?.[1];
+        const dataText = frame.match(/^data: (.*)$/m)?.[1];
+        if (!eventName || !dataText) continue;
+        let data;
+        try { data = JSON.parse(dataText); } catch { continue; }
+        if (eventName === 'delta' && typeof data.text === 'string') {
+          assistant.content += data.text;
+          const el = byId('chat-streaming');
+          if (el) el.firstChild ? el.childNodes[0].textContent = assistant.content : el.textContent = assistant.content;
+        } else if (eventName === 'done') {
+          finished = true;
+        } else if (eventName === 'error') {
+          throw new Error('errorChat');
+        }
+      }
+    }
+    if (!finished && !chatStopRequested) assistant.incomplete = true;
+    if (chatStopRequested && !assistant.content) state.chatMessages.pop();
+    else if (chatStopRequested) assistant.incomplete = true;
+  } catch (error) {
+    if (error?.name === 'AbortError' || chatStopRequested) {
+      if (!assistant.content) state.chatMessages.pop();
+      else assistant.incomplete = true;
+    } else {
+      state.chatMessages.pop();
+      state.chatError = copy.en[error?.message] ? error.message : 'errorChat';
+    }
+  } finally {
+    for (const m of state.chatMessages) delete m.streaming;
+    state.chatBusy = false;
+    chatController = null;
+    render();
+  }
+}
+
 function bind() {
   const on = (id, event, handler) => byId(id)?.addEventListener(event, handler);
   const go = stage => {state.stage = stage; render(); byId(stage === 2 ? 'draft-panel' : 'main').scrollIntoView({behavior: 'smooth', block: 'start'});};
@@ -804,6 +934,29 @@ function bind() {
     if (window.matchMedia('(max-width: 760px)').matches) byId('review-panel').scrollIntoView({behavior: 'smooth', block: 'start'});
   });
   on('live', 'click', extractLive);
+  on('chat-send', 'click', () => sendChat(false));
+  on('chat-retry', 'click', () => sendChat(true));
+  on('chat-stop', 'click', () => {chatStopRequested = true; chatController?.abort();});
+  on('chat-image', 'click', () => byId('image-file')?.click());
+  on('image-file', 'change', event => addChatImages([...event.target.files]));
+  document.querySelectorAll('[data-chip]').forEach(button => button.addEventListener('click', () => {state.chatImages.splice(Number(button.dataset.chip), 1); render();}));
+  on('input', 'paste', event => {
+    const images = [...(event.clipboardData?.files || [])].filter(file => /^image\/(png|jpeg)$/i.test(file.type));
+    if (images.length) addChatImages(images);
+  });
+  const inputPanel = byId('input-panel');
+  if (inputPanel) {
+    inputPanel.addEventListener('dragover', event => {event.preventDefault(); inputPanel.classList.add('drag-over');});
+    inputPanel.addEventListener('dragleave', () => inputPanel.classList.remove('drag-over'));
+    inputPanel.addEventListener('drop', event => {
+      event.preventDefault();
+      inputPanel.classList.remove('drag-over');
+      const files = [...(event.dataTransfer?.files || [])];
+      addChatImages(files.filter(file => /^image\/(png|jpeg)$/i.test(file.type)));
+      const document = files.find(file => /\.(txt|csv|pdf|xlsx|xls)$/i.test(file.name));
+      if (document) importFile(document);
+    });
+  }
   document.querySelectorAll('[data-field]').forEach(element => element.addEventListener('input', event => {
     if (event.isComposing) return;
     const field = state.fields[Number(element.dataset.field)];
