@@ -310,3 +310,19 @@ Merged official-guidance main `6b357266ff5548785479d08c5d219dafa6b277a2` into th
 ### 2026-10-07 — explicit chat-original retention, isolated local component
 
 The isolated retention component reuses the existing private asset API, preserving exact selected PNG/JPEG originals in the same saved case with explicit consent. It does not retain unselected images or change historical chat metadata. Twelve new tests cover adapter validation, development React DOM races/retries/cancel, and actual local HTTP/SQLite/private-file persistence, response-loss reconciliation, restart/search, and per-user isolation. `npm run check`, 312 backend tests, 236 frontend tests, and the standalone branch build passed. Identical-lock installed dependencies were reused without an install. This does not yet establish entry-point integration, real browser, provider, CI, or deployment acceptance. See [the retention contract and detailed evidence](../frontend/features/chat/ORIGINAL-RETENTION.md).
+
+## 2026-10-07: local conversation-to-case bridge and integrated original retention
+
+Implemented against base `5335312` with the explicit original-retention module. Chat now has same-case materials/document continuation, a read-only saved-readiness panel, append-only unreviewed message handoff, and explicit source-linked draft-only answer saving. The existing case/fact/document editors remain the owners of their buffers, confirmation gates and optimistic versions. No schema/provider/auth/release-helper changes were made.
+
+Local evidence uses synthetic inputs only:
+
+- `workflow.http-dom.test.js`: actual React DOM events, real local HTTP and SQLite, with authored saved conversation content rather than a provider response. Passed source-review cancel/append, unsaved material/composer/document preservation, known confirmed fact reuse, missing-answer confirmation, real final generation, exact source-linked draft storage, double-click prevention, deliberately truncated committed HTTP 201 response reconciliation, pre-write cancel, real concurrent-update 409, late old-case response rejection and process restart persistence
+- Focused controlled DOM/model tests separately cover malformed/untrusted/incomplete/oversized messages, account/case scope, duplicate source append, and uncertain/truncated-201 new-case creation without a duplicate POST
+- Integrated image-original module retains exact selected File bytes only on explicit save; its separate actual HTTP/SQLite/DOM evidence is recorded above
+- `npm run check`, `npm run build`, `npm run test:frontend` (244/244), `npm test` (312/312), and `npm run test:email-contracts` (53/53) passed. Pinned dependencies were reused from a sibling with an identical lockfile; no new install or dependency was added. The build continues to report the existing large-chunk advisory
+- A new official-CI Playwright gate (`chat-workflow.spec.js`) covers first-save image retention plus same-case review/generation and 390px navigation. Local test listing passed. Chromium execution was deliberately not attempted in the blocked local standalone environment
+
+This is local implementation evidence, not a published or deployed release. Exact-combination official CI browser execution, real provider/vision/SSE acceptance and production rollout remain separate gates. No live AI or email was sent by this work.
+
+A separate read-only review found the malformed-success classification edge. It was fixed with an explicit known pre-commit rejection allowlist and independently rechecked; no remaining material blocker was found within this bridge scope. This review did not run a browser.

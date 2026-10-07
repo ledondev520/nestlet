@@ -13,6 +13,8 @@ import { useSuspendedDraft } from '@/lib/suspended-draft';
 import { FIELDS, LIMITS, IntakeError, caseWork, casePayload, fileType, appendSource, applySuggestions, reconcileWork, validateWorkbook, extract, parseCSV, validateSuggestions, importMatches, equal, isUuid, recoverySnapshot, validRecovery, restoreEdits } from './logic.js';
 import { wordsFor, errorText } from './copy.js';
 import { WorkbookMapping } from './workbook.jsx';
+import { ChatReview } from './chat-review.jsx';
+import { handoffMatches, conversationSource } from '@/lib/conversation-handoff';
 const timeout = (signal, ms = 20000) => AbortSignal.any([signal, AbortSignal.timeout(ms)]);
 const aborted = error => error?.name === 'AbortError';
 const failureFor = error => error?.name === 'TimeoutError' ? new IntakeError('NETWORK_ERROR') : error;
@@ -30,6 +32,8 @@ export function IntakeWorkspace({
   onDirtyChange,
   importRequest,
   onImportHandled,
+  textReviewRequest,
+  onTextReviewHandled,
   onOpenDocuments,
   active = true
 }) {
@@ -83,6 +87,7 @@ export function IntakeWorkspace({
     onCaseChange,
     onDirtyChange,
     onImportHandled,
+    onTextReviewHandled,
     onOpenDocuments
   };
   incomingCase.current = caseId;
@@ -90,7 +95,7 @@ export function IntakeWorkspace({
   const busy = phase !== 'idle';
   const localDirty = !equal(work, caseWork(base));
   const pendingAssociations = assets.some(asset => !asset.caseId);
-  const dirty = localDirty || pendingAssociations || busy || queue.some(item => item.file) || Boolean(workbook);
+  const dirty = localDirty || pendingAssociations || busy || queue.some(item => item.file) || Boolean(workbook) || handoffMatches(textReviewRequest, status.userId, caseRef.current);
   const initialLoading = reading && Boolean(caseRef.current) && !base;
   const blocked = busy || initialLoading || Boolean(caseRef.current && !base);
   const scoped = () => ({
@@ -351,6 +356,21 @@ export function IntakeWorkspace({
     });
     return () => controller.abort();
   }, []);
+  const reviewRequest = handoffMatches(textReviewRequest, status.userId, caseRef.current) && !handledImports.current.has(textReviewRequest.id) ? textReviewRequest : null;
+  function finishTextReview(append = false) {
+    const request = textReviewRequest;
+    if (!handoffMatches(request, ownerRef.current, caseRef.current) || handledImports.current.has(request.id) || append && (busyRef.current || blocked || conflict)) return;
+    if (append) {
+      try {
+        // Only append source text. Existing work, reviewed values and confirmations stay intact.
+        const source = conversationSource(request);
+        if (!workRef.current.sourceText.includes(source)) markSource(appendSource(workRef.current.sourceText, source));
+      } catch (failure) { setError(failure); return; }
+    }
+    handledImports.current.add(request.id);
+    callbacks.current.onTextReviewHandled?.(request.id);
+    if (append) setNotice('chatTextAdded');
+  }
   function addFiles(files) {
     if (busyRef.current) return;
     const additions = [...files];
@@ -728,6 +748,7 @@ export function IntakeWorkspace({
     {conflict && <Card className="border-destructive/40"><CardHeader><CardTitle>{words.changedElsewhere}</CardTitle><CardDescription>{words.compareHelp}</CardDescription></CardHeader><CardContent className="space-y-4"><Button variant="outline" disabled={busy || reading} onClick={() => readCurrent({
           compare: true
         })}>{words.readLatest}</Button>{latest && <><p className="text-sm">{words.latest} · {words.version} {latest.version} · {latest.title}</p><dl className="grid gap-2 text-sm sm:grid-cols-2">{caseWork(latest).fields.map(field => <div key={field.key}><dt className="text-muted-foreground">{words.fieldLabels[field.key]}</dt><dd className="break-words">{field.value || words.unknown}</dd></div>)}</dl><details><summary className="cursor-pointer text-sm">{words.remoteSource}</summary><pre className="mt-3 max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted p-4 text-xs">{latest.sourceText || words.unknown}</pre></details><div className="flex flex-wrap gap-2"><Button disabled={busy} onClick={reconcile}>{words.reconcile}</Button><Button variant="ghost" disabled={busy} onClick={useLatest}>{words.replaceLatest}</Button></div></>}</CardContent></Card>}
+    {reviewRequest && <ChatReview request={reviewRequest} lang={lang} disabled={blocked || conflict} onAppend={() => finishTextReview(true)} onCancel={() => finishTextReview(false)} />}
     <div className="space-y-2"><Label htmlFor={`${id}-case-title`}>{words.caseTitle}</Label><Input id={`${id}-case-title`} maxLength={120} value={work.title} placeholder={words.untitled} disabled={blocked} onChange={event => updateWork(previous => ({
         ...previous,
         title: event.target.value

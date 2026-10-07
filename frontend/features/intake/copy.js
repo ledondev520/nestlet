@@ -1,5 +1,6 @@
 export const intakeCopy = {
   zh: {
+    chatTextAdded: '已在本页追加待核实的对话文字。请核对事实，再保存案例。',
     recovered: "已恢复未保存的文字，请重新选择文件。",
     cacheUnavailable: '当前修改超出临时恢复容量。请尽快保存案例，刷新或会话过期可能丢失未保存修改。',
     eyebrow: '01 / 材料与事实',
@@ -145,6 +146,7 @@ export const intakeCopy = {
     }
   },
   en: {
+    chatTextAdded: 'Unreviewed conversation text appended locally. Review the facts, then save the case.',
     recovered: "Unsaved text restored. Select your files again.",
     cacheUnavailable: 'These edits exceed temporary recovery capacity. Save the case soon; refreshing or session expiry may lose unsaved edits.',
     eyebrow: '01 / MATERIALS & FACTS',

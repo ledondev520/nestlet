@@ -227,3 +227,35 @@ test('development observer exceptions never change successful material or review
   assert.match(labeled('Case source text').value, /Synthetic Lane/);
   await click(host.querySelector('[id$="-property-confirm"]')); assert.equal(host.querySelector('[id$="-property-confirm"]').getAttribute('data-state'),'checked');
 });
+
+test('chat text handoff is explicit, append-only, scoped, and preserves pending material and confirmed facts', async () => {
+  const request = { id: C, userId, caseId: A, conversationId: B, messageId: C, role: 'assistant', content: 'Property: Unreviewed different lane' };
+  const handled = [], original = blank({ sourceText: 'Saved source', draftText: 'A carefully edited draft', fields: extract('Property: Confirmed original lane').map(field => ({...field, confirmed:true})) });
+  const api = apiFor(({path}) => path === '/api/cases/' + A ? {case:original} : undefined);
+  await render(api, {caseId:A}); await change(labeled('Case source text'), 'Pending source edits');
+  await render(api, {caseId:A, textReviewRequest:request, onTextReviewHandled:id=>handled.push(id)});
+  assert.equal(labeled('Case source text').value, 'Pending source edits');
+  assert.match(text(), /Nothing has been added or confirmed yet/);
+  await click(button('Append unreviewed text'));
+  assert.equal(handled.length, 1); assert.match(labeled('Case source text').value, /^Pending source edits\n\nUNREVIEWED AI RESPONSE/);
+  assert.match(labeled('Case source text').value, new RegExp('Message: '+C));
+  assert.equal(field('property').value, 'Confirmed original lane');
+  assert.equal(host.querySelector('[id$="-property-confirm"]').getAttribute('data-state'), 'checked');
+  assert.equal(api.calls.some(call=>['POST','PUT','PATCH'].includes(call.method)), false);
+  await render(api, {caseId:A, textReviewRequest:request, onTextReviewHandled:id=>handled.push(id)});
+  assert.equal(button('Append unreviewed text'), undefined);
+  const before = labeled('Case source text').value;
+  const repeated = {...request, id:userId};
+  await render(api, {caseId:A,textReviewRequest:repeated}); await click(button('Append unreviewed text'));
+  assert.equal(labeled('Case source text').value, before, 'Same exact message block is not appended twice');
+});
+
+test('cancelling and stale-scope chat handoffs leave source and facts unchanged', async () => {
+  const request = {id:C,userId,caseId:A,conversationId:B,messageId:C,role:'user',content:'Owner: Pending proposal'};
+  const handled = [], api = apiFor(); await render(api,{caseId:A,textReviewRequest:{...request,userId:'foreign'}});
+  assert.equal(button('Append unreviewed text'), undefined);
+  await render(api,{caseId:A,textReviewRequest:request,onTextReviewHandled:id=>handled.push(id)});
+  await click(button('Cancel text handoff')); assert.deepEqual(handled,[C]); assert.equal(labeled('Case source text').value,'');
+  await render(api,{caseId:B,textReviewRequest:{...request,id:userId}}); assert.equal(button('Append unreviewed text'), undefined);
+  assert.equal(api.calls.some(call=>['POST','PUT','PATCH'].includes(call.method)), false);
+});

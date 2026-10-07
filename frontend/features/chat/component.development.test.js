@@ -275,3 +275,22 @@ test('Enter sends once, while Shift+Enter and IME confirmation never send',async
   await press({});
   assert.equal(app.requests.filter(item=>item.path==='/api/cases'&&item.options.method==='POST').length,1);
 });
+
+test('development React: uncertain new-case creation preserves the composer and blocks a duplicate create',async context=>{
+  const app=await mount({fetchHandler:async(path)=>{if(path==='/api/cases')throw new TypeError('Controlled lost case-create response');return response({},500);}});context.after(app.close);
+  await app.type('Synthetic question retained until case save can be checked');await app.click(app.button('Send'));await app.flush();
+  assert.match(app.dom.window.document.body.textContent,/new case may already be saved/);
+  assert.equal(app.dom.window.document.querySelector('.chat-input').value,'Synthetic question retained until case save can be checked');
+  await app.click(app.button('Send'));await app.flush();
+  assert.equal(app.requests.filter(item=>item.path==='/api/cases'&&item.options.method==='POST').length,1);
+  assert.equal(app.requests.some(item=>item.path==='/api/chat'),false);
+});
+
+test('development React: malformed 201 case-create response stays uncertain and cannot create twice',async context=>{
+  const app=await mount({fetchHandler:async(path)=>path==='/api/cases'?new Response('{"case":',{status:201,headers:{'Content-Type':'application/json'}}):response({},500)});context.after(app.close);
+  await app.type('Synthetic input retained after a truncated success');await app.click(app.button('Send'));await app.flush();
+  assert.match(app.dom.window.document.body.textContent,/new case may already be saved/);
+  await app.click(app.button('Send'));await app.flush();
+  assert.equal(app.requests.filter(item=>item.path==='/api/cases'&&item.options.method==='POST').length,1);
+  assert.equal(app.dom.window.document.querySelector('.chat-input').value,'Synthetic input retained after a truncated success');
+});

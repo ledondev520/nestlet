@@ -8,6 +8,8 @@ export function IntakePage({
   onDirtyChange,
   importRequest,
   onImportHandled,
+  textReviewRequest,
+  onTextReviewHandled,
   onOpenDocuments,
   active = true
 }) {
@@ -24,6 +26,8 @@ export function IntakePage({
     onDirtyChange,
     importRequest,
     onImportHandled,
+    textReviewRequest,
+    onTextReviewHandled,
     onOpenDocuments,
     active,
     api,
