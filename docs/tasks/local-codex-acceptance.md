@@ -2,11 +2,11 @@
 
 ## Claim and status
 
-- Status: **Unclaimed**
+- Status: **In progress**
 - Assigned executor: **Local Codex**, started by the project owner
-- Claiming account/person: not yet recorded
-- Base commit: not yet recorded
-- Branch: choose `test/local-codex-acceptance`
+- Claiming account/person: Local Codex, authorized by owner ledondev520
+- Base commit: `826202ee7da2b072d544c716cba19ac9cf38d6bf`
+- Branch: `test/local-codex-acceptance`
 - PR URL: not yet created
 
 Before work, inspect existing claims and tell the owner you are taking this task. Record the claimant, exact base commit and `In progress` on your task branch. If someone else has claimed it, pause for ownership clarification. This file does not send messages between assistants; report progress to the owner explicitly.
