@@ -4,14 +4,32 @@ import { fileURLToPath } from 'node:url';
 import { readFile } from 'node:fs/promises';
 import { spawn, spawnSync } from 'node:child_process';
 import { validateSuggestions } from './public/core.js';
+import { createOperatorAuth } from './auth.js';
 
 const root = new URL('./public/', import.meta.url);
-const model = process.env.DEEPSEEK_MODEL || 'deepseek-flash';
-const enabled = process.env.ENABLE_LIVE_AI === 'true' && Boolean(process.env.DEEPSEEK_API_KEY);
+let publicOrigin = '';
+if (process.env.PUBLIC_ORIGIN) {
+  try {
+    const parsed = new URL(process.env.PUBLIC_ORIGIN);
+    if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password || parsed.pathname !== '/' || parsed.search || parsed.hash) throw new Error();
+    publicOrigin = parsed.origin;
+  } catch { throw new Error('PUBLIC_ORIGIN must be a plain HTTP or HTTPS origin without credentials, path, query, or fragment.'); }
+}
+if (process.env.DEEPSEEK_MODEL && process.env.DEEPSEEK_MODEL !== 'deepseek-flash') throw new Error('Only DEEPSEEK_MODEL=deepseek-flash is supported.');
+const model = 'deepseek-flash';
+let apiKey = process.env.DEEPSEEK_API_KEY || '';
+let enabled = process.env.ENABLE_LIVE_AI === 'true' && Boolean(apiKey);
+let connectionVerifiedAt = null;
+let configurationRevision = 0;
+const auth = createOperatorAuth({ passwordHash: process.env.NESTLET_OPERATOR_PASSWORD_HASH, publicOrigin, host: process.env.HOST });
+const settingsCalls = [];
+let activeConnectionTests = 0;
 const maxTextLength = 50000;
 const maxPdfBytes = 5 * 1024 * 1024;
-const pdfEnabled = spawnSync('pdftotext', ['-v'], { timeout: 3000, stdio: 'ignore' }).status === 0;
-const resourceLimiterAvailable = process.platform === 'linux' && spawnSync('prlimit', ['--version'], { timeout: 3000, stdio: 'ignore' }).status === 0;
+// Untrusted document parsers receive no API credentials, operator hash, or ambient secrets.
+const parserEnvironment = { PATH: process.env.PATH || '/usr/bin:/bin', LANG: 'C.UTF-8', LC_ALL: 'C.UTF-8' };
+const pdfEnabled = spawnSync('pdftotext', ['-v'], { timeout: 3000, stdio: 'ignore', env: parserEnvironment }).status === 0;
+const resourceLimiterAvailable = process.platform === 'linux' && spawnSync('prlimit', ['--version'], { timeout: 3000, stdio: 'ignore', env: parserEnvironment }).status === 0;
 let workbookEnabled = false;
 try { createRequire(import.meta.url).resolve('xlsx'); workbookEnabled = true; } catch {}
 const maxWorkbookBytes = 5 * 1024 * 1024;
@@ -26,11 +44,58 @@ class RequestError extends Error {
 function verifyOrigin(request) {
   const origin = request.headers.origin;
   const ownOrigin = `http://${request.headers.host}`;
-  const approvedOrigin = process.env.PUBLIC_ORIGIN;
+  const approvedOrigin = publicOrigin;
   if (request.headers['sec-fetch-site'] === 'cross-site' ||
-      (origin && origin !== ownOrigin && origin !== approvedOrigin)) {
+      (origin && origin !== (approvedOrigin || ownOrigin))) {
     throw new RequestError(403, 'ORIGIN_REJECTED', 'Origin rejected');
   }
+}
+
+function requireSession(request, mutation = true) {
+  if (!auth.configured) throw new RequestError(503, 'OPERATOR_SETUP_REQUIRED', 'Configure the operator password before using this feature.');
+  const session = auth.getSession(request);
+  if (!session) throw new RequestError(401, 'AUTH_REQUIRED', 'Sign in as the operator to continue.');
+  if (mutation && !auth.csrfValid(request, session)) throw new RequestError(403, 'CSRF_REJECTED', 'Refresh the page and sign in again before retrying.');
+  return session;
+}
+
+function requireSecureSettings(request) {
+  const session = requireSession(request);
+  if (!request.headers.origin) throw new RequestError(403, 'ORIGIN_REJECTED', 'A same-origin browser request is required.');
+  if (!auth.secure) throw new RequestError(403, 'HTTPS_REQUIRED', 'API key settings require HTTPS with a configured public origin.');
+  const now = Date.now();
+  while (settingsCalls.length && now - settingsCalls[0] > 60000) settingsCalls.shift();
+  if (settingsCalls.length >= 10) throw new RequestError(429, 'SETTINGS_RATE_LIMITED', 'Too many settings requests. Wait a minute before retrying.');
+  settingsCalls.push(now);
+  return session;
+}
+
+function settingsStatus(request) {
+  const session = auth.getSession(request);
+  return { model, providerEndpoint: 'https://api.deepseek.com/chat/completions', configured: Boolean(apiKey),
+    liveEnabled: enabled && auth.configured, authConfigured: auth.configured, authenticated: Boolean(session),
+    secureSettings: auth.secure && auth.configured, operatorSetupInvalid: auth.setupInvalid,
+    ...(session ? { csrfToken: session.csrfToken } : {}),
+    connectionVerifiedAt, keyStorage: apiKey ? (apiKey === process.env.DEEPSEEK_API_KEY ? 'server-environment' : 'server-memory') : 'none' };
+}
+
+async function testProviderConnection(signal) {
+  const requestKey = apiKey;
+  const revision = configurationRevision;
+  const upstream = await fetch('https://api.deepseek.com/models', { headers: { Authorization: `Bearer ${requestKey}` }, signal, redirect: 'error' });
+  if (!upstream.ok) throw new RequestError(502, 'CONNECTION_FAILED', 'The provider rejected the connection check. Verify the API credential and account access.');
+  let size = 0;
+  const chunks = [];
+  for await (const chunk of upstream.body) {
+    size += chunk.length;
+    if (size > 150000) throw new Error('Provider response too large');
+    chunks.push(chunk);
+  }
+  const data = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+  if (!Array.isArray(data.data) || !data.data.some(item => item?.id === model)) throw new RequestError(502, 'MODEL_UNAVAILABLE', 'DeepSeek Flash was not listed for this account. Verify model access.');
+  if (revision !== configurationRevision || requestKey !== apiKey) throw new RequestError(409, 'SETTINGS_CHANGED', 'The API configuration changed during the check. Test the current configuration again.');
+  connectionVerifiedAt = new Date().toISOString();
+  return { ok: true, model, verifiedAt: connectionVerifiedAt, check: 'model-access', chatCompletionTested: false };
 }
 
 async function readBody(request, maxBytes) {
@@ -73,6 +138,7 @@ function validateInput(body) {
 }
 
 async function providerSuggestions(text, signal) {
+  const requestKey = apiKey;
   const payload = {
     model,
     messages: [
@@ -80,14 +146,16 @@ async function providerSuggestions(text, signal) {
       { role: 'user', content: text },
     ],
     response_format: { type: 'json_object' },
+    thinking: { type: 'disabled' },
+    stream: false,
     max_tokens: 3000,
   };
   // One retry only for transient service errors. Invalid content is never silently repaired.
   let upstream;
   for (let attempt = 0; attempt < 2; attempt++) {
     upstream = await fetch('https://api.deepseek.com/chat/completions', {
-      method: 'POST', headers: { Authorization: `Bearer ${process.env.DEEPSEEK_API_KEY}`, 'Content-Type': 'application/json' },
-      signal, body: JSON.stringify(payload),
+      method: 'POST', headers: { Authorization: `Bearer ${requestKey}`, 'Content-Type': 'application/json' },
+      signal, redirect: 'error', body: JSON.stringify(payload),
     });
     if (upstream.ok || attempt === 1 || ![429, 502, 503, 504].includes(upstream.status)) break;
     await upstream.body?.cancel();
@@ -117,8 +185,8 @@ function pdfText(bytes, signal) {
   return new Promise((resolve, reject) => {
     const args = ['-layout', '-enc', 'UTF-8', '-', '-'];
     const child = resourceLimiterAvailable
-      ? spawn('prlimit', ['--as=268435456', '--cpu=10', '--', 'pdftotext', ...args], { stdio: ['pipe', 'pipe', 'pipe'] })
-      : spawn('pdftotext', args, { stdio: ['pipe', 'pipe', 'pipe'] });
+      ? spawn('prlimit', ['--as=268435456', '--cpu=10', '--', 'pdftotext', ...args], { stdio: ['pipe', 'pipe', 'pipe'], env: parserEnvironment })
+      : spawn('pdftotext', args, { stdio: ['pipe', 'pipe', 'pipe'], env: parserEnvironment });
     let output = '', diagnostic = '', settled = false;
     const finish = (error, value) => {
       if (settled) return;
@@ -157,8 +225,8 @@ function workbookPreview(bytes, signal) {
   return new Promise((resolve, reject) => {
     const args = ['--jitless', '--max-old-space-size=128', fileURLToPath(new URL('./workbook-worker.js', import.meta.url))];
     const child = resourceLimiterAvailable
-      ? spawn('prlimit', ['--as=1073741824', '--cpu=10', '--', process.execPath, ...args], { stdio: ['pipe', 'pipe', 'pipe'] })
-      : spawn(process.execPath, args, { stdio: ['pipe', 'pipe', 'pipe'] });
+      ? spawn('prlimit', ['--as=1073741824', '--cpu=10', '--', process.execPath, ...args], { stdio: ['pipe', 'pipe', 'pipe'], env: parserEnvironment })
+      : spawn(process.execPath, args, { stdio: ['pipe', 'pipe', 'pipe'], env: parserEnvironment });
     let settled = false, output = '';
     const finish = (error, value) => {
       if (settled) return;
@@ -209,10 +277,57 @@ const server = http.createServer(async (request, response) => {
   try {
     if (request.url === '/api/health' && request.method === 'GET') return json(200, { ok: true });
     if (request.url === '/api/status' && request.method === 'GET') {
-      return json(200, { liveEnabled: enabled, configured: Boolean(process.env.DEEPSEEK_API_KEY), providerEndpoint: 'https://api.deepseek.com/chat/completions', model, pdfEnabled, maxPdfBytes, workbookEnabled, maxWorkbookBytes, maxTextLength, privacyMode: 'synthetic-or-deidentified-only' });
+      return json(200, { ...settingsStatus(request), pdfEnabled, maxPdfBytes, workbookEnabled, maxWorkbookBytes, maxTextLength, privacyMode: 'synthetic-or-deidentified-only' });
+    }
+    if (request.url === '/api/login' && request.method === 'POST') {
+      verifyOrigin(request);
+      if (!request.headers.origin) throw new RequestError(403, 'ORIGIN_REJECTED', 'A same-origin browser request is required.');
+      if (!auth.secure && !auth.localTransportAllowed) throw new RequestError(403, 'HTTPS_REQUIRED', 'Operator sign-in requires HTTPS outside loopback development.');
+      const body = await readJson(request);
+      const result = await auth.login(body.password);
+      if (result.error) throw new RequestError(result.error === 'LOGIN_RATE_LIMITED' ? 429 : result.error === 'OPERATOR_SETUP_REQUIRED' ? 503 : 401, result.error, result.error === 'LOGIN_RATE_LIMITED' ? 'Too many sign-in attempts. Wait a minute before retrying.' : 'Operator sign-in failed. Check the password or server setup.');
+      response.setHeader('Set-Cookie', result.cookie);
+      return json(200, { authenticated: true, csrfToken: result.csrfToken });
+    }
+    if (request.url === '/api/logout' && request.method === 'POST') {
+      verifyOrigin(request);
+      const session = requireSession(request);
+      await readJson(request);
+      response.setHeader('Set-Cookie', auth.logout(session));
+      return json(200, { authenticated: false });
+    }
+    if (request.url === '/api/settings' && request.method === 'GET') {
+      requireSession(request, false);
+      return json(200, settingsStatus(request));
+    }
+    if (request.url === '/api/settings' && request.method === 'POST') {
+      verifyOrigin(request);
+      requireSecureSettings(request);
+      const body = await readJson(request);
+      if (typeof body.enableLive !== 'boolean' || Object.keys(body).some(key => !['apiKey', 'enableLive'].includes(key)) ||
+          (body.apiKey !== undefined && (typeof body.apiKey !== 'string' || !/^[A-Za-z0-9_.-]{16,256}$/u.test(body.apiKey)))) {
+        throw new RequestError(400, 'INVALID_SETTINGS', 'Enter a valid API key and an explicit live-extraction preference.');
+      }
+      if (body.enableLive && !body.apiKey && !apiKey) throw new RequestError(400, 'API_KEY_REQUIRED', 'Configure an API key before enabling live extraction.');
+      if (body.apiKey) { apiKey = body.apiKey; connectionVerifiedAt = null; }
+      enabled = body.enableLive && Boolean(apiKey);
+      configurationRevision++;
+      return json(200, settingsStatus(request));
+    }
+    if (request.url === '/api/settings/test' && request.method === 'POST') {
+      verifyOrigin(request);
+      requireSecureSettings(request);
+      await readJson(request);
+      if (!apiKey) throw new RequestError(400, 'API_KEY_REQUIRED', 'Configure an API key before testing the connection.');
+      if (activeConnectionTests) throw new RequestError(429, 'BUSY', 'A connection check is already running.');
+      activeConnectionTests++;
+      try { return json(200, await testProviderConnection(AbortSignal.any([cancel.signal, AbortSignal.timeout(15000)]))); }
+      catch (error) { if (error instanceof RequestError) throw error; throw new RequestError(502, 'CONNECTION_FAILED', 'Connection verification failed. No chat completion was tested.'); }
+      finally { activeConnectionTests--; }
     }
     if (request.url === '/api/document' && request.method === 'POST') {
       verifyOrigin(request);
+      requireSession(request);
       if (!pdfEnabled) throw new RequestError(503, 'PDF_UNAVAILABLE', 'Local PDF text extraction is unavailable');
       if (request.headers['x-document-consent'] !== 'synthetic-or-deidentified') throw new RequestError(400, 'DOCUMENT_CONSENT_REQUIRED', 'Confirm this document is synthetic or de-identified');
       if ((request.headers['content-type'] || '').split(';')[0].trim().toLowerCase() !== 'application/pdf') throw new RequestError(415, 'UNSUPPORTED_MEDIA_TYPE', 'Use application/pdf');
@@ -227,6 +342,7 @@ const server = http.createServer(async (request, response) => {
     }
     if (request.url === '/api/workbook' && request.method === 'POST') {
       verifyOrigin(request);
+      requireSession(request);
       if (!workbookEnabled) throw new RequestError(503, 'WORKBOOK_UNAVAILABLE', 'Local Excel preview is unavailable. Use CSV instead.');
       if (request.headers['x-document-consent'] !== 'synthetic-or-deidentified') throw new RequestError(400, 'DOCUMENT_CONSENT_REQUIRED', 'Confirm this workbook is synthetic or de-identified');
       const mime = (request.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
@@ -239,8 +355,9 @@ const server = http.createServer(async (request, response) => {
       } finally { activeWorkbookExtractions--; }
     }
     if (request.url === '/api/extract' && request.method === 'POST') {
-      if (!enabled) throw new RequestError(503, 'LIVE_DISABLED', 'Live AI is disabled. Configure the server API connection before using AI extraction.');
       verifyOrigin(request);
+      requireSession(request);
+      if (!enabled) throw new RequestError(503, 'LIVE_DISABLED', 'Live AI is disabled. Configure the server API connection before using AI extraction.');
       const body = await readJson(request);
       validateInput(body);
       if (activeExtractions >= 2) throw new RequestError(429, 'BUSY', 'Extraction is busy. Try again shortly.');
@@ -253,7 +370,7 @@ const server = http.createServer(async (request, response) => {
         throw new RequestError(502, 'EXTRACTION_FAILED', 'Extraction failed. No suggestions were applied.');
       } finally { activeExtractions--; }
     }
-    const routes = { '/': 'index.html', '/app.js': 'app.js', '/core.js': 'core.js', '/style.css': 'style.css', '/logo.svg': 'logo.svg' };
+    const routes = { '/': 'index.html', '/app.js': 'app.js', '/core.js': 'core.js', '/agency-guidance.js': 'agency-guidance.js', '/style.css': 'style.css', '/logo.svg': 'logo.svg' };
     if (request.method !== 'GET' || !Object.hasOwn(routes, request.url)) { response.writeHead(404); return response.end('Not found'); }
     const file = routes[request.url];
     response.setHeader('Content-Type', file.endsWith('.js') ? 'text/javascript; charset=utf-8' : file.endsWith('.css') ? 'text/css; charset=utf-8' : file.endsWith('.svg') ? 'image/svg+xml' : 'text/html; charset=utf-8');
