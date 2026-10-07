@@ -2,7 +2,7 @@
 
 ## Claim and status
 
-- Status: **Visual snapshot user-story pass reported; combined trial/storage and contrast/wrapping fixes await exact build**
+- Status: **Visual evidence reported; SQLite baseline 146/146; combined browser journey and LC-07 admin-name contract pending**
 - Assigned executor: **Local Codex**, started by the project owner
 - Claiming account/person: Local Codex, authorized by owner ledondev520
 - Base commit: `826202ee7da2b072d544c716cba19ac9cf38d6bf`; synchronized documentation from `6678aeaa57c666fcf77b2700653ed391c2034f0d` (runtime unchanged)
