@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Settings } from 'lucide-react';
 import { ApplicationShell } from '@/components/application-shell';
 import { FeatureBoundary } from '@/components/feature-boundary';
@@ -23,7 +23,7 @@ function PageUnavailable({ lang }) {
 }
 
 function AccountWorkspace({ lang, view, navigate }) {
-  const { status } = useSession();
+  const { status, journey } = useSession();
   const [recoveredWorkspace] = useState(() => draftVault.read({ userId: status.userId, workspaceKey: 'active', feature: 'workspace' }));
   const [workspaceKey, setWorkspaceKey] = useState(() => recoveredWorkspace?.workspaceKey || crypto.randomUUID());
   const [caseId, setCaseId] = useState(() => recoveredWorkspace?.caseId || null);
@@ -35,6 +35,12 @@ function AccountWorkspace({ lang, view, navigate }) {
   const caseIdRef = useRef(caseId);
   userIdRef.current = status.userId;
   caseIdRef.current = caseId;
+  useLayoutEffect(() => {
+    try {
+      journey.setScope({ workspaceKey, caseId });
+      journey.visit(view);
+    } catch { /* Observability must not block navigation or private workspace cleanup. */ }
+  }, [journey, workspaceKey, caseId, view]);
   useEffect(() => { setVisited(previous => previous.has(view) ? previous : new Set([...previous, view])); }, [view]);
   useEffect(() => {
     draftVault.write({ userId: status.userId, workspaceKey: 'active', feature: 'workspace' }, { caseId, view, workspaceKey });

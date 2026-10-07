@@ -13,7 +13,8 @@ export function IntakePage({
 }) {
   const {
     status,
-    api
+    api,
+    journey
   } = useSession();
   if (!status?.authenticated || !status.userId) return <p role="status" className="py-12 text-center text-muted-foreground">{wordsFor(lang).signIn}</p>;
   return <IntakeWorkspace key={status.userId} {...{
@@ -26,6 +27,7 @@ export function IntakePage({
     onOpenDocuments,
     active,
     api,
-    status
+    status,
+    journey
   }} />;
 }

@@ -63,3 +63,11 @@ test('Chinese and English copy have matching keys and unknown exceptions never b
   assert.equal(chatErrorText({code:'CHAT_SAVE_FAILED',message:'private stack'},'en'),chatCopy.en.saveError);
   assert.equal(chatErrorText({code:'UNRECOGNIZED',message:'private stack'},'en'),chatCopy.en.generic);
 });
+
+
+test('chat file guidance names the actual materials route and source notes do not promise persistence',()=>{
+  assert.match(chatCopy.zh.documents,/材料与事实/u);assert.match(chatCopy.zh.unsupportedFile,/材料与事实/u);
+  assert.match(chatCopy.en.documents,/Materials & facts/u);assert.match(chatCopy.en.unsupportedFile,/Materials & facts/u);
+  assert.match(chatCopy.zh.librarySourcesNote,/是否已保存请以回复状态为准/u);
+  assert.match(chatCopy.en.librarySourcesNote,/check its save status/u);
+});

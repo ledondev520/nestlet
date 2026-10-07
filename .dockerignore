@@ -34,3 +34,5 @@ public/next/
 !scripts/private-data-operations.js
 !Dockerfile
 !.dockerignore
+
+!agent-library-tools.js

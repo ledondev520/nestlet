@@ -175,3 +175,55 @@ test('new handoff merges with existing unprocessed files rather than replacing t
 test('failed initial canonical read stays retryable and cannot overwrite a case from an empty buffer', async () => {
   const api = apiFor(({ path }) => path === '/api/cases/' + A ? Promise.reject({ code: 'NETWORK_ERROR' }) : undefined); await render(api, { caseId: A }); assert.match(text(), /Cannot connect/); assert.equal(button('Save case').disabled, true); assert.equal(labeled('Case source text').disabled, true); assert.ok(button('Read again'));
 });
+
+function actionRecorder() {
+  const steps = [], actions = [];
+  return {steps, actions, journey: {
+    activateStep: event => steps.push(event),
+    beginAction(event, options = {}) {const entry = {event, options, outcomes:[]}; actions.push(entry); return {finish: outcome => entry.outcomes.push(outcome)};}
+  }};
+}
+test('development action observations begin only on focused controls and actual file/review actions', async () => {
+  const recorder = actionRecorder(), api = apiFor(); await render(api, {journey:recorder.journey});
+  assert.deepEqual(recorder.steps, []); assert.deepEqual(recorder.actions, []);
+  await React.act(async () => host.querySelector('input[type=file]').focus()); assert.equal(recorder.steps.at(-1), 'input.file');
+  await choose([new File(['PRIVATE BODY NOT TELEMETRY'], 'Private filename.txt')]);
+  assert.equal(recorder.actions.length, 0);
+  await click(button('Save privately and process'));
+  assert.deepEqual(recorder.actions.map(item => item.event), ['input.file']);
+  assert.deepEqual(recorder.actions[0].outcomes, [{ok:true,cancelled:false}]);
+  assert.deepEqual(Object.keys(recorder.actions[0].options), ['signal']);
+  await change(field('property'), 'Private reviewed address'); assert.equal(recorder.actions.length, 1);
+  await React.act(async () => field('property').focus()); assert.equal(recorder.steps.at(-1), 'review.confirm');
+  await click(host.querySelector('[id$="-property-confirm"]'));
+  assert.equal(recorder.actions.at(-1).event, 'review.confirm'); assert.deepEqual(recorder.actions.at(-1).outcomes, [{ok:true}]);
+  await click(host.querySelector('[id$="-property-confirm"]')); assert.equal(recorder.actions.length, 2, 'unchecking is not a completed confirmation');
+  await React.act(async () => labeled('Case source text').focus()); assert.equal(recorder.steps.at(-1), null);
+  assert.doesNotMatch(JSON.stringify(recorder.actions), /PRIVATE BODY|Private filename|Private reviewed address/);
+});
+test('development file observation counts the full workbook once and mapping only when explicitly applied', async () => {
+  const recorder = actionRecorder(); const workbook = {sheets:[{name:'Private worksheet',hidden:false,rows:[['Property'],['Private value']],blockedCells:[],truncated:false}]};
+  const api = apiFor(({path}) => path === '/api/workbook' ? workbook : undefined); await render(api, {journey:recorder.journey});
+  await choose([new File(['controlled workbook transport fixture'], 'Private workbook.xlsx')]); await click(button('Save privately and process'));
+  assert.deepEqual(recorder.actions.map(item => item.event), ['input.file']);
+  assert.equal(api.calls.find(call => call.path === '/api/workbook').telemetry, false, 'parser request suppresses duplicate API observation');
+  const mapping = labeled('Property address · Mapped column'); await React.act(async () => mapping.focus());
+  assert.equal(recorder.steps.at(-1), 'input.mapping'); await change(mapping, '0'); await click(button('Append this row and review facts'));
+  assert.deepEqual(recorder.actions.map(item => item.event), ['input.file','input.mapping']);
+  assert.equal(recorder.actions[1].outcomes[0].ok, true);
+  assert.doesNotMatch(JSON.stringify(recorder.actions), /Private worksheet|Private value|Private workbook/);
+});
+test('development failed and hidden file work never claims a successful active observation', async () => {
+  const recorder = actionRecorder(); const api = apiFor(({method}) => method === 'UPLOAD' ? Promise.reject({code:'PDF_ENCRYPTED'}) : undefined);
+  await render(api, {journey:recorder.journey}); await choose([new File(['Controlled invalid PDF'], 'Private.pdf')]); await click(button('Save privately and process'));
+  assert.deepEqual(recorder.actions[0].outcomes, [{ok:false,cancelled:false}]);
+  await render(api, {journey:recorder.journey,active:false}); await click(button('Save privately and process'));
+  assert.equal(recorder.actions.length, 1, 'kept-mounted inactive work does not start a new active observation');
+});
+test('development observer exceptions never change successful material or review behavior', async () => {
+  const journey = {activateStep(){throw new Error('Observer failure');},beginAction(){throw new Error('Observer failure');}};
+  const api = apiFor(); await render(api, {journey}); await React.act(async () => host.querySelector('input[type=file]').focus());
+  await choose([new File(['Private body'], 'Private.txt')]); await click(button('Save privately and process'));
+  assert.match(labeled('Case source text').value, /Synthetic Lane/);
+  await click(host.querySelector('[id$="-property-confirm"]')); assert.equal(host.querySelector('[id$="-property-confirm"]').getAttribute('data-state'),'checked');
+});
