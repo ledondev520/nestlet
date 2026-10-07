@@ -21,16 +21,10 @@ export async function english(page) {
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
 }
 
-export async function register(page, username) {
-  await english(page);
-  await page.getByRole('group', { name: 'Account', exact: true }).getByRole('button', { name: 'Register', exact: true }).click();
-  await page.getByLabel('Username', { exact: true }).fill(username);
-  await page.getByLabel('Password', { exact: true }).fill(PASSWORD);
-  await page.getByLabel('Confirm password', { exact: true }).fill(PASSWORD);
-  const response = page.waitForResponse(value => new URL(value.url()).pathname === '/api/register' && value.request().method() === 'POST');
-  await page.locator('form').getByRole('button', { name: 'Register', exact: true }).click();
-  expect((await response).status()).toBe(201);
-  await expect(page.getByRole('navigation', { name: 'Workspace navigation' })).toBeVisible();
+// Existing synthetic users were seeded privately by the fixture. This helper
+// exercises legacy sign-in only; new email enrollment has its own browser suite.
+export async function legacyLogin(page, username) {
+  await login(page, username);
   const status = await (await page.request.get('/api/status')).json();
   expect(status).toMatchObject({ authenticated: true, username, role: 'trial', canManageSettings: false, liveEnabled: false });
   return status;
@@ -38,7 +32,7 @@ export async function register(page, username) {
 
 export async function login(page, username) {
   await english(page);
-  await page.getByLabel('Username', { exact: true }).fill(username);
+  await page.getByLabel('Email or existing username', { exact: true }).fill(username);
   await page.getByLabel('Password', { exact: true }).fill(PASSWORD);
   const response = page.waitForResponse(value => new URL(value.url()).pathname === '/api/login' && value.request().method() === 'POST');
   await page.locator('form').getByRole('button', { name: 'Sign in', exact: true }).click();

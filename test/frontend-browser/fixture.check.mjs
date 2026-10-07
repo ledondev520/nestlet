@@ -39,11 +39,11 @@ try {
     child.stdout.on('data', value => { if (output.includes('Nestlet available')) { clearTimeout(timer); resolve(); } });
   });
   const status = await (await call('/api/status')).json();
-  assert.equal(status.registrationEnabled, true); assert.equal(status.liveEnabled, false);
+  assert.equal(status.registrationEnabled, false); assert.equal(status.liveEnabled, false);
   const entry = await call('/next/'); assert.equal(entry.status, 200);
   assert.match(entry.headers.get('content-security-policy'), /script-src 'self'/);
   assert.doesNotMatch(entry.headers.get('content-security-policy'), /unsafe-inline/);
-  await session('/api/register', 'fixture-check-a');
+  await session('/api/login', 'fixture-check-a');
   const bytes = Buffer.from('Synthetic standalone HTTP fixture\r\nExact original bytes.\r\n');
   const uploaded = await call('/api/assets', { method: 'POST', raw: bytes, headers: { 'Content-Type': 'text/plain', 'X-Asset-Filename': 'synthetic-fixture.txt', 'X-Asset-Consent': 'persist-private' } });
   assert.equal(uploaded.status, 201);
@@ -62,7 +62,7 @@ try {
   assert.equal(await (await call(`/api/artifacts/${artifact.id}/download`)).text(), artifact.content);
   assert.equal((await call('/api/logout', { method: 'POST', body: {} })).status, 200);
   assert.equal((await call(`/api/cases/${record.id}`)).status, 401);
-  await session('/api/register', 'fixture-check-b');
+  await session('/api/login', 'fixture-check-b');
   for (const path of [`/api/cases/${record.id}`, `/api/assets/${asset.id}/download`, `/api/artifacts/${artifact.id}/download`]) assert.equal((await call(path)).status, 404);
   assert.equal((await call('/api/logout', { method: 'POST', body: {} })).status, 200);
   await session('/api/login', 'fixture-check-a');
@@ -70,9 +70,12 @@ try {
   assert.equal(await (await call(`/api/artifacts/${artifact.id}/download`)).text(), artifact.content);
   assert.equal(output.includes('Case26'), false);
   assert.equal(output.includes('Synthetic fixture case'), false);
-  console.log('PASS: real HTTP fixture registration, original bytes, case storage, readiness, deterministic final, logout, six-character login, and user isolation. Browser and live provider NOT RUN.');
+  console.log('PASS: real HTTP private legacy-seeded fixture login, original bytes, case storage, readiness, deterministic final, logout, six-character login, and user isolation. Browser and live provider NOT RUN.');
 } finally {
   if (child.exitCode === null && child.signalCode === null) {
     const exited = new Promise(resolve => child.once('exit', resolve)); child.kill('SIGTERM'); await exited;
   }
 }
+
+// The same official browser CI entry also validates the independent email fixture.
+await import('./email-fixture.check.mjs');

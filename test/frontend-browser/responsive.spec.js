@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { ENTRY_PATH, register, navigate, saveCase, openSavedCase, watchBrowser, noHorizontalOverflow, screenshot } from './support.js';
+import { ENTRY_PATH, legacyLogin, navigate, saveCase, openSavedCase, watchBrowser, noHorizontalOverflow, screenshot } from './support.js';
 
 for (const language of ['zh', 'en']) {
   test(`real account pages at 320 and 390 px in ${language}: layout, keyboard focus, navigation, strict CSP`, async ({ page }, testInfo) => {
@@ -10,7 +10,7 @@ for (const language of ['zh', 'en']) {
     await page.goto(ENTRY_PATH);
     await expect(page.locator('html')).toHaveAttribute('lang', 'zh-CN');
     await noHorizontalOverflow(page);
-    await register(page, `synthetic-mobile-${language}`);
+    await legacyLogin(page, `synthetic-mobile-${language}`);
     await saveCase(page, title, { review: true });
     await navigate(page, 'Customers');
     await expect(page.getByRole('button', { name: `Open saved case: ${title}`, exact: true })).toBeVisible();
