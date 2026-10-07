@@ -6,7 +6,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { documentCopy, documentErrorText } from '@/features/documents/copy';
 
 /** Read-only progress for this saved case; the existing editors own all writes. */
-export function ChatCaseWorkflow({ api, lang, caseId, userId, disabled, active = true, refreshKey, onOpenMaterials, onOpenDocuments }) {
+export function ChatCaseWorkflow({ api, lang, caseId, userId, disabled, active = true, refreshKey, onOpenMaterials, onOpenDocuments, onSavedTitle }) {
   const en = lang === 'en', words = documentCopy(lang);
   const [snapshot, setSnapshot] = useState(null), [loading, setLoading] = useState(false), [error, setError] = useState(null), [revision, setRevision] = useState(0);
   const scope = `${userId}:${caseId}:${lang}`, currentScope = useRef(scope); currentScope.current = scope;
@@ -19,14 +19,16 @@ export function ChatCaseWorkflow({ api, lang, caseId, userId, disabled, active =
     (async () => {
       const result = await api.get(`/api/cases/${caseId}`, { signal });
       if (!current()) return;
-      if (result.case?.id !== caseId || !Number.isSafeInteger(result.case.version) || !Array.isArray(result.case.fields)) throw { code: 'INVALID_RESPONSE' };
+      if (result.case?.id !== caseId || !Number.isSafeInteger(result.case.version) || !Array.isArray(result.case.fields) || typeof result.case.title !== 'string' || result.case.title.length > 120) throw { code: 'INVALID_RESPONSE' };
+      // Reuse this scoped canonical read; never reload the conversation or composer.
+      onSavedTitle?.(result.case.title);
       const readiness = await api.get(`/api/cases/${caseId}/readiness?kind=${encodeURIComponent(result.case.draftType)}&locale=${en ? 'en' : 'zh'}`, { signal });
       if (!current()) return;
       if (typeof readiness.ready !== 'boolean' || !Array.isArray(readiness.missing) || readiness.missing.some(item => typeof item.question !== 'string' || !Object.hasOwn(words.fields, item.key))) throw { code: 'INVALID_RESPONSE' };
       setSnapshot({ scope: captured, record: result.case, readiness });
     })().catch(failure => { if (current()) setError(failure); }).finally(() => { if (current()) setLoading(false); });
     return () => controller.abort();
-  }, [api, scope, active, refreshKey, revision]);
+  }, [api, scope, active, refreshKey, revision, onSavedTitle]);
   const saved = snapshot?.scope === scope ? snapshot : null;
   const confirmed = saved ? [...saved.record.fields, ...Object.entries(saved.record.documentContext || {}).map(([key, detail]) => ({ ...detail, key }))].filter(field => field.confirmed && !field.conflict && (field.value || field.notApplicable)) : [];
   const resolved = (saved?.record.caseIssues || []).filter(issue => issue.status === 'resolved');
