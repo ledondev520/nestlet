@@ -2,12 +2,15 @@
 
 ## Claim and status
 
-- Status: **Second-round acceptance reported — auth/model fixes passed; live/HTTPS pending; real idle expiry passed**
+- Status: **Follow-up: LC-04/05/06 verified resolved; live/HTTPS and future feature acceptance remain separate**
 - Assigned executor: **Local Codex**, started by the project owner
 - Claiming account/person: Local Codex, authorized by owner ledondev520
 - Base commit: `826202ee7da2b072d544c716cba19ac9cf38d6bf`; synchronized documentation from `6678aeaa57c666fcf77b2700653ed391c2034f0d` (runtime unchanged)
-- Branch: `test/local-codex-acceptance`
-- PR URL: https://github.com/ledondev520/nestlet/pull/2
+- Branch: `codex/acceptance-followup` (original `test/local-codex-acceptance` merged in PR #2)
+- PR URL: https://github.com/ledondev520/nestlet/pull/2 (merged)
+- Follow-up PR: https://github.com/ledondev520/nestlet/pull/7
+- LC-06 fixed-head verification: `55548513d6a5d66c8920d0fa1882ca0065bc3128`, default macOS suite 103/103 and independent HTTP 5/5
+- Follow-up runtime: `8715b0d78a8cff0b5ebbbb5ea6db0bacd8137342`, identical tree to merged main `b431ea59405cbbf9ab6ec9945010f66f655b1781`
 - Second-round runtime: `8b42962e55305e3cc70b7c20ce5d7e4d74ed13c7`; Node 24 + actual Poppler/browser
 - Coordination issue: https://github.com/ledondev520/nestlet/issues/1
 - Evidence: [local acceptance report](../local-acceptance.md); second-round PDF/authentication/model checks passed; live provider and trusted HTTPS key-entry remain not run; real idle expiry passed
