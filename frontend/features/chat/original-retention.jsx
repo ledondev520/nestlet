@@ -33,6 +33,14 @@ export function ChatOriginalRetention({ api, userId, authenticated, caseId = nul
     }
   }, [userId, authenticated, caseId]);
 
+  useEffect(() => {
+    const visible = new Set(images.map(image => image.id));
+    setRecords(previous => {
+      const entries = Object.fromEntries(Object.entries(previous.entries).filter(([id]) => visible.has(id)));
+      return Object.keys(entries).length === Object.keys(previous.entries).length ? previous : { ...previous, entries };
+    });
+  }, [images]);
+
   const scopeVisible = authenticated && records.userId === userId && (!records.caseId || records.caseId === caseId);
   const entries = scopeVisible ? records.entries : {};
   function current(token) {
