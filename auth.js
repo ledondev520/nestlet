@@ -6,12 +6,30 @@ const COOKIE = 'nestlet_session';
 const IDLE_MS = 30 * 60 * 1000;
 const ABSOLUTE_MS = 8 * 60 * 60 * 1000;
 
-export function createOperatorAuth({ passwordHash = '', publicOrigin = '', host = '127.0.0.1', findTrialUser = () => null, findTrialUserById = () => null, createTrialUser = null } = {}) {
+function normalizeLoginUsername(value, allowEmpty = false) {
+  // Check ASCII before case folding: Unicode characters such as the Kelvin sign
+  // must never normalize into another account's otherwise-valid ASCII name.
+  if (typeof value !== 'string' || value.length > 128 || /[^\x20-\x7e]/u.test(value)) return null;
+  const normalized = value.trim().toLowerCase();
+  if (!normalized && allowEmpty) return 'owner';
+  return /^[a-z0-9][a-z0-9_.-]{2,63}$/u.test(normalized) ? normalized : null;
+}
+
+/** An optional login alias, never a replacement for the immutable owner identity. */
+export const normalizeOperatorUsername = (value = 'owner') => normalizeLoginUsername(value, true);
+
+export function createOperatorAuth({ passwordHash = '', operatorUsername = 'owner', publicOrigin = '', host = '127.0.0.1', findTrialUser = () => null, findTrialUserById = () => null, createTrialUser = null } = {}) {
   const fingerprint = value => createHash('sha256').update(value).digest('hex');
   const sessions = new Map();
   const attempts = [];
   const match = /^scrypt\$([A-Za-z0-9_-]{22})\$([A-Za-z0-9_-]{43})$/u.exec(passwordHash);
-  const configured = Boolean(match);
+  const operatorLogin = normalizeOperatorUsername(operatorUsername);
+  const aliasCollision = () => Boolean(operatorLogin && operatorLogin !== 'owner' && findTrialUser(operatorLogin));
+  const isConfigured = () => {
+    const valid = Boolean(match && operatorLogin && !aliasCollision());
+    if (!valid) sessions.clear();
+    return valid;
+  };
   const secure = /^https:\/\//u.test(publicOrigin);
   const cookie = (token, clear = false) => `${COOKIE}=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${clear ? 0 : ABSOLUTE_MS / 1000}${secure ? '; Secure' : ''}`;
   const prune = () => {
@@ -19,6 +37,7 @@ export function createOperatorAuth({ passwordHash = '', publicOrigin = '', host 
     for (const [id, session] of sessions) if (now - session.lastUsed > IDLE_MS || now - session.created > ABSOLUTE_MS) sessions.delete(id);
   };
   const getSession = request => {
+    if (!isConfigured()) return null;
     prune();
     const token = (request.headers.cookie || '').split(';').map(part => part.trim()).find(part => part.startsWith(COOKIE + '='))?.slice(COOKIE.length + 1);
     if (!token || !/^[A-Za-z0-9_-]{43}$/u.test(token)) return null;
@@ -37,6 +56,9 @@ export function createOperatorAuth({ passwordHash = '', publicOrigin = '', host 
       timingSafeEqual(Buffer.from(token), Buffer.from(session.csrfToken)));
   };
   const issueSession = (target, now = Date.now()) => {
+    // A private account helper could create a collision during an asynchronous KDF.
+    // Never promote, overwrite, or sign in as that ordinary identity.
+    if (!isConfigured()) return { error: 'OPERATOR_SETUP_REQUIRED' };
     prune();
     const ownSessions = [...sessions].filter(([, session]) => session.userId === target.id);
     while (ownSessions.length >= 5) sessions.delete(ownSessions.shift()[0]);
@@ -48,20 +70,23 @@ export function createOperatorAuth({ passwordHash = '', publicOrigin = '', host 
     return { csrfToken, cookie: cookie(token), userId: target.id, username: target.username, role: target.role };
   };
   return {
-    configured, secure, localTransportAllowed: !publicOrigin && ['127.0.0.1', 'localhost', '::1'].includes(host), setupInvalid: Boolean(passwordHash && !configured),
+    get configured() { return isConfigured(); },
+    get setupInvalid() { return Boolean((passwordHash && !match) || !operatorLogin || aliasCollision()); },
+    secure, localTransportAllowed: !publicOrigin && ['127.0.0.1', 'localhost', '::1'].includes(host),
     getSession, csrfValid,
     async login(password, username = '') {
-      if (!configured) return { error: 'OPERATOR_SETUP_REQUIRED' };
+      if (!isConfigured()) return { error: 'OPERATOR_SETUP_REQUIRED' };
       const now = Date.now();
       while (attempts.length && now - attempts[0] > 60000) attempts.shift();
       if (attempts.length >= 10) return { error: 'LOGIN_RATE_LIMITED' };
       attempts.push(now);
-      if (typeof password !== 'string' || password.length < 12 || password.length > 256 || typeof username !== 'string' || username.length > 64) return { error: 'INVALID_CREDENTIALS' };
-      const normalizedUsername = username.trim().toLowerCase() || 'owner';
-      const identity = normalizedUsername === 'owner'
+      const normalizedUsername = normalizeLoginUsername(username, true);
+      if (typeof password !== 'string' || password.length < 6 || password.length > 256 || !normalizedUsername) return { error: 'INVALID_CREDENTIALS' };
+      const ownerLogin = normalizedUsername === 'owner' || normalizedUsername === operatorLogin;
+      const identity = ownerLogin
         ? { id: 'owner', username: 'owner', role: 'owner', passwordHash }
         : findTrialUser(normalizedUsername);
-      const target = identity?.role === 'trial' || (normalizedUsername === 'owner' && identity?.role === 'owner' && identity.id === 'owner') ? identity : null;
+      const target = (identity?.role === 'trial' && identity.id !== 'owner') || (ownerLogin && identity?.role === 'owner' && identity.id === 'owner') ? identity : null;
       const targetMatch = target && /^scrypt\$([A-Za-z0-9_-]{22})\$([A-Za-z0-9_-]{43})$/u.exec(target.passwordHash || '');
       // Unknown identities still perform the same KDF before returning the generic failure.
       const comparison = targetMatch || match;
@@ -71,13 +96,15 @@ export function createOperatorAuth({ passwordHash = '', publicOrigin = '', host 
       return issueSession(target, now);
     },
     async register({ username, password, passwordConfirmation }) {
-      if (!configured || typeof createTrialUser !== 'function') return { error: 'OPERATOR_SETUP_REQUIRED' };
-      if (typeof username !== 'string' || !/^[a-z0-9][a-z0-9_.-]{2,63}$/u.test(username.trim().toLowerCase()) || username.trim().toLowerCase() === 'owner' ||
-          typeof password !== 'string' || password.length < 12 || password.length > 256 || /[\u0000-\u001f\u007f]/u.test(password) || password !== passwordConfirmation) return { error: 'REGISTRATION_INVALID' };
+      if (!isConfigured() || typeof createTrialUser !== 'function') return { error: 'OPERATOR_SETUP_REQUIRED' };
+      const normalizedUsername = normalizeLoginUsername(username);
+      if (!normalizedUsername || normalizedUsername === 'owner' || normalizedUsername === operatorLogin ||
+          typeof password !== 'string' || password.length < 6 || password.length > 256 || /[\u0000-\u001f\u007f]/u.test(password) || password !== passwordConfirmation) return { error: 'REGISTRATION_INVALID' };
       const salt = randomBytes(16);
       const key = await derive(password, salt, 32, { N: 16384, r: 8, p: 1, maxmem: 64 * 1024 * 1024 });
       const newHash = `scrypt$${salt.toString('base64url')}$${key.toString('base64url')}`;
-      const user = createTrialUser({ username: username.trim().toLowerCase(), passwordHash: newHash });
+      if (!isConfigured()) return { error: 'OPERATOR_SETUP_REQUIRED' };
+      const user = createTrialUser({ username: normalizedUsername, passwordHash: newHash });
       // The storage method is create-only and assigns trial itself; callers cannot choose a role.
       return issueSession({ id: user.id, username: user.username, role: 'trial', passwordHash: newHash });
     },

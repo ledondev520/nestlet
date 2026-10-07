@@ -35,7 +35,7 @@ export async function inspectTrialDatabase(target, username) {
 
 export async function setTrialUserPassword({ target, username, password, passwordConfirmation, confirmed, expectedIdentity }) {
   if (confirmed !== true) fail('Trial setup was not confirmed; no credential was changed.');
-  if (typeof password !== 'string' || password.length < 12 || password.length > 256 || /[\u0000-\u001f\u007f]/u.test(password)) fail('Use 12 to 256 password characters without control characters.');
+  if (typeof password !== 'string' || password.length < 6 || password.length > 256 || /[\u0000-\u001f\u007f]/u.test(password)) fail('Use 6 to 256 password characters without control characters.');
   if (password !== passwordConfirmation) fail('Passwords do not match; no credential was changed.');
   const normalized = normalizeUsername(username);
   if (typeof expectedIdentity !== 'string' || await verifyDatabasePath(target) !== expectedIdentity) fail('The database file changed; restart trial setup.');

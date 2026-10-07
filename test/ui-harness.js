@@ -11,12 +11,13 @@ export const deferred = () => {
 };
 
 /** DOM/event tests only. This is not a browser, layout engine, or screenshot source. */
-export async function openApp({ status = {}, fetchHandler } = {}) {
+export async function openApp({ status = {}, fetchHandler, bitmapHandler } = {}) {
   const dom = new JSDOM('<!doctype html><html lang="zh-CN"><body><div id="app"></div></body></html>', { url: 'http://nestlet.test/' });
   const { window } = dom;
   const saved = new Map();
   const urls = new Map();
   const downloads = [];
+  const revokedUrls = [];
   const clipboard = [];
   const requests = [];
   const confirmations = [];
@@ -35,14 +36,15 @@ export async function openApp({ status = {}, fetchHandler } = {}) {
   const originalCreate = URL.createObjectURL;
   const originalRevoke = URL.revokeObjectURL;
   URL.createObjectURL = blob => { const url = `blob:http://nestlet.test/${urls.size}`; urls.set(url, blob); return url; };
-  URL.revokeObjectURL = () => {};
+  URL.revokeObjectURL = url => { revokedUrls.push(url); };
+  if (bitmapHandler) set('createImageBitmap', bitmapHandler);
   set('window', window);
   set('document', window.document);
   set('navigator', { clipboard: { writeText: async text => { clipboard.push(text); } } });
   set('confirm', text => { confirmations.push(text); return answers.length ? answers.shift() : true; });
   set('fetch', async (url, options) => {
     requests.push({ url, options });
-    if (url === '/api/status') return { json: async () => ({ liveEnabled: false, pdfEnabled: false, ...status }) };
+    if (url === '/api/status') return { ok: true, json: async () => ({ liveEnabled: false, pdfEnabled: false, ...status }) };
     if (fetchHandler) return fetchHandler(url, options);
     throw new Error(`Unexpected test network request: ${url}`);
   });
@@ -65,7 +67,7 @@ export async function openApp({ status = {}, fetchHandler } = {}) {
     return element;
   };
   return {
-    window, document: window.document, downloads, clipboard, requests, confirmations, answers,
+    window, document: window.document, downloads, clipboard, requests, confirmations, answers, revokedUrls,
     get, close, flush: tick, get prints() { return prints; },
     click(id) { get(id).click(); },
     type(id, value) { const el = get(id); el.focus(); el.value = value; el.dispatchEvent(new window.Event('input', { bubbles: true })); },

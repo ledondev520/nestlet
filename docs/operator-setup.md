@@ -11,7 +11,7 @@ The deployment owner prepares an existing private `/opt/nestlet/shared/runtime.e
 From the checked-out release directory, the operator personally runs:
 
 ```sh
-npm run setup-operator -- /opt/nestlet/shared/runtime.env
+npm run setup-operator -- /opt/nestlet/shared/runtime.env [administrator-username]
 ```
 
 Use the file owner's account. If the runtime file belongs to root, use the corresponding privileged terminal or `sudo npm run setup-operator -- /opt/nestlet/shared/runtime.env`. Do not run this against the VPS on the user's behalf and do not ask them to send a password or hash through chat.
@@ -38,10 +38,12 @@ The displayed `/runtime/runtime.env` is the private host file `/opt/nestlet/shar
 
 This is an explicit user handoff: the operator enters both hidden password prompts and types the final confirmation. No assistant should enter, capture, or submit those values. The command neither restarts the application nor enables live AI. A separately approved Nestlet-only recreation is required after setup; `docker compose restart` alone does not reload environment-file values into an existing container.
 
+An optional final username argument sets the administrator login alias together with the password hash. Omit it to preserve the existing alias (default `owner`). In the Docker command, append the chosen username after `/runtime/runtime.env`. The user confirms both changes in the same private prompt; the internal owner identity and its saved cases do not change. The square brackets in the native command denote an optional argument and must not be typed literally.
+
 ## What the user does
 
 1. Check the displayed target path
-2. Enter a password of 12–256 characters; input is hidden
+2. Enter a password of 6–256 characters; input is hidden
 3. Enter the same password again
 4. Type `SET OPERATOR` to approve the final write
 5. Recreate the Nestlet container (or restart a directly hosted process) through the approved deployment workflow, then open the HTTPS site and sign in
@@ -50,7 +52,7 @@ After signing in, Settings can save the DeepSeek key in process memory. The user
 
 ## What the helper changes
 
-Only the `NESTLET_OPERATOR_PASSWORD_HASH` assignment is inserted or replaced. Unrelated keys, values, comments and line endings are preserved. The helper does not print the password, hash, file contents or API credential. It writes a private sibling temporary file, fsyncs it, rechecks that the original has not changed, and atomically renames it over the target.
+The `NESTLET_OPERATOR_PASSWORD_HASH` assignment is inserted or replaced, plus `NESTLET_OPERATOR_USERNAME` only when the optional alias is explicitly supplied. Unrelated keys, values, comments and line endings are preserved. The helper does not print the password, hash, file contents or API credential. It writes a private sibling temporary file, fsyncs it, rechecks that the original has not changed, and atomically renames it over the target.
 
 Wrong permissions/ownership, duplicate operator declarations, malformed encoding, multiline environment values, symlinks, hard links, unexpected filenames, unconfirmed input and mismatched passwords fail closed. Changes detected during the pre-write checks also stop setup. Do not run deployment/configuration writers concurrently: a same-owner writer can still race the final recheck and rename; this helper does not provide a shared lock protocol. The helper neither creates a missing runtime file nor changes insecure permissions automatically.
 

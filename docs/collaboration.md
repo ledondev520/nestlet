@@ -1,18 +1,21 @@
 # Collaboration contract
 
-The current external collaboration is the project owner and Local Codex. No other external assistant has an assignment. Each participant uses their own account and authorized environment; private conversations, credentials, browser sessions and implicit authority are not shared. The repository and reviewable issues/PRs carry shared project state.
+Current assignments follow [the delivery contract](current-delivery-contract.md), revision **2026-10-07-r5**. Kimi owns aesthetics, UI/UX design language and layout. Root engineering owns frontend/backend implementation and hardening under the owner’s09:06 clarification. Local Codex owns browser QA, email authentication, and deployment within the project owner's existing authorization. Root coordinates requirements, backend/document integration, review, and release evidence. Coco's assignment is cancelled; do not dispatch work to Coco.
+
+Each participant uses their own account and authorized environment; private conversations, credentials, browser sessions and implicit authority are not shared. The repository and reviewable Issues/PRs carry shared project state. Existing approvals apply only within their stated scope; a role or task record does not grant additional permissions.
 
 Repository: https://github.com/ledondev520/nestlet. Creation is verified; publication of any particular commit, collaborator access and branch protections require separate checks.
 
 ## Roles
 
-These are responsibility areas, not three accounts or claims that additional collaborators have joined. The owner assigns them explicitly. Local Codex initially owns only the independent acceptance task linked below.
+The delivery contract defines current product scope and lane boundaries. New assignments and changes in scope come through the project owner and root coordinator, with explicit file ownership before edits.
 
 | Role | Primary ownership | Required second review |
 | --- | --- | --- |
-| Product/domain owner | Scope, agency sources, sample answer keys, output wording, pilot | Technical owner checks implementation feasibility |
-| Technical owner | Server adapter, core logic, security and data boundaries | QA/reviewer checks behavior and release evidence |
-| UI/QA owner | Bilingual UI, interaction tests, accessibility, regression evidence | Product owner checks task fit and external wording |
+| Project owner | Product decisions, consequential approvals, merge/deploy authority | Root checks implementation feasibility and evidence |
+| Kimi | Visual design system, UI/UX, layouts and responsive design direction | Local Codex checks actual browser behavior; root checks contracts |
+| Local Codex | Email authentication, browser acceptance, exact-SHA QA, authorized deployment | Root reviews integration and release evidence; Kimi implements frontend changes |
+| Root | Requirements, frontend/backend/document integration, shadcn/ui migration, API/storage contracts, coordination and review | Local Codex verifies the combined build independently |
 
 One person is release integrator. The author does not solely approve their own sensitive-boundary change. Product decisions and merge/deploy permissions remain with the project owner.
 
@@ -26,11 +29,11 @@ One person is release integrator. The author does not solely approve their own s
 6. Re-run affected checks after rebasing or resolving conflicts; inspect the exact remote commit and CI before claiming publication
 7. Merge and deploy only with the project owner's authorization; never force-push shared main or overwrite another person's work
 
-The initial shared workspace uses explicit file ownership instead of concurrent branch switching. Move to independent clones/worktrees when real accounts and the repository exist. Do not switch the shared checkout's branch under another worker.
+Use explicit file ownership wherever a checkout is shared, and separate clones/worktrees for independent lanes. Do not switch the shared checkout's branch under another worker. Visual design decisions go to Kimi; frontend engineering fixes may be assigned to root engineers. Announce explicit file ownership before concurrent changes, preserve the agreed design, and never overwrite another lane. Agree email/backend interface changes before editing shared server or storage files.
 
 ## Handoff contents
 
-- Goal, branch/commit and exact files changed
+- Goal, task revision, acknowledged owner, branch/commit and exact files changed
 - Decision made and unresolved questions
 - Commands run, outcomes and what was mocked or unrun
 - Small code/data-flow walkthrough and screenshots where relevant
@@ -40,4 +43,8 @@ Use only sanitized examples. A public repo must exclude raw customer PRDs, scree
 
 ## Current task and claiming
 
-[Local Codex acceptance](tasks/local-codex-acceptance.md) is the only current external task. Before starting, record the claim in that task file on the task branch (owner, base commit and status), and tell the project owner. A task file is coordination data, not automatic inter-agent messaging. If another claim exists, pause and resolve ownership. The owner relays cross-environment updates; never assume another assistant received them.
+Read [the current delivery contract](current-delivery-contract.md) and the latest assigned Issue before starting. Earlier [Local Codex acceptance](tasks/local-codex-acceptance.md) and [Kimi frontend](tasks/kimi-k3-frontend-redesign.md) task files provide background; they do not override newer requirements or ownership. Record the claim with owner, current revision, file scope, base commit, and status, then acknowledge receipt to the coordinator. If another claim overlaps, pause and resolve ownership.
+
+A task file, label, or posted comment is coordination data, not proof another agent received or executed it. Require an explicit ACK for receipt and an immutable SHA plus observable checks for completion. Re-check current requirements before publishing a result and before authorized release; superseded work cannot certify the current revision.
+
+[The agent coordination plan](agent-coordination.md) describes a proposed 30–60 second local dispatcher using supported APIs, deduplication, and revision checks. It is preparation only: no new dispatcher, persistent access, credentials, or webhook is enabled by these documents. Continue the existing verified handoff path until a separately approved implementation is tested. The coordinator owns cross-environment follow-up and must not assume GitHub notifications wake local agents.

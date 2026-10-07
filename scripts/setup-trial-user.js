@@ -31,9 +31,9 @@ try {
   process.stderr.write(`Trial user: ${prepared.username}\nPrivate database: ${prepared.path}\n`);
   process.stderr.write(prepared.exists ? 'This rotates the trial password and revokes existing trial sessions. Existing cases remain with this user.\n' : 'This creates one named trial identity with access only to its own cases.\n');
   process.stderr.write('Choose a unique password. Do not reuse the owner password. No provider settings access is granted.\n');
-  const password = await prompt('Trial password (12–256 characters; hidden): ', true);
+  const password = await prompt('Trial password (6–256 characters; hidden): ', true);
   const passwordConfirmation = await prompt('Confirm trial password (hidden): ', true);
-  if (password !== passwordConfirmation || password.length < 12) throw new Error('Passwords must match and contain at least 12 characters.');
+  if (password !== passwordConfirmation || password.length < 6) throw new Error('Passwords must match and contain at least 6 characters.');
   const answer = await prompt('Type SET TRIAL USER to create or rotate only this trial credential: ');
   if (answer !== 'SET TRIAL USER') throw new Error('Cancelled; no credential was changed.');
   await setTrialUserPassword({ target: prepared.path, username: prepared.username, password, passwordConfirmation, confirmed: true, expectedIdentity: prepared.identity });

@@ -1,4 +1,5 @@
 import http from 'node:http';
+import { randomUUID } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { readFile } from 'node:fs/promises';
@@ -6,6 +7,10 @@ import { spawn, spawnSync } from 'node:child_process';
 import { validateSuggestions } from './public/core.js';
 import { createOperatorAuth } from './auth.js';
 import { openStorage, StorageError } from './storage.js';
+import { CaseRecordsError, isCaseRecordsPath, handleCaseRecords } from './case-records.js';
+import { DocumentContextError } from './document-context.js';
+import { createTelemetry, TelemetryError, telemetryId, telemetryPageOptions } from './telemetry.js';
+import { CHAT_LIMITS, CHAT_IMAGE_TYPES, ChatError, validateChatRequest, conversationHistory, chatProviderMessages, openChatStream } from './chat.js';
 
 const root = new URL('./public/', import.meta.url);
 let publicOrigin = '';
@@ -23,7 +28,8 @@ let enabled = process.env.ENABLE_LIVE_AI === 'true' && Boolean(apiKey);
 let connectionVerifiedAt = null;
 let configurationRevision = 0;
 const storage = openStorage({ filename: process.env.NESTLET_DB_PATH || fileURLToPath(new URL('./data/nestlet.sqlite', import.meta.url)) });
-const auth = createOperatorAuth({ passwordHash: process.env.NESTLET_OPERATOR_PASSWORD_HASH, publicOrigin, host: process.env.HOST,
+const telemetry = createTelemetry(storage);
+const auth = createOperatorAuth({ passwordHash: process.env.NESTLET_OPERATOR_PASSWORD_HASH, operatorUsername: process.env.NESTLET_OPERATOR_USERNAME, publicOrigin, host: process.env.HOST,
   findTrialUser: username => storage.findUserByUsername(username), findTrialUserById: id => storage.getUserById(id),
   createTrialUser: input => storage.createTrialUser(input) });
 const registrationAttempts = [];
@@ -43,6 +49,7 @@ try { createRequire(import.meta.url).resolve('xlsx'); workbookEnabled = true; } 
 const maxWorkbookBytes = 5 * 1024 * 1024;
 let activeWorkbookExtractions = 0;
 let activeExtractions = 0;
+let activeChatRequests = 0;
 let activePdfExtractions = 0;
 
 class RequestError extends Error {
@@ -93,6 +100,7 @@ function settingsStatus(request) {
     secureSettings: auth.secure && auth.configured && (!session || owner),
     role: session?.role || null, canManageSettings: owner, caseStorageEnabled: true,
     registrationEnabled: auth.configured && (auth.secure || auth.localTransportAllowed),
+    chatEnabled: true, chatImageTypes: CHAT_IMAGE_TYPES, chatLimits: CHAT_LIMITS,
     ...(session ? { csrfToken: session.csrfToken, userId: session.userId, username: session.username } : {}) };
   if (!owner) return common;
   // Only the authenticated owner sees provider-configuration metadata; never credential bytes.
@@ -292,20 +300,82 @@ function workbookPreview(bytes, signal) {
   });
 }
 
+async function writeChatEvent(response, signal, event, data) {
+  if (response.destroyed || signal.aborted) throw new ChatError('REQUEST_CANCELLED', 499);
+  if (response.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)) return;
+  await new Promise((resolve, reject) => {
+    const cleanup = () => { response.off('drain', drained); response.off('close', closed); signal.removeEventListener('abort', closed); };
+    const drained = () => { cleanup(); resolve(); };
+    const closed = () => { cleanup(); reject(new ChatError('REQUEST_CANCELLED', 499)); };
+    response.once('drain', drained); response.once('close', closed); signal.addEventListener('abort', closed, { once: true });
+    if (response.destroyed || signal.aborted) closed();
+  });
+}
+
+function telemetryOperation(request) {
+  const path = request.url;
+  if (request.method === 'POST' && path === '/api/document') return { event: 'request.pdf_parse' };
+  if (request.method === 'POST' && path === '/api/workbook') return { event: 'request.workbook_parse' };
+  if (request.method === 'POST' && path === '/api/chat') return { event: 'request.chat' };
+  if (request.method === 'POST' && path === '/api/extract') return { event: 'request.extract' };
+  if (path === '/api/cases' && request.method === 'POST') return { event: 'request.case_create' };
+  if (path === '/api/cases' && request.method === 'GET') return { event: 'request.case_list' };
+  const caseId = /^\/api\/cases\/([0-9a-f-]{36})$/u.exec(path)?.[1];
+  const events = { GET: 'request.case_read', PUT: 'request.case_update', DELETE: 'request.case_delete' };
+  return caseId && events[request.method] ? { event: events[request.method], caseId } : null;
+}
+
+const activeConversations = new Set();
 const server = http.createServer(async (request, response) => {
+  const requestStarted = performance.now();
+  const requestId = randomUUID();
+  response.setHeader('X-Request-Id', requestId);
   response.setHeader('X-Content-Type-Options', 'nosniff');
   response.setHeader('Cache-Control', 'no-store');
   response.setHeader('Referrer-Policy', 'no-referrer');
   response.setHeader('X-Frame-Options', 'DENY');
   response.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-  response.setHeader('Content-Security-Policy', "default-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'");
+  response.setHeader('Content-Security-Policy', "default-src 'self'; img-src 'self' blob:; style-src 'self'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'");
+  const operation = telemetryOperation(request);
+  let trackingSession = null, trackingWorkflow = null, trackingRecorded = false, trackingStatus = 'unavailable';
+  if (operation) {
+    try {
+      trackingSession = auth.getSession(request);
+      if (trackingSession) {
+        const started = telemetry.beginRequest(trackingSession, request.headers['x-workflow-id']);
+        trackingStatus = started.status; trackingWorkflow = started.workflow;
+        if (trackingWorkflow?.caseId && ((operation.caseId && operation.caseId !== trackingWorkflow.caseId) || operation.event === 'request.case_create')) {
+          trackingWorkflow = null; trackingStatus = 'ignored-invalid-workflow';
+        }
+        if (trackingWorkflow) {
+          response.setHeader('X-Workflow-Id', trackingWorkflow.workflowId);
+          if (operation.caseId && !trackingWorkflow.caseId) telemetry.bindRequest(trackingSession, trackingWorkflow.workflowId, operation.caseId);
+        }
+        response.setHeader('X-Telemetry-Status', trackingStatus);
+      }
+    } catch { if (trackingSession) response.setHeader('X-Telemetry-Status', 'unavailable'); }
+  }
+  const recordTracking = (status, code, outcome) => {
+    if (trackingRecorded || !trackingSession || !trackingWorkflow) return;
+    trackingRecorded = true;
+    const written = telemetry.recordRequest(trackingSession, trackingWorkflow.workflowId, {
+      event: operation.event, requestId, httpStatus: status, errorCode: code, outcome,
+      serverElapsedMs: Math.min(300000, Math.max(0, Math.round(performance.now() - requestStarted))),
+    });
+    if (!written) trackingStatus = 'unavailable';
+    if (!response.headersSent && !response.destroyed) response.setHeader('X-Telemetry-Status', trackingStatus);
+  };
+  const bindTrackingCase = caseId => {
+    if (trackingSession && trackingWorkflow && !telemetry.bindRequest(trackingSession, trackingWorkflow.workflowId, caseId)) trackingStatus = 'unavailable';
+  };
   const json = (status, data) => {
     if (response.destroyed || response.writableEnded) return;
+    recordTracking(status, data?.code);
     response.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
     response.end(JSON.stringify(data));
   };
   const cancel = new AbortController();
-  response.on('close', () => { if (!response.writableEnded) cancel.abort(); });
+  response.on('close', () => { if (!response.writableEnded) { cancel.abort(); recordTracking(response.headersSent ? response.statusCode : 499, 'REQUEST_CANCELLED', 'failure'); } });
   try {
     if (request.url === '/api/health' && request.method === 'GET') return json(200, { ok: true });
     if (request.url === '/api/status' && request.method === 'GET') {
@@ -375,6 +445,49 @@ const server = http.createServer(async (request, response) => {
       catch (error) { if (error instanceof RequestError) throw error; throw new RequestError(502, 'CONNECTION_FAILED', 'Connection verification failed. No chat completion was tested.'); }
       finally { activeConnectionTests--; }
     }
+    const telemetryUrl = new URL(request.url, 'http://localhost');
+    const workflowRoute = /^\/api\/workflows\/([0-9a-f-]{36})\/(bind|events)$/u.exec(telemetryUrl.pathname);
+    const caseEventsRoute = /^\/api\/cases\/([0-9a-f-]{36})\/events$/u.exec(telemetryUrl.pathname);
+    if (telemetryUrl.pathname === '/api/workflows' || workflowRoute || caseEventsRoute || telemetryUrl.pathname === '/api/admin/telemetry') {
+      const mutation = request.method !== 'GET';
+      if (mutation) verifyOrigin(request);
+      const session = requireSession(request, mutation);
+      try {
+        if (request.method === 'POST' && telemetryUrl.pathname === '/api/workflows') {
+          if (telemetryUrl.search) throw new TelemetryError('TELEMETRY_INVALID');
+          const body = await readJson(request, 4096);
+          if (Object.keys(body).length) throw new TelemetryError('TELEMETRY_INVALID');
+          const workflow = telemetry.createWorkflow(session);
+          return json(201, { workflowId: workflow.workflowId });
+        }
+        if (workflowRoute && request.method === 'POST') {
+          if (telemetryUrl.search) throw new TelemetryError('TELEMETRY_INVALID');
+          const body = await readJson(request, 4096);
+          const workflowId = telemetryId(workflowRoute[1]);
+          if (workflowRoute[2] === 'bind') {
+            if (Object.keys(body).length !== 1 || !Object.hasOwn(body, 'caseId')) throw new TelemetryError('TELEMETRY_INVALID');
+            return json(200, telemetry.bind(session, workflowId, body.caseId));
+          }
+          return json(201, telemetry.postEvents(session, workflowId, body));
+        }
+        if (request.method === 'GET' && workflowRoute?.[2] === 'events') return json(200, telemetry.page(session, { ...telemetryPageOptions(telemetryUrl.searchParams), workflowId: telemetryId(workflowRoute[1]) }));
+        if (request.method === 'GET' && caseEventsRoute) return json(200, telemetry.page(session, { ...telemetryPageOptions(telemetryUrl.searchParams), caseId: telemetryId(caseEventsRoute[1]) }));
+        if (request.method === 'GET' && telemetryUrl.pathname === '/api/admin/telemetry') {
+          if (session.role !== 'owner') throw new TelemetryError('OWNER_REQUIRED', 403);
+          return json(200, telemetry.page(session, telemetryPageOptions(telemetryUrl.searchParams, true), true));
+        }
+        throw new TelemetryError('TELEMETRY_INVALID');
+      } catch (error) {
+        if (error instanceof TelemetryError || error instanceof StorageError || error instanceof RequestError) throw error;
+        throw new TelemetryError('TELEMETRY_UNAVAILABLE', 503);
+      }
+    }
+    if (isCaseRecordsPath(telemetryUrl.pathname)) {
+      const mutation = request.method !== 'GET';
+      if (mutation) verifyOrigin(request);
+      const session = requireSession(request, mutation);
+      return await handleCaseRecords({request,response,url:telemetryUrl,session,storage,readJson,json});
+    }
     if (request.url === '/api/cases' || request.url.startsWith('/api/cases/')) {
       const mutation = request.method !== 'GET';
       if (mutation) verifyOrigin(request);
@@ -390,7 +503,12 @@ const server = http.createServer(async (request, response) => {
         let body;
         try { body = await readJson(request, 300000); }
         catch (error) { if (error.status === 413) throw new RequestError(413, 'CASE_TOO_LARGE', 'This case exceeds the saved-case size limit.'); throw error; }
-        if (request.method === 'POST') return json(201, { case: storage.createCase(session.userId, body) });
+        if (Object.hasOwn(body,'documentContext') || Object.hasOwn(body,'caseIssues')) throw new RequestError(400,'CASE_INVALID','Use the dedicated confirmation or issue update action.');
+        if (request.method === 'POST') {
+          const record = storage.createCase(session.userId, body);
+          bindTrackingCase(record.id);
+          return json(201, { case: record });
+        }
         const { expectedVersion, ...payload } = body;
         if (request.method === 'DELETE') {
           if (Object.keys(payload).length) throw new RequestError(400, 'CASE_INVALID', 'Only the expected case version is accepted for deletion.');
@@ -432,6 +550,84 @@ const server = http.createServer(async (request, response) => {
         return json(200, await workbookPreview(bytes, cancel.signal));
       } finally { activeWorkbookExtractions--; }
     }
+    if (request.url === '/api/chat' && request.method === 'POST') {
+      verifyOrigin(request);
+      if (!request.headers.origin) throw new RequestError(403, 'ORIGIN_REJECTED', 'A same-origin browser request is required.');
+      const session = requireSession(request);
+      if (activeChatRequests >= 2) throw new RequestError(429, 'BUSY', 'Chat input processing is busy. Try again shortly.');
+      activeChatRequests++;
+      try {
+      let body;
+      try { body = await readJson(request, CHAT_LIMITS.requestBytes); }
+      catch (error) { if (error.status === 413) throw new ChatError('CHAT_TOO_LARGE', 413); throw error; }
+      const input = validateChatRequest(body);
+      const conversation = input.conversationId ? storage.getConversation(session.userId,input.conversationId) : null;
+      if (input.conversationId && !conversation) throw new ChatError('CONVERSATION_NOT_FOUND',404);
+      if (conversation && input.caseId && input.caseId !== conversation.caseId) throw new ChatError('CONVERSATION_NOT_FOUND',404);
+      const caseId = conversation?.caseId || input.caseId;
+      const record = caseId ? storage.getCase(session.userId,caseId) : null;
+      if (caseId && !record) throw new RequestError(404, 'CASE_NOT_FOUND', 'The case was not found in your account.');
+      if (caseId && trackingWorkflow) {
+        if (trackingWorkflow.caseId && trackingWorkflow.caseId !== caseId) { trackingWorkflow = null; trackingStatus = 'ignored-invalid-workflow'; response.removeHeader('X-Workflow-Id'); response.setHeader('X-Telemetry-Status',trackingStatus); }
+        else bindTrackingCase(caseId);
+      }
+      const conversationKey = conversation ? `${session.userId}:${conversation.id}` : null;
+      if (conversationKey && activeConversations.has(conversationKey)) throw new ChatError('CHAT_CONVERSATION_BUSY',409);
+      const history = conversation ? storage.listMessages(session.userId,conversation.id) : [];
+      if (history.some(message => message.role === 'user' && message.clientMessageId === input.clientMessageId)) throw new ChatError('CHAT_TURN_EXISTS',409);
+      const currentMessage = input.messages[0];
+      if (conversation) input.messages = [...conversationHistory(history,body.messages[0].content.length),currentMessage];
+      chatProviderMessages(input, record); // Validate bounded stored evidence before spending provider quota.
+      if (!enabled) throw new RequestError(503, 'LIVE_DISABLED', 'Live AI is disabled. The administrator must configure the provider before chatting.');
+      if (activeExtractions >= 2) throw new RequestError(429, 'BUSY', 'AI processing is busy. Try again shortly.');
+      consumeTrialAiAllowance(session);
+      activeExtractions++;
+      if (conversationKey) activeConversations.add(conversationKey);
+      const chatAbort = new AbortController();
+      const signal = AbortSignal.any([cancel.signal, chatAbort.signal, AbortSignal.timeout(CHAT_LIMITS.timeoutMs)]);
+      let streaming = false, userMessage = null, assistantMessage = null, answer = '', completed = false;
+      const saveAssistant = state => {
+        if (!conversation || !userMessage || assistantMessage) return assistantMessage;
+        try {
+          assistantMessage = storage.appendMessage(session.userId,conversation.id,{role:'assistant',content:answer,state,requestId});
+          if (!assistantMessage) throw new Error('Conversation no longer exists');
+          return assistantMessage;
+        } catch { throw new ChatError('CHAT_SAVE_FAILED',503); }
+      };
+      try {
+        if (conversation) {
+          const original = body.messages[0];
+          userMessage = storage.appendMessage(session.userId,conversation.id,{role:'user',content:original.content,state:'complete',requestId,clientMessageId:input.clientMessageId,
+            imageMetadata:(original.images || []).map(image => ({mimeType:image.mimeType,byteCount:Buffer.byteLength(image.data,'base64'),retained:false}))});
+          if (!userMessage) throw new ChatError('CONVERSATION_NOT_FOUND',404);
+        }
+        const stream = await openChatStream({ apiKey, input, record, signal });
+        response.writeHead(200, { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-store', 'X-Accel-Buffering': 'no' });
+        response.flushHeaders(); streaming = true;
+        if (conversation) await writeChatEvent(response,signal,'conversation',{conversationId:conversation.id,userMessageId:userMessage.id});
+        for await (const event of stream) {
+          if (event.type === 'delta') { answer += event.text; await writeChatEvent(response, signal, 'delta', { text: event.text }); }
+          else if (event.type === 'done') {
+            saveAssistant('complete'); completed = true;
+            await writeChatEvent(response, signal, 'done', { requestId,...(assistantMessage ? {assistantMessageId:assistantMessage.id,conversationId:conversation.id} : {}) });
+            recordTracking(200,undefined,'success');
+          }
+        }
+        response.end();
+      } catch (error) {
+        let failure = error;
+        if (!completed) try { saveAssistant(cancel.signal.aborted || response.destroyed ? 'interrupted' : 'failed'); } catch (saveError) { failure = saveError; }
+        recordTracking(streaming ? 200 : (cancel.signal.aborted || response.destroyed ? 499 : failure.status || 502),cancel.signal.aborted || response.destroyed ? 'REQUEST_CANCELLED' : failure.code,'failure');
+        if (cancel.signal.aborted || response.destroyed) return;
+        if (!streaming) throw failure instanceof ChatError || failure instanceof StorageError ? failure : new ChatError('CHAT_PROVIDER_FAILED', 502);
+        const allowed = new Set(['CHAT_STREAM_FAILED', 'CHAT_PROVIDER_FAILED', 'CHAT_INCOMPLETE', 'CHAT_UNSUPPORTED_OUTPUT', 'CHAT_TOO_LARGE','CHAT_SAVE_FAILED']);
+        const code = allowed.has(failure.code) ? failure.code : 'CHAT_STREAM_FAILED';
+        try { await writeChatEvent(response, AbortSignal.any([cancel.signal, AbortSignal.timeout(2000)]), 'error', { code, requestId, retryable: true,...(assistantMessage ? {assistantMessageId:assistantMessage.id,conversationId:conversation.id} : {}) }); } catch {}
+        response.end();
+      } finally { chatAbort.abort(); activeExtractions--; if (conversationKey) activeConversations.delete(conversationKey); }
+      return;
+      } finally { activeChatRequests--; }
+    }
     if (request.url === '/api/extract' && request.method === 'POST') {
       verifyOrigin(request);
       const session = requireSession(request);
@@ -462,7 +658,7 @@ const server = http.createServer(async (request, response) => {
     if (file.startsWith('samples/')) response.setHeader('Content-Disposition', `attachment; filename="${file.slice('samples/'.length)}"`);
     response.end(await readFile(new URL(file, root)));
   } catch (error) {
-    if (error instanceof RequestError || error instanceof StorageError) return json(error.status, { error: error.message, code: error.code });
+    if (error instanceof RequestError || error instanceof StorageError || error instanceof TelemetryError || error instanceof ChatError || error instanceof CaseRecordsError || error instanceof DocumentContextError) return json(error.status, { error: error.message, code: error.code, ...(error.details ? {details:error.details} : {}) });
     return json(500, { error: 'Request could not be completed', code: 'INTERNAL_ERROR' });
   }
 });

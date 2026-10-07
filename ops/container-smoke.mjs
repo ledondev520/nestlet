@@ -36,7 +36,7 @@ assert.equal(status.liveEnabled, false);
 assert.equal(status.pdfEnabled, true);
 assert.equal(status.workbookEnabled, true);
 assert.equal(status.csrfToken, undefined);
-for (const [path, method] of [['/api/register', 'POST'], ['/api/cases', 'GET'], ['/api/cases', 'POST'], ['/api/settings', 'GET'], ['/api/settings', 'POST'], ['/api/settings/test', 'POST'], ['/api/extract', 'POST'], ['/api/document', 'POST'], ['/api/workbook', 'POST']]) {
+for (const [path, method] of [['/api/register', 'POST'], ['/api/workflows', 'POST'], ['/api/admin/telemetry', 'GET'], ['/api/cases', 'GET'], ['/api/cases', 'POST'], ['/api/settings', 'GET'], ['/api/settings', 'POST'], ['/api/settings/test', 'POST'], ['/api/extract', 'POST'], ['/api/document', 'POST'], ['/api/workbook', 'POST']]) {
   const response = await fetch(base + path, {
     method,
     headers: { Origin: 'https://nestlet.invalid', 'Content-Type': 'application/json' },

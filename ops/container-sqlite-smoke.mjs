@@ -13,7 +13,7 @@ assert.equal(actual.mode & 0o777, 0o600);
 assert.equal(actual.uid, process.getuid());
 const applicationDb = new DatabaseSync('/data/nestlet.sqlite', { readOnly: true });
 assert.equal(applicationDb.prepare('PRAGMA application_id').get().application_id, 0x4e53544c);
-assert.equal(applicationDb.prepare('PRAGMA user_version').get().user_version, 1);
+assert.equal(applicationDb.prepare('PRAGMA user_version').get().user_version, 3);
 applicationDb.close();
 if (operation === 'write') {
   closeSync(openSync(path, 'wx', 0o600));

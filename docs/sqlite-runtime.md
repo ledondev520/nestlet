@@ -30,17 +30,20 @@ release=$(readlink -f /opt/nestlet/current)
 revision=$(basename "$release")
 printf '%s' "$revision" | grep -Eq '^[a-f0-9]{40}$' || exit 1
 docker volume inspect nestlet_case_data >/dev/null || exit 1
+container=$(docker ps -q --filter label=com.docker.compose.project=nestlet --filter label=com.docker.compose.service=nestlet)
+administrator_username=$(docker exec "$container" node -p 'process.env.NESTLET_OPERATOR_USERNAME || "owner"')
 read -r -p 'Trial username: ' trial_username
 docker run --rm -it --pull never --init \
   --network none --read-only --cap-drop ALL \
   --security-opt no-new-privileges:true --log-driver none \
   --pids-limit 32 --memory 256m --cpus 1 \
   --user 1000:1000 \
+  --env NESTLET_OPERATOR_USERNAME="$administrator_username" \
   --mount type=volume,src=nestlet_case_data,dst=/data \
   "nestlet:$revision" node scripts/setup-trial-user.js /data/nestlet.sqlite "$trial_username"
 ```
 
-UID 1000 is the database owner in the supplied image. If deployment ownership differs, stop and verify the actual owner rather than broadening permissions. The helper requires an already initialized private database. It has no network, mounted Docker socket or application environment variables; only the dedicated database volume is writable.
+UID 1000 is the database owner in the supplied image. If deployment ownership differs, stop and verify the actual owner rather than broadening permissions. The helper requires an already initialized private database. It has no network or mounted Docker socket. Only the nonsecret administrator alias is passed from the running application so the helper reserves that username; no API key or password hash is passed. Only the dedicated database volume is writable.
 
 Usernames are normalized to lowercase, use 3–64 letters/digits/underscore/dot/hyphen characters, start with a letter or digit, and cannot be `owner`. The operator enters the hidden password twice, then personally types `SET TRIAL USER`. Creating a user grants the trial role and access to that user's own saved cases. Rotating the same username preserves its identity/cases and revokes its prior sessions. Trial accounts cannot manage provider keys. Use a unique trial password and share access only through an approved private channel.
 
