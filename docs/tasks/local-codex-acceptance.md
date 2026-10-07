@@ -85,3 +85,5 @@ Finish only when the reviewable draft PR exists, or report the exact permission/
 08:36 UTC compositecc9c9f2 (8959bb9 + b8f789a):223tests/220pass3fail: actualfact-revocationCASE_INVALID, oldschema2assertion, missingnewUIerrors. ReportedPR12. Realchat-homeauth/disabled-key gates pass withoutanswerfabrication; livechat/imageandexpandedUI remainNotrun.
 
 08:56 UTC backend8a7f5de + frontendb2de3d4 composite78091a4:230tests229pass1fail. Actual fact-revocation/archive/schema3 fixes pass; missing CASE_ISSUE_NOT_FOUND/ARTIFACT_STALE UI mappings remain. Chat isolation/persistence UI not accepted.
+
+09:09 UTC composite3ce0cff (8a7f5de+a2417b6): realbrowser reproducesreadinessconfirmfailure+answerscleared, andfollowupreplacessource/disablesreviewbeforeSend. Kimirootgates1/4 supportedwith2screenshots;CASE_ISSUE_NOT_FOUNDstillmissing4/5localization.
