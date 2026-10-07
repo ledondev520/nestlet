@@ -6,7 +6,9 @@ Checkpoint: 2026-10-07. This is a development checkpoint, not final acceptance. 
 
 `npm test` runs the strict core, HTTP parser/authentication, agency registry, private setup, localization, SQLite storage, case-isolation, web-registration, telemetry, administrator-alias/password, and bounded case-chat suites listed in `package.json`. Historical development doubles are excluded.
 
-Current frozen run at approximately 07:20 UTC on October 7, 2026: **179 passed, 0 failed, 0 skipped** in default `npm test`; `npm run check` passes. This includes the 161-test telemetry checkpoint, 8 administrator-alias/password tests, and 10 chat validation/guard tests. No dependency installation overlapped this run. Earlier pre-telemetry and pre-registration checkpoints were 146/146 and 132/132 respectively.
+Latest frozen Linux run at **08:48 UTC, October 7, 2026: 230 total, 229 passed, 1 failed, 0 skipped** in default `npm test`; `npm run check` passes. The one failure is the new backend-error bilingual inventory (`test/localization-contract.test.js:76`, first unresolved code `CHAT_TOO_LARGE`); the current frontend has not completed the expanded error mapping. It is not skipped or weakened. Runtime was frozen by backend/storage owners, with no installation or duplicate aggregate overlapping this run. This is the worktree based on `8959bb9f82f6c7d2e1ea0ba0d616a04498ab6a2a`, with subsequent reviewed persistence/freshness fixes awaiting the integrator's commit.
+
+Historical checkpoints remain: 07:20 strict179/179; QA additions187/187 on `3ed564218ac1592f7d85ea83b928fe95991aa850`; 08:28 development snapshot221 total/219 pass/2 fail (UI inventory plus obsolete schema2 assertion). The schema assertion is now correctly3 and actual schema migrations are tested. Earlier146/146 and132/132 checkpoints did not include the newer scope. See [the scenario-level matrix](../docs/acceptance-matrix-2026-10-07.md) for exact evidence layers, historical browser SHAs and open journey gaps.
 
 A separate concurrent review run briefly reported workbook unavailability while `npm ci` replaced dependencies. The final result above was rerun after installation finished and concurrent testing stopped; no source fix or weaker assertion was used. Do not run tests against a working tree while its dependencies are being replaced.
 
@@ -68,7 +70,7 @@ Real temporary files and actual scrypt derivation verify addition/replacement of
 
 ### Localization source contract: 5 tests
 
-The actual zh/en dictionaries have matching keys and array lengths. English copy contains no Chinese prose. Every currently emitted backend error code has a bilingual direct mapping or route fallback. Unknown errors resolve to localized copy keys; raw backend error/message/stack content is not rendered. LC05 explicitly verifies that PDF `TEXT_TOO_LARGE` takes priority over generic HTTP 413, with bilingual 50,000-character split/fewer-pages guidance distinct from the 5 MiB binary limit. The actual 35,717-byte PDF fixture still returns `TEXT_TOO_LARGE`. This is source-contract inspection, not browser rendering or event-flow evidence.
+The actual zh/en dictionaries have matching keys and array lengths. English copy contains no Chinese prose. **4/5 pass, 1 fails:** the emitted-code inventory now includes case-records/document-context/chat and exposes missing mappings for the expanded UI. The first unresolved code at08:48 is CHAT_TOO_LARGE. Matching old dictionaries does not prove new customer/chat error UX is complete. Unknown errors resolve to localized copy keys; raw backend error/message/stack content is not rendered. LC05 explicitly verifies that PDF `TEXT_TOO_LARGE` takes priority over generic HTTP 413, with bilingual 50,000-character split/fewer-pages guidance distinct from the 5 MiB binary limit. The actual 35,717-byte PDF fixture still returns `TEXT_TOO_LARGE`. This is source-contract inspection, not browser rendering or event-flow evidence.
 
 ### Actual SQLite storage: 12 tests
 
@@ -91,8 +93,9 @@ Every HTTP test process uses its own canonical temporary database path; no check
 
 Actual private SQLite and real scrypt cover creation, sanitized metadata, role restriction, rotation preserving identity/cases, confirmation/password/username/stale-file guards, permissions/writable-ancestor/link rejection, missing or unrelated targets without byte replacement, and noninteractive CLI refusal without password echo or database changes. Interactive PTY and Docker execution are separate packaging evidence.
 
-### Actual web-registration lifecycle: 9 tests
+### Actual web-registration lifecycle: 15 tests
 
+- Six separate real HTTP cases verify each password length6,7,8,9,10,11 through registration, logout, login and owner-settings rejection
 - Registration creates a real ordinary (`trial` internally) session, saves a reviewed case, survives logout/login and an actual server stop/reopen with stable account and case identity
 - Two web-registered accounts cannot read/update/delete each other's cases or manage provider settings; owner administration also does not grant case access
 - Reserved owner names, requested roles, missing/extra fields, invalid usernames and mismatched/invalid passwords are rejected without accounts or session cookies
@@ -102,16 +105,17 @@ Actual private SQLite and real scrypt cover creation, sanitized metadata, role r
 
 The first account-cap regression returned 201 for the 101st user. That failure was preserved until the storage creation transaction was fixed; the successful sequential and two-process checks above were run afterward. No provider response or registration result was simulated.
 
-### Telemetry SQLite, privacy and bounds: 7 tests
+### Telemetry SQLite, privacy and bounds: 8 tests
 
-- Actual schema1→2 migration preserves every users/cases column, credential hash, stable identity and case version; the preexisting schema-version assertion is updated to the new documented version
+- Actual schema1→3 migration preserves every original users/cases column, credential hash, stable identity and case version; newly added client_id remains null rather than inventing a customer
 - Fixed metadata shape rejects arbitrary text, filenames, credentials, URLs, exception details and client-supplied authoritative timing/status
 - Workflow/case binding checks both owners, permits idempotent rebinding to the same case, and rejects another case; request correlation requires the same user and workflow
 - Actual rate windows, descending pagination and query whitelist enforce their specified limits
 - Actual SQLite writes enforce 200 events/workflow, 2,000/user, 20,000 globally and 100 workflows/user; oldest metadata is removed without deleting case contents
+- Chat metadata can truthfully retain HTTP200 with outcome=failure, roundtripping actual SQLite; this is a metadata contract test, not a live stream
 - Actual dated SQLite fixtures older than 30 days are removed on read and startup. No clock is replaced or accelerated
 
-### Actual HTTP telemetry: 8 tests
+### Actual HTTP telemetry: 10 tests
 
 - Server-generated request IDs correlate only to the owning workflow; administrators can read cross-user metadata but still cannot read customer case bodies
 - Real delayed/chunked request delivery produces measured server elapsed time; client active/wait measurements remain independent and cannot overwrite it
@@ -119,6 +123,8 @@ The first account-cap regression returned 201 for the 101st user. That failure w
 - Real SQLite `BEFORE INSERT` failure on telemetry events leaves successful case creation/update committed. Dedicated telemetry writes report their own 503 error
 - Actual auth/CSRF/Origin, fixed-field, batch-count/byte-limit, pagination and per-user rate boundaries are enforced
 - Real PDF/Excel parsing and a genuinely disabled extraction attempt record only fixed backend outcomes and timing; no document content or filename appears in returned metadata
+- Workflow creation explicitly requires JSON `{}`; the prior UI request shape without Content-Type/body fails415, while the correct actual request succeeds201
+- A genuinely no-key chat request emits scoped request.chat failure timing with no message/document text
 - An actually aborted request produces one cancelled 499 event, does not create a case, and is not double-recorded on close
 
 These tests establish backend telemetry contracts. Browser step instrumentation and any administrator dashboard are separate work and are not claimed present or verified here. Client dwell time is self-reported activity, never proof of a stall. The new schema cannot be opened by the older schema1-only application; deployment rollback must account for that independently.
@@ -127,15 +133,29 @@ These tests establish backend telemetry contracts. Browser step instrumentation 
 
 The implementation owner's actual HTTP/private-helper tests were independently rerun unchanged. They cover configured alias binding to the immutable owner, legacy login compatibility, reserved administrator names, collision refusal and session invalidation, private alias persistence, and the user-requested password boundary: 5 characters rejected, 6 accepted, 256 accepted, 257 rejected. Older longer passwords remain usable.
 
-### Bounded chat input and pure SSE parsing: 5 tests
+### Bounded chat input and pure SSE parsing: 7 tests
 
-These are **parser/input tests using authored byte fixtures, not a live provider conversation**. They verify strict roles/consent/options and history limits, sensitive-pattern rejection, actual tracked PNG bytes and image count/size restrictions, rejection of remote image URLs and unsupported WebP/PDF payloads, bounded untrusted own-case context with explicit source/field truncation markers and without automatically attaching drafts, incremental split-UTF-8/CRLF SSE parsing, omission of reasoning_content, valid stop/DONE completion, and refusal of malformed, incomplete, tool, truncated or oversized streams. The shipped accepted image types are PNG and JPEG; actual model image understanding is unverified.
+These are **parser/input tests using authored byte fixtures, not a live provider conversation**. They verify strict roles/consent/options and history limits, sensitive-pattern rejection, actual tracked PNG bytes and image count/size restrictions, rejection of remote image URLs and unsupported WebP/PDF payloads, bounded untrusted own-case context with explicit source/field truncation markers and without automatically attaching drafts, incremental split-UTF-8/CRLF SSE parsing, omission of reasoning_content, valid stop/DONE completion, and refusal of malformed, incomplete, tool, truncated or oversized streams. Additional checks reject explicit non-assistant SSE roles before yielding any content; bounded stored history excludes incomplete replies and preserves the unavailable-image notice even when excerpting long text. The shipped accepted image types are PNG and JPEG; actual model image understanding is unverified.
 
 ### Actual chat HTTP barriers without a key: 5 tests
 
 Real sessions, CSRF and Origin checks protect `/api/chat`; a request without any Origin header is explicitly rejected. A foreign case returns 404 before provider availability checks; no foreign content is exposed. With an authorized own-case request and no configured key, the endpoint returns explicit 503 JSON with no fabricated answer or SSE and leaves the case unchanged. Client system roles/options, absent consent, overlong text, obvious sensitive identifiers and invalid/disguised image inputs are rejected before a provider call.
 
 No API key, provider call, paid conversation, upstream network mock, simulated token animation or claimed native-vision result is used in this acceptance. Browser chat composition, actual native streaming, disconnect cancellation against a real provider and account entitlement still need separately authorized live acceptance.
+
+### Reviewed document context: 13 tests
+
+Actual pure functions validate canonical context/provenance, one-step explicit confirmation, preservation of already confirmed facts against model suggestions, bilingual missing-item questions and type-specific readiness. Minimal real recipient/department contact suffices; optional date/salutation/attachments do not create repeat gates. Generated final supplementary documents omit DRAFT/NOT FOR SUBMISSION labels but retain precise nonofficial/no-approval boundaries; drafts remain marked. Known placeholders, unresolved critical fields and unreviewed CJK prose block finalization; reviewed proper names remain verbatim. These checks do not establish legal compliance or model factual accuracy.
+
+### Customer/case/conversation/artifact HTTP: 17 tests
+
+Real owner/ordinary sessions and disposable SQLite verify literal Unicode-aware own-customer search, duplicate labels, bounded queries, CSRF/Origin, foreign IDs including administrator isolation, optimistic customer/case versions and backward-compatible omission of new fields. Multiple conversations and immutable artifact versions persist; actual TXT download bytes match saved content. Real logout/process restart/login restores customer/case/conversation/artifact IDs. Explicit answers update facts/context once; unresolved or incomplete-source finals are rejected. Canonical review timestamps/resolved issues cannot be injected through legacy CRUD. Questions retain explicit pending/confirmed/resolved states and require conclusions. No-key persistent chat fails truthfully.
+
+Actual chunked-body mutations spanning a concurrent case deletion return404 without resurrection. Withdrawing or correcting a legacy reviewed fact archives its prior draft exactly once in the same transaction, clears the stale active draft and preserves previous immutable history. Changed-case final artifacts expose stale/regeneration metadata and reject download409 until a new version is generated. Authored complete/interrupted/failed SQLite messages are provenance-guard fixtures, **not generated provider answers or proof of live-stream cancellation**.
+
+### Library storage and schema3 migration: 10 tests
+
+Eight actual library-storage tests cover user-scoped search/relationships, context and question compatibility, message ordering/idempotency/image-presence-only metadata, immutable artifact provenance and freshness, atomic legacy-draft archival with failure rollback, reserved paid-turn row/byte capacity across restart, final-source restrictions, process reopen and cascade deletion. Two independent schema3 tests verify genuine schema2 telemetry CHECK rebuilding, existing records and AUTOINCREMENT high-water preservation, refusal of unsupported schema4, and transactional rollback on migration DDL failure. Together with12 existing storage tests, the storage owner's frozen set is22/22.
 
 ### Real-time idle-session expiry: 1 separate long-running test
 
@@ -151,12 +171,12 @@ Earlier reports of 86 passing tests included such development doubles. That coun
 
 - Real provider chat/vision, native upstream streaming and browser chat UX are not verified by the parser/guard tests
 - Frontend workflow instrumentation and administrator telemetry UI are not covered by this backend acceptance
-- Real-browser registration, save/reopen and role-isolation UI flows on this latest build remain separate acceptance. The HTTP lifecycle tests above do not establish browser rendering, keyboard behavior or deployment TLS
-- Real DeepSeek authentication, entitlement, live `deepseek-flash` responses and quality: **not run; secure API configuration required**
+- Historical Local Codex browser registration/save/restart/isolation evidence exists for older SHAs (linked in the matrix); these UI flows on the latest combined build remain separate acceptance. The HTTP lifecycle tests above do not establish browser rendering, keyboard behavior or deployment TLS
+- The integrator separately verified one authorized real DeepSeek catalog/generation component probe, and the existing key is privately configured. This suite did not repeat it. Full application extraction, durable chat/SSE and vision remain unrun; do not ask for the key again or equate the component probe with the web journey
 - Real browser interaction, desktop/mobile pixels, keyboard focus, complete zh-CN/English switching, output download/clipboard/print artifacts, and async reset/cancel behavior: **not established by this suite**
 - Paid trial-AI quota enforcement is not exercised end-to-end without a real authorized provider call; no provider call is simulated in this suite
 - Eight-hour absolute session expiry is not time-tested; the real 30-minute idle expiry check passed separately
-- End-to-end deployed service and externally reachable reverse-proxy configuration
+- Latest deployment SHA/administrator initialization, real customer-library UI, clipboard/print artifacts, email verification/recovery and final integrated lifecycle remain separate checks
 
 A direct cloud-browser loopback navigation was blocked; no alternate route was used to bypass it. Browser checks must run in the separately authorized browser environment or remain explicitly unverified.
 

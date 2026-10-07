@@ -335,7 +335,7 @@ const server = http.createServer(async (request, response) => {
   response.setHeader('Referrer-Policy', 'no-referrer');
   response.setHeader('X-Frame-Options', 'DENY');
   response.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-  response.setHeader('Content-Security-Policy', "default-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'");
+  response.setHeader('Content-Security-Policy', "default-src 'self'; img-src 'self' blob:; style-src 'self'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'");
   const operation = telemetryOperation(request);
   let trackingSession = null, trackingWorkflow = null, trackingRecorded = false, trackingStatus = 'unavailable';
   if (operation) {

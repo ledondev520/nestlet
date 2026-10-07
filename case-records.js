@@ -89,9 +89,9 @@ export async function handleCaseRecords({ request, response, url, session, stora
       }
       if (conflicts.length) fail('DOCUMENT_CONTEXT_CONFLICT',409,{fields:conflicts});
       if (!body.confirm && body.namesVerified === true && !record.namesVerified) fail('DOCUMENT_CONTEXT_INVALID');
-      const updated = storage.updateCase(userId,record.id,{...payload(record),fields,documentContext:context,...(body.namesVerified === undefined ? {} : {namesVerified:body.namesVerified})},body.expectedVersion);
+      const updated = storage.updateCase(userId,record.id,{...payload(record),fields,documentContext:context,...(body.namesVerified === undefined ? {} : {namesVerified:body.namesVerified})},body.expectedVersion,{archiveLegacyDraft:true});
       if (!updated) fail('CASE_NOT_FOUND',404);
-      return json(200,{case:updated,readiness:assessDocumentReadiness(updated),regenerationRecommended:true});
+      return json(200,{case:updated,readiness:assessDocumentReadiness(updated),regenerationRecommended:true,archivedLegacyDraft:Boolean(record.draftText)});
     }
     if (action === 'issues' && method === 'PATCH') {
       const body = await readJson(request,100000); keys(body,['changes','expectedVersion'],['changes','expectedVersion']); checkVersion(record,body.expectedVersion);

@@ -136,7 +136,6 @@ function clientPayload(payload) {
   if (!displayName) fail('CLIENT_INVALID');
   return { displayName };
 }
-function literalSearch(value) { return value.replace(/[\\%_]/gu, character => '\\' + character); }
 
 function conversationPayload(payload) {
   entityKeys(payload, ['title'], [], 'CONVERSATION_INVALID');
@@ -446,9 +445,49 @@ export function openStorage({ filename, reservedUsername = process.env.NESTLET_O
       const row = db.prepare('SELECT (SELECT COALESCE(SUM(length(CAST(content AS BLOB))+length(CAST(image_metadata_json AS BLOB))),0) FROM messages WHERE user_id=?) + (SELECT COALESCE(SUM(length(CAST(content AS BLOB))+length(CAST(snapshot_json AS BLOB))),0) FROM artifacts WHERE user_id=?) AS bytes').get(id,id);
       if (row.bytes + extra + (pending.length + reservationDelta) * reservedAnswerBytes > LIBRARY_LIMITS.libraryBytesPerUser) fail('CAPACITY_REACHED',409);
     };
-    const artifactColumns = 'id,case_id AS caseId,kind,title,status,version,source_case_version AS sourceCaseVersion,source_conversation_id AS sourceConversationId,source_message_id AS sourceMessageId,created_at AS createdAt';
+    const artifactColumns = 'id,case_id AS caseId,kind,title,status,version,source_case_version AS sourceCaseVersion,source_conversation_id AS sourceConversationId,source_message_id AS sourceMessageId,created_at AS createdAt,(SELECT version FROM cases WHERE cases.id=artifacts.case_id AND cases.user_id=artifacts.user_id) AS currentCaseVersion';
     const artifactLookup = db.prepare(`SELECT ${artifactColumns},content,snapshot_json AS snapshotJson FROM artifacts WHERE user_id=? AND id=?`);
-    const fullArtifact = row => { if (!row) return null; const {snapshotJson,...result}=row; return {...result,provenance:JSON.parse(snapshotJson)}; };
+    const artifactMetadata = row => ({ ...row,isStale:row.sourceCaseVersion !== row.currentCaseVersion,needsRegeneration:row.status === 'final' && row.sourceCaseVersion !== row.currentCaseVersion });
+    const fullArtifact = row => { if (!row) return null; const {snapshotJson,...result}=row; return {...artifactMetadata(result),provenance:JSON.parse(snapshotJson)}; };
+    const insertArtifact = (id, recordId, canonical) => {
+      requireUser(id);
+      const record = caseId(recordId) && fullCase(lookup.get(id,recordId));
+      if (!record) return null;
+      if (record.version !== canonical.expectedCaseVersion) fail('CASE_CONFLICT',409);
+      let sourceConversationId = canonical.sourceConversationId;
+      if (sourceConversationId) {
+        const conversation = conversationLookup.get(id,sourceConversationId);
+        if (!conversation || conversation.caseId !== recordId) fail('ARTIFACT_INVALID');
+      }
+      if (canonical.sourceMessageId) {
+        const source = messageSource(id,canonical.sourceMessageId);
+        if (!source || source.caseId !== recordId || (sourceConversationId && source.conversationId !== sourceConversationId)) fail('ARTIFACT_INVALID');
+        sourceConversationId = source.conversationId;
+        if (canonical.status === 'final' && source.state !== 'complete') fail('ARTIFACT_SOURCE_INCOMPLETE',409);
+      }
+      if (canonical.status === 'final') {
+        const confirmedSources = [...Object.values(record.documentContext ?? {}).filter(detail => detail.confirmed).map(detail => detail.sourceMessageId),
+          ...(record.caseIssues ?? []).filter(issue => issue.status !== 'pending').map(issue => issue.sourceMessageId)].filter(Boolean);
+        for (const messageId of confirmedSources) {
+          const source = messageSource(id,messageId);
+          if (!source || source.caseId !== recordId || source.state !== 'complete') fail('ARTIFACT_SOURCE_INCOMPLETE',409);
+        }
+        validateFinalArtifact(record,canonical.content,{kind:canonical.kind});
+      }
+      if (db.prepare('SELECT COUNT(*) AS count FROM artifacts WHERE user_id=? AND case_id=?').get(id,recordId).count >= LIBRARY_LIMITS.artifactsPerCase ||
+          db.prepare('SELECT COUNT(*) AS count FROM artifacts WHERE user_id=?').get(id).count >= LIBRARY_LIMITS.artifactsPerUser) fail('CAPACITY_REACHED',409);
+      const provenance = { caseId:recordId,caseVersion:record.version,clientId:record.clientId,
+        clientDisplayName:record.clientId ? clientLookup.get(id,record.clientId).displayName : null,
+        title:record.title,fields:record.fields,documentContext:record.documentContext ?? {},caseIssues:record.caseIssues ?? [],generationMethod:canonical.generationMethod };
+      const snapshot = JSON.stringify(provenance);
+      if (Buffer.byteLength(snapshot,'utf8') > MAX_CASE_BYTES + 1024) fail('ARTIFACT_INVALID');
+      checkLibraryBytes(id,Buffer.byteLength(canonical.content,'utf8') + Buffer.byteLength(snapshot,'utf8'));
+      const artifactId = randomUUID(), now = new Date().toISOString();
+      const next = db.prepare('SELECT COALESCE(MAX(version),0)+1 AS next FROM artifacts WHERE user_id=? AND case_id=? AND kind=?').get(id,recordId,canonical.kind).next;
+      db.prepare('INSERT INTO artifacts(id,user_id,case_id,kind,title,status,content,version,source_case_version,source_conversation_id,source_message_id,snapshot_json,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)')
+        .run(artifactId,id,recordId,canonical.kind,canonical.title,canonical.status,canonical.content,next,record.version,sourceConversationId,canonical.sourceMessageId,snapshot,now);
+      return fullArtifact(artifactLookup.get(id,artifactId));
+    };
     const saveUser = (input, rotate) => {
       if (!plain(input) || Object.keys(input).some(key => !['username', 'passwordHash'].includes(key))) fail('USER_INVALID');
       const username = normalizeUsername(input.username);
@@ -581,8 +620,11 @@ export function openStorage({ filename, reservedUsername = process.env.NESTLET_O
         const search = entityText(options.search ?? '', 120, 'CLIENT_INVALID', true).trim();
         const limit = options.limit ?? 50;
         if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) fail('CLIENT_INVALID');
-        return db.prepare("SELECT id,display_name AS displayName,version,created_at AS createdAt,updated_at AS updatedAt FROM clients WHERE user_id=? AND display_name LIKE ? ESCAPE '\\' ORDER BY display_name COLLATE NOCASE,id LIMIT ?")
-          .all(id, '%' + literalSearch(search) + '%', limit).map(row => ({ ...row }));
+        // The per-user cap is 100, so Unicode-aware literal filtering is bounded.
+        // SQLite LIKE alone only folds ASCII and would miss Élodie/élodie.
+        const needle = search.normalize('NFC').toLowerCase();
+        return db.prepare('SELECT id,display_name AS displayName,version,created_at AS createdAt,updated_at AS updatedAt FROM clients WHERE user_id=? ORDER BY display_name COLLATE NOCASE,id LIMIT ?')
+          .all(id,LIBRARY_LIMITS.clientsPerUser).filter(row => row.displayName.normalize('NFC').toLowerCase().includes(needle)).slice(0,limit).map(row => ({ ...row }));
       },
       getClient(id, recordId) { requireUser(id); const row = caseId(recordId) && clientLookup.get(id,recordId); return row ? { ...row } : null; },
       updateClient(id, recordId, payload, expectedVersion) {
@@ -651,56 +693,18 @@ export function openStorage({ filename, reservedUsername = process.env.NESTLET_O
       },
       createArtifact(id, recordId, payload, options = {}) {
         const canonical = artifactPayload(payload,options);
-        return transaction(() => {
-          requireUser(id);
-          const record = caseId(recordId) && fullCase(lookup.get(id,recordId));
-          if (!record) return null;
-          if (record.version !== canonical.expectedCaseVersion) fail('CASE_CONFLICT',409);
-          let sourceConversationId = canonical.sourceConversationId;
-          if (sourceConversationId) {
-            const conversation = conversationLookup.get(id,sourceConversationId);
-            if (!conversation || conversation.caseId !== recordId) fail('ARTIFACT_INVALID');
-          }
-          if (canonical.sourceMessageId) {
-            const source = messageSource(id,canonical.sourceMessageId);
-            if (!source || source.caseId !== recordId || (sourceConversationId && source.conversationId !== sourceConversationId)) fail('ARTIFACT_INVALID');
-            sourceConversationId = source.conversationId;
-            if (canonical.status === 'final' && source.state !== 'complete') fail('ARTIFACT_SOURCE_INCOMPLETE',409);
-          }
-          if (canonical.status === 'final') {
-            const confirmedSources = [...Object.values(record.documentContext ?? {}).filter(detail => detail.confirmed).map(detail => detail.sourceMessageId),
-              ...(record.caseIssues ?? []).filter(issue => issue.status !== 'pending').map(issue => issue.sourceMessageId)].filter(Boolean);
-            for (const messageId of confirmedSources) {
-              const source = messageSource(id,messageId);
-              if (!source || source.caseId !== recordId || source.state !== 'complete') fail('ARTIFACT_SOURCE_INCOMPLETE',409);
-            }
-            validateFinalArtifact(record,canonical.content,{kind:canonical.kind});
-          }
-          if (db.prepare('SELECT COUNT(*) AS count FROM artifacts WHERE user_id=? AND case_id=?').get(id,recordId).count >= LIBRARY_LIMITS.artifactsPerCase ||
-              db.prepare('SELECT COUNT(*) AS count FROM artifacts WHERE user_id=?').get(id).count >= LIBRARY_LIMITS.artifactsPerUser) fail('CAPACITY_REACHED',409);
-          const provenance = { caseId:recordId,caseVersion:record.version,clientId:record.clientId,
-            clientDisplayName:record.clientId ? clientLookup.get(id,record.clientId).displayName : null,
-            title:record.title,fields:record.fields,documentContext:record.documentContext ?? {},caseIssues:record.caseIssues ?? [],generationMethod:canonical.generationMethod };
-          const snapshot = JSON.stringify(provenance);
-          if (Buffer.byteLength(snapshot,'utf8') > MAX_CASE_BYTES + 1024) fail('ARTIFACT_INVALID');
-          checkLibraryBytes(id,Buffer.byteLength(canonical.content,'utf8') + Buffer.byteLength(snapshot,'utf8'));
-          const artifactId = randomUUID(), now = new Date().toISOString();
-          const next = db.prepare('SELECT COALESCE(MAX(version),0)+1 AS next FROM artifacts WHERE user_id=? AND case_id=? AND kind=?').get(id,recordId,canonical.kind).next;
-          db.prepare('INSERT INTO artifacts(id,user_id,case_id,kind,title,status,content,version,source_case_version,source_conversation_id,source_message_id,snapshot_json,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)')
-            .run(artifactId,id,recordId,canonical.kind,canonical.title,canonical.status,canonical.content,next,record.version,sourceConversationId,canonical.sourceMessageId,snapshot,now);
-          return fullArtifact(artifactLookup.get(id,artifactId));
-        });
+        return transaction(() => insertArtifact(id,recordId,canonical));
       },
       getArtifact(id, artifactId) { requireUser(id); return caseId(artifactId) ? fullArtifact(artifactLookup.get(id,artifactId)) : null; },
       listArtifacts(id, recordId) {
         requireUser(id);
         if (!caseId(recordId) || !lookup.get(id,recordId)) return null;
-        return db.prepare(`SELECT ${artifactColumns} FROM artifacts WHERE user_id=? AND case_id=? ORDER BY created_at DESC,id LIMIT ?`).all(id,recordId,LIBRARY_LIMITS.artifactsPerCase).map(row => ({...row}));
+        return db.prepare(`SELECT ${artifactColumns} FROM artifacts WHERE user_id=? AND case_id=? ORDER BY created_at DESC,id LIMIT ?`).all(id,recordId,LIBRARY_LIMITS.artifactsPerCase).map(artifactMetadata);
       },
       listClientArtifacts(id, recordId) {
         requireUser(id);
         if (!caseId(recordId) || !clientLookup.get(id,recordId)) return null;
-        return db.prepare(`SELECT ${artifactColumns} FROM artifacts WHERE user_id=? AND case_id IN(SELECT id FROM cases WHERE user_id=? AND client_id=?) ORDER BY created_at DESC,id LIMIT ?`).all(id,id,recordId,LIBRARY_LIMITS.artifactsPerUser).map(row => ({...row}));
+        return db.prepare(`SELECT ${artifactColumns} FROM artifacts WHERE user_id=? AND case_id IN(SELECT id FROM cases WHERE user_id=? AND client_id=?) ORDER BY created_at DESC,id LIMIT ?`).all(id,id,recordId,LIBRARY_LIMITS.artifactsPerUser).map(artifactMetadata);
       },
       createTrialUser: input => saveUser(input, false),
       upsertTrialUser: input => saveUser(input, true),
@@ -731,8 +735,11 @@ export function openStorage({ filename, reservedUsername = process.env.NESTLET_O
         });
       },
       getCase(id, recordId) { requireUser(id); return caseId(recordId) ? fullCase(lookup.get(id, recordId)) : null; },
-      updateCase(id, recordId, payload, expectedVersion) {
-        const canonical = validateCasePayload(payload);
+      updateCase(id, recordId, payload, expectedVersion, options = {}) {
+        entityKeys(options,['archiveLegacyDraft'],[],'CASE_INVALID');
+        if (Object.hasOwn(options,'archiveLegacyDraft') && typeof options.archiveLegacyDraft !== 'boolean') fail();
+        if (!plain(payload)) fail();
+        const canonical = validateCasePayload(options.archiveLegacyDraft ? {...payload,draftText:''} : payload);
         version(expectedVersion);
         return transaction(() => {
           requireUser(id);
@@ -740,6 +747,10 @@ export function openStorage({ filename, reservedUsername = process.env.NESTLET_O
           if (!existing) return null;
           if (existing.version !== expectedVersion) fail('CASE_CONFLICT', 409);
           const previous = JSON.parse(existing.payloadJson);
+          if (options.archiveLegacyDraft) {
+            if (payload.draftText && payload.draftText !== previous.draftText) fail();
+            if (previous.draftText) insertArtifact(id,recordId,artifactPayload({kind:previous.draftType,title:'Archived '+previous.draftType+' draft',status:'draft',content:previous.draftText,expectedCaseVersion:existing.version},{generationMethod:'user-edited'}));
+          }
           const preserved = { ...canonical };
           for (const key of ['documentContext','caseIssues']) if (!Object.hasOwn(payload,key) && Object.hasOwn(previous,key)) preserved[key]=previous[key];
           const merged = validateCasePayload(preserved);

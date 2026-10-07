@@ -71,10 +71,20 @@ Only complete, correctly scoped source messages may support a final artifact. Dr
 
 All mutation routes use the existing session, CSRF and exact-origin checks. IDs supplied by a client never replace the session's user ID. Validation rejects unknown keys and excessive text/record counts. Customer search/read responses and directory listings are bounded. Case deletion follows the existing explicit delete confirmation and also removes its conversations/artifacts; the frontend must say this clearly.
 
-Limits and stable error codes will be supplied with the storage implementation before frontend freeze. Expected families: CLIENT_INVALID/CLIENT_NOT_FOUND/CLIENT_CONFLICT, CONVERSATION_INVALID/CONVERSATION_NOT_FOUND, MESSAGE_INVALID/CHAT_TURN_EXISTS/CHAT_SAVE_FAILED, DOCUMENT_NOT_READY, ARTIFACT_INVALID/ARTIFACT_NOT_FOUND/ARTIFACT_SOURCE_INCOMPLETE, CAPACITY_REACHED; existing authentication/case errors continue.
+Limits: 100 customers per user; 10 conversations per case; 100 messages per conversation and 2,000 per user; 50 artifacts per case and 500 per user. Artifact content is at most 50,000 characters. Combined retained message/artifact text and provenance is capped at 16 MiB per user; starting a persisted paid turn reserves space for its terminal assistant record. Existing 100-case/user and case payload limits remain.
+
+Stable errors: CLIENT_INVALID400, CLIENT_NOT_FOUND404, CLIENT_CONFLICT409; CONVERSATION_INVALID400, CONVERSATION_NOT_FOUND404; MESSAGE_INVALID400, CHAT_TURN_EXISTS409, CHAT_CONVERSATION_BUSY409, CHAT_SAVE_FAILED503; DOCUMENT_DETAILS_INVALID400, DOCUMENT_CONTEXT_INVALID400, DOCUMENT_CONTEXT_CONFLICT409, DOCUMENT_DETAILS_REQUIRED409, DOCUMENT_CONTENT_INVALID400, DOCUMENT_PLACEHOLDERS_REMAIN409, DOCUMENT_ENGLISH_REQUIRED409; ARTIFACT_INVALID400, ARTIFACT_NOT_FOUND404, ARTIFACT_SOURCE_INCOMPLETE409, ARTIFACT_STALE409; CASE_ISSUE_NOT_FOUND404 and CAPACITY_REACHED409. Existing authentication/case errors continue. DOCUMENT_DETAILS_REQUIRED includes structured readiness under details, with missing questions; it does not imply all case data was lost. The earlier provisional name DOCUMENT_NOT_READY is not emitted.
 
 No production records or credentials are created during implementation tests. Actual SQLite migration, ownership isolation, restart recovery and concurrency are verified with disposable real databases; parser/stream fixtures must not be presented as paid-provider acceptance.
 
 ## Current versus historical artifact versions
 
 Artifact reads/list metadata include currentCaseVersion, isStale, and needsRegeneration. A final artifact based on an older case version remains immutable and readable as history, but its normal download returns409 ARTIFACT_STALE. Generate a fresh version after changing case facts/context. A draft history artifact remains downloadable with its draft status. No old text is silently rewritten or represented as a fresh final.
+
+## Legacy draft preservation on explicit context updates
+
+The dedicated document-context PATCH archives any existing legacy case.draftText as an immutable draft artifact in the same transaction before clearing that compatibility field and saving changed facts/context. The response includes archivedLegacyDraft:true when this occurred; refresh the artifact list and show that the earlier edited draft is retained. Capacity or version errors roll back the entire operation. Confirmed answers are reused on regeneration, so this does not trigger another round of questions for unchanged resolved facts.
+
+Staleness currently uses the conservative case version comparison, including non-content title or customer-association edits. Historical GET remains available for viewing/copying the clearly labeled older version. It does not silently rewrite prior documents.
+
+Document-context detail review revocation is not a separate API in this version: confirm:false proposes unconfirmed information and preserves an already confirmed identical detail. A different unconfirmed proposal conflicts; an explicit confirm:true correction replaces it. Do not present a detail-level revoke-review action as implemented. Existing core factChanges supports clearing a same-value fact confirmation.

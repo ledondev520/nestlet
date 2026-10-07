@@ -55,8 +55,8 @@ test('unknown backend errors use local fallback keys and server error messages o
 });
 
 test('every currently emitted backend error code has an explicit bilingual route fallback or direct mapping', async () => {
-  const backend = (await Promise.all(['server.js', 'auth.js', 'workbook-worker.js', 'storage.js', 'telemetry.js'].map(name => readFile(new URL('../' + name, import.meta.url), 'utf8')))).join('\n');
-  const emitted = new Set([...backend.matchAll(/(?:new RequestError\([^,]+,\s*|new TelemetryError\(\s*|fail\(|error:\s*|code:\s*)'([A-Z_]+)'/g)].map(match => match[1]));
+  const backend = (await Promise.all(['server.js', 'auth.js', 'workbook-worker.js', 'storage.js', 'telemetry.js', 'case-records.js', 'document-context.js', 'chat.js'].map(name => readFile(new URL('../' + name, import.meta.url), 'utf8')))).join('\n');
+  const emitted = new Set([...backend.matchAll(/(?:new RequestError\([^,]+,\s*|new (?:TelemetryError|ChatError|DocumentContextError|CaseRecordsError)\(\s*|fail\(|error:\s*|code:\s*|code\s*=\s*)'([A-Z_]+)'/g)].map(match => match[1]));
   const routeFallbacks = {
     DOCUMENT_CONSENT_REQUIRED: 'errorFile', EXTRACTION_FAILED: 'errorLive', INPUT_TOO_LARGE: 'errorSize',
     INVALID_INPUT: 'errorLive', INVALID_JSON: 'errorGeneric', INVALID_PDF: 'errorPdf', INVALID_WORKBOOK: 'errorWorkbook',

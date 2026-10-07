@@ -106,6 +106,11 @@ test('customer names are literal own-user substring searches, including Unicode,
   }
   assert.deepEqual((await json('/api/clients?search=' + encodeURIComponent("' OR 1=1 --"), { session: a })).clients, []);
   assert.ok((await json('/api/clients?limit=1', { session: a })).clients.length <= 1);
+  const unicodeName = await client(a, 'Synthetic Élodie');
+  const otherUnicodeName = await client(b, 'Synthetic Élodie');
+  const folded = (await json('/api/clients?search=' + encodeURIComponent('élodie'), { session: a })).clients;
+  assert.ok(folded.some(item => item.id === unicodeName.id), 'Case-insensitive search includes non-ASCII customer names');
+  assert.ok(!folded.some(item => item.id === otherUnicodeName.id));
 });
 
 test('customer mutation requires session, CSRF and Origin and rejects arbitrary identity or malformed names', async () => {
@@ -430,6 +435,36 @@ test('withdrawing or correcting a reviewed legacy fact clears its stale draft wi
     assert.equal(result.case.fields.find(field => field.key === 'property').value, value);
     assert.equal(result.case.draftText, '');
     assert.equal(result.case.version, record.version + 1);
-    assert.deepEqual((await json(`/api/artifacts/${saved.id}`, { session })).artifact, saved);
+    const previousArtifact = (await json(`/api/artifacts/${saved.id}`, { session })).artifact;
+    for (const key of ['id', 'content', 'version', 'sourceCaseVersion', 'provenance', 'createdAt']) assert.deepEqual(previousArtifact[key], saved[key]);
+    const archiveList = (await json(`/api/cases/${record.id}/artifacts`, { session })).artifacts;
+    const preserved = await Promise.all(archiveList.map(async item => (await json(`/api/artifacts/${item.id}`, { session })).artifact));
+    const oldDraft = preserved.filter(item => item.content === record.draftText);
+    assert.equal(oldDraft.length, 1, 'The pre-edit legacy draft must be archived exactly once');
+    assert.equal(oldDraft[0].status, 'draft');
+    assert.equal(oldDraft[0].sourceCaseVersion, record.version);
   }
+});
+
+test('final artifacts become visibly stale after case facts change and download is blocked while historical content remains readable', async () => {
+  const session = sessions['trial-a'];
+  let record = await create(session, 'Final artifact freshness', { sourceText: 'Property: 128 Example Lane', fields: extract('Property: 128 Example Lane').map(field => ({ ...field, confirmed: field.key === 'property' })), draftType: 'status-summary' });
+  record = (await json(`/api/cases/${record.id}/document-context`, { method: 'PATCH', session, body: { changes: { senderName: { value: 'Example Operator', source: 'Explicit user reply' } }, confirm: true, expectedVersion: record.version } })).case;
+  const saved = (await json(`/api/cases/${record.id}/artifacts/generate`, { method: 'POST', session, body: { kind: 'status-summary', status: 'final', expectedCaseVersion: record.version } }, 201)).artifact;
+  assert.equal((await request(`/api/artifacts/${saved.id}/download`, { session })).status, 200);
+  record = (await json(`/api/cases/${record.id}/document-context`, { method: 'PATCH', session, body: { changes: {}, factChanges: { property: { value: '130 Corrected Example Lane', source: 'Explicit user correction' } }, confirm: true, expectedVersion: record.version } })).case;
+  const historical = (await json(`/api/artifacts/${saved.id}`, { session })).artifact;
+  assert.equal(historical.content, saved.content);
+  assert.equal(historical.sourceCaseVersion, saved.sourceCaseVersion);
+  assert.equal(historical.isStale, true);
+  assert.equal(historical.needsRegeneration, true);
+  const listed = (await json(`/api/cases/${record.id}/artifacts`, { session })).artifacts.find(item => item.id === saved.id);
+  assert.equal(listed.isStale, true); assert.equal(listed.needsRegeneration, true);
+  const response = await request(`/api/artifacts/${saved.id}/download`, { session });
+  assert.equal(response.status, 409); assert.equal((await response.json()).code, 'ARTIFACT_STALE');
+  const regenerated = (await json(`/api/cases/${record.id}/artifacts/generate`, { method: 'POST', session, body: { kind: 'status-summary', status: 'final', expectedCaseVersion: record.version } }, 201)).artifact;
+  assert.notEqual(regenerated.id, saved.id);
+  assert.match(regenerated.content, /130 Corrected Example Lane/);
+  const download = await request(`/api/artifacts/${regenerated.id}/download`, { session });
+  assert.equal(download.status, 200); assert.equal(await download.text(), regenerated.content);
 });

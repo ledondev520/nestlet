@@ -47,7 +47,7 @@ try {
   database.prepare('INSERT INTO users VALUES (?,?,?,?,?)').run(userId, 'ci-migration-user', 'trial', passwordHash, createdAt);
   database.prepare('INSERT INTO cases VALUES (?,?,?,?,?,?,?)').run(caseId, userId, payload.title, JSON.stringify(payload), 3, createdAt, createdAt);
   const beforeUsers = database.prepare('SELECT * FROM users ORDER BY id').all();
-  const beforeCases = database.prepare('SELECT * FROM cases ORDER BY id').all();
+  const beforeCases = database.prepare('SELECT id,user_id,title,payload_json,version,created_at,updated_at FROM cases ORDER BY id').all();
   database.close(); database = undefined;
   storage = openStorage({ filename });
   assert.ok(storage.getUserById(userId).passwordHash === passwordHash, 'Migration changed the public-test credential hash');
@@ -57,12 +57,14 @@ try {
   storage.close(); storage = undefined;
   database = new DatabaseSync(filename, { readOnly: true });
   assert.equal(database.prepare('PRAGMA application_id').get().application_id, 0x4e53544c);
-  assert.equal(database.prepare('PRAGMA user_version').get().user_version, 2);
+  assert.equal(database.prepare('PRAGMA user_version').get().user_version, 3);
   assert.ok(JSON.stringify(database.prepare('SELECT * FROM users ORDER BY id').all()) === JSON.stringify(beforeUsers), 'Migration changed user columns');
-  assert.ok(JSON.stringify(database.prepare('SELECT * FROM cases ORDER BY id').all()) === JSON.stringify(beforeCases), 'Migration changed case columns');
+  assert.ok(JSON.stringify(database.prepare('SELECT id,user_id,title,payload_json,version,created_at,updated_at FROM cases ORDER BY id').all()) === JSON.stringify(beforeCases), 'Migration changed case columns');
   assert.equal(database.prepare('PRAGMA quick_check').get().quick_check, 'ok');
+  assert.equal(database.prepare('SELECT client_id FROM cases WHERE id=?').get(caseId).client_id, null);
+  for (const table of ['clients','conversations','messages','artifacts']) assert.equal(database.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get().n, 0);
   assert.equal(statSync(filename).mode & 0o777, 0o600);
-  console.log('Actual schema1→2 migration preserved every synthetic user/case column, credential hash, identity, version and private file mode. Application database was not modified by this test.');
+  console.log('Actual schema1→3 migration preserved every synthetic user/case column, credential hash, identity, version and private file mode. Application database was not modified by this test.');
 } finally {
   storage?.close();
   database?.close();
