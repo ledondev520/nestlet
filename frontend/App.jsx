@@ -71,7 +71,7 @@ function AccountWorkspace({ lang, view, navigate, shellProps, notices }) {
   const markIntakeDirty = useCallback(value => { dirty.current.intake = value; }, []);
   const openCase = useCallback((nextId, destination = 'chat', fresh = false, preserveRoute = false) => {
     if (fresh || nextId !== caseIdRef.current) {
-      if (Object.values(dirty.current).some(Boolean) && !window.confirm(lang === 'zh' ? '切换案例会丢失当前未保存的输入，并停止正在进行的请求。继续？' : 'Switching cases clears unsaved input and stops active requests. Continue?')) return false;
+      if (Object.values(dirty.current).some(Boolean) && !window.confirm(lang === 'zh' ? '切换工作区会丢失当前未保存的输入，并停止正在进行的请求。继续？' : 'Switching workspace clears unsaved input and stops active requests. Continue?')) return false;
       dirty.current = { chat: false, documents: false, intake: false };
       draftVault.clearWorkspace(userIdRef.current, workspaceKey);
       setWorkspaceKey(crypto.randomUUID());
@@ -172,7 +172,7 @@ function AccountWorkspace({ lang, view, navigate, shellProps, notices }) {
     // Explicit case switches remount after the dirty guard. First-save binding
     // keeps the current chat composer mounted, including prepared image previews.
     const key = ['chat', 'intake', 'documents'].includes(id) ? `${id}:${workspaceEpoch}` : id;
-    return <section key={key} hidden={view !== id} aria-label={viewLabels[lang][id]}><FeatureBoundary lang={lang}>{Page ? <Page lang={lang} {...props} /> : <PageUnavailable lang={lang} />}</FeatureBoundary></section>;
+    return <section key={key} hidden={view !== id} aria-label={viewLabels[lang][id]}><FeatureBoundary lang={lang}>{id==='settings'&&<Button variant="ghost" className="mb-4" onClick={shellProps.onCloseSettings}>{lang==='zh'?'返回工作区':'Back to workspace'}</Button>}{Page ? <Page lang={lang} {...props} /> : <PageUnavailable lang={lang} />}</FeatureBoundary></section>;
   })}</ApplicationShell></DraftWorkspaceProvider>;
 }
 
@@ -183,9 +183,11 @@ export default function App({ initialAuthLink = null }) {
   const replaceAuthLink = useCallback(next => { authLinkRef.current?.clear(); authLinkRef.current = next; setAuthLink(next); }, []);
   const [lang, setLang] = useState('zh');
   const [view, setView] = useState(currentView);
+  const settingsReturn=useRef({view:'chat',hash:'#chat'});
   const { status, loading, error, recovery, refresh } = useSession();
   const navigate = useCallback((next,{preserveRoute=false}={}) => {
     if (!views.includes(next)) return;
+    if(next==='settings'&&currentView()!=='settings')settingsReturn.current={view:currentView(),hash:window.location.hash||'#chat'};
     replaceAuthLink(null);
     setView(next);
     if (!preserveRoute && window.location.hash !== `#${next}`) window.history.pushState({}, '', `#${next}`);
@@ -224,7 +226,8 @@ export default function App({ initialAuthLink = null }) {
     navigate(workspace?.view || 'chat');
   };
   if (window.location.hash === '#components') return <ComponentPreview />;
-  const shellProps = { lang, view, onNavigate: status.authenticated ? navigate : undefined, onLanguageChange: () => setLang(value => value === 'zh' ? 'en' : 'zh'), model: status.authenticated ? <ModelSettingsPopover key={`${status.userId}:${view}`} lang={lang} active={!authLink && !loading && view !== 'settings'} /> : null, account: status.authenticated ? <><Button variant="outline" size="sm" data-account-settings onClick={() => navigate('settings')} aria-label={lang === 'zh' ? '账户与设置' : 'Account and settings'}><Settings aria-hidden="true" /></Button>{AccountControls && <AccountControls lang={lang} />}</> : null };
+  const closeSettings=()=>{navigate(settingsReturn.current.view,{preserveRoute:true});window.history.pushState({},'',settingsReturn.current.hash);};
+  const shellProps = { lang, view, onCloseSettings: closeSettings, onNavigate: status.authenticated ? navigate : undefined, onLanguageChange: () => setLang(value => value === 'zh' ? 'en' : 'zh'), model: status.authenticated ? <ModelSettingsPopover key={`${status.userId}:${view}`} lang={lang} active={!authLink && !loading} /> : null, settings: status.authenticated ? <Button variant={view==='settings'?'secondary':'ghost'} size="icon" data-account-settings aria-current={view==='settings'?'page':undefined} onClick={() => {if(view==='settings')closeSettings();else navigate('settings');}} aria-label={lang === 'zh' ? '账户与设置' : 'Account and settings'}><Settings aria-hidden="true" /></Button> : null, account: status.authenticated && AccountControls ? <AccountControls lang={lang} /> : null };
   const notices = <>
     {recovery === 'suspended' && <Alert className="mb-5"><AlertDescription>{lang === 'zh' ? '登录已过期。请在 30 分钟内使用同一账号重新登录，并保持当前页面打开，以恢复未保存的文字。' : 'Your session expired. Keep this page open and sign in with the same account within 30 minutes to recover unsaved text.'}</AlertDescription></Alert>}
     {recovery === 'restored' && <Alert className="mb-5"><AlertDescription>{lang === 'zh' ? '已恢复未保存的文字，请重新添加图片和文件。' : 'Unsaved text restored. Reattach images and files.'}</AlertDescription></Alert>}

@@ -279,7 +279,7 @@ for(const outcome of ['complete','failure']){
   await expect(review.chat.getByRole('button',{name:'New conversation',exact:true})).toBeDisabled();
   const acceptSwitch=async dialog=>{
    expect(dialog.type()).toBe('confirm');
-   expect(dialog.message()).toContain('Switching cases clears unsaved input');
+   expect(dialog.message()).toContain('Switching workspace clears unsaved input');
    await dialog.accept();
   };
   page.on('dialog',acceptSwitch);

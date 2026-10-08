@@ -27,7 +27,7 @@ test('chat lookup is read-only, requires an exact case choice, and protects unsa
   await lookup.getByRole('button', { name: 'Choose a customer case', exact: true }).click();
   const choice = record => lookup.getByRole('button', { name: `Open case: ${record.title} · ${record.id}`, exact: true });
   await expect(choice(records[0])).toBeVisible(); await expect(choice(records[1])).toBeVisible();
-  await expect(chat.locator('.chat-toolbar')).not.toContainText(records[0].title);
+  await expect(chat).not.toHaveAttribute('data-case-id',records[0].id);
   await chat.locator('.chat-input').fill('Keep this unsent synthetic question');
   page.once('dialog', dialog => dialog.dismiss());
   await choice(records[1]).click();
@@ -35,7 +35,7 @@ test('chat lookup is read-only, requires an exact case choice, and protects unsa
   await expect(chat.locator('.chat-input')).toHaveValue('Keep this unsent synthetic question');
   page.once('dialog', dialog => dialog.accept());
   await choice(records[1]).click();
-  await expect(chat.locator('.chat-toolbar')).toContainText(records[1].title);
+  await expect(chat).toHaveAttribute('data-case-id',records[1].id);
   await expect(chat.locator('.chat-input')).toHaveValue('');
   await navigate(page, 'Materials & facts');
   await expect(page.getByLabel('Case name', { exact: true })).toHaveValue(records[1].title);

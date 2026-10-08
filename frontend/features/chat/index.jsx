@@ -177,6 +177,24 @@ export function ChatPage({ lang='zh', caseId=null, initialConversationId=null, c
 
   useEffect(()=>{onConversationChange?.(conversationId);},[conversationId,onConversationChange]);
 
+  // Titles are generated separately from the primary reply. These two bounded
+  // metadata reads never resend a turn or replace the visible transcript/draft.
+  useEffect(()=>{
+    if(phase!=='idle'||!conversationId||!['Conversation','Case conversation','案例会话','新对话','New conversation','对话'].includes(title)||!messages.some(message=>message.role==='assistant'&&message.state==='complete'))return;
+    const scope=scoped(),read=managedController();
+    let finished=false;
+    const timers=[1000,5000].map(delay=>setTimeout(async()=>{
+      if(finished||!current(scope))return;
+      try{
+        const result=await api.get(`/api/conversations/${encodeURIComponent(scope.conversationId)}`,{signal:timeoutSignal(read.signal)});
+        if(finished||read.signal.aborted||!current(scope)||result.conversation?.id!==scope.conversationId||result.conversation.caseId!==scope.caseId)return;
+        const next=result.conversation.title;
+        if(typeof next==='string'&&next&&next.length<=120&&next!==title){finished=true;setTitle(next);setConversations(rows=>rows.map(row=>row.id===scope.conversationId?{...row,title:next}:row));onHistoryChange?.();}
+      }catch{/* Optional title refresh never changes the successful reply state. */}
+    },delay));
+    return()=>{finished=true;timers.forEach(clearTimeout);read.abort();controllers.current.delete(read);};
+  },[conversationId,title,phase,api]);
+
   async function chooseConversation(id) {
     if (retentionRef.current || bridgeOperation.current || sourceOperation.current) return;
     if (dirty && !window.confirm(words.resetAsk)) return;
@@ -386,7 +404,7 @@ export function ChatPage({ lang='zh', caseId=null, initialConversationId=null, c
   const workflow = onOpenMaterials && onOpenDocuments ? <ChatCaseWorkflow compact={!!workflowTarget} api={api} lang={lang} caseId={caseId} userId={status.userId} disabled={busy} active={active} refreshKey={`${conversationId}:${messages.length}:${phase === 'idle'}:${actionRevision}`} onOpenMaterials={onOpenMaterials} onOpenDocuments={onOpenDocuments} /> : null;
   const lookup = onOpenSourceCase ? <ChatLookup compact={!!lookupTarget} api={api} userId={status.userId} caseId={caseRef.current} lang={lang} active={active}
       disabled={phase !== 'idle' || bridgeBusy || retentionBusy || imagePending > 0} onOpenSourceCase={onOpenSourceCase} claimOperation={claimSourceOperation} releaseOperation={releaseSourceOperation} /> : null;
-  return <section className="chat-workspace" aria-label={words.title} data-feature="chat">
+  return <section className="chat-workspace" aria-label={words.title} data-feature="chat" data-case-id={caseRef.current||undefined} data-conversation-id={conversationId||undefined}>
     <LibraryPermissionDialog lang={lang} open={permissionPrompt&&active} ready={Boolean(permissionPending.current?.snapshot)} onRetry={refreshPermission} busy={permission.busy} error={permissionFailure} onChoose={choosePermission} onClose={closePermission} onWithoutLibrary={sendWithoutLibrary} />
     {workflow && (workflowTarget ? createPortal(<div hidden={!active} data-chat-workflow-slot>{workflow}</div>, workflowTarget) : workflow)}
     {lookup && (lookupTarget ? createPortal(<div hidden={!active} data-chat-lookup-slot>{lookup}</div>, lookupTarget) : lookup)}

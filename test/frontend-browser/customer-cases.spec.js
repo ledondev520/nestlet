@@ -312,7 +312,7 @@ test('offline save preserves edits, explicit retry persists once, and cancelled 
   const interrupted = page.waitForEvent('dialog');
   const switchCase = customerRecord(page).getByRole('button', { name: `Open case: ${second.title}`, exact: true }).click();
   const warning = await interrupted;
-  expect(warning.message()).toContain('Switching cases clears unsaved input');
+  expect(warning.message()).toContain('Switching workspace clears unsaved input');
   await warning.dismiss(); await switchCase;
   await navigate(page, 'Materials & facts');
   await expect(page.getByLabel('Case source text', { exact: true })).toHaveValue(pendingText);
@@ -329,13 +329,14 @@ test('offline save preserves edits, explicit retry persists once, and cancelled 
   await expect(page.getByRole('button', { name: 'Send', exact: true })).toBeDisabled();
   for (const accept of [false, true]) {
     const pending = page.waitForEvent('dialog');
-    const click = page.getByRole('button', { name: 'New conversation', exact: true }).click();
+    const click = page.locator('[data-feature="chat"]').getByRole('button', { name: 'New conversation', exact: true }).click();
     const dialog = await pending;
-    expect(dialog.message()).toContain('Switching conversations stops the current reply');
+    expect(dialog.message()).toContain('Switching workspace clears unsaved input');
     await (accept ? dialog.accept() : dialog.dismiss()); await click;
     await expect(composer).toHaveValue(accept ? '' : question);
   }
   expect((await getJson(page, app, `/api/cases/${first.id}/conversations`)).conversations).toEqual([]);
+  await openLinkedCase(page, client.displayName, first.title);
   await navigate(page, 'Materials & facts');
   await expect(page.getByLabel('Case source text', { exact: true })).toHaveValue(pendingText);
   await screenshot(page, testInfo, 'offline-edit-explicitly-saved-and-reopened');

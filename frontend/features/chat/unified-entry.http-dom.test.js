@@ -62,4 +62,12 @@ test('unified history opens the exact conversation across cases and guards unsav
   await React.act(async()=>{window.location.hash=`#chat?conversation=${first.id}`;});
   await wait(()=>title()===first.title,'Exact conversation hash navigation works');
   assert.equal(requests.some(item=>item.path==='/api/chat'),false);
+  await change(document.querySelector('.chat-input'),'Draft survives settings');
+  const previousHash=window.location.hash;await click(button('Account and settings'));
+  assert.equal(button('Account and settings').getAttribute('aria-current'),'page');
+  await click(button('Back to workspace'));assert.equal(window.location.hash,previousHash);
+  assert.equal(document.querySelector('.chat-input').value,'Draft survives settings');
+  assert.equal(document.querySelector('[data-feature="chat"]').getAttribute('data-conversation-id'),first.id);
+  assert.ok(document.querySelector('.wb-topbar nav[aria-label="Workspace navigation"]'));
+  assert.equal(document.querySelector('.wb-center nav[aria-label="Workspace navigation"]'),null);
 });
