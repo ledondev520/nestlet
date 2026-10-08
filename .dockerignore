@@ -18,6 +18,7 @@
 !review-operation.js
 !conversation-action-contract.js
 !document-context.js
+!document-pdf.js
 !case-records.js
 !workbook-worker.js
 !asset-domain.js

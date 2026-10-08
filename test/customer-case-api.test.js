@@ -462,9 +462,28 @@ test('final artifacts become visibly stale after case facts change and download 
   assert.equal(listed.isStale, true); assert.equal(listed.needsRegeneration, true);
   const response = await request(`/api/artifacts/${saved.id}/download`, { session });
   assert.equal(response.status, 409); assert.equal((await response.json()).code, 'ARTIFACT_STALE');
+  const stalePdf = await request(`/api/artifacts/${saved.id}/pdf`, { session });
+  assert.equal(stalePdf.status,409); assert.equal((await stalePdf.json()).code,'ARTIFACT_STALE');
   const regenerated = (await json(`/api/cases/${record.id}/artifacts/generate`, { method: 'POST', session, body: { kind: 'status-summary', status: 'final', expectedCaseVersion: record.version } }, 201)).artifact;
   assert.notEqual(regenerated.id, saved.id);
   assert.match(regenerated.content, /130 Corrected Example Lane/);
   const download = await request(`/api/artifacts/${regenerated.id}/download`, { session });
   assert.equal(download.status, 200); assert.equal(await download.text(), regenerated.content);
+  assert.equal((await request(`/api/artifacts/${regenerated.id}/pdf`, {session})).status,200);
+});
+
+
+test('PDF downloads are authenticated, own-user, immutable saved artifact bytes with safe headers', async () => {
+  const a=sessions['trial-a'], b=sessions['trial-b'];
+  const record=await create(a,'Synthetic PDF export');
+  const saved=await artifact(a,record,'Synthetic saved PDF body. Literal <script>not executable</script>.');
+  const path=`/api/artifacts/${saved.id}/pdf`;
+  assert.equal((await request(path)).status,401);
+  assert.equal((await request(path,{session:b})).status,404);
+  const response=await request(path,{session:a});
+  assert.equal(response.status,200);assert.equal(response.headers.get('content-type'),'application/pdf');
+  assert.match(response.headers.get('cache-control'),/no-store/);
+  assert.equal(response.headers.get('content-disposition'),`attachment; filename="nestlet-followup-v${saved.version}-draft.pdf"`);
+  assert.equal(Buffer.from(await response.arrayBuffer()).subarray(0,5).toString(),'%PDF-');
+  assert.equal((await request(path+'?content=injected',{session:a})).status,400);
 });

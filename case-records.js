@@ -1,5 +1,6 @@
 /** Customer/case/conversation/artifact HTTP operations, always scoped to the authenticated identity. */
 import { randomUUID } from 'node:crypto';
+import { createDocumentPdf, DocumentPdfError } from './document-pdf.js';
 import { loadConversationAction } from './conversation-action-contract.js';
 import { FIELDS } from './public/core.js';
 import { mergeDocumentContext, assessDocumentReadiness, generateReviewedDocument } from './document-context.js';
@@ -23,7 +24,7 @@ function query(url, allowed) {
 export function isCaseRecordsPath(path) {
   return path === '/api/clients' || new RegExp(`^/api/clients/${UUID}(?:/(?:cases|artifacts))?$`).test(path) ||
     new RegExp(`^/api/cases/${UUID}/(?:readiness|document-context|issues|conversations|conversation-actions/prepare|conversation-reviews(?:/[0-9a-f-]{36}(?:/(?:reply|undo))?)?|artifacts(?:/generate)?)$`).test(path) ||
-    new RegExp(`^/api/conversations/${UUID}$`).test(path) || new RegExp(`^/api/artifacts/${UUID}(?:/download)?$`).test(path);
+    new RegExp(`^/api/conversations/${UUID}$`).test(path) || new RegExp(`^/api/artifacts/${UUID}(?:/(?:download|pdf))?$`).test(path);
 }
 
 export async function handleCaseRecords({ request, response, url, session, storage, readJson, json }) {
@@ -167,12 +168,25 @@ export async function handleCaseRecords({ request, response, url, session, stora
     if (!conversation) fail('CONVERSATION_NOT_FOUND',404);
     return json(200,{conversation,messages:storage.listMessages(userId,conversation.id)});
   }
-  const artifactRoute = new RegExp(`^/api/artifacts/(${UUID})(/download)?$`).exec(path);
+  const artifactRoute = new RegExp(`^/api/artifacts/(${UUID})(/download|/pdf)?$`).exec(path);
   if (artifactRoute && method === 'GET') {
     query(url,[]); const artifact = storage.getArtifact(userId,artifactRoute[1]);
     if (!artifact) fail('ARTIFACT_NOT_FOUND',404);
     if (!artifactRoute[2]) return json(200,{artifact});
     if (artifact.status === 'final' && artifact.isStale) fail('ARTIFACT_STALE',409);
+    if (artifactRoute[2] === '/pdf') {
+      let bytes;
+      try {bytes = await createDocumentPdf(artifact);} catch (error) {
+        if (error instanceof DocumentPdfError) fail(error.code,error.status);
+        throw error;
+      }
+      const latest = storage.getArtifact(userId,artifact.id);
+      if (!latest) fail('ARTIFACT_NOT_FOUND',404);
+      if (latest.status === 'final' && latest.isStale) fail('ARTIFACT_STALE',409);
+      response.writeHead(200,{'Content-Type':'application/pdf','Content-Length':bytes.length,'Cache-Control':'no-store',
+        'Content-Disposition':`attachment; filename="nestlet-${artifact.kind}-v${artifact.version}-${artifact.status}.pdf"`});
+      response.end(bytes); return;
+    }
     response.writeHead(200,{'Content-Type':'text/plain; charset=utf-8','Content-Disposition':`attachment; filename="${artifact.kind}-v${artifact.version}-${artifact.status}.txt"`});
     response.end(artifact.content); return;
   }

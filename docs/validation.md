@@ -634,3 +634,21 @@ Local pre-publication evidence: pinned dependency install, JavaScript checks and
 [Run 37789219698](https://github.com/ledondev520/nestlet/actions/runs/37789219698), candidate `d3781c3cf25e2169281affd597e9815b185c835b`, passed **53/56**. All strengthened current-client recovery tests, both late-result isolation tests and the pinned-client Stop test passed. Three pinned-client scenarios stopped at Playwright's late CDP response-body retrieval (`Network.getResponseBody: No data found`), before their remaining assertions. The prepared-result screenshot shows the canonical reply and correct conflict card, but is not counted as a completed scenario. Node and container gates passed.
 
 The test-only correction captures a passive clone of the real native fetch response before the old client's stream cleanup, preserving the original request arguments, AbortSignal, headers and Response returned to the pinned application. The clone tees and consumes the bounded test stream; Stop must explicitly abort that clone with `AbortError` as well as stopping the app reader. Protocol/UI assertions remain required. A new exact-head official run must establish the complete result; no runtime change or production-defect claim is made from this harness failure.
+
+### 2026-10-08 — direct PDF implementation, local evidence only
+
+- Added local-only authenticated immutable-artifact PDF export with embedded Noto
+  CJK font, worker resource bounds, ownership and stale-final checks, and bilingual
+  Download PDF control/errors. No schema migration or AI transmission.
+- Local `npm run check`, production frontend build, `npm test` (431/431) and
+  `npm run test:frontend` (323/323) passed. The first frontend run caught a missing
+  Docker-context allowlist entry; corrected before the passing rerun.
+- Real local Poppler checks cover PDF header, searchable English/accented Latin/
+  Chinese/Japanese/Korean, embedded font, no PDF JavaScript, literal HTML-like text,
+  multipage/long-token fidelity, unsupported glyph errors, limits and recovery.
+- Local Chromium launch is BLOCKED by the environment's process-singleton socket
+  restriction, including the first reviewed escalation. No local browser journey
+  pass is claimed. The new direct-PDF browser test is intended for official CI:
+  actual saved download bytes, repeat download, edited draft, unsaved guard and
+  stale-final rejection. Official CI, runtime container and deployed app's actual
+  download/open remain PENDING. Offline generated PDFs do not satisfy live acceptance.

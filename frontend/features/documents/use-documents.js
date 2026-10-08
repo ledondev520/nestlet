@@ -136,11 +136,11 @@ export function useDocuments(lang, caseId, onDirtyChange, visible = true) {
   async function perform(name, work) {
     if (lock.current || !identity || !latest.current.record) return;
     const current = ticket(), snapshot = {...latest.current, editorRevision:editorRevision.current};
-    const event = {confirm:'review.confirm', generate:'draft.generate', 'save-version':'draft.edit', copy:'export.copy', download:'export.download', print:'export.print'}[name];
+    const event = {confirm:'review.confirm', generate:'draft.generate', 'save-version':'draft.edit', copy:'export.copy', download:'export.download', pdf:'export.download', print:'export.print'}[name];
     const observed = observation.begin(event, current.signal);
     lock.current = true; patch({busy:name, error:null, notice:''});
     try {
-      if (snapshot.recoveryBaseVersion !== null && !['copy','open','download','print'].includes(name)) throw failure('CASE_CONFLICT');
+      if (snapshot.recoveryBaseVersion !== null && !['copy','open','download','pdf','print'].includes(name)) throw failure('CASE_CONFLICT');
       await work(current, snapshot, observed);
       observed.finish({ok:true});
     }
@@ -218,6 +218,19 @@ export function useDocuments(lang, caseId, onDirtyChange, visible = true) {
     const anchor = document.createElement('a'); anchor.href = url; anchor.download = printableFilename(snapshot.selected); document.body.append(anchor); anchor.click(); anchor.remove();
     setTimeout(() => {URL.revokeObjectURL(url); urls.current.delete(url);}, 1000);
   });
+  const downloadPdf = () => perform('pdf', async (current, snapshot) => {
+    if (!snapshot.selected || snapshot.content !== snapshot.selected.content || snapshot.artifactTitle !== snapshot.selected.title) throw failure('UNSAVED_ARTIFACT');
+    const response = await fetch(`/api/artifacts/${snapshot.selected.id}/pdf`, {credentials:'same-origin', cache:'no-store', signal:current.signal});
+    verify(current);
+    if (!response.ok) {const body = await response.json().catch(() => ({})); verify(current); throw new ApiError(body.code || 'REQUEST_FAILED', response.status);}
+    if (response.headers.get('Content-Type')?.split(';')[0] !== 'application/pdf') throw failure('INVALID_RESPONSE');
+    const blob = await response.blob(); verify(current);
+    if (!blob.size || blob.size > 8 * 1024 * 1024 || await blob.slice(0,5).text() !== '%PDF-') throw failure('INVALID_RESPONSE');
+    verify(current);
+    const url = URL.createObjectURL(blob); urls.current.add(url);
+    const anchor = document.createElement('a'); anchor.href = url; anchor.download = printableFilename(snapshot.selected).replace(/\.txt$/, '.pdf'); document.body.append(anchor); anchor.click(); anchor.remove();
+    setTimeout(() => {URL.revokeObjectURL(url); urls.current.delete(url);}, 1000);
+  });
   const print = () => {
     if (lock.current || !identity || !latest.current.selected) return;
     return perform('print', async (current, snapshot, observed) => {
@@ -241,6 +254,6 @@ export function useDocuments(lang, caseId, onDirtyChange, visible = true) {
     const current = ticket(); const result = await api.get(`/api/conversations/${conversationId}`, {signal:signal || current.signal}); verify(current);
     if (result.conversation?.caseId !== caseId) throw failure('INVALID_RESPONSE'); return result.messages || [];
   };
-  return {state, status, cacheStatus, dirty, contentDirty, patch, editArtifact, reload, generate, confirmAnswers, saveIssue, openArtifact, saveArtifact, copy, download, print,
+  return {state, status, cacheStatus, dirty, contentDirty, patch, editArtifact, reload, generate, confirmAnswers, saveIssue, openArtifact, saveArtifact, copy, download, downloadPdf, print,
     sourceMessages, observation};
 }
