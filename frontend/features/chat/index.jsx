@@ -243,10 +243,21 @@ export function ChatPage({ lang='zh', caseId=null, guidanceAgency='unknown', onC
     finally{controllers.current.delete(load);if(current(scope)){controller.current=null;updatePhase('idle');}}
   }
 
+  const factReplyTarget=useRef(null);
+  const registerFactReply=useCallback(target=>{factReplyTarget.current=target;},[]);
+
   async function send(event){
     event?.preventDefault();
     if(phaseRef.current!=='idle'||bridgeOperation.current||sourceOperation.current||retentionRef.current||imagePending)return;
     if(!statusRef.current.authenticated){setError(new ChatClientError('AUTH_REQUIRED'));return;}
+    const targeted=factReplyTarget.current;
+    if(targeted&&targeted.scope===`${statusRef.current.userId}:${caseRef.current}:${conversationRef.current}`){
+      // Only direct, attachment-free human text is routed to the visible question.
+      if(imageRef.current.length){setError(new ChatClientError('CHAT_INVALID'));return;}
+      const original=inputRef.current;
+      if(await targeted.submit(original)) { if(inputRef.current===original){inputRef.current='';setInput('');} }
+      return;
+    }
     if(!statusRef.current.liveEnabled){setError(new ChatClientError('LIVE_DISABLED'));return;}
     const retrievalRequested=libraryConsent===true, actionsRequested=actionConsent===true;
     if(retrievalRequested && statusRef.current.libraryRetrievalEnabled!==true){setLibraryConsent(false);setError(new ChatClientError('LIBRARY_UNAVAILABLE'));return;}
@@ -349,7 +360,7 @@ export function ChatPage({ lang='zh', caseId=null, guidanceAgency='unknown', onC
           </article>)}
           <div ref={endOfThread}/>
         </div>
-        {actionBatch && actionBatch.userId===status.userId && actionBatch.caseId===caseRef.current && actionBatch.conversationId===conversationId && actionBatch.items.map((packet,index)=><ConversationActionReview key={`${status.userId}:${caseRef.current}:${conversationId}:${packet.requestId}:${index}`} proposal={packet.proposal} api={api} lang={lang} userId={status.userId} caseId={caseRef.current} conversationId={conversationId} ready={actionBatch.ready && phase==='idle'} disabled={busy} claimOperation={claimBridgeOperation} releaseOperation={releaseBridgeOperation} onApplied={()=>setActionRevision(value=>value+1)} onOpenDocuments={onOpenDocuments} onOpenMaterials={onOpenMaterials} />)}
+        {actionBatch && actionBatch.userId===status.userId && actionBatch.caseId===caseRef.current && actionBatch.conversationId===conversationId && actionBatch.items.map((packet,index)=><ConversationActionReview key={`${status.userId}:${caseRef.current}:${conversationId}:${packet.requestId}:${index}`} proposal={packet.proposal} api={api} lang={lang} userId={status.userId} caseId={caseRef.current} conversationId={conversationId} ready={actionBatch.ready && phase==='idle'} disabled={busy} claimOperation={claimBridgeOperation} releaseOperation={releaseBridgeOperation} onApplied={result=>{setActionRevision(value=>value+1);if(result.message&&result.message.conversationId===conversationRef.current&&!messageRef.current.some(row=>row.id===result.message.id))updateMessages([...messageRef.current,result.message]);}} onOpenDocuments={onOpenDocuments} onOpenMaterials={onOpenMaterials} onReplyTarget={actionBatch.items.length===1?registerFactReply:undefined} />)}
         {libraryActivity&&<div role="status" className="paper-note rounded px-3 py-2 text-sm" aria-label={words.libraryActivity}>
           <p>{libraryActivityText(libraryActivity,lang)}{libraryActivity.count!==undefined?` · ${words.libraryCount}: ${libraryActivity.count}`:''}</p>
           {libraryActivity.code&&<p>{chatErrorText(libraryActivity,lang)}</p>}

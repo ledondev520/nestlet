@@ -56,7 +56,7 @@ test('genuine populated schema5→6 preserves every identity, email action, data
     assert.equal(store.accountAdministration.administrator(f.id),false);
     assert.equal(store.accountAdministration.listAccounts({userId:'owner',role:'owner'}).accounts.find(row=>row.id===f.id).email,'synthetic-migration@example.test');
     store.close();
-    inspect(f.filename,db=>{preserved(db,f.before);assert.equal(db.prepare('PRAGMA user_version').get().user_version,6);for(const name of ['user_capabilities','account_capability_audit'])assert.equal(db.prepare(`SELECT COUNT(*) AS n FROM ${name}`).get().n,0);});
+    inspect(f.filename,db=>{preserved(db,f.before);assert.equal(db.prepare('PRAGMA user_version').get().user_version,7);for(const name of ['user_capabilities','account_capability_audit'])assert.equal(db.prepare(`SELECT COUNT(*) AS n FROM ${name}`).get().n,0);});
   }
 });
 test('late schema6 migration failure rolls back all capability DDL and version while preserving schema5 data',t=>{
@@ -66,12 +66,12 @@ test('late schema6 migration failure rolls back all capability DDL and version w
   assert.throws(()=>openStorage({filename:f.filename}),/account_capability_audit/);
   inspect(f.filename,db=>{assert.equal(db.prepare('PRAGMA user_version').get().user_version,5);preserved(db,before);assert.deepEqual(schema(db),before.schema);assert.equal(db.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE name='user_capabilities'").get().n,0);});
 });
-test('future schema7 fails closed with unchanged bytes, file set, DDL and WAL mode',t=>{
-  const f=fixture(t);inspect(f.filename,db=>db.exec('PRAGMA journal_mode=WAL; PRAGMA user_version=7;'));
+test('future schema8 fails closed with unchanged bytes, file set, DDL and WAL mode',t=>{
+  const f=fixture(t);inspect(f.filename,db=>db.exec('PRAGMA journal_mode=WAL; PRAGMA user_version=8;'));
   const bytes=readFileSync(f.filename),files=readdirSync(f.directory).sort();
   assert.throws(()=>openStorage({filename:f.filename}),error=>error.code==='STORAGE_VERSION_UNSUPPORTED');
   assert.deepEqual(readFileSync(f.filename),bytes);assert.deepEqual(readdirSync(f.directory).sort(),files);
-  inspect(f.filename,db=>{assert.equal(db.prepare('PRAGMA user_version').get().user_version,7);assert.equal(db.prepare('PRAGMA journal_mode').get().journal_mode,'wal');preserved(db,f.before);assert.deepEqual(schema(db),f.before.schema);});
+  inspect(f.filename,db=>{assert.equal(db.prepare('PRAGMA user_version').get().user_version,8);assert.equal(db.prepare('PRAGMA journal_mode').get().journal_mode,'wal');preserved(db,f.before);assert.deepEqual(schema(db),f.before.schema);});
 });
 
 test('two actual startup processes serialize schema5→6 and leave one additive migration with no automatic grants',async t=>{
@@ -83,5 +83,5 @@ test('two actual startup processes serialize schema5→6 and leave one additive 
     let error='';child.stderr.on('data',data=>error+=data);child.once('error',reject);child.once('exit',code=>code===0?resolve():reject(new Error('Synthetic concurrent migration failed: '+error)));
   });
   await Promise.all([run(),run()]);
-  inspect(f.filename,db=>{assert.equal(db.prepare('PRAGMA user_version').get().user_version,6);preserved(db,f.before);assert.equal(db.prepare('SELECT COUNT(*) AS n FROM user_capabilities').get().n,0);assert.equal(db.prepare('SELECT COUNT(*) AS n FROM account_capability_audit').get().n,0);});
+  inspect(f.filename,db=>{assert.equal(db.prepare('PRAGMA user_version').get().user_version,7);preserved(db,f.before);assert.equal(db.prepare('SELECT COUNT(*) AS n FROM user_capabilities').get().n,0);assert.equal(db.prepare('SELECT COUNT(*) AS n FROM account_capability_audit').get().n,0);});
 });
