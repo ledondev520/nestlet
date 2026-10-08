@@ -6,7 +6,7 @@ export function conversationFromHash(hash){
 }
 export async function readConversationIndex(api,signal){
   const result=await api.get('/api/conversations',{signal});
-  if(!Array.isArray(result.conversations)||result.conversations.length>1000||result.conversations.some(row=>!uuid(row.id)||!uuid(row.caseId)||typeof row.title!=='string'||row.title.length>120||!Number.isSafeInteger(row.draftCount)||row.draftCount<0||row.lastMessage!==null&&(!row.lastMessage||!['user','assistant'].includes(row.lastMessage.role)||!['complete','interrupted','failed'].includes(row.lastMessage.state)||typeof row.lastMessage.preview!=='string'||row.lastMessage.preview.length>160)))throw new Error('INVALID_RESPONSE');
+  if(!Array.isArray(result.conversations)||result.conversations.length>1000||result.conversations.some(row=>!uuid(row.id)||!uuid(row.caseId)||typeof row.title!=='string'||row.title.length>120||!Number.isSafeInteger(row.draftCount)||row.draftCount<0||row.lastMessage!==null&&(!row.lastMessage||!['user','assistant'].includes(row.lastMessage.role)||!['complete','interrupted','failed'].includes(row.lastMessage.state)||typeof row.lastMessage.preview!=='string'||[...row.lastMessage.preview].length>160)))throw new Error('INVALID_RESPONSE');
   return result.conversations;
 }
 /** Only a persisted unfinished reply or current draft earns an unfinished label. */

@@ -12,5 +12,7 @@ test('exact conversation links are UUID-only and source-grounded suggestions do 
 test('index parser rejects corrupt metadata and accepts empty own-account history',async()=>{
  assert.deepEqual(await readConversationIndex({get:async()=>({conversations:[]})}),[]);
  assert.deepEqual(await readConversationIndex({get:async()=>({conversations:[row(id)]})}),[row(id)]);
+ const unicode=row(id,{lastMessage:{role:'assistant',state:'complete',preview:'🙂'.repeat(160)}});
+ assert.deepEqual(await readConversationIndex({get:async()=>({conversations:[unicode]})}),[unicode],'SQLite substr bounds Unicode code points, not UTF-16 units');
  for(const bad of [row(id,{caseId:'bad'}),row(id,{draftCount:-1}),row(id,{lastMessage:{role:'assistant',state:'complete',preview:'x'.repeat(161)}})])await assert.rejects(()=>readConversationIndex({get:async()=>({conversations:[bad]})}));
 });
