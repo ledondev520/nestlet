@@ -96,3 +96,27 @@ test('ordinary chat composer answers exactly one visible question without anothe
  await fill(host.querySelector('.chat-input'),'confirm');await click(button('Send'));await wait(()=>host.textContent.includes('Saved as reviewed'));
  assert.equal(host.querySelector('.chat-input').value,'');assert.equal(chatCount,1);assert.equal((await owner.api.get(`/api/cases/${s.record.id}`)).case.fields.find(row=>row.key==='property').confirmed,true);
 });
+
+test('lost prepare response retains the exact human answer and recovers correction or cancellation once',async()=>{
+ for(const answer of ['change to 512 Synthetic Recovery Lane','cancel']){
+  const s=await sample(),p=await prepare(s);let dropped=false;const prepares=[],replies=[];
+  const api={...owner.api,post:async(path,body,options)=>{
+   if(path.endsWith('/conversation-reviews'))prepares.push(structuredClone(body));
+   if(path.endsWith('/reply'))replies.push(structuredClone(body));
+   const result=await owner.api.post(path,body,options);
+   if(path.endsWith('/conversation-reviews')&&!dropped){dropped=true;throw new TypeError('Synthetic lost prepare response after commit');}
+   return result;
+  }};
+  await mount(s,p,{api});await fill(host.querySelector('textarea'),answer);await click(button('Send answer'));
+  await wait(()=>button('Check saved answer'));
+  assert.equal((await owner.api.get(`/api/cases/${s.record.id}`)).case.version,1);assert.equal(replies.length,0);
+  await click(button('Check saved answer'));
+  await wait(()=>host.textContent.includes(answer==='cancel'?'Left unchanged':'Saved as reviewed'));
+  assert.equal(prepares.length,2);assert.equal(prepares[0].clientRequestId,prepares[1].clientRequestId);
+  assert.equal(replies.length,1);assert.equal(replies[0].answer,answer);
+  const saved=(await owner.api.get(`/api/cases/${s.record.id}`)).case;
+  assert.equal(saved.version,answer==='cancel'?1:2);
+  if(answer!=='cancel')assert.equal(saved.fields.find(row=>row.key==='property').value,'512 Synthetic Recovery Lane');
+  const history=await owner.api.get(`/api/conversations/${s.conversation.id}`);assert.equal(history.messages.length,3);
+ }
+});

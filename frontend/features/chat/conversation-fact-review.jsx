@@ -25,6 +25,9 @@ export function ConversationFactReview({proposal,userId,caseId,conversationId,re
   const current=()=>alive.current&&scopeRef.current===captured&&operation.current===controller;
   const options={signal:AbortSignal.any([controller.signal,AbortSignal.timeout(20000)])};
   try {
+   // Capture the human answer before any request: prepare itself can commit and lose its response.
+   if(!undo&&!retry)savedReply.current={conversationId,expectedVersion:proposal.expectedVersion,clientMessageId:uuid(),answer:text};
+   if(!undo&&!savedReply.current)throw {code:'INVALID_RESPONSE'};
    if(!pending.current){
     requestKey.current ||= uuid();
     const prepared=await api.post(`/api/cases/${caseId}/conversation-reviews`,{conversationAction:proposal.request,clientRequestId:requestKey.current,locale:en?'en':'zh'},options);
@@ -38,7 +41,6 @@ export function ConversationFactReview({proposal,userId,caseId,conversationId,re
     undoKey.current ||= uuid();
     result=await api.post(`/api/cases/${caseId}/conversation-reviews/${pending.current.id}/undo`,{conversationId,expectedVersion:receipt.intent.appliedVersion,clientMessageId:undoKey.current},options);
    }else{
-    if(!retry)savedReply.current={conversationId,expectedVersion:proposal.expectedVersion,clientMessageId:uuid(),answer:text};
     if(!savedReply.current)throw {code:'INVALID_RESPONSE'};
     result=await api.post(`/api/cases/${caseId}/conversation-reviews/${pending.current.id}/reply`,savedReply.current,options);
    }

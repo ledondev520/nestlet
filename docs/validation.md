@@ -435,3 +435,7 @@ The scenario checks preview-disabled-before-completion, reset one-message consen
 - No production database migration, data restore, live account/provider call, merge or deployment occurred. See `docs/conversation-review.md` for API, trust boundary, bounded correction behavior, replay, undo and schema rollback constraints.
 
 - Docker COPY-subset regressions passed for frontend build and runtime storage/schema7 startup. The existing real-SQLite container migration smoke also passed against a disposable private local directory (not a Docker image), preserving schema1 data and original bytes through schema7.
+
+### Independent review recovery fix, 2026-10-08
+
+Independent review identified a lost-prepare-response gap: the UI retained its human answer only after question preparation returned, so a committed preparation with a dropped response could not complete on retry. The exact answer and client-message UUID are now captured before any request; retry reuses the question request UUID and original answer. New real HTTP/React DOM tests cover both correction and cancellation after the prepare response is lost. Combined proposal/review DOM suite passed **9/9**, full frontend **298/298**, and production build passed. This changes no backend/schema contract. Chromium remains unexecuted because of the documented runtime restriction.
