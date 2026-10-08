@@ -9,7 +9,7 @@ import {spawn} from 'node:child_process';
 import {FIELDS} from '../public/core.js';
 import {openStorage} from '../storage.js';
 import {loadConversationAction,validateConversationAction,conversationActionContext,conversationActionTools} from '../conversation-action-contract.js';
-import {createConversationToolSession,validateChatRequest} from '../chat.js';
+import {createConversationToolSession,validateChatRequest,chatProviderMessages} from '../chat.js';
 const base={title:'Synthetic case',sourceText:'',fields:[],draftType:'followup',draftText:''};
 function fixture(t){
   const directory=mkdtempSync(join(realpathSync(tmpdir()),'nestlet-actions-')),filename=join(directory,'db.sqlite');
@@ -236,4 +236,43 @@ test('provider receives grounded source mapping and truthful, English-only draft
   const events=[];for await(const event of await openLibraryChatStream({apiKey:'synthetic-only',input,record,library,requestId:randomUUID(),fetchImpl}))events.push(event);
   assert.equal(called,1);assert.equal(events.filter(event=>event.type==='proposal').length,0);
   assert.equal(store.listArtifacts('owner',record.id).length,1);
+});
+
+// Historical assistant prose must remain data; current action-enabled instructions describe
+// only the implemented targeted human-review path, without changing the chat history.
+test('action-enabled prompt prefers supported in-chat human review over historical editor guidance', async t => {
+  const {openLibraryChatStream} = await import('../chat.js');
+  const {store, record, conversation} = fixture(t);
+  const history = [
+    {role:'assistant', content:'Open the materials editor to resolve every conflict.'},
+    {role:'user', content:'Can I review this here?'}
+  ];
+  const input = {actionConsent:true, locale:'en', messages:history, actionContext:conversationActionContext(store,'owner',record,conversation.id)};
+  const library = createConversationToolSession({storage:store,userId:'owner',record,conversationId:conversation.id});
+  let calls = 0;
+  const fetchImpl = async (_url, options) => {
+    calls++;
+    const body = JSON.parse(options.body), system = body.messages[0].content;
+    assert.match(system, /prefer the existing in-chat review controls/);
+    assert.match(system, /Follow the requested document type and language/);
+    assert.match(system, /do not add an unsolicited document draft to a review question/);
+    assert.match(system, /Never invent the sender’s role, representation or authority/);
+    assert.match(system, /without exposing internal API paths or field identifiers/);
+    assert.match(system, /Once the answer is complete and saved/);
+    assert.match(system, /single detail.*change to/);
+    assert.match(system, /supports conflicting values.*never choose it for them/);
+    assert.match(system, /Only a fresh human answer targeted to that displayed review/);
+    assert.match(system, /Do not promise that arbitrary free-text replies or multi-field corrections are automatically applied/);
+    assert.match(system, /Do not claim a review card exists without a successful preview, or a save succeeded without a persisted result/);
+    assert.match(system, /materials editor remains an optional manual route/);
+    assert.match(system, /Earlier assistant messages may describe outdated UI/);
+    assert.deepEqual(body.messages.slice(-2), history);
+    return new Response('data: '+JSON.stringify({choices:[{delta:{content:'Please check the proposed values.'}}]})+'\n\ndata: '+JSON.stringify({choices:[{delta:{},finish_reason:'stop'}]})+'\n\ndata: [DONE]\n\n',{headers:{'Content-Type':'text/event-stream'}});
+  };
+  const events = [];
+  for await (const event of await openLibraryChatStream({apiKey:'synthetic-only',input,record,library,requestId:randomUUID(),fetchImpl})) events.push(event);
+  assert.equal(calls, 1);
+  assert.equal(events.filter(event=>event.type==='proposal').length, 0);
+  assert.equal(store.getCase('owner',record.id).version, record.version);
+  assert.doesNotMatch(chatProviderMessages({...input,actionConsent:false},record)[0].content, /existing in-chat review controls/);
 });
