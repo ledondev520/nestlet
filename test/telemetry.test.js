@@ -47,7 +47,7 @@ test('real schema1 to current schema migration preserves every original user/cas
   storage.close();
   db = new DatabaseSync(filename);
   try {
-    assert.equal(db.prepare('PRAGMA user_version').get().user_version, 6);
+    assert.equal(db.prepare('PRAGMA user_version').get().user_version, 7);
     assert.deepEqual(db.prepare('SELECT * FROM users ORDER BY id').all(), users);
     assert.deepEqual(db.prepare('SELECT id,user_id,title,payload_json,version,created_at,updated_at FROM cases ORDER BY id').all(), cases);
     assert.equal(db.prepare('SELECT client_id FROM cases WHERE id=?').get(cid).client_id, null);

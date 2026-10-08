@@ -22,7 +22,7 @@ function query(url, allowed) {
 }
 export function isCaseRecordsPath(path) {
   return path === '/api/clients' || new RegExp(`^/api/clients/${UUID}(?:/(?:cases|artifacts))?$`).test(path) ||
-    new RegExp(`^/api/cases/${UUID}/(?:readiness|document-context|issues|conversations|conversation-actions/prepare|artifacts(?:/generate)?)$`).test(path) ||
+    new RegExp(`^/api/cases/${UUID}/(?:readiness|document-context|issues|conversations|conversation-actions/prepare|conversation-reviews(?:/[0-9a-f-]{36}(?:/(?:reply|undo))?)?|artifacts(?:/generate)?)$`).test(path) ||
     new RegExp(`^/api/conversations/${UUID}$`).test(path) || new RegExp(`^/api/artifacts/${UUID}(?:/download)?$`).test(path);
 }
 
@@ -54,7 +54,7 @@ export async function handleCaseRecords({ request, response, url, session, stora
       return json(200,{client:updated});
     }
   }
-  const caseRoute = new RegExp(`^/api/cases/(${UUID})/(readiness|document-context|issues|conversations|conversation-actions/prepare|artifacts(?:/generate)?)$`).exec(path);
+  const caseRoute = new RegExp(`^/api/cases/(${UUID})/(readiness|document-context|issues|conversations|conversation-actions/prepare|conversation-reviews(?:/[0-9a-f-]{36}(?:/(?:reply|undo))?)?|artifacts(?:/generate)?)$`).exec(path);
   if (caseRoute) {
     const record = ownCase(caseRoute[1]), action = caseRoute[2];
     if (action === 'readiness' && method === 'GET') {
@@ -62,6 +62,14 @@ export async function handleCaseRecords({ request, response, url, session, stora
       return json(200,assessDocumentReadiness(record,{kind:url.searchParams.get('kind') || record.draftType,locale:url.searchParams.get('locale') || 'zh'}));
     }
     query(url,[]);
+    if (action === 'conversation-reviews' && method === 'POST') {
+      return json(200,storage.conversationReviews.prepare(userId,record.id,await readJson(request,100000)));
+    }
+    const reviewRoute = /^conversation-reviews\/([0-9a-f-]{36})(?:\/(reply|undo))?$/.exec(action);
+    if (reviewRoute) {
+      if (!reviewRoute[2] && method === 'GET') return json(200,storage.conversationReviews.read(userId,record.id,reviewRoute[1]));
+      if (reviewRoute[2] && method === 'POST') return json(200,storage.conversationReviews[reviewRoute[2]](userId,record.id,reviewRoute[1],await readJson(request,10000)));
+    }
     if (action === 'conversation-actions/prepare' && method === 'POST') {
       const body = await readJson(request,100000);
       return json(200,{proposal:loadConversationAction(storage,userId,record,body)});

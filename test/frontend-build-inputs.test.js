@@ -26,3 +26,17 @@ test('Docker frontend COPY inputs include every transitive browser build depende
   const ignore=await readFile(new URL('.dockerignore',root),'utf8');assert.match(ignore,/^!document-context\.js$/mu);
  }finally{await rm(directory,{recursive:true,force:true});}
 });
+
+test('Docker runtime COPY inputs include schema7 storage and conversational review dependencies',async()=>{
+ const root=new URL('../',import.meta.url),docker=await readFile(new URL('Dockerfile',root),'utf8'),ignore=await readFile(new URL('.dockerignore',root),'utf8');
+ const stage=docker.split('AS runtime')[1],directory=await mkdtemp(join(tmpdir(),'nestlet-runtime-inputs-'));
+ try{
+  const line=stage.split('\n').find(line=>line.startsWith('COPY --chown=')&&line.includes('server.js'));
+  assert.ok(line);const modules=line.split(/\s+/u).slice(2,-1);
+  for(const source of modules){assert.ok(ignore.split('\n').includes('!'+source),source+' missing from Docker context');await cp(new URL(source,root),join(directory,source));}
+  await cp(new URL('public',root),join(directory,'public'),{recursive:true});
+  await symlink(await realpath(new URL('node_modules',root)),join(directory,'node_modules'),'dir');
+  const script="import{openStorage}from'./storage.js';import{mkdirSync}from'node:fs';mkdirSync('./data',{mode:0o700});const s=openStorage({filename:process.cwd()+'/data/synthetic.sqlite'});if(!s.conversationReviews)throw Error('missing review');s.close();";
+  const result=spawnSync(process.execPath,['--input-type=module','-e',script],{cwd:directory,encoding:'utf8',timeout:30000});assert.equal(result.status,0,result.stderr);
+ }finally{await rm(directory,{recursive:true,force:true});}
+});

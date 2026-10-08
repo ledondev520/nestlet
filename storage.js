@@ -1,4 +1,6 @@
+import { createSynchronousTransaction } from './synchronous-transaction.js';
 /** Server-local, owner-scoped SQLite storage. Input text is untrusted; private asset bytes are stored separately; no provider keys are saved. */
+import { REVIEW_SCHEMA_SQL, createConversationReviewStorage } from './conversation-review-storage.js';
 import { prepareConversationAction, validateConversationAction } from './conversation-action-contract.js';
 import { DatabaseSync } from 'node:sqlite';
 import { EMAIL_SCHEMA_SQL, createEmailAuthStorage } from './email-auth-storage.js';
@@ -11,7 +13,7 @@ import { validateDocumentContext, validateFinalArtifact } from './document-conte
 import { ASSET_LIMITS, ASSET_TYPES, assetFilename, assetAssociation, assetKeys, assetId, normalizeAssetSearch, assetFail } from './asset-domain.js';
 import { TELEMETRY_LIMITS, CLIENT_EVENTS, SERVER_EVENTS, validateStoredTelemetryEvent, telemetryId } from './telemetry.js';
 
-const SCHEMA_VERSION = 6;
+const SCHEMA_VERSION = 7;
 const APPLICATION_ID = 0x4e53544c; // NSTL, distinct from unrelated SQLite files.
 export const MAX_CASE_BYTES = 256 * 1024;
 export const MAX_SOURCE_CHARS = 50_000;
@@ -232,11 +234,7 @@ export function openStorage({ filename, reservedUsername = process.env.NESTLET_O
   const db = new DatabaseSync(path, { enableForeignKeyConstraints: true, enableDoubleQuotedStringLiterals: false,
     allowExtension: false, timeout: 5000 });
   let closed = false;
-  const transaction = action => {
-    db.exec('BEGIN IMMEDIATE');
-    try { const result = action(); db.exec('COMMIT'); return result; }
-    catch (error) { db.exec('ROLLBACK'); throw error; }
-  };
+  const transaction = createSynchronousTransaction(db);
   try {
     const validateSchemaIdentity = () => {
       const currentVersion = db.prepare('PRAGMA user_version').get().user_version;
@@ -456,6 +454,7 @@ export function openStorage({ filename, reservedUsername = process.env.NESTLET_O
       }
       if (currentVersion < 5) db.exec(EMAIL_SCHEMA_SQL);
       if (currentVersion < 6) db.exec(ACCOUNT_ADMINISTRATION_SCHEMA_SQL);
+      if (currentVersion < 7) db.exec(REVIEW_SCHEMA_SQL);
       db.prepare("INSERT INTO users(id, username, role, password_hash, created_at) VALUES('owner', 'owner', 'owner', NULL, ?) ON CONFLICT(id) DO NOTHING").run(new Date().toISOString());
     });
     const userLookup = db.prepare('SELECT id, username, role, password_hash AS passwordHash, created_at AS createdAt FROM users WHERE id = ?');
@@ -606,7 +605,7 @@ export function openStorage({ filename, reservedUsername = process.env.NESTLET_O
       finally { db.exec('PRAGMA busy_timeout = 5000'); }
     };
     try { telemetryTransaction(() => pruneTelemetry()); } catch { /* Optional maintenance cannot disable business storage. */ }
-    return {
+    const api = {
       emailAuth: createEmailAuthStorage({ db, transaction, maxUsers: MAX_TRIAL_USERS }),
       accountAdministration: createAccountAdministrationStorage({ db, transaction }),
       assetUsage(id) { requireUser(id);return assetUsage(id); },
@@ -901,5 +900,7 @@ export function openStorage({ filename, reservedUsername = process.env.NESTLET_O
       },
       close() { if (!closed) { db.close(); closed = true; } },
     };
+    api.conversationReviews = createConversationReviewStorage({db,transaction,api});
+    return api;
   } catch (error) { db.close(); throw error; }
 }
