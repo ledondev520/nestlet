@@ -116,11 +116,11 @@ test('customer → two cases → resolved question and document versions → rea
     await openLinkedCase(page, label, first.title);
     const chat = page.locator('[data-feature="chat"]');
     const selector = chat.getByRole('combobox', { name: 'Saved conversations', exact: true });
-    await expect(selector.locator('option')).toHaveCount(3);
+    await expect.poll(()=>selector.locator('option').evaluateAll(options=>options.map(option=>option.value).sort())).toEqual(['',...conversations.map(row=>row.id),secondConversation.id].sort());
     for (const conversation of conversations) {
       await selector.selectOption(conversation.id);
       await expect(selector).toHaveValue(conversation.id);
-      await expect(chat.getByRole('heading', { name: 'What would you like to work on?', exact: true })).toBeVisible();
+      await expect(chat.getByRole('heading', { name: 'Hi, I’m Nestlet.', exact: true })).toBeVisible();
       await expect(chat.getByRole('log').locator('article')).toHaveCount(0);
     }
     await navigate(page, 'Materials & facts');
@@ -146,7 +146,10 @@ test('customer → two cases → resolved question and document versions → rea
     await screenshot(page, testInfo, 'customer-reopened-question-and-edited-draft');
     await openLinkedCase(page, label, second.title);
     await expect(chat.getByRole('combobox', { name: 'Saved conversations', exact: true })).toHaveValue(secondConversation.id);
-    await expect(chat).not.toContainText(conversations[0].title);
+    await expect(chat).toHaveAttribute('data-case-id',second.id);
+    await expect(chat).toHaveAttribute('data-conversation-id',secondConversation.id);
+    await expect(chat.locator('.chat-toolbar [data-slot="card-title"]')).toHaveText(secondConversation.title);
+    await expect(chat.getByRole('log').locator('article')).toHaveCount(0);
     await navigate(page, 'Materials & facts');
     await expect(page.getByLabel('Case source text', { exact: true })).toHaveValue(secondSource);
     await navigate(page, 'Documents');
