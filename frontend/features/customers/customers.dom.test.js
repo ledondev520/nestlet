@@ -67,8 +67,21 @@ test('starts empty without invented customers and provides complete English/Chin
   assert.match(text(), /No customer records yet/);
   assert.doesNotMatch(text(), /Johnny|Jane|Mock|sample customer/);
   await render(api, { lang: 'zh' });
-  assert.match(text(), /还没有客户记录/);
-  assert.match(text(), /仅当前账户可见/);
+  assert.match(text(), /暂无客户/);
+  assert.match(text(), /仅自己可见/);
+});
+
+test('Chinese uncertain-save warnings retain both safety instructions on separate visible lines', async () => {
+  const api = apiFor(({ method }) => method === 'POST' ? Promise.reject({ code: 'NETWORK_ERROR' }) : undefined);
+  await render(api, { lang: 'zh' });
+  await click(button('新建客户'));
+  await change(input('客户称呼'), 'Synthetic customer');
+  await submit(container.querySelector('form'));
+  const warning = [...container.querySelectorAll('p')].find(item => item.textContent.startsWith('尚未确认是否保存'));
+  assert.ok(warning?.classList.contains('whitespace-pre-line'));
+  assert.equal(warning.textContent, '尚未确认是否保存，请勿重复新建。\n请先刷新并检查记录，再决定是否重试。');
+  assert.equal(input('客户称呼').value, 'Synthetic customer');
+  assert.equal(api.calls.filter(call => call.method === 'POST').length, 1);
 });
 
 test('search encodes literal wildcard names, cancels reads and ignores out-of-order responses', async () => {

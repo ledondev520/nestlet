@@ -1,17 +1,17 @@
 export const originalRetentionCopy = {
   zh: {
-    title: '保存聊天原图',
-    boundary: '请在发送前逐张保存。只有点击保存的原图才会存入本案私有材料；仅发送聊天不会保存原图。图片可按文件名查找，未进行 OCR。',
-    save: '保存这张原图', saving: '正在保存原图…', checking: '正在核对保存状态…', cancel: '停止等待',
-    saved: '原图已保存到本案材料', preview: '查看原图', download: '下载原图', materials: '打开本案材料',
+    title: "保存原图",
+    boundary: "发送前，请逐张保存原图。\n仅发送消息不会保存原图。\n保存的原图仅当前账号可见。\n可按文件名查找，未识别图中文字。",
+    save: "保存原图", saving: '正在保存原图…', checking: '正在核对保存状态…', cancel: '停止等待',
+    saved: "原图已保存到事项材料。", preview: '查看原图', download: '下载原图', materials: "查看材料",
     failed: '未能保存原图。请保留当前页面后重试。', retry: '重试保存',
-    uncertain: '尚未确认保存结果，服务器可能已保存。先核对状态，不会自动重复上传。',
-    check: '核对保存状态', unresolved: '仍未找到可确认的副本。请继续核对，或到本案材料中检查；为避免重复，不会再次上传。',
-    unavailable: '原始文件已不可用，请重新附加图片；历史聊天中的图片记录不能恢复原图。',
-    filename: '文件名不受支持，请使用有效的 PNG / JPEG 文件名重新附加。',
-    capacity: '私有材料空间已满，原图未保存。', session: '会话已失效，请重新登录后再保存。',
-    missingCase: '当前案件不可用，请重新打开正确案件后再保存。',
-    invalidImage: '无法保存这张图片，请重新附加有效的 PNG / JPEG 原图。'
+    uncertain: "尚未确认结果，但原图可能已保存。\n请先核对状态，不会自动重复上传。",
+    check: "核对保存", unresolved: "还未找到已保存的副本。\n请继续核对，或查看事项材料。\n为避免重复，不会再次上传。",
+    unavailable: "原图不可用，请重新添加图片。\n历史对话中的记录无法恢复原图。",
+    filename: "文件名无效，请改用正确的后缀。\n支持PNG或JPEG，请重新添加。",
+    capacity: '私有材料空间已满，原图未保存。', session: "登录已失效，请重新登录后再保存。",
+    missingCase: "当前事项不可用。\n请重新打开正确事项后再保存。",
+    invalidImage: "图片无法保存，请重新添加有效原图。\n支持PNG或JPEG。"
   },
   en: {
     title: 'Save chat originals',

@@ -99,21 +99,21 @@ export function ChatOriginalRetention({ api, userId, authenticated, caseId = nul
 
   if (!authenticated || !images.length) return null;
   return <section className="space-y-3 rounded border p-3" aria-label={words.title}>
-    <p className="text-xs leading-relaxed text-muted-foreground">{words.boundary}</p>
+    <p className="whitespace-pre-line text-xs leading-relaxed text-muted-foreground">{words.boundary}</p>
     <ul className="space-y-3">{images.map(image => {
       const entry = entries[image.id], pending = pendingId === image.id && scopeVisible;
       return <li key={image.id} className="space-y-2 text-xs">
-        <p className="break-all font-medium">{originalFilename(image)}</p>
+        <p className="whitespace-pre-line break-all font-medium">{originalFilename(image)}</p>
         {entry?.state === 'saved' ? <div className="space-y-2">
-          <p role="status">{words.saved}</p>
+          <p className="whitespace-pre-line" role="status">{words.saved}</p>
           <div className="flex flex-wrap gap-3">
             <a className="underline underline-offset-4" href={`/api/assets/${entry.asset.id}/preview`} target="_blank" rel="noopener noreferrer">{words.preview}</a>
             <a className="underline underline-offset-4" href={`/api/assets/${entry.asset.id}/download`}>{words.download}</a>
           </div>
         </div> : <>
-          {pending && <p role="status">{entry?.state === 'checking' ? words.checking : words.saving}</p>}
-          {entry?.state === 'failed' && <p role="alert">{originalRetentionError(entry.error, words)}</p>}
-          {entry?.state === 'uncertain' && <p role="status">{entry.unresolved ? words.unresolved : words.uncertain}</p>}
+          {pending && <p className="whitespace-pre-line" role="status">{entry?.state === 'checking' ? words.checking : words.saving}</p>}
+          {entry?.state === 'failed' && <p className="whitespace-pre-line" role="alert">{originalRetentionError(entry.error, words)}</p>}
+          {entry?.state === 'uncertain' && <p className="whitespace-pre-line" role="status">{entry.unresolved ? words.unresolved : words.uncertain}</p>}
           {pending ? <Button type="button" size="sm" variant="outline" onClick={() => active.current?.controller.abort()}>{words.cancel}</Button> :
             <Button type="button" size="sm" variant="outline" disabled={disabled || Boolean(pendingId)} onClick={() => retain(image, entry?.state === 'uncertain')}>
               {entry?.state === 'uncertain' ? words.check : entry?.state === 'failed' ? words.retry : words.save}

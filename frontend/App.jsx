@@ -23,11 +23,11 @@ import { DEFAULT_GUIDANCE_AGENCY } from '../public/agency-guidance.js';
 // explicitly labeled; never substitute samples or claim an unfinished page works.
 const modules = Object.fromEntries(Object.entries(import.meta.glob('./features/*/index.{js,jsx}', { eager: true })).map(([file, exports]) => [file.split('/')[2], exports]));
 const views = ['chat', 'intake', 'customers', 'documents', 'settings'];
-const viewLabels = { zh: { chat: '对话', intake: '材料与事实', customers: '客户库', documents: '文档', settings: '账户与设置' }, en: { chat: 'Conversation', intake: 'Materials and facts', customers: 'Customers', documents: 'Documents', settings: 'Account and settings' } };
+const viewLabels = { zh: { chat: '对话', intake: "材料", customers: "客户", documents: '文档', settings: "设置" }, en: { chat: 'Conversation', intake: 'Materials and facts', customers: 'Customers', documents: 'Documents', settings: 'Account and settings' } };
 const currentView = () => views.includes(window.location.hash.slice(1).split('?')[0]) ? window.location.hash.slice(1).split('?')[0] : 'chat';
 
 function PageUnavailable({ lang }) {
-  return <Alert><AlertDescription>{lang === 'zh' ? '页面加载失败，请刷新重试。' : 'This page could not load. Refresh and try again.'}</AlertDescription></Alert>;
+  return <Alert><AlertDescription className="whitespace-pre-line">{lang === 'zh' ? "页面未能加载，请刷新重试。" : 'This page could not load. Refresh and try again.'}</AlertDescription></Alert>;
 }
 
 function AccountWorkspace({ lang, view, navigate, shellProps, notices }) {
@@ -73,7 +73,7 @@ function AccountWorkspace({ lang, view, navigate, shellProps, notices }) {
   const markIntakeDirty = useCallback(value => { dirty.current.intake = value; }, []);
   const openCase = useCallback((nextId, destination = 'chat', fresh = false, preserveRoute = false) => {
     if (fresh || nextId !== caseIdRef.current) {
-      if (Object.values(dirty.current).some(Boolean) && !window.confirm(lang === 'zh' ? '切换工作区会丢失尚未保存的输入和回复，并停止当前请求。继续？' : 'Switching workspace clears unsaved input and replies and stops active requests. Continue?')) return false;
+      if (Object.values(dirty.current).some(Boolean) && !window.confirm(lang === 'zh' ? "切换工作区会清空未保存输入和回复。\n正在进行的操作也会停止。\n要继续吗？" : 'Switching workspace clears unsaved input and replies and stops active requests. Continue?')) return false;
       dirty.current = { chat: false, documents: false, intake: false };
       draftVault.clearWorkspace(userIdRef.current, workspaceKey);
       setWorkspaceKey(crypto.randomUUID());
@@ -137,7 +137,7 @@ function AccountWorkspace({ lang, view, navigate, shellProps, notices }) {
   const reviewConversation = useCallback(request => {
     if (!handoffMatches(request, userIdRef.current, caseIdRef.current)) return false;
     const pending = textReviewRef.current;
-    if (pending && pending.messageId !== request.messageId && !window.confirm(lang === 'zh' ? '已有另一段对话待核对。改为核对本段？现有材料不会改变。' : 'Review this message instead of the pending conversation text? Existing material will stay unchanged.')) return false;
+    if (pending && pending.messageId !== request.messageId && !window.confirm(lang === 'zh' ? "改为核对这段对话吗？\n现有材料不会改变。" : 'Review this message instead of the pending conversation text? Existing material will stay unchanged.')) return false;
     if (!pending || pending.messageId !== request.messageId) { textReviewRef.current = request; setTextReviewRequest(request); }
     navigate('intake');
     return true;
@@ -175,13 +175,13 @@ function AccountWorkspace({ lang, view, navigate, shellProps, notices }) {
       context={<><div ref={setWorkflowTarget} /><ContextPanel lang={lang} caseId={caseId} guidanceAgency={guidanceAgency} onAgencyChange={setGuidanceAgency} onOpenMaterials={openIntake} onOpenDocuments={() => continueDocument({ userId: status.userId, caseId })} refreshKey={view} showCaseDetails={view !== 'chat'} showGuidance={['chat','intake','documents'].includes(view)} /></>}
       onNewCase={() => openCase(null, 'chat', true)}>
     {notices}
-    {conversationRouteError&&<Alert variant="destructive"><AlertDescription>{lang==='zh'?'当前账号无法打开这段对话。请从左侧选择自己的对话。':'This conversation is unavailable to this account. Choose a conversation from the list.'}</AlertDescription></Alert>}
+    {conversationRouteError&&<Alert variant="destructive"><AlertDescription className="whitespace-pre-line">{lang==='zh'?"当前账号无法打开这段对话。\n请从左侧选择自己的对话。":'This conversation is unavailable to this account. Choose a conversation from the list.'}</AlertDescription></Alert>}
     {views.filter(id => visited.has(id) || id === view).map(id => {
     const [Page, props] = slots[id];
     // Explicit case switches remount after the dirty guard. First-save binding
     // keeps the current chat composer mounted, including prepared image previews.
     const key = ['chat', 'intake', 'documents'].includes(id) ? `${id}:${workspaceEpoch}` : id;
-    return <section key={key} hidden={view !== id || conversationRouteError && id==='chat'} aria-label={viewLabels[lang][id]}><FeatureBoundary lang={lang}>{id==='settings'&&<Button variant="ghost" className="mb-4" onClick={shellProps.onCloseSettings}>{lang==='zh'?'返回工作区':'Back to workspace'}</Button>}{Page ? <Page lang={lang} {...props} /> : <PageUnavailable lang={lang} />}</FeatureBoundary></section>;
+    return <section key={key} hidden={view !== id || conversationRouteError && id==='chat'} aria-label={viewLabels[lang][id]}><FeatureBoundary lang={lang}>{id==='settings'&&<Button variant="ghost" className="mb-4" onClick={shellProps.onCloseSettings}>{lang==='zh'?"返回":'Back to workspace'}</Button>}{Page ? <Page lang={lang} {...props} /> : <PageUnavailable lang={lang} />}</FeatureBoundary></section>;
   })}</ApplicationShell></DraftWorkspaceProvider>;
 }
 
@@ -236,11 +236,11 @@ export default function App({ initialAuthLink = null }) {
   };
   if (window.location.hash === '#components') return <ComponentPreview />;
   const closeSettings=()=>{navigate(settingsReturn.current.view,{preserveRoute:true});window.history.pushState({},'',settingsReturn.current.hash);};
-  const shellProps = { lang, view, onCloseSettings: closeSettings, onNavigate: status.authenticated ? navigate : undefined, onLanguageChange: () => setLang(value => value === 'zh' ? 'en' : 'zh'), model: status.authenticated ? <ModelSettingsPopover key={`${status.userId}:${view}`} lang={lang} active={!authLink && !loading} /> : null, settings: status.authenticated ? <Button variant={view==='settings'?'secondary':'ghost'} size="icon" data-account-settings aria-current={view==='settings'?'page':undefined} onClick={() => {if(view==='settings')closeSettings();else navigate('settings');}} aria-label={lang === 'zh' ? '账户与设置' : 'Account and settings'}><Settings aria-hidden="true" /></Button> : null, account: status.authenticated && AccountControls ? <AccountControls lang={lang} /> : null };
+  const shellProps = { lang, view, onCloseSettings: closeSettings, onNavigate: status.authenticated ? navigate : undefined, onLanguageChange: () => setLang(value => value === 'zh' ? 'en' : 'zh'), model: status.authenticated ? <ModelSettingsPopover key={`${status.userId}:${view}`} lang={lang} active={!authLink && !loading} /> : null, settings: status.authenticated ? <Button variant={view==='settings'?'secondary':'ghost'} size="icon" data-account-settings aria-current={view==='settings'?'page':undefined} onClick={() => {if(view==='settings')closeSettings();else navigate('settings');}} aria-label={lang === 'zh' ? "设置" : 'Account and settings'}><Settings aria-hidden="true" /></Button> : null, account: status.authenticated && AccountControls ? <AccountControls lang={lang} /> : null };
   const notices = <>
-    {recovery === 'suspended' && <Alert className="mb-5"><AlertDescription>{lang === 'zh' ? '登录已过期。请在 30 分钟内使用同一账号重新登录，并保持当前页面打开，以恢复未保存的文字。' : 'Your session expired. Keep this page open and sign in with the same account within 30 minutes to recover unsaved text.'}</AlertDescription></Alert>}
-    {recovery === 'restored' && <Alert className="mb-5"><AlertDescription>{lang === 'zh' ? '已恢复未保存的文字，请重新添加图片和文件。' : 'Unsaved text restored. Reattach images and files.'}</AlertDescription></Alert>}
-    {error && <Alert variant="destructive" className="mb-5"><AlertDescription>{lang === 'zh' ? '连接状态未能刷新，请重试。' : 'Connection status could not be refreshed. Try again.'}<Button variant="outline" size="sm" onClick={() => refresh().catch(() => {})}>{lang === 'zh' ? '重试' : 'Retry'}</Button></AlertDescription></Alert>}
+    {recovery === 'suspended' && <Alert className="mb-5"><AlertDescription className="whitespace-pre-line">{lang === 'zh' ? "登录已过期，请保持当前页面打开。\n30分钟内用同一账号重新登录。\n可恢复尚未保存的文字。" : 'Your session expired. Keep this page open and sign in with the same account within 30 minutes to recover unsaved text.'}</AlertDescription></Alert>}
+    {recovery === 'restored' && <Alert className="mb-5"><AlertDescription className="whitespace-pre-line">{lang === 'zh' ? "未保存的文字已恢复。\n请重新添加图片和文件。" : 'Unsaved text restored. Reattach images and files.'}</AlertDescription></Alert>}
+    {error && <Alert variant="destructive" className="mb-5"><AlertDescription className="whitespace-pre-line">{lang === 'zh' ? '连接状态未能刷新，请重试。' : 'Connection status could not be refreshed. Try again.'}<Button variant="outline" size="sm" onClick={() => refresh().catch(() => {})}>{lang === 'zh' ? '重试' : 'Retry'}</Button></AlertDescription></Alert>}
   </>;
   if (!loading && !authLink && status.authenticated && status.userId) return <AccountWorkspace key={status.userId} lang={lang} view={view} navigate={navigate} shellProps={shellProps} notices={notices} />;
   return <ApplicationShell {...shellProps}>{notices}

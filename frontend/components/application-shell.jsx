@@ -5,7 +5,7 @@ import { MessageSquare, Users, UserRound, FileText, Files, Globe } from 'lucide-
 import { Button } from '@/components/ui/button';
 
 const navigation = {
-  zh: [['chat', '对话', MessageSquare], ['intake', '材料与事实', Files], ['customers', '客户库', Users], ['documents', '文档', FileText]],
+  zh: [['chat', '对话', MessageSquare], ['intake', "材料", Files], ['customers', "客户", Users], ['documents', '文档', FileText]],
   en: [['chat', 'Conversation', MessageSquare], ['intake', 'Materials & facts', Files], ['customers', 'Customers', Users], ['documents', 'Documents', FileText]]
 };
 
@@ -15,9 +15,9 @@ export function ApplicationShell({ children, lang = 'zh', onLanguageChange, view
     brand={<span className="wb-brand"><img src="/logo.svg" alt="" width="24" height="24" /><span>{lang === 'zh' ? '巢小秘' : 'Nestlet'}</span></span>}
     topbarEnd={mobile => <>{model}{mobile ? <InboxAccountMenu key={view} current={view==='settings'} lang={lang} settings={settings} account={account} onLanguageChange={onLanguageChange} /> : <>{settings}<LanguageButton lang={lang} onClick={onLanguageChange}/>{account}</>}</>}
     rail={<><button type="button" className="wb-rail-item" onClick={event => { if (onNewCase?.() === false) event.preventDefault(); }}>{lang === 'zh' ? '新对话' : 'New conversation'}</button>{rail}</>}
-    context={context} navigation={<nav className="inbox-navigation wb-tabs" aria-label={lang === 'zh' ? '工作区导航' : 'Workspace navigation'}>{navigation[lang].map(([id,label,Icon]) => <button key={id} type="button" className="wb-tab" aria-current={view === id ? 'page' : undefined} onClick={() => onNavigate(id)}><Icon aria-hidden="true" size={18}/>{label}</button>)}</nav>} center={children} />;
+    context={context} navigation={<nav className="inbox-navigation wb-tabs" aria-label={lang === 'zh' ? "页面导航" : 'Workspace navigation'}>{navigation[lang].map(([id,label,Icon]) => <button key={id} type="button" className="wb-tab" aria-current={view === id ? 'page' : undefined} onClick={() => onNavigate(id)}><Icon aria-hidden="true" size={18}/>{label}</button>)}</nav>} center={children} />;
   return <div className="paper-shell">
-    <a href="#workspace" className="sr-only focus:not-sr-only focus:block focus:py-2">{lang === 'zh' ? '跳到工作区' : 'Skip to workspace'}</a>
+    <a href="#workspace" className="sr-only focus:not-sr-only focus:block focus:py-2">{lang === 'zh' ? "跳到正文" : 'Skip to workspace'}</a>
     <header className="paper-masthead">
       <a href="/" className="paper-brand flex min-w-0 items-center gap-3 text-inherit no-underline" aria-label="Nestlet">
         <img src="/logo.svg" alt="" width="40" height="40" />
@@ -29,7 +29,7 @@ export function ApplicationShell({ children, lang = 'zh', onLanguageChange, view
       </div>
     </header>
     {migrationNotice && <p className="paper-note mt-7 rounded-r-lg px-4 py-3 text-sm leading-relaxed">{migrationNotice}</p>}
-    {onNavigate && <nav aria-label={lang === 'zh' ? '工作区导航' : 'Workspace navigation'} className="mt-8 mb-7 flex flex-wrap gap-1 border-b border-border pb-3">
+    {onNavigate && <nav aria-label={lang === 'zh' ? "页面导航" : 'Workspace navigation'} className="mt-8 mb-7 flex flex-wrap gap-1 border-b border-border pb-3">
       {navigation[lang].map(([id, label, Icon]) => <Button key={id} variant={view === id ? 'secondary' : 'ghost'} onClick={() => onNavigate(id)} aria-current={view === id ? 'page' : undefined}><Icon aria-hidden="true" />{label}</Button>)}
     </nav>}
     <main id="workspace" tabIndex={-1} className="mt-8 outline-none">{children}</main>
@@ -42,5 +42,5 @@ function LanguageButton({lang,onClick}) {
 }
 function InboxAccountMenu({lang,settings,account,onLanguageChange,current}) {
   const [open,setOpen]=useState(false);
-  return <Popover.Root open={open} onOpenChange={setOpen}><Popover.Trigger asChild><Button variant="ghost" size="icon" aria-label={lang==='zh'?'账户菜单':'Account menu'} aria-current={current?'page':undefined}><UserRound aria-hidden="true"/></Button></Popover.Trigger><Popover.Portal><Popover.Content onClick={event=>{if(event.target.closest('[data-account-settings]'))setOpen(false);}} align="end" sideOffset={8} collisionPadding={12} aria-label={lang==='zh'?'账户菜单':'Account menu'} className="z-50 max-w-[calc(100vw-1.5rem)] rounded-xl border bg-background p-3 text-foreground shadow-lg inbox-account-menu">{settings}<LanguageButton lang={lang} onClick={()=>{onLanguageChange();setOpen(false);}}/>{account}</Popover.Content></Popover.Portal></Popover.Root>;
+  return <Popover.Root open={open} onOpenChange={setOpen}><Popover.Trigger asChild><Button variant="ghost" size="icon" aria-label={lang==='zh'?"账号菜单":'Account menu'} aria-current={current?'page':undefined}><UserRound aria-hidden="true"/></Button></Popover.Trigger><Popover.Portal><Popover.Content onClick={event=>{if(event.target.closest('[data-account-settings]'))setOpen(false);}} align="end" sideOffset={8} collisionPadding={12} aria-label={lang==='zh'?"账号菜单":'Account menu'} className="z-50 max-w-[calc(100vw-1.5rem)] rounded-xl border bg-background p-3 text-foreground shadow-lg inbox-account-menu">{settings}<LanguageButton lang={lang} onClick={()=>{onLanguageChange();setOpen(false);}}/>{account}</Popover.Content></Popover.Portal></Popover.Root>;
 }

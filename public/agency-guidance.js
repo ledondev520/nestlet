@@ -11,18 +11,18 @@ const freeze = value => {
 export const DEFAULT_GUIDANCE_AGENCY = 'sfha';
 export const AGENCY_OPTIONS = freeze([
   { id: 'sfha', label: both('旧金山 SFHA', 'San Francisco · SFHA') },
-  { id: 'unknown', label: both('尚未确定 / 其他机构', 'Unknown / another agency') },
+  { id: 'unknown', label: both('其他机构', 'Unknown / another agency') },
   { id: 'oha', label: both('奥克兰 OHA', 'Oakland · OHA') },
   { id: 'haca', label: both('阿拉米达县 HACA', 'Alameda County · HACA') },
   { id: 'sccha', label: both('圣克拉拉县 SCCHA', 'Santa Clara County · SCCHA') }
 ]);
 export const GUIDANCE_COPY = freeze({
   zh: {
-    title: '官方资料参考', selectLabel: '资料参考机构（不代表本案例所属机构）',
-    scope: '仅供准备辅助文书参考。五项事实核对不代表官方材料齐全；选择参考机构不会修改案例事实。',
-    acceptance: '当前受理版本及本案例适用性尚未确认', checkedLabel: '资料查阅日期', editionLabel: '页面所示版本',
-    conditionsLabel: '需人工确认',
-    versionCaution: '表格印有已过去的 OMB 到期日，不足以判断有效或无效。请向机构确认受理版本；不得修改该日期。'
+    title: '官方参考', selectLabel: '参考机构',
+    scope: '仅供准备辅助文档参考。\n参考机构不代表负责此事项的机构。\n五项信息核对不代表官方材料齐全。\n选择参考机构不会修改事项信息。',
+    acceptance: '受理版本及本事项是否适用，尚未确认。', checkedLabel: '查阅日期', editionLabel: '所示版本',
+    conditionsLabel: '待你确认',
+    versionCaution: '表格上的OMB到期日已过。\n仅凭此日期不能判断是否有效。\n请向机构确认受理版本。\n不得修改表格上的日期。'
   },
   en: {
     title: 'Official source references', selectLabel: 'Reference agency (not confirmed for this case)',
@@ -32,7 +32,7 @@ export const GUIDANCE_COPY = freeze({
     versionCaution: 'A past printed OMB expiration alone establishes neither validity nor invalidity. Confirm the accepted edition with the agency; do not change the printed date.'
   }
 });
-const source = (id, title, url, edition = both('未标示 / 未核实', 'Not displayed / not verified'), printedOMBExpiration = null) =>
+const source = (id, title, url, edition = both('未核实', 'Not displayed / not verified'), printedOMBExpiration = null) =>
   ({ id, title, url, edition, printedOMBExpiration, checkedAt: CHECKED_AT, acceptanceStatus: 'unconfirmed' });
 const hudGuide = source('hud-guide', 'HUD HCV Forms for Landlords', 'https://www.hud.gov/helping-americans/housing-choice-vouchers-landlord-forms');
 const registry = freeze({

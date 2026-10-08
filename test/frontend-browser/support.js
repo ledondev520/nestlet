@@ -21,7 +21,7 @@ export async function revealAccountAction(page, name) {
   await expect(page.getByRole('status', { name: /^(Connecting|正在连接)$/u })).toHaveCount(0);
   await expect.poll(async () => await page.locator('.wb-topbar').isVisible() || await page.locator('main [data-slot="card"]').first().isVisible(), { message: 'Settled authenticated workspace or signed-out account surface' }).toBe(true);
   const action = page.getByRole('button', { name, exact: true });
-  if (!await action.first().isVisible()) await page.getByRole('button', { name: /^(Account menu|账户菜单)$/u }).click();
+  if (!await action.first().isVisible()) await page.getByRole('button', { name: /^(Account menu|账号菜单)$/u }).click();
   await expect(action.first()).toBeVisible();
   return action.first();
 }
@@ -33,7 +33,7 @@ export async function switchLanguage(page, lang, keyboard = false) {
 }
 export async function english(page) { await switchLanguage(page, 'en'); }
 export async function accountSettings(page, keyboard = false) {
-  const action = await revealAccountAction(page, (await page.locator('html').getAttribute('lang')) === 'en' ? 'Account and settings' : '账户与设置');
+  const action = await revealAccountAction(page, (await page.locator('html').getAttribute('lang')) === 'en' ? 'Account and settings' : "设置");
   if (keyboard) await action.press('Enter'); else await action.click();
 }
 
@@ -57,7 +57,7 @@ export async function login(page, username) {
 }
 
 export async function navigate(page, name) {
-  await page.getByRole('navigation', { name: /^(Workspace navigation|工作区导航)$/u }).getByRole('button', { name, exact: true }).click();
+  await page.getByRole('navigation', { name: /^(Workspace navigation|页面导航)$/u }).getByRole('button', { name, exact: true }).click();
 }
 
 export async function reload(page) {

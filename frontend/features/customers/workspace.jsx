@@ -17,7 +17,7 @@ import { casesCopy } from './saved-cases-copy';
 function ErrorNotice({ error, t, onRetry, write = false }) {
   if (!error) return null;
   return <Alert variant="destructive" className="break-words">
-    <AlertDescription><p>{write && ['NETWORK_ERROR', 'INVALID_RESPONSE'].includes(error.code) ? t.saveUncertain : errorCopy(error, t)}</p>{onRetry && <Button type="button" size="sm" variant="outline" className="mt-2 justify-self-start" onClick={onRetry}>{t.retry}</Button>}</AlertDescription>
+    <AlertDescription><p className="whitespace-pre-line">{write && ['NETWORK_ERROR', 'INVALID_RESPONSE'].includes(error.code) ? t.saveUncertain : errorCopy(error, t)}</p>{onRetry && <Button type="button" size="sm" variant="outline" className="mt-2 justify-self-start" onClick={onRetry}>{t.retry}</Button>}</AlertDescription>
   </Alert>;
 }
 function Loading({ label }) {
@@ -76,7 +76,7 @@ function RenameCustomer({ api, client, t, onSaved, onLatest, onCancel }) {
   return <form onSubmit={submit} aria-label={t.rename} className="space-y-3 rounded-lg border bg-background p-4">
     <div className="space-y-2"><Label htmlFor={id}>{t.customerName}</Label><Input id={id} autoFocus autoComplete="off" maxLength={120} value={name} disabled={mutation.pending} onChange={event => { setName(event.target.value); setValidation(false); }} aria-invalid={!!validation} /></div>
     {validation && <p role="alert" className="text-sm text-destructive">{t.invalidName}</p>}
-    {conflicted ? <Alert variant="destructive"><AlertDescription><p>{t.conflict}</p><Button type="button" variant="outline" size="sm" className="mt-2 justify-self-start" disabled={reload.pending} onClick={loadLatest}>{reload.pending ? t.loading : t.reloadLatest}</Button></AlertDescription></Alert> : <ErrorNotice error={mutation.error} t={t} write />}
+    {conflicted ? <Alert variant="destructive"><AlertDescription><p className="whitespace-pre-line">{t.conflict}</p><Button type="button" variant="outline" size="sm" className="mt-2 justify-self-start" disabled={reload.pending} onClick={loadLatest}>{reload.pending ? t.loading : t.reloadLatest}</Button></AlertDescription></Alert> : <ErrorNotice error={mutation.error} t={t} write />}
     {latestName !== null && <p role="status" className="break-words text-sm leading-relaxed text-muted-foreground">{t.latestName(latestName)}<br />{t.latestLoaded}</p>}
     <ErrorNotice error={reload.error} t={t} />
     <div className="flex flex-wrap gap-2"><Button type="submit" size="sm" disabled={mutation.pending || reload.pending || conflicted}>{mutation.pending ? t.saving : t.save}</Button><Button type="button" variant="ghost" size="sm" disabled={mutation.pending || reload.pending} onClick={onCancel}>{t.cancel}</Button></div>
@@ -170,7 +170,7 @@ function CustomerDetail({ api, customerId, lang, onOpenCase, onRenamed, onCreate
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"><span>{t.kinds[artifact.kind] || t.unknownKind}</span><span>·</span><span>{t.version(artifact.version)}</span>{artifact.isStale && <Badge variant="outline" className="text-destructive">{t.stale}</Badge>}</div>
           <p className="break-words text-xs text-muted-foreground">{t.belongingCase}: {caseNames.get(artifact.caseId) || t.unnamedCase}</p>
           <p className="text-xs text-muted-foreground"><RecordDate value={artifact.createdAt} label={t.created} lang={lang} /> · {t.sourceCaseVersion(artifact.sourceCaseVersion)}</p>
-          {artifact.isStale && <p className="text-xs leading-relaxed text-destructive">{t.staleHint}</p>}
+          {artifact.isStale && <p className="whitespace-pre-line text-xs leading-relaxed text-destructive">{t.staleHint}</p>}
           <Button type="button" size="sm" variant="link" className="h-auto p-0 text-xs" disabled={!onOpenCase} aria-label={`${t.openArtifactCase}: ${artifact.title || t.kinds[artifact.kind] || t.unknownKind}`} onClick={() => onOpenCase?.(artifact.caseId)}>{t.openArtifactCase}<ArrowUpRight className="size-3" aria-hidden="true" /></Button>
         </li>)}</ul>)}
       </CardContent>
@@ -205,7 +205,7 @@ export function CustomerWorkspace({ api, lang = 'zh', onOpenCase, active = true 
   return <div className="space-y-7">
     <header><div className="mb-3 flex flex-wrap items-center justify-between gap-2"><p className="text-[11px] font-medium tracking-[.16em] text-muted-foreground">{t.eyebrow}</p><span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"><ShieldCheck className="size-3.5" aria-hidden="true" />{t.private}</span></div><h1 className="paper-title text-3xl leading-tight sm:text-4xl">{t.title}</h1><p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">{t.intro}</p></header>
     <SavedCases api={api} lang={lang} onOpenCase={onOpenCase} active={active} refreshKey={caseRevision} onRecords={setAllCases} />
-    <details className="rounded-xl border bg-card p-5" onToggle={event => setOriginalsOpen(event.currentTarget.open)}><summary className="cursor-pointer rounded-sm text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring">{archiveCopy.allOriginals}</summary><p className="mt-2 text-xs leading-relaxed text-muted-foreground">{archiveCopy.originalsHint}</p>{originalsOpen && <div className="mt-4"><OriginalMaterials api={api} cases={allCases} lang={lang} refreshKey={originalsRevision} /></div>}</details>
+    <details className="rounded-xl border bg-card p-5" onToggle={event => setOriginalsOpen(event.currentTarget.open)}><summary className="cursor-pointer rounded-sm text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring">{archiveCopy.allOriginals}</summary><p className="mt-2 whitespace-pre-line text-xs leading-relaxed text-muted-foreground">{archiveCopy.originalsHint}</p>{originalsOpen && <div className="mt-4"><OriginalMaterials api={api} cases={allCases} lang={lang} refreshKey={originalsRevision} /></div>}</details>
     <div className="grid items-start gap-6 md:grid-cols-[260px_minmax(0,1fr)]">
       <Card className="paper-card min-w-0 gap-4">
         <CardHeader><div className="flex items-center justify-between gap-2"><h2 className="paper-title text-xl">{t.directory}</h2><Button type="button" size="icon-sm" variant="ghost" aria-label={t.refresh} disabled={directory.loading} onClick={directory.refresh}><RefreshCw aria-hidden="true" /></Button></div></CardHeader>

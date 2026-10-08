@@ -35,7 +35,7 @@ function fixture(status,settings={configured:false,liveEnabled:false,secureSetti
  };
  return calls;
 }
-async function render(Component){host=document.createElement('div');document.body.append(host);root=createRoot(host);await React.act(async()=>root.render(React.createElement(SessionProvider,null,React.createElement(Component,{lang:'en'}))));}
+async function render(Component,props={}){host=document.createElement('div');document.body.append(host);root=createRoot(host);await React.act(async()=>root.render(React.createElement(SessionProvider,null,React.createElement(Component,{lang:'en',...props}))));}
 function FormHarness() { return React.createElement(ModelSettingsForm,{lang:'en',session:useSession()}); }
 async function click(button){await React.act(async()=>button.dispatchEvent(new window.MouseEvent('click',{bubbles:true})));}
 async function input(element,value){await React.act(async()=>{Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value').set.call(element,value);element.dispatchEvent(new window.Event('input',{bubbles:true}));});}
@@ -133,3 +133,34 @@ test('remembered login uses native autofill values and stores only username',asy
   assert.equal(document.querySelector('[role=dialog]'),null);
   assert.equal(calls.filter(c=>c.method==='POST').length,0);
  });
+
+
+test('Chinese login keeps the eight-hour limit and readable non-enumerating email warning', async()=>{
+ const calls=fixture({authenticated:false,authConfigured:true,secureLogin:true,registrationEnabled:true,emailDeliveryConfigured:true});
+ await render(AuthPanel,{lang:'zh'});
+ assert.match(host.textContent,/欢迎回来/);
+ const checkbox=host.querySelector('[role=checkbox]');
+ assert.equal(document.getElementById(checkbox.getAttribute('aria-describedby')).textContent,'8小时内无需重新登录');
+ await click([...host.querySelectorAll('button')].find(button=>button.textContent==='注册'));
+ await input(host.querySelector('[name=email]'),'synthetic@example.invalid');
+ await input(host.querySelector('[name=password]'),'123456');
+ await input(host.querySelector('[name=passwordConfirmation]'),'123456');
+ await React.act(async()=>host.querySelector('form').dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true})));
+ const warning=[...host.querySelectorAll('[data-slot=card-description]')].find(node=>node.textContent.includes('此提示不说明账号是否存在'));
+ assert.ok(warning);assert.ok(warning.classList.contains('whitespace-pre-line'));
+ assert.match(warning.textContent,/符合条件时，系统会发送邮件。\n此提示不说明账号是否存在。\n也不保证邮件已经送达。/);
+ assert.match(host.textContent,/新账号验证后会自动登录/);
+ assert.equal(calls.filter(c=>c.path==='/api/register').length,1);
+});
+
+test('Chinese model copy preserves provider identity, real-check quota and current-key failure meanings', async()=>{
+ const calls=fixture(owner,{configured:true,liveEnabled:false,secureSettings:true,keyStorage:'server-memory'});
+ function ChineseForm(){return React.createElement(ModelSettingsForm,{lang:'zh',session:useSession()});}
+ await render(ChineseForm);
+ assert.match(host.textContent,/助手设置/);assert.match(host.textContent,/填写DeepSeek API Key/);
+ assert.match(host.textContent,/服务重启后，需重新填写密钥/);
+ const detail=[...host.querySelectorAll('details p')].find(node=>node.textContent.includes('检查失败会保留原有密钥'));
+ assert.equal(detail.textContent,'保存时会检查一次，成功后启用助手。\n检查失败会保留原有密钥。\n检查会消耗少量模型额度。');
+ assert.ok(detail.classList.contains('whitespace-pre-line'));
+ assert.equal(calls.filter(c=>c.method==='POST').length,0);
+});

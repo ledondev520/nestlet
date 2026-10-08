@@ -10,7 +10,7 @@ export function AgencyGuidance({ lang = 'zh', agency, onAgencyChange }) {
   return <details className="mb-6 rounded-lg border border-border bg-card px-4 py-3" data-testid="agency-guidance">
     <summary className="cursor-pointer text-sm font-medium">
       {copy.title}<span className="ml-2 font-normal text-muted-foreground">· {guidance.label}</span>
-      <span className="ml-2 text-xs font-normal text-muted-foreground">{language === 'zh' ? '适用性未确认' : 'Applicability unconfirmed'}</span>
+      <span className="ml-2 text-xs font-normal text-muted-foreground">{language === 'zh' ? '是否适用待确认' : 'Applicability unconfirmed'}</span>
     </summary>
     <div className="mt-4 space-y-4 text-sm">
       <div className="space-y-2">
@@ -18,22 +18,22 @@ export function AgencyGuidance({ lang = 'zh', agency, onAgencyChange }) {
         <NativeSelect id={id} value={guidance.id} onChange={event => onAgencyChange(event.target.value)} className="w-full sm:w-80">
           {AGENCY_OPTIONS.map(option => <NativeSelectOption key={option.id} value={option.id}>{option.label[language]}</NativeSelectOption>)}
         </NativeSelect>
-        <p className="text-xs text-muted-foreground">{copy.scope}</p>
-        <p className="text-xs text-muted-foreground">{language === 'zh' ? '仅用于本次工作区及后续对话；不会保存为案例事实。' : 'Used in this workspace and subsequent chat requests; not saved as a case fact.'}</p>
+        <p className="whitespace-pre-line text-xs text-muted-foreground">{copy.scope}</p>
+        <p className="whitespace-pre-line text-xs text-muted-foreground">{language === 'zh' ? '仅用于当前工作区和后续对话。\n不会存为事项信息。' : 'Used in this workspace and subsequent chat requests; not saved as a case fact.'}</p>
       </div>
-      <p className="text-xs font-medium">{copy.acceptance}</p>
+      <p className="whitespace-pre-line text-xs font-medium">{copy.acceptance}</p>
       <ul className="space-y-3">
         {guidance.links.map(link => <li key={link.id} className="min-w-0 space-y-1">
           <a className="break-words underline underline-offset-4" href={link.url} target="_blank" rel="noreferrer noopener" lang="en">{link.title} ↗</a>
-          <p className="text-xs text-muted-foreground">{copy.editionLabel}: {link.edition}</p>
+          <p className="whitespace-pre-line text-xs text-muted-foreground">{copy.editionLabel}: {link.edition}</p>
         </li>)}
       </ul>
-      {guidance.links.some(link => link.printedOMBExpiration) && <p className="text-xs text-muted-foreground">{copy.versionCaution}</p>}
+      {guidance.links.some(link => link.printedOMBExpiration) && <p className="whitespace-pre-line text-xs text-muted-foreground">{copy.versionCaution}</p>}
       <details>
         <summary className="cursor-pointer text-sm font-medium">{copy.conditionsLabel}</summary>
         <ul className="mt-3 list-disc space-y-2 pl-5 text-xs leading-relaxed text-muted-foreground">{guidance.notes.map(note => <li key={note}>{note}</li>)}</ul>
       </details>
-      <p className="text-xs text-muted-foreground">{copy.checkedLabel}: {guidance.checkedAt}</p>
+      <p className="whitespace-pre-line text-xs text-muted-foreground">{copy.checkedLabel}: {guidance.checkedAt}</p>
     </div>
   </details>;
 }

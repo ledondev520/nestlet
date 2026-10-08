@@ -59,7 +59,7 @@ test('inline human confirmation needs no Materials page; double click, undo and 
  await click(button('Undo this review'));await wait(()=>host.textContent.includes('Review withdrawn'));saved=(await owner.api.get(`/api/cases/${s.record.id}`)).case;assert.equal(saved.version,3);assert.deepEqual(saved.fields,[]);
  const other=await sample(),preview=await prepare(other);await mount(other,preview);
  await fill(host.querySelector('textarea'),'change to 256 Synthetic Lane');await click(button('Send answer'));await wait(()=>host.textContent.includes('Saved as reviewed'));
- assert.equal((await owner.api.get(`/api/cases/${other.record.id}`)).case.fields.find(row=>row.key==='property').value,'256 Synthetic Lane');assert.match(host.textContent,/property: 256 Synthetic Lane/);
+ assert.equal((await owner.api.get(`/api/cases/${other.record.id}`)).case.fields.find(row=>row.key==='property').value,'256 Synthetic Lane');assert.match(host.textContent,/Property address: 256 Synthetic Lane/);
 });
 test('lost response safely retries exact receipt; quoted answer cannot confirm and input survives rejection',async()=>{
  const s=await sample(),p=await prepare(s);let dropped=false;
@@ -155,4 +155,17 @@ test('paused AI service preserves an explicit targeted human fact confirmation b
  await fill(host.querySelector('.chat-input'),'An ordinary model question');assert.equal(button('Send').disabled,true);
  await React.act(async()=>host.querySelector('.chat-input').dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true})));await flush();assert.equal(chatCount,1,'Paused ordinary AI cannot call the provider');
  }finally{fixture.withDatabase(db=>db.prepare('DELETE FROM service_entitlements WHERE user_id=?').run(owner.userId));}
+});
+
+
+test('Chinese confirmation receipt uses approved field labels without changing canonical data or provenance',async()=>{
+ const s=await sample(),proposal=await prepare(s);const before=JSON.stringify(proposal);
+ await mount(s,proposal,{lang:'zh'});await click(button('确认保存'));
+ await wait(()=>host.textContent.includes('已保存为你核对过的信息'));
+ assert.match(host.textContent,/房屋地址: 128 Synthetic Lane/u);
+ assert.doesNotMatch(host.textContent,/property: 128 Synthetic Lane/u);
+ const saved=(await owner.api.get(`/api/cases/${s.record.id}`)).case;
+ const field=saved.fields.find(row=>row.key==='property');
+ assert.equal(field.value,'128 Synthetic Lane');assert.equal(field.confirmed,true);assert.match(field.source,/Human reply/);
+ assert.equal(JSON.stringify(proposal),before,'Rendering the receipt never changes its canonical proposal');
 });

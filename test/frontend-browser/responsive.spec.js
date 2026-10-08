@@ -30,8 +30,8 @@ for (const language of ['zh', 'en']) {
 
     const zh = language === 'zh';
     if (zh) await switchLanguage(page,'zh');
-    const navName = zh ? '工作区导航' : 'Workspace navigation';
-    const labels = zh ? ['对话', '材料与事实', '客户库', '文档'] : ['Conversation', 'Materials & facts', 'Customers', 'Documents'];
+    const navName = zh ? "页面导航" : 'Workspace navigation';
+    const labels = zh ? ['对话', "材料", "客户", '文档'] : ['Conversation', 'Materials & facts', 'Customers', 'Documents'];
     for (const width of [320, 390]) {
       await page.setViewportSize({ width, height: 844 });
       for (const label of labels) {
@@ -42,9 +42,9 @@ for (const language of ['zh', 'en']) {
         const activeSection = page.locator('main > section:not([hidden])');
         await expect(activeSection).toBeVisible();
         // Wait for the real per-page API reads, then assess the rendered content.
-        if (label === (zh ? '材料与事实' : 'Materials & facts')) await expect(page.getByLabel(zh ? '案例名称' : 'Case name', { exact: true })).toHaveValue(title);
-        if (label === (zh ? '客户库' : 'Customers')) await expect(page.getByRole('button', { name: `${zh ? '打开已保存事项' : 'Open saved case'}: ${title}`, exact: true })).toBeVisible();
-        if (label === (zh ? '文档' : 'Documents')) await expect(page.getByLabel(zh ? '文书类型' : 'Document type', { exact: true })).toBeEnabled();
+        if (label === (zh ? "材料" : 'Materials & facts')) await expect(page.getByLabel(zh ? "事项名称" : 'Case name', { exact: true })).toHaveValue(title);
+        if (label === (zh ? "客户" : 'Customers')) await expect(page.getByRole('button', { name: `${zh ? "打开事项" : 'Open saved case'}: ${title}`, exact: true })).toBeVisible();
+        if (label === (zh ? '文档' : 'Documents')) await expect(page.getByLabel(zh ? "文档类型" : 'Document type', { exact: true })).toBeEnabled();
         await noHorizontalOverflow(page);
         await screenshot(page, testInfo, `mobile-${width}-${language}-${['chat', 'materials', 'archive', 'documents'][labels.indexOf(label)]}`);
       }
@@ -52,7 +52,7 @@ for (const language of ['zh', 'en']) {
 
     // Browser history must restore the selected tab without resetting saved material.
     await page.goBack();
-    await expect(page.getByRole('navigation', { name: navName }).getByRole('button', { name: zh ? '客户库' : 'Customers', exact: true })).toHaveAttribute('aria-current', 'page');
+    await expect(page.getByRole('navigation', { name: navName }).getByRole('button', { name: zh ? "客户" : 'Customers', exact: true })).toHaveAttribute('aria-current', 'page');
     await page.goForward();
     await expect(page.getByRole('navigation', { name: navName }).getByRole('button', { name: zh ? '文档' : 'Documents', exact: true })).toHaveAttribute('aria-current', 'page');
     await assertBrowserClean();

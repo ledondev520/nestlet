@@ -61,6 +61,20 @@ test('lists real response metadata and constructs only authenticated same-origin
   assert.equal(query.get('clientId'), clientId); assert.equal(query.get('limit'), '50'); assert.equal(query.get('offset'), '0');
 });
 
+test('Chinese partial-text warnings preserve their separate lines and original-file links', async () => {
+  const truncated = { ...asset, textTruncated: true };
+  const api = apiFor(path => path.endsWith('/text') ? { asset: truncated, text: 'Synthetic excerpt' } : page([truncated]));
+  await render(api, { lang: 'zh' });
+  await click(button('查看文字: Synthetic original.pdf'));
+  const warning = [...container.querySelectorAll('p')].find(item => item.textContent.startsWith('仅显示部分文字。'));
+  assert.equal(warning?.textContent, '仅显示部分文字。\n完整内容请下载原件查看。');
+  assert.ok(warning.classList.contains('whitespace-pre-line'));
+  const preview = container.querySelector(`a[href="/api/assets/${asset.id}/preview"]`);
+  assert.equal(preview.target, '_blank');
+  assert.equal(preview.rel, 'noopener noreferrer');
+  assert.ok(container.querySelector(`a[href="/api/assets/${asset.id}/download"][download]`));
+});
+
 test('literal search encodes wildcards, aborts obsolete reads and ignores late results', async () => {
   const slow = deferred(), fast = deferred();
   const api = apiFor(path => {

@@ -62,17 +62,18 @@ export function ChatMessageActions({ message, api, userId, caseId, conversationI
     }
   }
   return <div className="mt-3 space-y-2 border-t pt-3" data-testid="chat-message-actions">
+    {message.role === 'assistant' && !saved && !uncertain && <p className="text-xs text-muted-foreground">{en ? 'Saved drafts still need your review.' : '保存后仍需核对。'}</p>}
     <div className="flex flex-wrap gap-2">
-      {onReviewMessage && <Button variant="outline" size="xs" disabled={disabled} onClick={() => { const request = conversationHandoff(message, { userId, caseId, conversationId }); if (request) onReviewMessage(request); }}>{en ? 'Review for this case' : '用于案例核对'}</Button>}
-      {message.role === 'assistant' && !saved && !uncertain && <Button variant="outline" size="xs" disabled={disabled} onClick={() => save(false)}>{en ? 'Save answer as unreviewed draft' : '将回答另存为待核实草稿'}</Button>}
-      {uncertain && <Button variant="outline" size="xs" disabled={disabled} onClick={() => save(true)}>{en ? 'Check saved draft status' : '检查草稿保存状态'}</Button>}
-      {phase && <Button variant="ghost" size="xs" onClick={() => operation.current?.controller.abort()}>{en ? 'Cancel draft action' : '取消草稿操作'}</Button>}
-      {(saved || uncertain) && onOpenDocuments && <Button variant="ghost" size="xs" disabled={disabled} onClick={() => onOpenDocuments({ userId, caseId })}>{en ? 'Open case document versions' : '打开本案例文书版本'}</Button>}
+      {onReviewMessage && <Button variant="outline" size="xs" disabled={disabled} onClick={() => { const request = conversationHandoff(message, { userId, caseId, conversationId }); if (request) onReviewMessage(request); }}>{en ? 'Review for this case' : "核对信息"}</Button>}
+      {message.role === 'assistant' && !saved && !uncertain && <Button variant="outline" size="xs" disabled={disabled} onClick={() => save(false)}>{en ? 'Save answer as unreviewed draft' : "另存草稿"}</Button>}
+      {uncertain && <Button variant="outline" size="xs" disabled={disabled} onClick={() => save(true)}>{en ? 'Check saved draft status' : "核对保存"}</Button>}
+      {phase && <Button variant="ghost" size="xs" onClick={() => operation.current?.controller.abort()}>{en ? 'Cancel draft action' : "停止等待"}</Button>}
+      {(saved || uncertain) && onOpenDocuments && <Button variant="ghost" size="xs" disabled={disabled} onClick={() => onOpenDocuments({ userId, caseId })}>{en ? 'Open case document versions' : "查看版本"}</Button>}
     </div>
-    {phase && <p role="status" className="text-xs text-muted-foreground">{en ? 'Checking and saving this answer…' : '正在核对并保存本条回答…'}</p>}
-    {saved && <p role="status" className="text-xs text-muted-foreground">{en ? `Unreviewed draft saved: ${saved.title}, v${saved.version}. Open that version in Documents to preview it. No case facts were confirmed.` : `待核实草稿已保存：${saved.title}，v${saved.version}。在文书页打开该版本可预览；没有确认任何案例事实。`}</p>}
-    {uncertain && <p role="status" className="text-xs text-destructive">{en ? 'Save status is unconfirmed. Check saved versions before trying to save again.' : '尚未确认是否保存成功，请先检查已存版本，不要重复保存。'}</p>}
-    {checkedMissing && <p role="status" className="text-xs text-muted-foreground">{en ? 'No matching saved draft was found yet. You can check again or inspect Documents; this action did not create another version.' : '暂未找到对应草稿，可再次检查或查看文书页。本次检查没有新建版本。'}</p>}
-    {error && <p role="alert" className="text-xs text-destructive">{documentErrorText(error, lang)}</p>}
+    {phase && <p role="status" className="whitespace-pre-line text-xs text-muted-foreground">{en ? 'Checking and saving this answer…' : '正在核对并保存本条回答…'}</p>}
+    {saved && <p role="status" className="whitespace-pre-line text-xs text-muted-foreground">{en ? `Unreviewed draft saved: ${saved.title}, v${saved.version}. Open that version in Documents to preview it. No case facts were confirmed.` : `待核实草稿已保存：\n${saved.title}，v${saved.version}。\n可在文档页打开此版本预览。\n没有确认任何事项信息。`}</p>}
+    {uncertain && <p role="status" className="whitespace-pre-line text-xs text-destructive">{en ? 'Save status is unconfirmed. Check saved versions before trying to save again.' : "尚未确认保存成功，请勿重复保存。\n请先检查已保存版本。"}</p>}
+    {checkedMissing && <p role="status" className="whitespace-pre-line text-xs text-muted-foreground">{en ? 'No matching saved draft was found yet. You can check again or inspect Documents; this action did not create another version.' : "未找到对应草稿，可重查或查看文档页。\n本次检查没有新建版本。"}</p>}
+    {error && <p role="alert" className="whitespace-pre-line text-xs text-destructive">{documentErrorText(error, lang)}</p>}
   </div>;
 }

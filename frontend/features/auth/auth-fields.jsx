@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 export function AuthField({ id, label, help, error, ...props }) {
-  return <div className="space-y-2"><Label htmlFor={id}>{label}</Label><Input id={id} aria-invalid={error || undefined} aria-describedby={help ? `${id}-help` : undefined} {...props} />{help && <p id={`${id}-help`} className="text-xs leading-relaxed text-muted-foreground">{help}</p>}</div>;
+  return <div className="space-y-2"><Label htmlFor={id}>{label}</Label><Input id={id} aria-invalid={error || undefined} aria-describedby={help ? `${id}-help` : undefined} {...props} />{help && <p id={`${id}-help`} className="whitespace-pre-line text-xs leading-relaxed text-muted-foreground">{help}</p>}</div>;
 }
 export function clearNativePasswords(form) {
   for (const name of ['password', 'passwordConfirmation', 'currentPassword']) {
@@ -22,7 +22,7 @@ function PasswordField({ id, label, help, showLabel, hideLabel, disabled, error,
         {visible ? <EyeOff aria-hidden="true" className="size-5" /> : <Eye aria-hidden="true" className="size-5" />}
       </Button>
     </div>
-    {help && <p id={`${id}-help`} className="text-xs leading-relaxed text-muted-foreground">{help}</p>}
+    {help && <p id={`${id}-help`} className="whitespace-pre-line text-xs leading-relaxed text-muted-foreground">{help}</p>}
   </div>;
 }
 export function PasswordFields({ id, t, onChange, confirm = true, disabled = false, error, current = false }) {

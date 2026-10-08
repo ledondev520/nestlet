@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useSession } from '@/lib/session';
 import { useScopedRead } from '@/lib/use-scoped-read';
 import { readInboxRail } from '@/lib/inbox-read-model';
-const copy={zh:{cases:'事项',empty:'还没有已保存的事项。',error:'暂时无法加载列表，请重试。',loading:'正在载入…',retry:'刷新列表',untitled:'未命名事项'},en:{cases:'Cases',empty:'No saved cases yet.',error:'The list could not load. Try again.',loading:'Loading…',retry:'Refresh list',untitled:'Untitled case'}};
+const copy={zh:{cases:'事项',empty:'还没有已保存的事项。',error:'暂时无法加载列表，请重试。',loading:'正在载入…',retry:'刷新列表',untitled:"未命名"},en:{cases:'Cases',empty:'No saved cases yet.',error:'The list could not load. Try again.',loading:'Loading…',retry:'Refresh list',untitled:'Untitled case'}};
 export function CaseRail({lang='zh',selectedCaseId,onSelectCase,refreshKey=''}){
  const t=copy[lang]||copy.zh,{api,status,dataRevision=0}=useSession(),[retry,setRetry]=useState(0);
  const key=status.authenticated&&status.userId?JSON.stringify([status.userId,selectedCaseId,lang,refreshKey,dataRevision,retry]):null;

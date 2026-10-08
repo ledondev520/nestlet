@@ -164,28 +164,28 @@ test('App keeps a new link through paired popstate/hashchange, replaces old secr
     window.history.pushState(null, '', `/#auth=verify&token=${'x'.repeat(43)}`);
     window.dispatchEvent(new window.PopStateEvent('popstate')); window.dispatchEvent(new window.HashChangeEvent('hashchange'));
   });
-  assert.equal(window.location.hash, ''); assert.match(host.textContent, /确认验证邮箱/); assert.equal(posts(calls).length, 0);
+  assert.equal(window.location.hash, ''); assert.match(host.textContent, /确认验证/); assert.equal(posts(calls).length, 0);
   await React.act(async () => {
     window.history.pushState(null, '', `/#auth=reset&token=${'y'.repeat(43)}`);
     window.dispatchEvent(new window.HashChangeEvent('hashchange'));
   });
-  assert.match(host.textContent, /设置新密码/);
+  assert.match(host.textContent, /重设密码/);
   await input('password', '123456'); await input('passwordConfirmation', '123456');
   await React.act(async () => window.dispatchEvent(new window.PageTransitionEvent('pagehide'))); await submit();
-  assert.equal(posts(calls).length, 0); assert.match(host.textContent, /链接已从当前页面清除/); assert.equal(host.querySelector('[name=password]'), null);
+  assert.equal(posts(calls).length, 0); assert.match(host.textContent, /链接已从本页清除/); assert.equal(host.querySelector('[name=password]'), null);
 });
 test('signed-in accounts can open verification and close it without consuming a token', async () => {
   const initialAuthLink = link(); const calls = fixture(ordinary, request => ({ body: request.path === '/api/workflows' ? { workflowId: '11111111-1111-4111-8111-111111111111' } : {} }));
-  await render(App, { initialAuthLink }); assert.match(host.textContent, /确认验证邮箱/); assert.equal(posts(calls).length, 0);
-  await click('关闭链接页面'); assert.equal(initialAuthLink.takeToken(), ''); assert.equal(posts(calls).filter(call => call.path.startsWith('/api/auth/')).length, 0);
+  await render(App, { initialAuthLink }); assert.match(host.textContent, /确认验证/); assert.equal(posts(calls).length, 0);
+  await click('关闭页面'); assert.equal(initialAuthLink.takeToken(), ''); assert.equal(posts(calls).filter(call => call.path.startsWith('/api/auth/')).length, 0);
 });
 
 
 test('same-URL Back traversal discards a captured token even between adjacent scrubbed root entries', async () => {
   const calls = fixture(); const initialAuthLink = link(); await render(App, { initialAuthLink });
-  assert.equal(window.location.hash, ''); assert.match(host.textContent, /确认验证邮箱/);
+  assert.equal(window.location.hash, ''); assert.match(host.textContent, /确认验证/);
   await React.act(async () => window.dispatchEvent(new window.PopStateEvent('popstate')));
-  assert.doesNotMatch(host.textContent, /确认验证邮箱/); assert.equal(initialAuthLink.takeToken(), ''); assert.equal(posts(calls).length, 0);
+  assert.doesNotMatch(host.textContent, /确认验证/); assert.equal(initialAuthLink.takeToken(), ''); assert.equal(posts(calls).length, 0);
 });
 
 for (const lang of ['en', 'zh']) test(`registration eye controls independently reveal native values without submission (${lang})`, async () => {

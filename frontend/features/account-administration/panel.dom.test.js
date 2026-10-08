@@ -94,8 +94,8 @@ test('conflict clears all actionable rows, never retries, and requires explicit 
   await render(api); await select(); await click(button('Confirm grant'));
   assert.match(content(), /did not overwrite the newer state/); assert.equal(container.querySelectorAll('li').length, 0); assert.equal(reads, 1);
   assert.equal(api.calls.filter(call => call.method === 'PUT').length, 1); assert.doesNotMatch(content(), /Do not render backend details/);
-  await render(api, { lang: 'zh' }); assert.equal(reads, 1); assert.match(content(), /重新加载账号后重新确认/);
-  await click(button('重新加载账号')); assert.equal(reads, 2); await render(api);
+  await render(api, { lang: 'zh' }); assert.equal(reads, 1); assert.match(content(), /刷新账号后重新确认/);
+  await click(button('刷新账号')); assert.equal(reads, 2); await render(api);
   await select(); await click(button('Confirm grant'));
   assert.deepEqual(api.calls.filter(call => call.method === 'PUT').map(call => call.body.expectedVersion), [2, 8]);
 });
@@ -119,7 +119,7 @@ test('acknowledged write plus failed refresh gives a precise reload-only state',
 
 test('load failures and malformed rows stay distinct from empty accounts; Chinese is the default', async () => {
   const api = fixture({ get: () => ({ accounts: [{ ...account, capabilityVersion: -1 }] }) });
-  await render(api, { lang: undefined }); assert.match(content(), /暂时无法加载账号/); assert.doesNotMatch(content(), /当前没有可显示的账号/); assert.equal(container.querySelectorAll('li').length, 0);
+  await render(api, { lang: undefined }); assert.match(content(), /暂时无法加载账号/); assert.doesNotMatch(content(), /暂无可显示账号/); assert.equal(container.querySelectorAll('li').length, 0);
   const empty = fixture({ rows: [] }); await render(empty, { status: { ...owner, csrfToken: 'empty-session' } });
   assert.match(content(), /There are no accounts to display/); assert.equal(container.querySelector('[role=alert]'), null);
 });
@@ -224,7 +224,7 @@ test('optional diagnostics is read-only and never requests the account directory
   assert.deepEqual(api.calls.map(call => call.path), ['/api/admin/diagnostics']);
   assert.match(content(), /deepseek-flash|Bounded operational status/); assert.doesNotMatch(content(), /synthetic-excluded-secret|Synthetic ordinary/);
   assert.equal(container.querySelectorAll('button').length, 1); assert.equal(api.calls.filter(call => call.method !== 'GET').length, 0);
-  await renderDiagnostics(api, { lang: 'zh' }); assert.match(content(), /有限运行状态/); assert.equal(api.calls.length, 1);
+  await renderDiagnostics(api, { lang: 'zh' }); assert.match(content(), /运行状态/); assert.equal(api.calls.length, 1);
 });
 
 test('diagnostic capability and activity gates make no unauthorized request and abort revoked reads', async () => {
@@ -241,4 +241,17 @@ test('invalid or failed diagnostics stays unavailable until manual refresh, with
   let count = 0; const api = fixture({ get: () => ++count === 1 ? { ...diagnostics, activeRequests: { chat: -1 } } : diagnostics });
   await renderDiagnostics(api); assert.match(content(), /could not be loaded/); assert.equal(container.querySelector('dl'), null); assert.equal(count, 1);
   await click(button('Refresh operational status')); assert.equal(count, 2); assert.match(content(), /deepseek-flash/);
+});
+
+
+test('Chinese grant confirmation preserves the selected identity, role, boundaries and cancel safety', async () => {
+  const api = fixture(); await render(api, { lang: 'zh' });
+  await click(button(`设管理员: ${account.username}`));
+  const confirmation = container.querySelector('section');
+  assert.match(confirmation.textContent, new RegExp(`所选账号: ${account.username}`));
+  assert.match(confirmation.textContent, /此账号将设为管理员。\n此账号将能查看部分运行状态。/);
+  assert.match(confirmation.textContent, /仍不能查看他人资料和服务商设置。\n也不能查看账号授权。/);
+  assert.ok([...confirmation.querySelectorAll('p')].find(node => node.textContent.includes('此账号将设为管理员')).classList.contains('whitespace-pre-line'));
+  assert.ok(button('确认设置')); await click(button('取消'));
+  assert.equal(api.calls.filter(call => call.method === 'PUT').length, 0);
 });

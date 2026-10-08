@@ -49,6 +49,17 @@ test('all/unassigned/recent views use literal local search and ten-record pagina
   assert.deepEqual(api.calls.map(call => call.path), ['/api/cases']);
 });
 
+test('Chinese recent-case guidance and totals keep the complete information on separate lines', async () => {
+  await render(apiFor(), { lang: 'zh' });
+  await click(button('最近十项'));
+  const hint = [...container.querySelectorAll('p')].find(item => item.textContent.startsWith('显示搜索结果中最近更新的10项。'));
+  assert.equal(hint?.textContent, '显示搜索结果中最近更新的10项。\n其余记录请选「全部事项」查看。');
+  assert.ok(hint.classList.contains('whitespace-pre-line'));
+  const totals = container.querySelector('p[role="status"]');
+  assert.equal(totals.textContent, '本页 2 项\n当前范围 2 项\n账号共 2 项');
+  assert.ok(totals.classList.contains('whitespace-pre-line'));
+});
+
 test('account-key remount discards a late old-account directory and does not navigate automatically', async () => {
   const old = deferred(), opened = [];
   const api = apiFor(() => old.promise); await render(api, { key: 'account-a', onOpenCase: id => opened.push(id) });
@@ -69,7 +80,7 @@ test('errors are explicit, bilingual and retryable; empty lists are not substitu
   let failed = true; const api = apiFor(() => failed ? Promise.reject({ code: 'NETWORK_ERROR' }) : { cases: [] });
   await render(api); assert.match(content(), /Saved cases could not be loaded/); assert.doesNotMatch(content(), /No saved cases yet/);
   await render(api, { lang: 'zh' }); assert.match(content(), /暂时无法加载已保存事项/);
-  failed = false; await click(button('重新加载事项目录')); assert.match(content(), /还没有已保存的事项/);
+  failed = false; await click(button('刷新列表')); assert.match(content(), /暂无事项/);
 });
 
 test('global originals entry omits absent clientId and displays unassigned saved files without customer selection', async () => {

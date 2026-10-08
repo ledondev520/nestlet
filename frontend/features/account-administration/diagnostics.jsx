@@ -29,19 +29,19 @@ function Diagnostics({ api, lang }) {
     return () => window.removeEventListener('pagehide', clear);
   }, [operation]);
   return <Card className="paper-card" aria-labelledby={`${id}-title`}>
-    <CardHeader><CardTitle id={`${id}-title`} className="paper-title text-xl">{t.title}</CardTitle><CardDescription>{t.description}</CardDescription></CardHeader>
+    <CardHeader><CardTitle id={`${id}-title`} className="paper-title text-xl">{t.title}</CardTitle><CardDescription className="whitespace-pre-line">{t.description}</CardDescription></CardHeader>
     <CardContent className="space-y-4" aria-busy={busy}>
-      {busy && <p role="status" className="text-sm text-muted-foreground">{t.loading}</p>}
-      {failed && <p role="alert" className="text-sm text-destructive">{t.error}</p>}
+      {busy && <p role="status" className="whitespace-pre-line text-sm text-muted-foreground">{t.loading}</p>}
+      {failed && <p role="alert" className="whitespace-pre-line text-sm text-destructive">{t.error}</p>}
       {view && <>
         <dl className="grid gap-3 text-sm sm:grid-cols-2">
           <div><dt className="text-muted-foreground">{t.model}</dt><dd>{view.model}</dd></div>
-          <div><dt className="text-muted-foreground">{t.uptime}</dt><dd>{view.uptimeSeconds}</dd></div>
-          {['liveEnabled', 'pdfEnabled', 'workbookEnabled'].map((field, index) => <div key={field}><dt className="text-muted-foreground">{t[['live', 'pdf', 'workbook'][index]]}</dt><dd>{view[field] ? t.enabled : t.disabled}</dd></div>)}
+          <div><dt className="text-muted-foreground">{t.uptime}</dt><dd>{view.uptimeSeconds}{lang === 'zh' ? ' 秒' : ''}</dd></div>
+          {['liveEnabled', 'pdfEnabled', 'workbookEnabled'].map((field, index) => <div key={field}><dt className="text-muted-foreground">{t[['live', 'pdf', 'workbook'][index]]}{lang === 'zh' && field === 'pdfEnabled' && <span className="text-xs"> · PDF</span>}</dt><dd>{view[field] ? t.enabled : t.disabled}</dd></div>)}
         </dl>
         <section aria-labelledby={`${id}-requests`} className="space-y-2 rounded-lg border p-3">
           <h3 id={`${id}-requests`} className="text-sm font-medium">{t.active}</h3>
-          <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">{Object.entries(view.activeRequests).map(([kind, count]) => <div key={kind}><dt className="text-muted-foreground">{t[kind]}</dt><dd>{count}</dd></div>)}</dl>
+          <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">{Object.entries(view.activeRequests).map(([kind, count]) => <div key={kind}><dt className="text-muted-foreground">{t[kind]}{lang === 'zh' && kind === 'pdf' && <span className="text-xs"> · PDF</span>}</dt><dd>{count}</dd></div>)}</dl>
         </section>
       </>}
       <Button type="button" variant="ghost" disabled={busy} onClick={load}>{t.reload}</Button>

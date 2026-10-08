@@ -138,8 +138,8 @@ test('cancellation, repeated clicks, inactive view and account/case changes supp
   await mountSources({ sources: envelope([source('case', { ...record, id: randomUUID() })]), onOpenSourceCase: () => { opened++; } });
   await click(button('Open case')); await wait(() => host.textContent.includes('unavailable to this account'));
   assert.equal(opened, 0, 'A real 404 never changes the selected case');
-  await mountSources({ sources, lang: 'zh', onOpenSourceCase: () => true }); assert.ok(button('打开案例'));
-  assert.match(host.textContent, /本次引用来源/);
+  await mountSources({ sources, lang: 'zh', onOpenSourceCase: () => true }); assert.ok(button("打开事项"));
+  assert.match(host.textContent, /引用来源/);
 });
 
 test('actual App source selection keeps unsaved chat/material/document edits on decline and changes the visible case only after approval', { timeout: 30000 }, async () => {

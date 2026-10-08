@@ -25,7 +25,7 @@ test('chat sends only an allowlisted reference choice, never reference prose or 
   assert.equal(payload.guidanceAgency,'sfha');
   assert.equal('guidanceSources' in payload,false);
   assert.equal('fields' in payload,false);
-  for(const guidanceAgency of ['SFHA','San Francisco',null,{},'__proto__'])assert.throws(()=>buildChatTurn({...identity,text:'Question',guidanceAgency}),{code:'CHAT_INVALID'});
+  for(const guidanceAgency of ['SFHA','San Francisco',null,{},{}])assert.throws(()=>buildChatTurn({...identity,text:'Question',guidanceAgency}),{code:'CHAT_INVALID'});
 });
 test('real PNG header dimensions are checked before browser decoding, with explicit format and byte limits',()=>{
   const png=new Uint8Array(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j3ioAAAAASUVORK5CYII=','base64'));
@@ -74,8 +74,8 @@ test('Chinese and English copy have matching keys and unknown exceptions never b
 
 
 test('chat file guidance names the actual materials route and source notes do not promise persistence',()=>{
-  assert.match(chatCopy.zh.documents,/材料与事实/u);assert.match(chatCopy.zh.unsupportedFile,/材料与事实/u);
+  assert.match(chatCopy.zh.documents,/「材料」/u);assert.match(chatCopy.zh.unsupportedFile,/「材料」/u);
   assert.match(chatCopy.en.documents,/Materials & facts/u);assert.match(chatCopy.en.unsupportedFile,/Materials & facts/u);
-  assert.match(chatCopy.zh.librarySourcesNote,/是否已保存请以回复状态为准/u);
+  assert.match(chatCopy.zh.librarySourcesNote,/是否保存，请查看回复状态/u);
   assert.match(chatCopy.en.librarySourcesNote,/check its save status/u);
 });

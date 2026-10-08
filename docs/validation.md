@@ -758,3 +758,18 @@ Final local checks/build/whitespace passed. Backend **460/460**, frontend **326/
 Legacy schema4/schema9 restore fences are tested through first schema10 startup; malformed/hash-mismatched fences, incomplete recovery and WAL/journal sidecars fail closed. Pause/audit/fence receipt commit together. Three concurrent startups apply one recovery; a retained receipt reconciles a leftover fence after verified stale-lock handling without undoing a later explicit owner decision. An actual five-second stale-lock test refuses startup and preserves the lock, fence and DB; no automatic crash-recovery or stale-lock deletion is claimed. Restores return content-free serviceRecovery/preserveRestoreDirectory flags; DB-only copies or old-binary cutovers are not silently covered by the fence guarantee.
 
 An exact historical `f738655` schema9 storage binary refused a disposable schema10 database without byte changes. The real schema1→10 migration smoke passed on private synthetic local data; this is not a Docker/production run. The unchanged production-build bundle-size advisory remains. Browser discovery lists **57 scenarios**, adding a manual-service confirmation/cancel/ordinary-read-only and display-reference journey. Chromium was not launched locally; exact combined official browser/container CI and independent review remain release gates. No live migration, restore, payment, provider request or account grant occurred.
+
+## 2026-10-08 — approved plain-language interface copy
+
+Applied the owner-approved Chinese copy review against `421545755ab9cb2d26e061b4cc72c9ea84940cd8`. Visible menus/actions now use the approved short labels and consistent 对话 / 事项 / 文档 terminology. Important consent, privacy, uncertainty, conflict, data-loss and cost statements remain explicit as short separate lines. Caption notes in the review are not treated as interface text.
+
+This change is presentation only: no API/schema/provider settings, canonical identifiers, request payloads, saved content, English document generation or export behavior changed. The existing full starter-message payloads and historical title-recognition strings are retained. Direct PDF download remains available. The attachment label remains 添加附件 because the current picker accepts documents as well as images. Confirmation receipts render localized field names while retaining the original canonical keys and provenance. Distinct password-toggle accessibility names and the one-time no-library action's description are preserved.
+
+Local verification on the candidate tree:
+- `npm run check` and production build passed.
+- `npm test`: 482/482 passed.
+- Full frontend suite: 389/389 passed, including new copy-length, retained-warning-meaning, multiline presentation and localized-receipt tests.
+- `git diff --check` passed.
+- Local Chromium could not start because the execution sandbox rejects its local socket. The browser assertions therefore were not executed locally; the two HTTP-only browser-suite checks are not a browser pass. Use the official `Nestlet browser acceptance` workflow and its exact-SHA screenshots for desktop/mobile acceptance.
+
+Not established here: live provider completion, real email delivery, production deployment, or durable provider-key storage. The separately authorized persistence work must retain its own verification boundary and current storage-specific wording.

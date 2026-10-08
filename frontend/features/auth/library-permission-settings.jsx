@@ -19,12 +19,12 @@ export function LibraryPermissionSettings({session,lang='zh',active=true}) {
     }catch(failure){if(failure.code==='LIBRARY_PERMISSION_CONFLICT')permission.load().catch(()=>{});}
   }
   return <Card><CardHeader><CardTitle>{t.settings}</CardTitle></CardHeader><CardContent className="space-y-3">
-    <p className="text-sm text-muted-foreground">{t.ordinary}</p>
-    <p className="text-sm">{permission.view?.decision==='allow'?t.enabled:permission.view?.decision==='deny'?t.disabled:permission.view?.decision==='unset'?t.unset:t.unavailable}</p>
-    <p className="text-sm text-muted-foreground">{t.detail}</p>
-    {permission.busy&&<p role="status">{t.loading}</p>}
-    {permission.error&&<p role="alert" className="text-sm text-destructive">{t.unavailable}</p>}
-    {notice&&<p role="status">{notice}</p>}
+    <p className="whitespace-pre-line text-sm text-muted-foreground">{t.ordinary}</p>
+    <p className="whitespace-pre-line text-sm">{permission.view?.decision==='allow'?t.enabled:permission.view?.decision==='deny'?t.disabled:permission.view?.decision==='unset'?t.unset:t.unavailable}</p>
+    <p className="whitespace-pre-line text-sm text-muted-foreground">{t.detail}</p>
+    {permission.busy&&<p role="status" className="whitespace-pre-line">{t.loading}</p>}
+    {permission.error&&<p role="alert" className="whitespace-pre-line text-sm text-destructive">{t.unavailable}</p>}
+    {notice&&<p role="status" className="whitespace-pre-line">{notice}</p>}
     <div className="flex flex-wrap gap-2">
       {permission.view?.decision==='allow'?<Button type="button" variant="outline" disabled={permission.busy} onClick={()=>choose('deny')}>{t.revoke}</Button>:<Button type="button" disabled={permission.busy||!permission.view} onClick={()=>setOpen(true)}>{t.allow}</Button>}
       <Button type="button" variant="ghost" disabled={permission.busy} onClick={()=>{setNotice('');permission.load().catch(()=>{});}}>{t.refresh}</Button>

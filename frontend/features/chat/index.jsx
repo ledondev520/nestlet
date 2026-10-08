@@ -471,7 +471,7 @@ export function ChatPage({ lang='zh', caseId=null, initialConversationId=null, c
   async function copyMessage(content){const scope=scoped();try{await navigator.clipboard.writeText(content);if(current(scope))setNotice('copied');}catch{if(current(scope))setNotice('copyFailed');}}
   const stop=()=>{stopRequested.current=true;controller.current?.abort();};
 
-  if(!status.authenticated)return <Card className="paper-card"><CardContent><p>{words.signIn}</p></CardContent></Card>;
+  if(!status.authenticated)return <Card className="paper-card"><CardContent><p className="whitespace-pre-line">{words.signIn}</p></CardContent></Card>;
   const serviceFailure=serviceAvailabilityError(status);
   const hasTargetedReply=factReplyReady&&factReplyTarget.current?.scope===`${status.userId}:${caseRef.current}:${conversationId}`;
   const indexedConversations=conversationIndex?.data||conversations;
@@ -492,40 +492,40 @@ export function ChatPage({ lang='zh', caseId=null, initialConversationId=null, c
           </NativeSelect><Button variant="outline" size="sm" type="button" disabled={busy} onClick={()=>onNewConversation?onNewConversation():chooseConversation('')}><Plus aria-hidden="true" />{words.newConversation}</Button>
           <Button variant="ghost" size="sm" type="button" disabled={busy} onClick={reloadConversation} aria-label={words.reload} title={words.reload}><RefreshCw aria-hidden="true" /></Button>
         </div>
-        {!listedConversations.length&&phase!=='loading'&&<p id={`${inputId}-conversation-empty`} className="text-xs text-muted-foreground">{words.noConversationsReason}</p>}
+        {!listedConversations.length&&phase!=='loading'&&<p id={`${inputId}-conversation-empty`} className="whitespace-pre-line text-xs text-muted-foreground">{words.noConversationsReason}</p>}
       </CardHeader>
       <CardContent className="chat-body">
         <div className="chat-thread" tabIndex={0} aria-label={lang==='en'?'Conversation history':'对话记录'}>
-        {phase==='loading'&&<p role="status" className="text-sm text-muted-foreground">{words.loading}</p>}
+        {phase==='loading'&&<p role="status" className="whitespace-pre-line text-sm text-muted-foreground">{words.loading}</p>}
         <div id={threadId} className="chat-messages" role="log" aria-label={words.conversation} aria-live="polite" aria-relevant="additions text">
           {!messages.length&&phase!=='loading'&&<ConversationOpening lang={lang} state={conversationIndex} onOpen={onOpenConversation} disabled={busy} onPrompt={text=>{inputRef.current=text;setInput(text);composer.current?.focus();}} />}
           {messages.map(message=><article key={message.id} className={`chat-message chat-message--${message.role}`} aria-label={message.role==='user'?words.you:words.assistant}>
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2"><span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{message.role==='user'?words.you:words.assistant}</span>{message.role==='assistant'&&message.content&&<Button type="button" variant="ghost" size="xs" onClick={()=>copyMessage(message.content)}>{words.copy}</Button>}</div>
             {!!message.images?.length&&<div className="mb-3 flex flex-wrap gap-2">{message.images.map(image=><img key={image.id} src={image.preview} alt={words.imageOnly} className="h-24 w-24 rounded border object-contain" />)}</div>}
-            {!!message.imageMetadata?.length&&<p className="mb-2 text-xs text-muted-foreground">{words.oldImage}</p>}
+            {!!message.imageMetadata?.length&&<p className="whitespace-pre-line mb-2 text-xs text-muted-foreground">{words.oldImage}</p>}
             <>{message.role==='assistant' ? <AssistantMarkdown content={message.content} streaming={message.streaming} lang={lang} /> : <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{message.content}</p>}</>
             {!message.streaming&&message.state!=='complete'&&<Badge variant="outline" className="mt-3 whitespace-normal text-destructive">{words.incomplete}</Badge>}
-            {message.localOnly&&!message.streaming&&<p className="mt-2 text-xs text-muted-foreground">{words.localOnly}</p>}
+            {message.localOnly&&!message.streaming&&<p className="whitespace-pre-line mt-2 text-xs text-muted-foreground">{words.localOnly}</p>}
             {onReviewMessage && <ChatMessageActions key={`${status.userId}:${caseRef.current}:${conversationId}:${message.id}`} message={message} api={api} lang={lang} userId={status.userId} caseId={caseRef.current} conversationId={conversationId} disabled={busy} onReviewMessage={onReviewMessage} onOpenDocuments={onOpenDocuments} claimOperation={claimBridgeOperation} releaseOperation={releaseBridgeOperation} />}
           </article>)}
           <div ref={endOfThread}/>
         </div>
         {actionBatch && actionBatch.userId===status.userId && actionBatch.caseId===caseRef.current && actionBatch.conversationId===conversationId && actionBatch.items.map((packet,index)=><ConversationActionReview key={`${status.userId}:${caseRef.current}:${conversationId}:${packet.requestId}:${index}`} proposal={packet.proposal} api={api} lang={lang} userId={status.userId} caseId={caseRef.current} conversationId={conversationId} ready={actionBatch.ready && phase==='idle'} disabled={busy} claimOperation={claimBridgeOperation} releaseOperation={releaseBridgeOperation} onApplied={result=>{setActionRevision(value=>value+1);if(result.message&&result.message.conversationId===conversationRef.current&&!messageRef.current.some(row=>row.id===result.message.id))updateMessages([...messageRef.current,result.message]);}} onOpenDocuments={onOpenDocuments} onOpenMaterials={onOpenMaterials} onReplyTarget={actionBatch.items.length===1?registerFactReply:undefined} />)}
         {libraryActivity&&<div role="status" className="paper-note rounded px-3 py-2 text-sm" aria-label={words.libraryActivity}>
-          <p>{libraryActivityText(libraryActivity,lang)}{libraryActivity.count!==undefined?` · ${words.libraryCount}: ${libraryActivity.count}`:''}</p>
-          {libraryActivity.code&&<p>{chatErrorText(libraryActivity,lang)}</p>}
+          <p className="whitespace-pre-line">{libraryActivityText(libraryActivity,lang)}{libraryActivity.count!==undefined?` · ${words.libraryCount}: ${libraryActivity.count}`:''}</p>
+          {libraryActivity.code&&<p className="whitespace-pre-line">{chatErrorText(libraryActivity,lang)}</p>}
         </div>}
         {librarySources&&<ChatSourceNavigation api={api} sources={librarySources} userId={status.userId} caseId={caseRef.current} lang={lang} active={active}
           disabled={phase !== 'idle' || bridgeBusy || retentionBusy || imagePending > 0} onOpenSourceCase={onOpenSourceCase} claimOperation={claimSourceOperation} releaseOperation={releaseSourceOperation} />}
-        {!librarySources && messages.some(message => message.role === 'assistant') && <p className="text-xs text-muted-foreground">{(sourceNavigationCopy[lang] || sourceNavigationCopy.zh).history}</p>}
-        {error&&error.code!==serviceFailure&&<Alert variant="destructive"><AlertDescription>{chatErrorText(error,lang)}</AlertDescription></Alert>}
-        {unavailableExactConversation&&phase==='idle'&&<p role="status" className="text-sm text-muted-foreground">{lang==='en'?'This conversation could not be loaded. Reload it or start a new conversation to continue.':'这段对话暂时无法读取。请重新读取，或开始新对话。'}</p>}
-        {recoveryUnavailable&&<Alert><AlertDescription>{words.recoveryUnavailable}</AlertDescription><Button variant="outline" type="button" disabled={busy} onClick={reloadConversation}>{words.retryOpening}</Button></Alert>}
+        {!librarySources && messages.some(message => message.role === 'assistant') && <p className="whitespace-pre-line text-xs text-muted-foreground">{(sourceNavigationCopy[lang] || sourceNavigationCopy.zh).history}</p>}
+        {error&&error.code!==serviceFailure&&<Alert variant="destructive"><AlertDescription className="whitespace-pre-line">{chatErrorText(error,lang)}</AlertDescription></Alert>}
+        {unavailableExactConversation&&phase==='idle'&&<p role="status" className="whitespace-pre-line text-sm text-muted-foreground">{lang==='en'?'This conversation could not be loaded. Reload it or start a new conversation to continue.':'这段对话暂时无法读取。请重新读取，或开始新对话。'}</p>}
+        {recoveryUnavailable&&<Alert><AlertDescription className="whitespace-pre-line">{words.recoveryUnavailable}</AlertDescription><Button variant="outline" type="button" disabled={busy} onClick={reloadConversation}>{words.retryOpening}</Button></Alert>}
         {error?.code==='CHAT_SAVE_FAILED'&&<Button variant="outline" type="button" disabled={busy} onClick={reloadConversation}>{words.checkSavedReply}</Button>}
-        {serviceFailure&&<Alert><AlertDescription>{chatErrorText({code:serviceFailure},lang)}</AlertDescription><Button type="button" variant="outline" disabled={busy} onClick={()=>checkConnection({serviceOnly:true})}>{words.refreshService}</Button></Alert>}
+        {serviceFailure&&<Alert><AlertDescription className="whitespace-pre-line">{chatErrorText({code:serviceFailure},lang)}</AlertDescription><Button type="button" variant="outline" disabled={busy} onClick={()=>checkConnection({serviceOnly:true})}>{words.refreshService}</Button></Alert>}
         {!serviceFailure&&(status.liveEnabled!==true||['CSRF_REJECTED','SESSION_REFRESH_FAILED'].includes(error?.code))&&<Button variant="outline" type="button" disabled={busy} onClick={checkConnection}>{words.checkConnection}</Button>}
-        {cacheStatus==='unavailable'&&<p role="status" className="text-sm text-destructive">{words.cacheUnavailable}</p>}
-        {notice&&<p role="status" className="paper-note rounded px-3 py-2 text-sm">{words[notice]}</p>}
+        {cacheStatus==='unavailable'&&<p role="status" className="whitespace-pre-line text-sm text-destructive">{words.cacheUnavailable}</p>}
+        {notice&&<p role="status" className="whitespace-pre-line paper-note rounded px-3 py-2 text-sm">{words[notice]}</p>}
         {(error||notice==='stopped')&&messages.some(message=>message.role==='user')&&<Button variant="outline" type="button" disabled={busy} onClick={retry}>{words.retry}</Button>}
         </div>
         <form className="chat-composer" onSubmit={send} onDragOver={event=>{event.preventDefault();setDragging(true);}} onDragLeave={()=>setDragging(false)} onDrop={event=>{event.preventDefault();setDragging(false);receiveFiles(event.dataTransfer.files);}}>
@@ -545,8 +545,8 @@ export function ChatPage({ lang='zh', caseId=null, initialConversationId=null, c
             {phase!=='idle'&&phase!=='loading'?<Button type="button" aria-label={words.stop} onClick={stop}><Square aria-hidden="true" />{words.stop}</Button>:<Button type="submit" aria-label={words.send} disabled={busy||!hasTargetedReply&&(Boolean(serviceFailure)||!status.liveEnabled)||unavailableExactConversation||recoveryUnavailable||imagePending>0||(!input.trim()&&!images.length)}><ArrowUp aria-hidden="true" />{words.send}</Button>}</div>
             <input id={fileId} ref={fileInput} className="sr-only" type="file" accept="image/png,image/jpeg,.pdf,.txt,.csv,.xlsx,.xls" multiple onChange={event=>{receiveFiles(event.target.files);event.target.value='';}}/>
           </div>
-          {['saving','streaming','refreshing','checking'].includes(phase)&&<p role="status" className="text-xs text-muted-foreground">{phase==='saving'?words.saving:phase==='streaming'?words.sending:phase==='checking'?words.checkingConnection:words.loading}</p>}
-          {!status.liveEnabled&&!serviceFailure&&<p className="text-sm text-destructive">{words.unavailable}</p>}
+          {['saving','streaming','refreshing','checking'].includes(phase)&&<p role="status" className="whitespace-pre-line text-xs text-muted-foreground">{phase==='saving'?words.saving:phase==='streaming'?words.sending:phase==='checking'?words.checkingConnection:words.loading}</p>}
+          {!status.liveEnabled&&!serviceFailure&&<p className="whitespace-pre-line text-sm text-destructive">{words.unavailable}</p>}
         </form>
       </CardContent>
     </Card>

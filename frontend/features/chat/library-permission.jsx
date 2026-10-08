@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
@@ -7,15 +7,15 @@ export const permissionCopy = lang => lang === 'en' ? {
   detail: 'Allow Nestlet to search your saved customers, cases, files and documents and send relevant excerpts to DeepSeek to answer your requests. This applies to future chats on this account until you turn it off in Account and settings.',
   boundary: 'Read-only suggestions and English drafts still need your review before saving or applying. Only synthetic or de-identified material is supported.',
   ordinary: 'Sending a message shares its text, attached images and the selected case’s bounded context and conversation history with DeepSeek. Saved-library search is optional.',
-  allow: 'Allow saved-library search', deny: 'Continue without library', cancel: 'Cancel', saving: 'Saving choice…', error: 'Could not confirm your choice. Retry or continue without library for this message.', once: 'Send without library this time',
+  allow: 'Allow saved-library search', deny: 'Continue without library', cancel: 'Cancel', saving: 'Saving choice…', error: 'Could not confirm your choice. Retry or continue without library for this message.', once: 'Send without library this time', onceHint: 'Send this message without using your saved library.',
   settings: 'AI data sharing', enabled: 'Saved-library search is allowed for DeepSeek.', disabled: 'Saved-library search is off.', unset: 'No saved-library permission has been granted.', revoke: 'Turn off saved-library search', refresh: 'Refresh permission', loading: 'Checking permission…', unavailable: 'Library permission is unavailable. Ordinary chat remains available.',
 } : {
-  title: '允许使用已保存的资料库吗？',
-  detail: '允许巢小秘检索您保存的客户、案例、文件和文书，并将相关摘录发送给 DeepSeek，用于回答您的请求。选择适用于此账户之后的对话，可随时在「账户与设置」中关闭。',
-  boundary: '只读建议和英文草稿仍需您核对后才能保存或应用。目前仅支持模拟或去标识化材料。',
-  ordinary: '发送消息会将消息文字、附图，以及当前案例的有限上下文和对话记录交给 DeepSeek 处理。资料库检索为可选项。',
-  allow: '允许资料库检索', deny: '不使用资料库，继续对话', cancel: '取消', saving: '正在保存选择…', error: '暂时无法确认您的选择。请重试，或仅本次不使用资料库。', once: '本次不使用资料库发送',
-  settings: 'AI 数据共享', enabled: '已允许向 DeepSeek 提供相关资料库摘录。', disabled: '资料库检索已关闭。', unset: '尚未授权资料库检索。', revoke: '关闭资料库检索', refresh: '刷新授权状态', loading: '正在检查授权…', unavailable: '暂时无法读取资料库授权，普通对话仍可使用。',
+  title: "使用资料？",
+  detail: "允许查找你保存的以下资料：\n客户、事项、文件和文档。\n相关文字会发给DeepSeek。\n仅用于回答你的请求。\n此选择适用于账号之后的对话。\n可随时在「设置」中关闭。",
+  boundary: "建议和英文草稿仍需你核对。\n核对后才能保存或使用。\n仅支持虚构或已去除身份信息的材料。",
+  ordinary: "消息文字和附图会发给DeepSeek。\n还包括部分当前事项资料和对话记录。\n是否使用资料库，由你选择。",
+  allow: "允许使用", deny: "不用资料", cancel: '取消', saving: '正在保存选择…', error: "暂时无法确认选择，请重试。\n也可选择这次不使用资料库。", once: "仅此一次", onceHint: "这次不使用资料库，直接发送。",
+  settings: "资料授权", enabled: "已允许将相关文字发给DeepSeek。", disabled: "已停用资料库。", unset: "尚未允许使用资料库。", revoke: "停用授权", refresh: "刷新授权", loading: '正在检查授权…', unavailable: "暂时无法读取资料授权。\n普通对话仍可使用。",
 };
 
 export function checkedPermission(value) {
@@ -54,20 +54,20 @@ export function useLibraryPermission({api,userId,authenticated}) {
 }
 
 export function LibraryPermissionDialog({lang,open,busy,error,onChoose,onClose,onWithoutLibrary,onRetry,ready=true}) {
-  const t=permissionCopy(lang);
+  const t=permissionCopy(lang), onceHintId=useId();
   return <Dialog open={open} onOpenChange={value=>{if(!value)onClose();}}>
     <DialogContent aria-modal="true" className="max-h-[85dvh] overflow-y-auto" showCloseButton={false} onEscapeKeyDown={event=>{if(busy)event.preventDefault();}} onPointerDownOutside={event=>{if(busy)event.preventDefault();}}>
-      <DialogHeader><DialogTitle>{t.title}</DialogTitle><DialogDescription>{t.detail}</DialogDescription></DialogHeader>
-      <p className="text-sm text-muted-foreground">{t.ordinary}</p>
-      <p className="text-sm text-muted-foreground">{t.boundary}</p>
-      {error&&<p role="alert" className="text-sm text-destructive">{t.error}</p>}
-      {busy&&<p role="status">{t.saving}</p>}
+      <DialogHeader><DialogTitle>{t.title}</DialogTitle><DialogDescription className="whitespace-pre-line">{t.detail}</DialogDescription></DialogHeader>
+      <p className="whitespace-pre-line text-sm text-muted-foreground">{t.ordinary}</p>
+      <p className="whitespace-pre-line text-sm text-muted-foreground">{t.boundary}</p>
+      {error&&<p role="alert" className="whitespace-pre-line text-sm text-destructive">{t.error}</p>}
+      {busy&&<p className="whitespace-pre-line" role="status">{t.saving}</p>}
       <DialogFooter className="flex-wrap">
         <Button type="button" variant="ghost" disabled={busy} onClick={onClose}>{t.cancel}</Button>
         <Button type="button" variant="outline" disabled={busy||!ready} onClick={()=>onChoose('deny')}>{t.deny}</Button>
         <Button type="button" disabled={busy||!ready} onClick={()=>onChoose('allow')}>{t.allow}</Button>
         {error&&onRetry&&<Button type="button" variant="outline" disabled={busy} onClick={onRetry}>{t.refresh}</Button>}
-        {error&&onWithoutLibrary&&<Button type="button" variant="outline" disabled={busy} onClick={onWithoutLibrary}>{t.once}</Button>}
+        {error&&onWithoutLibrary&&<div className="space-y-1"><Button type="button" variant="outline" disabled={busy} aria-describedby={onceHintId} onClick={onWithoutLibrary}>{t.once}</Button><p id={onceHintId} className="whitespace-pre-line text-xs text-muted-foreground">{t.onceHint}</p></div>}
       </DialogFooter>
     </DialogContent>
   </Dialog>;
