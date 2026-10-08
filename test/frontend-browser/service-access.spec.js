@@ -18,7 +18,9 @@ test('manual service changes require explicit confirmation and preserve ordinary
   await form.getByRole('button',{name:'Review change',exact:true}).click();const saved=responseFor(page,`/api/admin/accounts/${ordinaryStatus.userId}/service`,'PUT');await form.getByRole('button',{name:'Confirm service change',exact:true}).click();expect((await saved).status()).toBe(200);await expect(page.getByText('Service configuration saved',{exact:true})).toBeVisible();
   await ordinary.locator('[data-slot="card"]').filter({has:ordinary.getByText('Service and usage',{exact:true})}).getByRole('button',{name:'Refresh status',exact:true}).click();await expect(ordinary.getByText(/Paused ·/u)).toBeVisible();
   expect((await getJson(ordinary,app,`/api/cases/${record.id}`)).case).toMatchObject({id:record.id,displayId:record.displayId});expect((await getJson(ordinary,app,'/api/status')).role).toBe('trial');
-  await ordinary.reload();await expect(ordinary.getByText(/Paused ·/u)).toBeVisible();await noHorizontalOverflow(ordinary);await screenshot(ordinary,testInfo,'service-paused-existing-data-320-en');
+  await ordinary.reload();await expect(ordinary.getByText(/已暂停 ·/u)).toBeVisible();
+  expect((await getJson(ordinary,app,'/api/service')).service.status).toBe('paused');expect((await getJson(ordinary,app,`/api/cases/${record.id}`)).case).toMatchObject({id:record.id,displayId:record.displayId});
+  await switchLanguage(ordinary,'en');await expect(ordinary.getByText(/Paused ·/u)).toBeVisible();await noHorizontalOverflow(ordinary);await screenshot(ordinary,testInfo,'service-paused-existing-data-320-en');
   await switchLanguage(page,'zh');await expect(page.getByText('服务与使用额度',{exact:true})).toBeVisible();await noHorizontalOverflow(page);await screenshot(page,testInfo,'owner-manual-service-zh');
  }finally{await ordinaryContext.close();}
 });
