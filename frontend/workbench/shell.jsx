@@ -2,6 +2,7 @@ import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from
 import { PanelLeft, PanelRight, X } from 'lucide-react';
 const copy={zh:{openNav:'打开客户与事项列表',closeNav:'关闭列表',openContext:'打开案例上下文',closeContext:'关闭上下文',navigation:'客户与事项',context:'案例上下文',skip:'跳到工作区'},en:{openNav:'Open customers and cases',closeNav:'Close list',openContext:'Open case context',closeContext:'Close context',navigation:'Customers and cases',context:'Case context',skip:'Skip to workspace'}};
 const query='(max-width: 960px)';
+const externalModal=()=>[...document.querySelectorAll('[role="dialog"][aria-modal="true"]')].some(node=>!node.closest('.wb'));
 const selector='a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),summary,[tabindex]:not([tabindex="-1"])';
 /** Stable desktop/sidebar hosts retain their React portals and feature state.
  * One modal drawer at a time on mobile; no business-state decisions live here. */
@@ -15,17 +16,21 @@ export function WorkbenchShell({lang='zh',brand,topbarEnd,rail,center,context,co
  useEffect(()=>{if(previousNavigation.current!==navigationKey){previousNavigation.current=navigationKey;focusCenter.current=true;close();}},[navigationKey,close]);
  const modal=mobile?drawer:null;
  useLayoutEffect(()=>{
-  if(!modal){if(previousDrawer.current){const toggle=previousDrawer.current==='rail'?railToggle.current:contextToggle.current;(focusCenter.current?mainRef.current:toggle||mainRef.current)?.focus();previousDrawer.current=null;focusCenter.current=false;}return;}
+  if(!modal){if(previousDrawer.current){const toggle=previousDrawer.current==='rail'?railToggle.current:contextToggle.current;if(!externalModal())(focusCenter.current?mainRef.current:toggle||mainRef.current)?.focus();previousDrawer.current=null;focusCenter.current=false;}return;}
   previousDrawer.current=modal;const node=(modal==='rail'?railRef:contextRef).current;node?.querySelector('[data-drawer-close]')?.focus();
  },[modal]);
  useEffect(()=>{
   if(!modal)return;const node=(modal==='rail'?railRef:contextRef).current;
-  const key=event=>{if(event.key==='Escape'){event.preventDefault();close();return;}if(event.key!=='Tab'||!node)return;
+  const key=event=>{if(externalModal()){close();return;}if(event.key==='Escape'){event.preventDefault();close();return;}if(event.key!=='Tab'||!node)return;
    const items=[...node.querySelectorAll(selector)].filter(el=>!el.closest('[hidden],[inert]')&&el.getClientRects().length>0);
    if(!items.length){event.preventDefault();node.focus();return;}
    const first=items[0],last=items.at(-1),inside=node.contains(document.activeElement);
    if(event.shiftKey&&(!inside||document.activeElement===first)){event.preventDefault();last.focus();}else if(!event.shiftKey&&(!inside||document.activeElement===last)){event.preventDefault();first.focus();}
   };document.addEventListener('keydown',key);return()=>document.removeEventListener('keydown',key);
+ },[modal,close]);
+ useEffect(()=>{
+  if(!modal)return;const reconcile=()=>{if(externalModal())close();};
+  const observer=new MutationObserver(reconcile);observer.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['role','aria-modal']});reconcile();return()=>observer.disconnect();
  },[modal,close]);
  const railHidden=mobile&&modal!=='rail',contextHidden=mobile?modal!=='context':!contextOpen;
  const dialogProps=name=>mobile?{role:'dialog','aria-modal':modal===name?'true':undefined}:{};

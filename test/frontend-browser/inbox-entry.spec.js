@@ -38,3 +38,16 @@ for(const lang of ['en','zh'])test(`Inbox drawers contain focus, close safely an
  await open.click();await page.locator('.wb-scrim').click({position:{x:3,y:3}});await expect(open).toBeFocused();
  await open.click();await page.setViewportSize({width:1280,height:900});await expect(page.locator('[aria-modal="true"]')).toHaveCount(0);await expect(page.locator('main')).not.toHaveAttribute('inert');
 });
+
+test('first-use permission takes sole modal ownership after a delayed read while a drawer is open',async({page,customerApp:app})=>{
+ await page.setViewportSize({width:390,height:844});
+ await page.route('**/api/status',async route=>{const response=await route.fetch();const data=await response.json();await route.fulfill({response,json:{...data,liveEnabled:data.authenticated===true}});});
+ let release,received;const waiting=new Promise(resolve=>{received=resolve;});let chats=0;
+ await page.route('**/api/library-permission',async route=>{if(route.request().method()!=='GET')return route.continue();const response=await route.fetch();received();await new Promise(resolve=>{release=resolve;});await route.fulfill({response});});
+ await page.route('**/api/chat',async route=>{chats++;await route.fulfill({status:503,json:{code:'LIVE_DISABLED'}});});
+ await signInCustomer(page,app);await page.locator('.chat-input').fill('Synthetic delayed permission question');await page.getByRole('button',{name:'Send',exact:true}).click();await waiting;
+ await page.getByRole('button',{name:'Open case context',exact:true}).click();await expect(page.locator('.wb [aria-modal="true"]')).toHaveCount(1);release();
+ await expect(page.locator('.wb [aria-modal="true"]')).toHaveCount(0);const permission=page.getByRole('dialog');await expect(permission).toContainText('DeepSeek');
+ for(const key of ['Tab','Shift+Tab','Tab']){await page.keyboard.press(key);expect(await page.evaluate(()=>!!document.activeElement.closest('[role="dialog"][aria-modal="true"]')&&!document.activeElement.closest('.wb'))).toBe(true);}
+ await page.keyboard.press('Escape');await expect(permission).toHaveCount(0);await expect(page.locator('.chat-input')).toHaveValue('Synthetic delayed permission question');expect(chats).toBe(0);await expect(page.locator('.wb [aria-modal="true"]')).toHaveCount(0);
+});
