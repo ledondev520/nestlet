@@ -1,7 +1,8 @@
-import { reviewReceiptSnapshot, reviewResultText } from '../../../review-operation.js';
-import { normalizeConversationProposal } from './conversation-actions.js';
-import { normalizeLibraryActivity, normalizeLibrarySources } from './retrieval.js';
-import { AGENCY_OPTIONS } from '../../../public/agency-guidance.js';
+// Frozen old-client protocol fixture from 090d08ee4823c041b1f835d4ac307e7963b6fb93 frontend/features/chat/logic.js.
+// Exact original implementation; only relative imports are relocated. Its dependency modules are unchanged from that commit.
+import { normalizeConversationProposal } from '../../frontend/features/chat/conversation-actions.js';
+import { normalizeLibraryActivity, normalizeLibrarySources } from '../../frontend/features/chat/retrieval.js';
+import { AGENCY_OPTIONS } from '../../public/agency-guidance.js';
 /** Bounded chat protocol helpers. No provider simulation or browser persistence. */
 export const CHAT_BOUNDS = Object.freeze({ text: 8000, output: 64000, images: 2, imageBytes: 2 * 1024 * 1024, imageSide: 8192 });
 export class ChatClientError extends Error {
@@ -47,7 +48,7 @@ export function buildChatTurn({ caseId, conversationId, clientMessageId, text, i
     return { mimeType: image.mimeType, data: image.data };
   });
   if (libraryConsent && (!Number.isSafeInteger(libraryPermissionVersion) || libraryPermissionVersion < 1)) fail('LIBRARY_CONSENT_REQUIRED');
-  return { caseId, conversationId, clientMessageId, locale: lang, consent: true, guidanceAgency, ...(libraryConsent ? {libraryConsent:true,libraryPermissionVersion} : {}), ...(actionConsent ? {actionConsent:true,reviewResultVersion:1} : {}),
+  return { caseId, conversationId, clientMessageId, locale: lang, consent: true, guidanceAgency, ...(libraryConsent ? {libraryConsent:true,libraryPermissionVersion} : {}), ...(actionConsent ? {actionConsent:true} : {}),
     messages: [{ role: 'user', content: text, ...(cleanImages.length ? { images: cleanImages } : {}) }] };
 }
 export function normalizeMessages(messages) {
@@ -74,7 +75,7 @@ export function restoredMessages(stored, localUser, localAssistant) {
 export async function* readChatEvents(body, signal) {
   if (!body?.getReader) fail('CHAT_STREAM_FAILED');
   const reader = body.getReader(), decoder = new TextDecoder('utf-8', {fatal:true});
-  let buffer = '', doneSeen = false, activeConversationId = null, sourcesRequestId = null, proposalRequestId = null, proposalCount = 0, outputLength = 0, bytes = 0;
+  let buffer = '', doneSeen = false, sourcesRequestId = null, proposalRequestId = null, proposalCount = 0, outputLength = 0, bytes = 0;
   const abort = () => { reader.cancel().catch(() => {}); };
   signal?.addEventListener('abort', abort, {once:true});
   const check = () => { if (signal?.aborted) throw new DOMException('Request aborted','AbortError'); };
@@ -110,25 +111,10 @@ export async function* readChatEvents(body, signal) {
           proposalRequestId=packet.requestId;
           yield {type:'proposal',...packet};
         } else if (name === 'conversation') {
-          if (!uuid(value.conversationId) || !uuid(value.userMessageId) || activeConversationId && activeConversationId!==value.conversationId) fail('CHAT_STREAM_FAILED');
-          activeConversationId=value.conversationId;
+          if (!uuid(value.conversationId) || !uuid(value.userMessageId)) fail('CHAT_STREAM_FAILED');
           yield {...value,type:'conversation'};
         } else if (name === 'done') {
           if (doneSeen || proposalRequestId && proposalRequestId !== value.requestId || sourcesRequestId && sourcesRequestId !== value.requestId || !uuid(value.requestId) || !uuid(value.assistantMessageId)) fail('CHAT_STREAM_FAILED');
-          if(value.reviewResult!==undefined) {
-            const result=value.reviewResult;
-            if(outputLength||proposalCount||sourcesRequestId||!uuid(value.conversationId)||activeConversationId!==value.conversationId||!result||typeof result!=='object'||Object.keys(result).some(key=>!['text','proposals','receipt'].includes(key))||typeof result.text!=='string'||!result.text.trim()||result.text.length>CHAT_BOUNDS.output||!Array.isArray(result.proposals)||result.proposals.length>6)fail('CHAT_STREAM_FAILED');
-            // Validate the entire atomic result before releasing even one event.
-            const receipt=reviewReceiptSnapshot(result.receipt||{});
-            if(Object.keys(result.receipt).length!==Object.keys(receipt).length||receipt.requestId!==value.requestId||receipt.emittedProposals!==result.proposals.length||receipt.validatedProposals!==result.proposals.length||receipt.outcome!==(result.proposals.length?'prepared':'no_preview'))fail('CHAT_STREAM_FAILED');
-            const packets=result.proposals.map(proposal=>normalizeConversationProposal({requestId:value.requestId,proposal}));
-            if(packets.some(packet=>packet.proposal.action!=='prepare_case_suggestion'||packet.proposal.sourceConversationId!==value.conversationId))fail('CHAT_STREAM_FAILED');
-            if(packets.some(packet=>packet.proposal.caseId!==packets[0].proposal.caseId))fail('CHAT_STREAM_FAILED');
-            if(!['zh','en'].some(locale=>result.text===reviewResultText(result.proposals,locale)))fail('CHAT_STREAM_FAILED');
-            check();
-            for(const packet of packets)yield {type:'proposal',...packet};
-            yield {type:'delta',text:result.text};
-          }
           doneSeen = true; yield {...value,type:'done'};
         } else if (name === 'error') {
           if (doneSeen || sourcesRequestId && sourcesRequestId !== value.requestId) fail('CHAT_STREAM_FAILED');

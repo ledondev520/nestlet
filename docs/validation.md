@@ -2,6 +2,20 @@
 
 Checkpoint: 2026-10-07. This is a development checkpoint, not final acceptance. Deployment and real-browser integration remain separate; rerun after the final source freeze.
 
+## Grounded current-turn review lane, 2026-10-08
+
+Branch `fix/ground-current-review-result`, based on `090d08e`. The previous release's original-history live retest produced a success claim without a genuine proposal card. Raw tool execution was not observed, so no invocation is inferred from its prose. Inspection found that automatic tool choice permitted a no-tool stop and streamed/persisted prose before any trusted outcome. The bounded implementation and grammar limits are documented in [grounded current-turn fact review](grounded-review.md).
+
+- Scoped current-request commands now use the official named-tool contract, discard operational model prose, validate/revalidate actual proposals, save a neutral historical acknowledgement, and atomically deliver the result. No-tool and failed preparation cannot claim successful cards.
+- Only this lane projects historical assistant operational commentary and catalogue previews. User messages, canonical facts, source IDs/eligibility and exact selected assistant draft bytes remain unchanged. Ordinary streaming is unchanged; no storage migration or permissions expansion.
+- Content-free request receipts distinguish attempts, validated and emitted proposals, repair, cancellation and persistence failure. They are not retroactive evidence of old requests or proof of client rendering.
+- Independent review caught an initially broad intent recognizer and transient-card wording in persisted history. Both were corrected before publication: closed command grammar plus neutral historical acknowledgement, with current controls only on delivered cards.
+- New clients negotiate `reviewResultVersion: 1`; old logged-in clients receive their existing proposal/text/done protocol only after persistence. The exact `090d08e` parser fixture is retained and exercised. Unsupported versions reject before provider spending or conversation writes.
+- Final local gates: `npm run check`, `npm run build`, and `git diff --check` passed; `npm test` **426/426**, `npm run test:frontend` **323/323**. Build retains the existing bundle-size warning. Independent review reran **27/27** focused protocol, HTTP/SQLite and parser tests with no remaining blockers.
+- Fourteen actual HTTP/SQLite cases cover both protocol versions, real assistant-save rejection, and a clearly labeled blocked-delivery shim after successful persistence. Legacy mid-delivery cancellation records a validated/emitted proposal but no done and no usable card; capable-client blocked atomic delivery records zero emitted proposals. Neutral history is preserved on reload.
+- Six authored-provider Chromium cases cover completion, missing/incomplete frames, saved truncated delivery/reload, truthful no-preview and cancellation. They were syntax-checked locally but not executed here because local Chromium socket restrictions remain established; official exact-head CI is the browser execution gate.
+- Live-provider calls and deployment have not been performed for this candidate. Actual original-history live acceptance remains mandatory; mocked SSE and deterministic tests do not establish model compliance.
+
 ## Business-facing successful review observations, 2026-10-08
 
 Branch `fix/action-review-observation`, based on `d1b746e`. A live historical-conversation retest on that base produced a genuine user-sourced conflict card, and cancelling preserved the case and document. Its prose still repeated internal success flags and change-map bookkeeping. Inspection confirmed that the model received the whole `{ok:true, proposal}` object, including execution metadata; empty internal change maps for previously confirmed fields do not mean the displayed conflict preview is empty.

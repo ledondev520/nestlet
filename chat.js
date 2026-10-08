@@ -1,3 +1,4 @@
+import { isDirectReviewRequest, reviewHistoryText, reviewResultText } from './review-operation.js';
 import { LIBRARY_PERMISSION_SCOPE, LibraryPermissionError } from './library-consent-storage.js';
 /** Real DeepSeek streaming chat; consented library reads are a separate bounded path. */
 import { CONVERSATION_ACTION_TOOLS, loadConversationAction, conversationActionContext, conversationActionTools, conversationActionRepair, conversationActionObservation } from './conversation-action-contract.js';
@@ -50,7 +51,8 @@ function imageUrl(image) {
 }
 
 export function validateChatRequest(body) {
-  exactKeys(body, ['caseId', 'conversationId', 'clientMessageId', 'locale', 'consent', 'libraryConsent', 'libraryPermissionVersion', 'actionConsent', 'guidanceAgency', 'messages'], ['locale', 'consent', 'messages']);
+  exactKeys(body, ['caseId', 'conversationId', 'clientMessageId', 'locale', 'consent', 'libraryConsent', 'libraryPermissionVersion', 'actionConsent', 'reviewResultVersion', 'guidanceAgency', 'messages'], ['locale', 'consent', 'messages']);
+  if (body.reviewResultVersion !== undefined && body.reviewResultVersion !== 1) fail();
   if (body.guidanceAgency !== undefined && !AGENCY_OPTIONS.some(option => option.id === body.guidanceAgency)) fail();
   if (body.consent !== true || !['zh', 'en'].includes(body.locale) || (body.caseId !== undefined && (typeof body.caseId !== 'string' || !UUID.test(body.caseId))) || !Array.isArray(body.messages) || !body.messages.length || body.messages.length > CHAT_LIMITS.messages) fail();
   if (body.conversationId !== undefined && (!UUID.test(body.conversationId) || !UUID.test(body.clientMessageId) || body.messages.length !== 1 || body.messages[0]?.role !== 'user')) fail();
@@ -79,18 +81,19 @@ export function validateChatRequest(body) {
     ] : message.content };
   });
   if (messages.at(-1).role !== 'user') fail();
-  return { caseId: body.caseId, conversationId:body.conversationId, clientMessageId:body.clientMessageId, libraryConsent:body.libraryConsent === true, libraryPermissionVersion:body.libraryPermissionVersion, actionConsent:body.actionConsent === true, guidanceAgency:body.guidanceAgency ?? 'unknown', locale: body.locale, messages, imageCount };
+  return { reviewResultVersion:body.reviewResultVersion, reviewOperation:body.actionConsent===true && Boolean(body.conversationId) && isDirectReviewRequest(body.messages[0].content), caseId: body.caseId, conversationId:body.conversationId, clientMessageId:body.clientMessageId, libraryConsent:body.libraryConsent === true, libraryPermissionVersion:body.libraryPermissionVersion, actionConsent:body.actionConsent === true, guidanceAgency:body.guidanceAgency ?? 'unknown', locale: body.locale, messages, imageCount };
 }
 
 /** Saved text is bounded for provider context; old image pixels are deliberately unavailable. */
-export function conversationHistory(messages, currentTextLength = 0) {
+export function conversationHistory(messages, currentTextLength = 0, {reviewOperation=false}={}) {
   let remaining = Math.max(0,CHAT_LIMITS.totalChars-currentTextLength);
   const selected = [];
   for (const message of [...messages].reverse()) {
     if (selected.length >= CHAT_LIMITS.messages-1 || remaining <= 0) break;
     if (message.state !== 'complete') continue;
     const note = message.imageMetadata?.length ? '\n[Earlier image attachments are not retained and are unavailable in this turn.]' : '';
-    const original = note ? note.trimStart()+'\n'+message.content : message.content;
+    const text=reviewOperation?reviewHistoryText(message):message.content;
+    const original = note ? note.trimStart()+'\n'+text : text;
     const maximum = Math.min(CHAT_LIMITS.messageChars,remaining);
     const marker = '\n[Stored message excerpt]';
     if (note && maximum < note.length + marker.length) continue;
@@ -299,7 +302,8 @@ export function libraryCitationGuard(library) {
 }
 
 /** Production uses the fixed official endpoint. fetchImpl is a local protocol-test seam only. */
-export async function openLibraryChatStream({apiKey,input,record,signal,library,requestId,authorizeLibrary,fetchImpl=fetch}) {
+export async function openLibraryChatStream({apiKey,input,record,signal,library,requestId,authorizeLibrary,reviewReceipt,fetchImpl=fetch}) {
+  if(input.reviewOperation)return openGroundedReviewStream({apiKey,input,record,signal,library,requestId,authorizeLibrary,reviewReceipt,fetchImpl});
   if((input.libraryConsent!==true&&input.actionConsent!==true)||!library?.tools?.length)fail('LIBRARY_CONSENT_REQUIRED',400);
   const hasRetrievalTools = library.tools.some(tool => ['search_library','read_library'].includes(tool.function?.name));
   if ((hasRetrievalTools && input.libraryConsent !== true) || (input.libraryConsent === true && typeof authorizeLibrary !== 'function')) fail('LIBRARY_CONSENT_REQUIRED',403);
@@ -354,8 +358,8 @@ export async function openLibraryChatStream({apiKey,input,record,signal,library,
 }
 
 /** Compose read-only tools without expanding library consent or sharing another case's messages. */
-export function createConversationToolSession({storage,userId,record,conversationId,library=null,signal}) {
-  const context=conversationActionContext(storage,userId,record,conversationId);
+export function createConversationToolSession({storage,userId,record,conversationId,library=null,signal,reviewOperation=false}) {
+  const context=conversationActionContext(storage,userId,record,conversationId,{reviewOperation});
   const actionTools=conversationActionTools(context);
   let rounds=0,calls=0,resultChars=0;
   const active=()=>libraryActive(signal);
@@ -414,4 +418,44 @@ export function createConversationToolSession({storage,userId,record,conversatio
       return {messages,activities,proposals};
     }
   };
+}
+
+/** Only direct, current review commands use this lane. Provider prose never
+ * becomes an operation receipt; the server commits the result before delivery. */
+async function* openGroundedReviewStream({apiKey,input,record,signal,library,requestId,authorizeLibrary,reviewReceipt,fetchImpl}) {
+  if(input.actionConsent!==true||!input.conversationId||!reviewReceipt)fail('CHAT_INVALID');
+  const active=()=>{libraryActive(signal);if(input.libraryConsent)authorizeLibrary();};
+  const tools=library.tools.filter(tool=>tool.function.name==='prepare_case_suggestion');
+  const finish=(proposals,reason)=>{reviewReceipt.validatedProposals=proposals.length;reviewReceipt.reason=reason;return {type:'review-result',text:reviewResultText(proposals,input.locale),proposals};};
+  if(!tools.length){yield finish([],'no_source');return;}
+  const messages=chatProviderMessages(input,record);
+  messages[0]={...messages[0],content:messages[0].content.replace('You have no tools and cannot change case data.','You may prepare a read-only case review suggestion using only the supplied tool. You cannot change case data.')+'\nThe current user directly requested a fact-review preview. Use the provided current case version and a complete saved user or assistant source. Historical assistant operational commentary is not a current result. Do not invent values or source IDs. Use caseSuggestionEligible sources, including the latest saved user message. Propose only supported facts; omit unavailable changes. If no supported changes are available, do not invent arguments. Do not use draft-only source restrictions. The server, not your prose, reports the actual outcome.\n'+JSON.stringify(input.actionContext)};
+  let discardedChars=0;
+  for(let round=0;round<LIBRARY_AGENT_LIMITS.rounds;round++){
+    active();assertLibraryOutboundSafe(messages);reviewReceipt.providerRequests++;reviewReceipt.repairs=round;
+    let upstream;
+    try{upstream=await fetchImpl(LIBRARY_PERMISSION_SCOPE.provider.endpoint,{method:'POST',redirect:'error',signal,headers:{Authorization:`Bearer ${apiKey}`,'Content-Type':'application/json'},body:JSON.stringify({model:LIBRARY_PERMISSION_SCOPE.provider.model,stream:true,thinking:{type:'disabled'},max_tokens:4096,messages,tools,tool_choice:{type:'function',function:{name:'prepare_case_suggestion'}}})});}
+    catch{active();reviewReceipt.reason='provider_error';fail('CHAT_PROVIDER_FAILED',502);}
+    if(!upstream.ok||!(upstream.headers.get('content-type')||'').toLowerCase().startsWith('text/event-stream')||!upstream.body){await upstream.body?.cancel().catch(()=>{});reviewReceipt.reason='provider_error';fail('CHAT_PROVIDER_FAILED',502);}
+    let result;
+    for await(const event of parseLibraryProviderStream(upstream.body)){
+      active();
+      if(event.type==='delta'){discardedChars+=event.text.length;if(discardedChars>LIBRARY_CHAT_LIMITS.answerChars)fail('CHAT_TOO_LARGE',502);}
+      else result=event;
+    }
+    if(!result)fail('CHAT_INCOMPLETE',502);
+    reviewReceipt.finishReason=result.finishReason;
+    if(result.finishReason==='stop'){yield finish([],'no_tool');return;}
+    if(result.toolCalls.length>LIBRARY_AGENT_LIMITS.callsPerRound||reviewReceipt.toolCalls+result.toolCalls.length>LIBRARY_AGENT_LIMITS.calls)fail('LIBRARY_TOOL_LIMIT',502);
+    reviewReceipt.toolCalls+=result.toolCalls.length;
+    reviewReceipt.prepareCalls+=result.toolCalls.filter(call=>call.function.name==='prepare_case_suggestion').length;
+    reviewReceipt.otherCalls+=result.toolCalls.filter(call=>call.function.name!=='prepare_case_suggestion').length;
+    if(result.toolCalls.some(call=>call.function.name!=='prepare_case_suggestion')){yield finish([],'prepare_rejected');return;}
+    active();const executed=library.executeRound(result.toolCalls);active();
+    reviewReceipt.prepareErrors+=executed.messages.filter(message=>{try{return JSON.parse(message.content).ok===false;}catch{return true;}}).length;
+    if(executed.proposals?.length){yield finish(executed.proposals,'prepared');return;}
+    messages.push({role:'assistant',content:null,tool_calls:result.toolCalls},...executed.messages);
+    if(library.getStats().calls>=LIBRARY_AGENT_LIMITS.calls)break;
+  }
+  active();yield finish([],'budget_exhausted');
 }
