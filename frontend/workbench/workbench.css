@@ -1,0 +1,268 @@
+/* Workbench shell — Inbox-style three-column layout, mobile drawers.
+   Layout/visual only. Follows the vetted good-css checklist: logical
+   properties, hover gated to fine pointers, :focus-visible outlines,
+   motion only under prefers-reduced-motion: no-preference, 44px targets. */
+
+.wb {
+  block-size: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+  color: var(--ink);
+  font: var(--text-body);
+  overflow: clip;
+}
+
+/* Top bar: product identity + account, 52px, hairline under. */
+.wb-topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-block: 8px;
+  padding-inline: 16px;
+  border-block-end: 1px solid var(--hairline);
+  background: var(--sheet);
+  flex: none;
+}
+.wb-topbar .wb-brand { display: flex; align-items: center; gap: 8px; font-weight: 650; font-size: 15px; }
+.wb-topbar .wb-spacer { margin-inline-start: auto; display: flex; align-items: center; gap: 8px; }
+
+/* Icon buttons: 44px hit area, visible focus, gated hover. */
+.wb-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-block-size: 44px;
+  min-inline-size: 44px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.wb-icon-button:active { transform: scale(.96); }
+.wb-icon-button:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; }
+.wb-icon-button[aria-expanded="true"] { background: var(--forest-tint); color: var(--forest-deep); }
+@media (hover: hover) and (pointer: fine) {
+  .wb-icon-button:hover { background: var(--paper-deep); color: var(--ink); }
+}
+
+/* Three-column body on wide viewports. */
+.wb-body {
+  flex: 1;
+  min-block-size: 0;
+  display: grid;
+  grid-template-columns: 264px minmax(0, 1fr);
+}
+.wb-body[data-context-open="true"] { grid-template-columns: 264px minmax(0, 1fr) 320px; }
+
+.wb-rail {
+  border-inline-end: 1px solid var(--hairline);
+  background: var(--sheet);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-block: 8px;
+}
+
+.wb-center {
+  min-inline-size: 0;
+  min-block-size: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  /* Keep anchored/focused content clear of the sticky composer (r1 finding). */
+  scroll-padding-block-end: 140px;
+  display: flex;
+  flex-direction: column;
+}
+
+.wb-context {
+  border-inline-start: 1px solid var(--hairline);
+  background: var(--sheet);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  min-block-size: 0;
+}
+
+/* Rail list rows: 44px, whole-row press, selected = forest tint + inset bar. */
+.wb-rail-section { padding-block: 8px; padding-inline: 12px; }
+.wb-rail-heading {
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: .04em;
+  color: var(--faint-strong);
+  padding-block: 6px;
+  padding-inline: 8px;
+}
+.wb-rail-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  inline-size: 100%;
+  min-block-size: 44px;
+  padding-block: 6px;
+  padding-inline: 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  position: relative;
+}
+.wb-rail-item .wb-rail-item-label { min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.wb-rail-item:active { transform: scale(.98); }
+.wb-rail-item:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; }
+.wb-rail-item[aria-current="true"] { background: var(--forest-tint); font-weight: 600; }
+.wb-rail-item[aria-current="true"]::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: -12px;
+  inset-block: 8px;
+  inline-size: 3px;
+  border-radius: 2px;
+  background: var(--forest);
+}
+@media (hover: hover) and (pointer: fine) {
+  .wb-rail-item:hover { background: var(--paper-deep); }
+  .wb-rail-item[aria-current="true"]:hover { background: var(--forest-tint); }
+}
+
+/* Center column header: current case identity + contextual panel toggle. */
+.wb-case-header {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-block: 10px;
+  padding-inline: 20px;
+  border-block-end: 1px solid var(--hairline);
+  background: color-mix(in oklch, var(--sheet) 92%, transparent);
+  backdrop-filter: blur(6px);
+}
+.wb-case-title {
+  font-weight: 650;
+  font-size: 15px;
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wb-case-meta { font-size: 12px; color: var(--faint-strong); }
+
+/* Context panel sections. */
+.wb-context-inner { padding-block: 12px; padding-inline: 16px; display: flex; flex-direction: column; gap: 16px; }
+.wb-context-heading { font-size: 13px; font-weight: 650; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.wb-context-section { border-block-start: 1px solid var(--hairline); padding-block-start: 12px; }
+
+/* Mobile: single center column; rail and context become drawers. */
+.wb-scrim { display: none; }
+@media (max-width: 960px) {
+  .wb-body, .wb-body[data-context-open="true"] { grid-template-columns: minmax(0, 1fr); }
+  .wb-rail, .wb-context {
+    position: fixed;
+    inset-block: 0;
+    inset-inline-start: 0;
+    z-index: 40;
+    inline-size: min(84vw, 320px);
+    transform: translateX(-105%);
+    visibility: hidden;
+    box-shadow: 0 18px 44px -16px rgba(23, 55, 38, .3);
+    padding-block-start: max(8px, env(safe-area-inset-top));
+    padding-block-end: env(safe-area-inset-bottom);
+  }
+  .wb-context { inset-inline-start: auto; inset-inline-end: 0; transform: translateX(105%); }
+  .wb-rail[data-open="true"], .wb-context[data-open="true"] { transform: translateX(0); visibility: visible; }
+  .wb-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    border: 0;
+    background: rgba(23, 55, 38, .32);
+    opacity: 0;
+    pointer-events: none;
+  }
+  .wb-scrim[data-open="true"] { opacity: 1; pointer-events: auto; }
+  .wb-case-header { padding-inline: 12px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  /* visibility must flip instantly on open (focus moves into the drawer
+     immediately) and only after slide-out on close. */
+  .wb-rail, .wb-context { transition: transform 220ms cubic-bezier(.22, .8, .32, 1), visibility 0s linear 220ms; }
+  .wb-rail[data-open="true"], .wb-context[data-open="true"] { transition: transform 220ms cubic-bezier(.22, .8, .32, 1); }
+  .wb-scrim { transition: opacity 220ms cubic-bezier(.22, .8, .32, 1); }
+  .wb-icon-button, .wb-rail-item { transition: background-color 180ms cubic-bezier(.22, .8, .32, 1); }
+}
+
+/* Center view tabs: compact text tabs in the case header. */
+.wb-tabs { margin-inline-start: auto; display: flex; gap: 2px; overflow-x: auto; }
+.wb-tab {
+  min-block-size: 44px;
+  padding-inline: 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.wb-tab:active { transform: scale(.97); }
+.wb-tab:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; }
+.wb-tab[aria-current="true"] { color: var(--forest-deep); font-weight: 650; background: var(--forest-tint); }
+@media (hover: hover) and (pointer: fine) {
+  .wb-tab:hover { background: var(--paper-deep); color: var(--ink); }
+  .wb-tab[aria-current="true"]:hover { background: var(--forest-tint); color: var(--forest-deep); }
+}
+
+/* Conversation-first compaction: the chat surface loses its card frame inside
+   the workbench center; messages breathe directly on the canvas. */
+.wb .chat-surface[data-slot="card"] { background: transparent; }
+.wb .chat-toolbar[data-slot="card-header"] { padding-block-end: 12px; }
+.wb .chat-messages { padding-block: 20px; }
+
+/* Small-viewport topbar: brand never wraps. */
+.wb-brand { white-space: nowrap; }
+@media (max-width: 640px) {
+  .wb-brand { font-size: 14px; }
+  .wb-topbar { padding-inline: 10px; gap: 6px; }
+}
+
+/* --- Visual iteration round 2 (root review of 0df5005) --- */
+
+/* Stronger forest hierarchy: selected view tab is solid forest. */
+.wb-tab[aria-current="true"] { background: var(--forest); color: #fbfaf6; }
+@media (hover: hover) and (pointer: fine) {
+  .wb-tab[aria-current="true"]:hover { background: var(--forest-deep); color: #fbfaf6; }
+}
+
+/* One compact case/context toolbar: the chat surface's own title duplicates
+   the workbench header — keep its controls, drop the repeated heading. */
+.wb .chat-toolbar [data-slot="card-title"] { display: none; }
+.wb .chat-toolbar { padding-block: 6px; gap: 8px; }
+
+/* Compact consent: the two per-message permission boxes stay fully visible
+   (explicit opt-in, unchecked defaults, consequences intact) but no longer
+   dominate the composer. Side-by-side on wide centers, stacked on mobile. */
+.wb .chat-composer > div:has([data-slot="checkbox"]) {
+  padding: 8px 10px;
+  border-color: var(--hairline);
+  background: var(--paper);
+}
+.wb .chat-composer > div:has([data-slot="checkbox"]) p { margin: 0; }
+@media (min-width: 700px) {
+  .wb .chat-composer { display: grid; grid-template-columns: 1fr 1fr; column-gap: 10px; }
+  .wb .chat-composer > :not(div:has([data-slot="checkbox"])) { grid-column: 1 / -1; }
+}
+
+/* Mobile proportion rebalance: the empty state yields space to the composer. */
+.wb .chat-messages { min-height: 24dvh; }
+.wb .chat-empty { min-height: 22dvh; }
+.wb .chat-empty h1 { font-size: 20px; }
+
+/* User bubbles take the restrained apricot of the approved reference. */
+.wb .chat-message--user { background: var(--apricot-tint); }

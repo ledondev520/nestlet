@@ -1,0 +1,94 @@
+/* Nestlet workbench tokens — "warm forest" direction, v2 (2026-10-08).
+   Translation of the owner-approved reference (PR #35, head 6cf14c9) into the
+   application: warm-neutral functional center, deep forest navigation/accents,
+   restrained apricot/coral. Compact professional sans-serif; no serif display,
+   no yellow-paper stationery inside the product.
+
+   Scoped to the workbench entry (.wb) so this layer cannot leak into the
+   production app before root integration. Loaded after styles.css; semantic
+   overrides re-skin every component that consumes the shared CSS variables. */
+
+.wb {
+  /* Primitives: warm-forest palette — center reads warm neutral WHITE,
+     not yellow-paper (root review of head 0df5005). */
+  --paper: #faf9f6;        /* warm neutral canvas, minimal yellow cast */
+  --paper-deep: #f0eee8;   /* recessed fills, tracks */
+  --sheet: #fefdfb;        /* raised working surface */
+  --ink: #232b24;          /* warm graphite text */
+  --ink-soft: #4c544a;     /* secondary text */
+  --faint: #8b8f82;        /* decorative markers only — never for information */
+  --faint-strong: #5b6355; /* informational small text (5.5:1 on sheet) */
+  --hairline: #e2ddcd;     /* default border */
+  --hairline-strong: #c9c3ae;
+  --forest: #1f4a33;       /* deep forest — navigation, primary action, focus */
+  --forest-deep: #173726;  /* forest hover/pressed, heading emphasis */
+  --forest-tint: #e3ece4;  /* forest wash (selected rows, badges) */
+  --apricot: #eda983;      /* apricot highlight — restrained accent only */
+  --apricot-tint: #f9ede1; /* apricot wash (user bubbles, highlight marks) */
+  --coral-deep: #a34c29;   /* status error / accent text on light fills */
+  --ok: #3c6b4c;
+  --ok-tint: #e5efe6;
+  --warn: #8a5a22;
+  --warn-tint: #f6eedd;
+
+  /* Semantic remapping: the single accent is forest; coral keeps error duty. */
+  --accent: var(--forest);
+  --accent-deep: var(--coral-deep);
+  --accent-tint: var(--apricot-tint);
+  --cinnabar: var(--forest);
+  --cinnabar-deep: var(--forest-deep);
+  --cinnabar-tint: var(--forest-tint);
+
+  /* Status roles stay distinct from accent washes. */
+  --status-success: var(--ok);
+  --status-success-bg: var(--ok-tint);
+  --status-warning: var(--warn);
+  --status-warning-bg: var(--warn-tint);
+  --status-error: var(--coral-deep);
+  --status-error-bg: #f7e9e0;
+
+  /* Compact professional sans for everything; no serif display in the app. */
+  --font-display: var(--font-body);
+  --text-display: 650 22px/1.35 var(--font-body);
+  --text-title: 650 16px/1.4 var(--font-body);
+
+  --action-primary-bg: var(--forest);
+  --action-primary-text: #fbfaf6;
+  --action-primary-hover: var(--forest-deep);
+  --focus-ring: var(--forest);
+
+  /* shadcn-consumed roles */
+  --background: var(--paper);
+  --foreground: var(--ink);
+  --card: var(--sheet);
+  --card-foreground: var(--ink);
+  --popover: var(--sheet);
+  --popover-foreground: var(--ink);
+  --primary: var(--forest);
+  --primary-foreground: #fbfaf6;
+  --secondary: var(--paper-deep);
+  --secondary-foreground: var(--ink);
+  --muted: var(--paper-deep);
+  --muted-foreground: var(--faint-strong);
+  --accent-foreground: var(--coral-deep);
+  --destructive: var(--coral-deep);
+  --border: var(--hairline);
+  --input: var(--hairline-strong);
+  --ring: var(--forest);
+  --bg-canvas: var(--paper);
+  --bg-surface: var(--sheet);
+  --bg-recessed: var(--paper-deep);
+  --text-primary: var(--ink);
+  --text-secondary: var(--ink-soft);
+  --text-muted: var(--faint-strong);
+
+  /* Status-note repair (PR #27 finding): neutral info notes are recessed,
+     success uses the ok tint; accent washes stay reserved for their roles. */
+  --note-info-bg: var(--paper-deep);
+  --note-info-border: var(--hairline-strong);
+}
+
+.wb .paper-note {
+  border-left: 3px solid var(--note-info-border);
+  background: var(--note-info-bg);
+}
