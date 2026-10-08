@@ -99,6 +99,7 @@ No real personal records, raw customer materials, secret values or private infra
 - [SQLite storage and named-trial runtime](docs/sqlite-runtime.md)
 - [Prepared owner-controlled administrator capability and schema6 release gates](docs/account-administration.md)
 - [Durable login sessions and schema8 recovery](docs/durable-login-sessions.md)
+- [Remembered library permission and schema9 recovery](docs/library-permission.md)
 - [First operator session and verification gates](docs/onboarding.md)
 - [Code and data flow](docs/code-walkthrough.md)
 - [Collaboration contract](docs/collaboration.md)

@@ -140,7 +140,7 @@ test('schema3→current is additive, preserves every old row, and keeps original
   assert.equal(storage.getCase(f.user, f.record).version, 4);
   storage.close();
   const db = new DatabaseSync(f.file);
-  assert.equal(db.prepare('PRAGMA user_version').get().user_version, 8);
+  assert.equal(db.prepare('PRAGMA user_version').get().user_version, 9);
   for (const [n, rows] of Object.entries(f.before))
     assert.equal(
       JSON.stringify(db.prepare('SELECT * FROM ' + n + ' ORDER BY rowid').all()),
@@ -171,7 +171,7 @@ test('failed schema4 transaction leaves original rows/version intact; future sch
       rows,
       n
     );
-  db.exec('PRAGMA user_version=9;');
+  db.exec('PRAGMA user_version=10;');
   db.close();
   const before = readFileSync(f.file);
   assert.throws(

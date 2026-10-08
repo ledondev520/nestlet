@@ -34,7 +34,7 @@ test('actual SQLite schema, private new directory/file, reserved owner without c
   assert.equal(storage.getUserById('owner').passwordHash, null);
   assert.equal(storage.getUserById('owner').role, 'owner');
   const db = new DatabaseSync(filename);
-  assert.equal(db.prepare('PRAGMA user_version').get().user_version, 8);
+  assert.equal(db.prepare('PRAGMA user_version').get().user_version, 9);
   assert.equal(db.prepare('PRAGMA application_id').get().application_id, 0x4e53544c);
   db.close();
   storage.close(); storage.close();
@@ -175,7 +175,7 @@ test('SQL metacharacters are data, update changes only the scoped row, delete re
 test('unsupported or unrelated database schemas fail closed without destructive migrations', t => {
   const directory = mkdtempSync(join(realpathSync(tmpdir()), 'nestlet-schema-test-'));
   t.after(() => rmSync(directory, { recursive: true, force: true }));
-  for (const [name, pragma] of [['future', 'PRAGMA user_version=99;'], ['unrelated', '']]) {
+  for (const [name, pragma] of [['future', 'PRAGMA user_version=109;'], ['unrelated', '']]) {
     const filename = join(directory, `${name}.sqlite`);
     const db = new DatabaseSync(filename);
     db.exec(`CREATE TABLE must_preserve(value TEXT); INSERT INTO must_preserve VALUES ('synthetic sentinel'); ${pragma}`);

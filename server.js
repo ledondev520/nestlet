@@ -1,3 +1,4 @@
+import { LibraryPermissionError } from './library-consent-storage.js';
 import http from 'node:http';
 import { randomUUID, randomBytes } from 'node:crypto';
 import { createRequire } from 'node:module';
@@ -66,6 +67,8 @@ const maxWorkbookBytes = 5 * 1024 * 1024;
 let activeWorkbookExtractions = 0;
 let activeExtractions = 0;
 let activeChatRequests = 0;
+// Every request holds its exact persisted grant revision; revocation aborts all local streams.
+const activeLibraryRequests = new Map();
 let activePdfExtractions = 0;
 
 class RequestError extends Error {
@@ -401,6 +404,22 @@ const server = http.createServer(async (request, response) => {
     if (request.url === '/api/status' && request.method === 'GET') {
       return json(200, { ...settingsStatus(request), pdfEnabled, maxPdfBytes, workbookEnabled, maxWorkbookBytes, maxTextLength, privacyMode: 'synthetic-or-deidentified-only' });
     }
+    if (request.url === '/api/library-permission' && ['GET','PUT'].includes(request.method)) {
+      verifyOrigin(request);
+      const mutation = request.method === 'PUT';
+      if (mutation && !request.headers.origin) throw new RequestError(403, 'ORIGIN_REJECTED', 'A same-origin browser request is required.');
+      const session = requireSession(request, mutation);
+      if (!mutation) return json(200, storage.libraryPermissions.read(session.userId));
+      const body = await readJson(request, 4096);
+      const currentSession = requireSession(request);
+      if (currentSession.token !== session.token || currentSession.userId !== session.userId) throw new RequestError(401, 'AUTH_REQUIRED', 'Sign in again.');
+      const permission = storage.libraryPermissions.set(session.userId, body);
+      // A newer allow also invalidates every older snapshot, preventing revoke/regrant ABA races.
+      for (const active of activeLibraryRequests.get(session.userId) || []) {
+        active.controller.abort(new LibraryPermissionError('LIBRARY_PERMISSION_REVOKED', 403));
+      }
+      return json(200, permission);
+    }
     if ((request.url === '/api/register' || ['/api/auth/email/resend', '/api/auth/email/verify', '/api/auth/password/forgot', '/api/auth/password/reset', '/api/auth/email/bind'].includes(request.url)) && request.method === 'POST') {
       verifyOrigin(request);
       if (!request.headers.origin) throw new RequestError(403, 'ORIGIN_REJECTED', 'A same-origin browser request is required.');
@@ -440,6 +459,9 @@ const server = http.createServer(async (request, response) => {
       const session = requireSession(request);
       await readJson(request);
       response.setHeader('Set-Cookie', auth.logout(session));
+      for (const active of activeLibraryRequests.get(session.userId) || []) {
+        if (active.sessionToken === session.token) active.controller.abort(new LibraryPermissionError('LIBRARY_PERMISSION_REVOKED', 403));
+      }
       return json(200, { authenticated: false });
     }
     if (request.url === '/api/settings' && request.method === 'GET') {
@@ -626,6 +648,12 @@ const server = http.createServer(async (request, response) => {
       try { body = await readJson(request, CHAT_LIMITS.requestBytes); }
       catch (error) { if (error.status === 413) throw new ChatError('CHAT_TOO_LARGE', 413); throw error; }
       const input = validateChatRequest(body);
+      const authorizeLibrary = input.libraryConsent ? () => {
+        const currentSession = auth.getSession(request, {touch:false});
+        if (!currentSession || currentSession.token !== session.token || currentSession.userId !== session.userId) throw new LibraryPermissionError('LIBRARY_PERMISSION_REVOKED', 403);
+        return storage.libraryPermissions.assertAllowed(session.userId, input.libraryPermissionVersion);
+      } : null;
+      authorizeLibrary?.();
       const conversation = input.conversationId ? storage.getConversation(session.userId,input.conversationId) : null;
       if (input.conversationId && !conversation) throw new ChatError('CONVERSATION_NOT_FOUND',404);
       if (conversation && input.caseId && input.caseId !== conversation.caseId) throw new ChatError('CONVERSATION_NOT_FOUND',404);
@@ -650,6 +678,19 @@ const server = http.createServer(async (request, response) => {
       activeExtractions++;
       if (conversationKey) activeConversations.add(conversationKey);
       const chatAbort = new AbortController();
+      let permissionGuard = null;
+      const activeLibraryRequest = {controller:chatAbort,sessionToken:session.token};
+      if (input.libraryConsent) {
+        if (!activeLibraryRequests.has(session.userId)) activeLibraryRequests.set(session.userId, new Set());
+        activeLibraryRequests.get(session.userId).add(activeLibraryRequest);
+        // Also observe writes by another process while the provider is silent.
+        // Every provider-send/tool boundary still checks synchronously, not on this timer.
+        permissionGuard = setInterval(() => {
+          try { authorizeLibrary(); }
+          catch { chatAbort.abort(new LibraryPermissionError('LIBRARY_PERMISSION_REVOKED',403)); }
+        },250);
+        permissionGuard.unref();
+      }
       const remaining=input.libraryConsent?Math.max(1,Math.ceil(CHAT_LIMITS.timeoutMs-(performance.now()-requestStarted))):CHAT_LIMITS.timeoutMs;
       const signal = AbortSignal.any([cancel.signal, chatAbort.signal, AbortSignal.timeout(remaining)]);
       let streaming = false, userMessage = null, assistantMessage = null, answer = '', completed = false;
@@ -681,11 +722,12 @@ const server = http.createServer(async (request, response) => {
           input.actionContext = conversationActionContext(storage,session.userId,record,conversation.id);
           library = createConversationToolSession({storage,userId:session.userId,record,conversationId:conversation.id,library,signal});
         }
-        const stream = library?await openLibraryChatStream({apiKey,input,record,signal,library,requestId}):await openChatStream({ apiKey, input, record, signal });
+        const stream = library?await openLibraryChatStream({apiKey,input,record,signal,library,requestId,authorizeLibrary}):await openChatStream({ apiKey, input, record, signal });
         response.writeHead(200, { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-store', 'X-Accel-Buffering': 'no' });
         response.flushHeaders(); streaming = true;
         if (conversation) await writeChatEvent(response,signal,'conversation',{conversationId:conversation.id,userMessageId:userMessage.id});
         for await (const event of stream) {
+          authorizeLibrary?.();
           if (event.type === 'delta') { answer += event.text; await writeChatEvent(response, signal, 'delta', { text: event.text }); }
           else if(event.type==='proposal'){await writeChatEvent(response,signal,'proposal',{requestId,proposal:event.proposal});}
           else if(event.type==='activity'){await writeChatEvent(response,signal,'activity',libraryActivityEvent(event));}
@@ -699,16 +741,25 @@ const server = http.createServer(async (request, response) => {
         response.end();
       } catch (error) {
         let failure = error;
-        if(library&&!completed)try{appendSources();}catch(sourceError){failure=sourceError;}
+        let sharingStillAllowed = true;
+        if (authorizeLibrary) try { authorizeLibrary(); } catch { sharingStillAllowed = false; }
+        // Revocation must not flush private source metadata through the recovery signal.
+        if(library&&!completed&&sharingStillAllowed)try{appendSources();}catch(sourceError){failure=sourceError;}
         if (!completed) try { saveAssistant(cancel.signal.aborted || response.destroyed ? 'interrupted' : 'failed'); } catch (saveError) { failure = saveError; }
         recordTracking(streaming ? 200 : (cancel.signal.aborted || response.destroyed ? 499 : failure.status || 502),cancel.signal.aborted || response.destroyed ? 'REQUEST_CANCELLED' : failure.code,'failure');
         if (cancel.signal.aborted || response.destroyed) return;
-        if (!streaming) throw failure instanceof ChatError || failure instanceof StorageError ? failure : new ChatError('CHAT_PROVIDER_FAILED', 502);
+        if (!streaming) throw failure instanceof ChatError || failure instanceof StorageError || failure instanceof LibraryPermissionError ? failure : new ChatError('CHAT_PROVIDER_FAILED', 502);
         const allowed = new Set(['CHAT_STREAM_FAILED', 'CHAT_PROVIDER_FAILED', 'CHAT_INCOMPLETE', 'CHAT_UNSUPPORTED_OUTPUT', 'CHAT_TOO_LARGE','CHAT_SAVE_FAILED',...LIBRARY_CHAT_ERRORS]);
         const code = allowed.has(failure.code) ? failure.code : 'CHAT_STREAM_FAILED';
-        try { if(sourceEvent&&!sourcesSent){sourcesSent=true;await writeChatEvent(response,AbortSignal.any([cancel.signal,AbortSignal.timeout(2000)]),'sources',sourceEvent);} await writeChatEvent(response, AbortSignal.any([cancel.signal, AbortSignal.timeout(2000)]), 'error', { code, requestId, retryable: true,...(assistantMessage ? {assistantMessageId:assistantMessage.id,conversationId:conversation.id} : {}) }); } catch {}
+        try { if(sharingStillAllowed&&sourceEvent&&!sourcesSent){sourcesSent=true;await writeChatEvent(response,AbortSignal.any([cancel.signal,AbortSignal.timeout(2000)]),'sources',sourceEvent);} await writeChatEvent(response, AbortSignal.any([cancel.signal, AbortSignal.timeout(2000)]), 'error', { code, requestId, retryable: true,...(assistantMessage ? {assistantMessageId:assistantMessage.id,conversationId:conversation.id} : {}) }); } catch {}
         response.end();
-      } finally { chatAbort.abort(); activeExtractions--; if (conversationKey) activeConversations.delete(conversationKey); }
+      } finally {
+        clearInterval(permissionGuard);
+        chatAbort.abort();
+        const active = activeLibraryRequests.get(session.userId);
+        active?.delete(activeLibraryRequest);
+        if (active?.size === 0) activeLibraryRequests.delete(session.userId);
+        activeExtractions--; if (conversationKey) activeConversations.delete(conversationKey); }
       return;
       } finally { activeChatRequests--; }
     }
@@ -764,7 +815,7 @@ const server = http.createServer(async (request, response) => {
     if (file.startsWith('samples/')) response.setHeader('Content-Disposition', `attachment; filename="${file.slice('samples/'.length)}"`);
     response.end(content);
   } catch (error) {
-    if (error instanceof AccountAdministrationError || error instanceof EmailAuthError || error instanceof AssetError || error instanceof RequestError || error instanceof StorageError || error instanceof TelemetryError || error instanceof ChatError || error instanceof CaseRecordsError || error instanceof DocumentContextError) return json(error.status, { error: error.message, code: error.code, ...(error.details ? {details:error.details} : {}) });
+    if (error instanceof LibraryPermissionError || error instanceof AccountAdministrationError || error instanceof EmailAuthError || error instanceof AssetError || error instanceof RequestError || error instanceof StorageError || error instanceof TelemetryError || error instanceof ChatError || error instanceof CaseRecordsError || error instanceof DocumentContextError) return json(error.status, { error: error.message, code: error.code, ...(error.details ? {details:error.details} : {}) });
     return json(500, { error: 'Request could not be completed', code: 'INTERNAL_ERROR' });
   }
 });

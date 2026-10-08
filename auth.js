@@ -51,7 +51,7 @@ export function createOperatorAuth({ passwordHash = '', operatorUsername = 'owne
       if (session.role === 'owner' && session.credentialFingerprint !== fingerprint(passwordHash)) sessions.delete(id);
     }
   });
-  const getSession = request => transaction(() => {
+  const getSession = (request, { touch = true } = {}) => transaction(() => {
     if (!isConfigured()) return null;
     prune();
     const token = (request.headers.cookie || '').split(';').map(part => part.trim()).find(part => part.startsWith(COOKIE + '='))?.slice(COOKIE.length + 1);
@@ -61,9 +61,11 @@ export function createOperatorAuth({ passwordHash = '', operatorUsername = 'owne
     if (!session) return null;
     const current = session.role === 'owner' ? { role: 'owner', passwordHash } : findTrialUserById(session.userId);
     if (!current || current.role !== session.role || typeof current.passwordHash !== 'string' || fingerprint(current.passwordHash) !== session.credentialFingerprint) { sessions.delete(digest); return null; }
-    session.lastUsed = Math.max(session.lastUsed, Date.now());
-    if (sessions.touch) sessions.touch(digest, session.lastUsed);
-    else sessions.set(digest, session);
+    if (touch) {
+      session.lastUsed = Math.max(session.lastUsed, Date.now());
+      if (sessions.touch) sessions.touch(digest, session.lastUsed);
+      else sessions.set(digest, session);
+    }
     return { token, csrfToken: session.csrfToken, userId: session.userId, username: session.username, role: session.role, ...accountPermissions(session, hasAdministratorCapability(session.userId)) };
   });
   const csrfValid = (request, session) => {

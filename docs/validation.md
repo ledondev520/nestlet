@@ -497,3 +497,19 @@ No live mail/model/provider calls, deployment, production migration or user cred
 ### Schema8 draft PR CI follow-up
 
 The first PR38 run passed container CI but exposed two test-contract gaps before backend/browser completion: customer browser fixtures still required the old restart-logout behavior, and the integrated Settings DOM test clicked before authenticated navigation was ready on the CI runner. The follow-up retains logged-out-cookie rejection and foreign-account isolation, explicitly requires unchanged user/CSRF and authenticated browser navigation after restart, and waits for actual authenticated Settings readiness. All three real-HTTP browser fixture checks pass locally. Local Chromium launch was blocked by the cloud sandbox's process-singleton socket restriction before a page could execute; no bypass was attempted. Real-browser acceptance remains the official CI gate.
+
+## 2026-10-08 — remembered library permission / schema9 backend candidate
+
+Candidate backend based on `7354803`, in an isolated worktree. All grants/accounts/material below are disposable synthetic fixtures. No actual customer authorization, live model request, production migration, push, merge, or deployment was performed for this entry.
+
+- `npm ci --ignore-scripts`: passed, pinned dependencies installed
+- `npm run check`: passed after final session/revocation changes
+- `npm run build`: passed, existing bundle-size warning remains
+- `npm test`: **396/396 passed** after the final backend changes and built frontend assets. The initial pre-build run had 390/391 pass with only the expected missing-build entrypoint 503; this was corrected by the normal build, not by weakening the test
+- Real local HTTP/session/SQLite with authored provider SSE: exact-origin/CSRF/session requirements; strict input/scope/version validation; no provider calls from legacy checkbox-only, absent, denied, stale or foreign-account grants; persisted decline; atomic racing choices; read-only action-wrapper non-bypass
+- Stream checks: same-account revoke stops an active request while another account completes; revoke after a tool read blocks a later provider request; cross-tab logout and credential rotation stop active/silent streams; read-then-revoke/logout emits no late sources, proposals, private title, or done event
+- Session regression: non-touching in-flight validation neither rewrites last-used time nor prolongs idle expiry; previous durable-session tests continue to pass
+- Schema9 storage: owner/account isolation, reopen persistence, provider id/endpoint/model/policy/category invalidation, monotonic revoke/regrant revision protection, failed-write rollback, account-delete cascade
+- Genuine populated schema8 fixture → schema9: all previous rows/DDL/FKs/sequences/session records/original bytes retained; new permission table empty; schema9 migration conflict rolls back; backup is non-mutating; restore resets sessions and all permission decisions only in the restored copy; untouched schema8 snapshot remains a valid rollback source; future schema10 refused
+
+Browser acceptance, exact-SHA CI/container acceptance, independent review closure, old-binary downgrade refusal rehearsal and any release remain separate gates. See [library permission contract and recovery](library-permission.md). Provider fixtures are not live DeepSeek acceptance.
