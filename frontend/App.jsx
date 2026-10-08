@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSession } from '@/lib/session';
 import { draftVault } from '@/lib/draft-vault';
+import { readLanguagePreference, saveLanguagePreference } from '@/lib/language-preference';
 import { captureAuthFragment } from '@/features/auth/auth-route';
 import { DraftWorkspaceProvider } from '@/lib/suspended-draft';
 import { ConversationRail } from '@/workbench/conversation-rail';
@@ -190,7 +191,7 @@ export default function App({ initialAuthLink = null }) {
   const authLinkRef = useRef(initialAuthLink);
   const handledUrl = useRef(window.location.href);
   const replaceAuthLink = useCallback(next => { authLinkRef.current?.clear(); authLinkRef.current = next; setAuthLink(next); }, []);
-  const [lang, setLang] = useState('zh');
+  const [lang, setLang] = useState(() => readLanguagePreference());
   const [view, setView] = useState(currentView);
   const settingsReturn=useRef({view:'chat',hash:'#chat'});
   const { status, loading, error, recovery, refresh } = useSession();
@@ -221,7 +222,7 @@ export default function App({ initialAuthLink = null }) {
     window.addEventListener('hashchange', followHistory);
     return () => { window.removeEventListener('popstate', followHistory); window.removeEventListener('hashchange', followHistory); window.removeEventListener('pagehide', clearSecret); };
   }, [replaceAuthLink]);
-  useEffect(() => { document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en'; document.title = lang === 'zh' ? '巢小秘 · Nestlet' : 'Nestlet'; }, [lang]);
+  useEffect(() => { document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en'; document.title = lang === 'zh' ? '巢小秘 · Nestlet' : 'Nestlet'; saveLanguagePreference(lang); }, [lang]);
   const AuthPanel = modules.auth?.AuthPanel;
   const EmailLinkPanel = modules.auth?.EmailLinkPanel;
   const AccountControls = modules.auth?.AccountControls;
