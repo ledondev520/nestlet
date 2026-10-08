@@ -151,7 +151,7 @@ test('schema9 migration name collision fails atomically without changing populat
  assert.deepEqual(fileTree(f.assetsDirectory),assetsBefore);
 });
 
-test('schema9 backup preserves choice; restore resets both grant and denial plus sessions, never snapshot/business data',async t=>{
+test('schema9 backup preserves choice; restore resets both grant and denial plus sessions/email actions, never snapshot/business data',async t=>{
  const f=fixture(t),beforeMigration=inspect(f.filename,snapshot);
  const pre=join(f.root,'pre-schema9');assert.equal((await backupPrivateData({...f,output:pre})).schemaVersion,8);
  let store=openStorage({filename:f.filename});
@@ -166,7 +166,8 @@ test('schema9 backup preserves choice; restore resets both grant and denial plus
  inspect(restored.filename,db=>{
   assert.equal(version(db),9);assert.equal(db.prepare('SELECT COUNT(*) AS n FROM auth_sessions').get().n,0);
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM library_permissions').get().n,0);
-  preserved(db,before,{omit:['auth_sessions','library_permissions']});
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM email_actions').get().n,0);
+  preserved(db,before,{omit:['auth_sessions','library_permissions','email_actions']});
  });
  store=openStorage({filename:restored.filename});try{assert.equal(store.libraryPermissions.read(f.id).decision,'unset');}finally{store.close();}
  assert.deepEqual(fileTree(post),snapshotBefore);assert.deepEqual(fileTree(f.source),sourceBefore);
@@ -174,5 +175,5 @@ test('schema9 backup preserves choice; restore resets both grant and denial plus
  // Rollback is a separate pre-upgrade snapshot, never a version decrement on schema9.
  const rollback=await restorePrivateBackup({input:pre,output:join(f.root,'rollback-schema8')});
  assert.equal(rollback.schemaVersion,8);
- inspect(rollback.filename,db=>{assert.equal(version(db),8);preserved(db,beforeMigration,{omit:['auth_sessions']});assert.equal(db.prepare("SELECT name FROM sqlite_master WHERE name='library_permissions'").get(),undefined);});
+ inspect(rollback.filename,db=>{assert.equal(version(db),8);assert.equal(db.prepare('SELECT COUNT(*) AS n FROM email_actions').get().n,0);preserved(db,beforeMigration,{omit:['auth_sessions','email_actions']});assert.equal(db.prepare("SELECT name FROM sqlite_master WHERE name='library_permissions'").get(),undefined);});
 });
