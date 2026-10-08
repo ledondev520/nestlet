@@ -78,3 +78,9 @@ test('a changed or newly exposed wrapping file blocks writes without changing th
  writeFileSync(f.keyFile,original);chmodSync(f.keyFile,0o644);assert.throws(()=>store.save({...config,enabled:false}),{code:'PROVIDER_SETTINGS_UNAVAILABLE'});chmodSync(f.keyFile,0o600);store.close();
  const reopened=f.open();assert.deepEqual(reopened.load(),config);reopened.close();
 });
+
+test('storage readiness validates its private writable directory without creating a credential database',t=>{
+ const f=fixture(t);mkdirSync(join(f.directory,'private'),{mode:0o755});
+ assert.throws(f.open,{code:'PROVIDER_SETTINGS_UNAVAILABLE'});assert.equal(existsSync(f.filename),false);
+ chmodSync(join(f.directory,'private'),0o700);const store=f.open();assert.equal(store.available,true);assert.equal(store.load(),null);assert.equal(existsSync(f.filename),false);store.close();
+});

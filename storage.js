@@ -186,7 +186,7 @@ function artifactPayload(payload, options) {
   return { kind:payload.kind,title,status:payload.status,content,sourceConversationId,sourceMessageId,expectedCaseVersion:payload.expectedCaseVersion,generationMethod };
 }
 
-export function preparePrivateStorageFile(filename) {
+export function preparePrivateStorageFile(filename, { createFile = true } = {}) {
   if (typeof filename !== 'string' || !filename.trim() || filename === ':memory:' || filename.includes('\0')) fail('STORAGE_PATH_INVALID', 500);
   const path = resolve(filename);
   const directory = dirname(path);
@@ -218,6 +218,7 @@ export function preparePrivateStorageFile(filename) {
     try { if (!privateFile(lstatSync(candidate))) fail('STORAGE_PATH_INVALID', 500); }
     catch (error) { if (error.code !== 'ENOENT') throw error; }
   }
+  if (!createFile) return path;
   let fd;
   let created = false;
   try { fd = openSync(path, constants.O_CREAT | constants.O_EXCL | constants.O_RDWR | constants.O_NOFOLLOW, 0o600); created = true; }

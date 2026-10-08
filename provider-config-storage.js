@@ -1,7 +1,7 @@
 /** Private encrypted credential store; never include it in case exports or API objects. */
 import { DatabaseSync } from 'node:sqlite';
 import { createCipheriv, createDecipheriv, randomBytes, timingSafeEqual } from 'node:crypto';
-import { constants, closeSync, existsSync, fstatSync, lstatSync, openSync, readFileSync } from 'node:fs';
+import { constants, accessSync, closeSync, existsSync, fstatSync, lstatSync, openSync, readFileSync } from 'node:fs';
 import { dirname, isAbsolute, parse, resolve, sep } from 'node:path';
 import { preparePrivateStorageFile } from './storage.js';
 const APPLICATION_ID = 0x4e535043; // NSPC, deliberately not the case database.
@@ -52,6 +52,8 @@ export function openProviderConfig({ filename, wrappingKeyFile = '', excludedDir
       return { available:false, load:()=>null, save:fail, close(){} };
     }
     key = wrappingKey(wrappingKeyFile, path, excludedDirectories);
+    preparePrivateStorageFile(path,{createFile:false});
+    accessSync(dirname(path),constants.R_OK|constants.W_OK|constants.X_OK);
     let revision = 0, poisoned = false;
     const connect = allowCreation => {
       const existing=storeExists();
