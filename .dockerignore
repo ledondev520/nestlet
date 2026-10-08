@@ -13,6 +13,7 @@
 !storage.js
 !telemetry.js
 !chat.js
+!conversation-action-contract.js
 !document-context.js
 !case-records.js
 !workbook-worker.js

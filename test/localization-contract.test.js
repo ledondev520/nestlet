@@ -55,7 +55,7 @@ test('unknown backend errors use local fallback keys and server error messages o
 });
 
 test('every currently emitted backend error code has an explicit bilingual route fallback or direct mapping', async () => {
-  const backend = (await Promise.all(['server.js', 'auth.js', 'workbook-worker.js', 'storage.js', 'telemetry.js', 'case-records.js', 'document-context.js', 'chat.js'].map(name => readFile(new URL('../' + name, import.meta.url), 'utf8')))).join('\n');
+  const backend = (await Promise.all(['server.js', 'auth.js', 'workbook-worker.js', 'storage.js', 'telemetry.js', 'case-records.js', 'document-context.js', 'chat.js', 'conversation-action-contract.js'].map(name => readFile(new URL('../' + name, import.meta.url), 'utf8')))).join('\n');
   const emitted = new Set([...backend.matchAll(/(?:new RequestError\([^,]+,\s*|new (?:TelemetryError|ChatError|DocumentContextError|CaseRecordsError)\(\s*|fail\(|error:\s*|code:\s*|code\s*=\s*)'([A-Z_]+)'/g)].map(match => match[1]));
   const routeFallbacks = {
     DOCUMENT_CONSENT_REQUIRED: 'errorFile', EXTRACTION_FAILED: 'errorLive', INPUT_TOO_LARGE: 'errorSize',
@@ -91,5 +91,15 @@ test('PDF extracted-text limit takes precedence over generic 413 binary-size cop
     assert.doesNotMatch(copy[locale].errorTextSize, /5 MiB/);
     assert.match(copy[locale].errorSize, /5 MiB/);
     assert.doesNotMatch(copy[locale].errorSize, /50,000/);
+  }
+});
+
+// The React conversation surface owns direct action-specific bilingual explanations.
+test('conversation action errors have direct bilingual wording without rendering server prose', async () => {
+  const {chatErrorText}=await import('../frontend/features/chat/copy.js');
+  for(const code of ['CONVERSATION_ACTION_INVALID','CONVERSATION_ACTION_SOURCE_NOT_FOUND','CONVERSATION_ACTION_SOURCE_INCOMPLETE','DOCUMENT_ENGLISH_REQUIRED']){
+    assert.ok(containsHan(chatErrorText({code,error:'UNTRUSTED'},'zh')));
+    assert.equal(containsHan(chatErrorText({code},'en')),false);
+    assert.doesNotMatch(chatErrorText({code},'en'),/UNTRUSTED/);
   }
 });

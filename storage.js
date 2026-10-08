@@ -1,4 +1,5 @@
 /** Server-local, owner-scoped SQLite storage. Input text is untrusted; private asset bytes are stored separately; no provider keys are saved. */
+import { prepareConversationAction, validateConversationAction } from './conversation-action-contract.js';
 import { DatabaseSync } from 'node:sqlite';
 import { EMAIL_SCHEMA_SQL, createEmailAuthStorage } from './email-auth-storage.js';
 import { ACCOUNT_ADMINISTRATION_SCHEMA_SQL, createAccountAdministrationStorage } from './account-administration-storage.js';
@@ -531,6 +532,13 @@ export function openStorage({ filename, reservedUsername = process.env.NESTLET_O
         }
         validateFinalArtifact(record,canonical.content,{kind:canonical.kind});
       }
+      // Same-source/body draft retries (including legacy UI requests) are atomic under
+      // the caller's BEGIN IMMEDIATE transaction; a second tab reuses the immutable row.
+      if (canonical.status === 'draft' && canonical.sourceMessageId) {
+        const existing = db.prepare("SELECT id FROM artifacts WHERE user_id=? AND case_id=? AND kind=? AND status='draft' AND source_conversation_id=? AND source_message_id=? AND content=? ORDER BY created_at,id LIMIT 1")
+          .get(id,recordId,canonical.kind,sourceConversationId,canonical.sourceMessageId,canonical.content);
+        if (existing) return fullArtifact(artifactLookup.get(id,existing.id));
+      }
       if (db.prepare('SELECT COUNT(*) AS count FROM artifacts WHERE user_id=? AND case_id=?').get(id,recordId).count >= LIBRARY_LIMITS.artifactsPerCase ||
           db.prepare('SELECT COUNT(*) AS count FROM artifacts WHERE user_id=?').get(id).count >= LIBRARY_LIMITS.artifactsPerUser) fail('CAPACITY_REACHED',409);
       const provenance = { caseId:recordId,caseVersion:record.version,clientId:record.clientId,
@@ -789,6 +797,20 @@ export function openStorage({ filename, reservedUsername = process.env.NESTLET_O
       createArtifact(id, recordId, payload, options = {}) {
         const canonical = artifactPayload(payload,options);
         return transaction(() => insertArtifact(id,recordId,canonical));
+      },
+      createConversationAnswerDraft(id, recordId, input) {
+        const request = validateConversationAction(input);
+        if (request.action !== 'prepare_answer_draft') fail('CONVERSATION_ACTION_INVALID');
+        return transaction(() => {
+          requireUser(id);
+          const record = caseId(recordId) && fullCase(lookup.get(id,recordId));
+          if (!record) return null;
+          const conversation = conversationLookup.get(id,request.sourceConversationId);
+          const message = fullMessage(db.prepare(`SELECT ${messageColumns} FROM messages WHERE user_id=? AND id=?`).get(id,request.sourceMessageId));
+          const proposal = prepareConversationAction(request,{record,conversation,message});
+          // Re-read and deduplicate inside the same transaction as insertArtifact.
+          return insertArtifact(id,recordId,artifactPayload({kind:proposal.kind,title:proposal.title,status:'draft',content:proposal.content,sourceConversationId:conversation.id,sourceMessageId:message.id,expectedCaseVersion:record.version},{generationMethod:'user-edited'}));
+        });
       },
       getArtifact(id, artifactId) { requireUser(id); return caseId(artifactId) ? fullArtifact(artifactLookup.get(id,artifactId)) : null; },
       listArtifacts(id, recordId) {

@@ -18,7 +18,7 @@ import { ASSET_LIMITS, ASSET_TYPES } from './asset-domain.js';
 import { CaseRecordsError, isCaseRecordsPath, handleCaseRecords } from './case-records.js';
 import { DocumentContextError } from './document-context.js';
 import { createTelemetry, TelemetryError, telemetryId, telemetryPageOptions } from './telemetry.js';
-import { CHAT_LIMITS, CHAT_IMAGE_TYPES, ChatError, validateChatRequest, conversationHistory, chatProviderMessages, openChatStream, openLibraryChatStream, librarySourceEvent, libraryActivityEvent, LIBRARY_CHAT_ERRORS } from './chat.js';
+import { CHAT_LIMITS, CHAT_IMAGE_TYPES, ChatError, validateChatRequest, conversationHistory, chatProviderMessages, openChatStream, openLibraryChatStream, createConversationToolSession, librarySourceEvent, libraryActivityEvent, LIBRARY_CHAT_ERRORS } from './chat.js';
 import { createLibraryToolSession, LIBRARY_AGENT_LIMITS } from './agent-library-tools.js';
 
 const root = new URL('./public/', import.meta.url);
@@ -672,12 +672,17 @@ const server = http.createServer(async (request, response) => {
             imageMetadata:(original.images || []).map(image => ({mimeType:image.mimeType,byteCount:Buffer.byteLength(image.data,'base64'),retained:false}))});
           if (!userMessage) throw new ChatError('CONVERSATION_NOT_FOUND',404);
         }
+        if (input.actionConsent) {
+          input.actionContext = {caseId:record.id,expectedVersion:record.version,conversationId:conversation.id,messages:[...history.filter(message=>message.state==='complete').slice(-10),userMessage].map(message=>({id:message.id,role:message.role}))};
+          library = createConversationToolSession({storage,userId:session.userId,record,conversationId:conversation.id,library,signal});
+        }
         const stream = library?await openLibraryChatStream({apiKey,input,record,signal,library,requestId}):await openChatStream({ apiKey, input, record, signal });
         response.writeHead(200, { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-store', 'X-Accel-Buffering': 'no' });
         response.flushHeaders(); streaming = true;
         if (conversation) await writeChatEvent(response,signal,'conversation',{conversationId:conversation.id,userMessageId:userMessage.id});
         for await (const event of stream) {
           if (event.type === 'delta') { answer += event.text; await writeChatEvent(response, signal, 'delta', { text: event.text }); }
+          else if(event.type==='proposal'){await writeChatEvent(response,signal,'proposal',{requestId,proposal:event.proposal});}
           else if(event.type==='activity'){await writeChatEvent(response,signal,'activity',libraryActivityEvent(event));}
           else if(event.type==='sources'){const sources=appendSources(event);if(sources&&!sourcesSent){sourcesSent=true;await writeChatEvent(response,signal,'sources',sources);}}
           else if (event.type === 'done') {

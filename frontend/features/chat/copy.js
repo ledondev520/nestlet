@@ -1,3 +1,4 @@
+import { conversationActionError } from './conversation-actions.js';
 export const chatCopy = {
   "zh": {
     "caseSaveUncertain": "未能确认新案例是否已保存。请先在客户库检查并打开已保存的案例，避免重复创建；当前输入仍保留。",
@@ -214,7 +215,7 @@ const errorKeys = {
   TRIAL_LIMIT_REACHED:'quota', SENSITIVE_DATA:'sensitive', CHAT_PROVIDER_FAILED:'streamError', CHAT_STREAM_FAILED:'streamError', CHAT_INCOMPLETE:'streamError', CHAT_UNSUPPORTED_OUTPUT:'streamError',
   CHAT_SAVE_FAILED:'saveError', CHAT_TURN_EXISTS:'duplicate', CAPACITY_REACHED:'capacity', CASE_LIMIT_REACHED:'capacity', NETWORK_ERROR:'network'
 };
-export function chatErrorText(error, lang='zh') { const words=chatCopy[lang] || chatCopy.zh; return words[errorKeys[error?.code] || 'generic']; }
+export function chatErrorText(error, lang='zh') { if(['CONVERSATION_ACTION_INVALID','CONVERSATION_ACTION_SOURCE_NOT_FOUND','CONVERSATION_ACTION_SOURCE_INCOMPLETE','DOCUMENT_ENGLISH_REQUIRED'].includes(error?.code))return conversationActionError(error,lang); const words=chatCopy[lang] || chatCopy.zh; return words[errorKeys[error?.code] || 'generic']; }
 
 const activityKeys = {
   searching:{started:'librarySearchingStarted',completed:'librarySearchingCompleted',error:'librarySearchingError'},

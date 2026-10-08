@@ -15,17 +15,22 @@ import { chatCopy, chatErrorText, libraryActivityText } from './copy.js';
 import { caseWriteDefinitelyRejected } from '@/lib/conversation-handoff';
 import { ChatCaseWorkflow } from './case-workflow.jsx';
 import { ChatMessageActions } from './message-actions.jsx';
+import { ConversationActionReview } from './conversation-actions.jsx';
+import { proposalMatchesScope } from './conversation-actions.js';
 import { ChatOriginalRetention } from './original-retention.jsx';
+import { ChatLookup } from './lookup.jsx';
+import { ChatSourceNavigation } from './source-navigation.jsx';
+import { sourceNavigationCopy } from './source-navigation.js';
 
 const idValid = value => typeof value === 'string' && /^[0-9a-f-]{36}$/u.test(value);
 const timeoutSignal = (signal, milliseconds=15000) => AbortSignal.any([signal,AbortSignal.timeout(milliseconds)]);
 
 /** Durable conversation UI. Case facts and document/source buffers have separate owners. */
-export function ChatPage({ lang='zh', caseId=null, guidanceAgency='unknown', onCaseChange, onDirtyChange, onImportFiles, onReviewMessage, onOpenMaterials, onOpenDocuments, active = true }) {
+export function ChatPage({ lang='zh', caseId=null, guidanceAgency='unknown', onCaseChange, onDirtyChange, onImportFiles, onReviewMessage, onOpenMaterials, onOpenDocuments, onOpenSourceCase, active = true }) {
   const { status, api, refresh } = useSession();
   const {restored,saveDraft,clearDraft,cacheStatus}=useSuspendedDraft('chat');
   const words = chatCopy[lang] || chatCopy.zh;
-  const inputId = useId(), fileId = useId(), libraryConsentId = useId(), threadId = useId();
+  const inputId = useId(), fileId = useId(), libraryConsentId = useId(), actionConsentId = useId(), threadId = useId();
   const [input,setInput] = useState('');
   const [images,setImages] = useState([]);
   const [messages,setMessages] = useState([]);
@@ -34,6 +39,9 @@ export function ChatPage({ lang='zh', caseId=null, guidanceAgency='unknown', onC
   const [title,setTitle] = useState('');
   const [phase,setPhase] = useState('idle');
   const [imagePending,setImagePending] = useState(0);
+  const [actionConsent,setActionConsent] = useState(false);
+  const [actionBatch,setActionBatch] = useState(null);
+  const [actionRevision,setActionRevision] = useState(0);
   const [libraryConsent,setLibraryConsent] = useState(false);
   const [libraryActivity,setLibraryActivity] = useState(null);
   const [librarySources,setLibrarySources] = useState(null);
@@ -44,6 +52,8 @@ export function ChatPage({ lang='zh', caseId=null, guidanceAgency='unknown', onC
   const [retentionBusy,setRetentionBusy] = useState(false);
   const retentionRef = useRef(false);
   const updateRetentionBusy = useCallback(value => { retentionRef.current = value; setRetentionBusy(value); }, []);
+  const [sourceBusy,setSourceBusy] = useState(false);
+  const sourceOperation = useRef(null), sourceSequence = useRef(0);
   const [bridgeBusy,setBridgeBusy] = useState(false);
   const bridgeOperation = useRef(null), bridgeSequence = useRef(0), caseCreation = useRef(null);
   const restoredApplied=useRef(false), restoreConversation=useRef(null), pendingSendText=useRef('');
@@ -55,7 +65,7 @@ export function ChatPage({ lang='zh', caseId=null, guidanceAgency='unknown', onC
   const stopRequested = useRef(false), workflowRef = useRef(null), lastTurn = useRef(null), phaseRef = useRef('idle');
   const fileInput = useRef(null), composer = useRef(null), endOfThread = useRef(null);
   statusRef.current = status; incomingCase.current = caseId; inputRef.current=input;
-  const busy = phase !== 'idle' || bridgeBusy || retentionBusy;
+  const busy = phase !== 'idle' || bridgeBusy || retentionBusy || sourceBusy;
   const dirty = Boolean(input || images.length || imagePending || bridgeBusy || retentionBusy || ['saving','streaming','refreshing'].includes(phase));
   const scoped = () => ({epoch:epoch.current,userId:statusRef.current.userId,caseId:caseRef.current,conversationId:conversationRef.current});
   const current = scope => mounted.current && scope.epoch === epoch.current && statusRef.current.authenticated && scope.userId === statusRef.current.userId && scope.caseId === caseRef.current && scope.conversationId === conversationRef.current &&
@@ -67,20 +77,26 @@ export function ChatPage({ lang='zh', caseId=null, guidanceAgency='unknown', onC
   const revoke = preview => {if (previewUrls.current.delete(preview)) URL.revokeObjectURL(preview);};
   const revokeMessages = () => {for (const message of messageRef.current) for (const image of message.images || []) revoke(image.preview);};
   const claimBridgeOperation = () => {
-    if (phaseRef.current !== 'idle' || bridgeOperation.current || retentionRef.current || !statusRef.current.authenticated) return null;
+    if (phaseRef.current !== 'idle' || bridgeOperation.current || sourceOperation.current || retentionRef.current || !statusRef.current.authenticated) return null;
     const token = ++bridgeSequence.current; bridgeOperation.current = token; setBridgeBusy(true); return token;
   };
   const releaseBridgeOperation = token => { if (bridgeOperation.current === token) { bridgeOperation.current = null; if (mounted.current) setBridgeBusy(false); } };
+  const claimSourceOperation = () => {
+    if (phaseRef.current !== 'idle' || bridgeOperation.current || sourceOperation.current || retentionRef.current || decodeBusy.current || !statusRef.current.authenticated) return null;
+    const token = ++sourceSequence.current; sourceOperation.current = token; setSourceBusy(true); return token;
+  };
+  const releaseSourceOperation = token => { if (sourceOperation.current === token) { sourceOperation.current = null; if (mounted.current) setSourceBusy(false); } };
   const managedController = () => {const next=new AbortController(); controllers.current.add(next); return next;};
 
   const invalidate = useCallback((nextCaseId, render=true) => {
     epoch.current++;
+    sourceOperation.current = null; if (render && mounted.current) setSourceBusy(false);
     bridgeOperation.current = null; retentionRef.current = false; caseCreation.current = null; if (render && mounted.current) { setBridgeBusy(false); setRetentionBusy(false); }
     for (const active of controllers.current) active.abort(); controllers.current.clear(); controller.current=null;
     for (const preview of previewUrls.current) URL.revokeObjectURL(preview); previewUrls.current.clear();
     caseRef.current=nextCaseId; conversationRef.current=null; adoption.current=null; stopRequested.current=false;
     workflowRef.current=null; lastTurn.current=null; pendingSendText.current=''; decodeBusy.current=false; imageRef.current=[]; messageRef.current=[]; inputRef.current=''; phaseRef.current='idle';
-    if (render && mounted.current) {setInput('');setImages([]);setMessages([]);setConversationId(null);setConversations([]);setTitle('');setPhase('idle');setImagePending(0);setLibraryConsent(false);setLibraryActivity(null);setLibrarySources(null);setError(null);setNotice('');setDragging(false);}
+    if (render && mounted.current) {setInput('');setImages([]);setMessages([]);setConversationId(null);setConversations([]);setTitle('');setPhase('idle');setImagePending(0);setActionConsent(false);setActionBatch(null);setLibraryConsent(false);setLibraryActivity(null);setLibrarySources(null);setError(null);setNotice('');setDragging(false);}
   },[]);
 
   useEffect(() => {
@@ -121,7 +137,7 @@ export function ChatPage({ lang='zh', caseId=null, guidanceAgency='unknown', onC
     if(preserveComposition){
       // App remounts true case switches. A null→ID binding here is the same workspace saved by Intake.
       epoch.current++;for(const active of controllers.current)active.abort();controllers.current.clear();controller.current=null;
-      caseRef.current=nextCase;adoption.current=null;workflowRef.current=null;lastTurn.current=null;decodeBusy.current=false;setImagePending(0);setLibraryConsent(false);setLibraryActivity(null);setLibrarySources(null);setError(null);setNotice('');
+      caseRef.current=nextCase;adoption.current=null;workflowRef.current=null;lastTurn.current=null;decodeBusy.current=false;setImagePending(0);setActionConsent(false);setActionBatch(null);setLibraryConsent(false);setLibraryActivity(null);setLibrarySources(null);setError(null);setNotice('');
     } else invalidate(nextCase);
     restoreComposer();
     if (!nextCase) return;
@@ -149,7 +165,7 @@ export function ChatPage({ lang='zh', caseId=null, guidanceAgency='unknown', onC
   },[input,conversationId,status.authenticated,saveDraft,clearDraft]);
 
   async function chooseConversation(id) {
-    if (retentionRef.current || bridgeOperation.current) return;
+    if (retentionRef.current || bridgeOperation.current || sourceOperation.current) return;
     if (dirty && !window.confirm(words.resetAsk)) return;
     const currentCase=caseRef.current, priorConversations=conversations, priorTitle=title;
     invalidate(currentCase);setConversations(priorConversations);setTitle(priorTitle);
@@ -186,7 +202,7 @@ export function ChatPage({ lang='zh', caseId=null, guidanceAgency='unknown', onC
   }
 
   async function addImages(files) {
-    if (!statusRef.current.authenticated || phaseRef.current!=='idle' || bridgeOperation.current || retentionRef.current) return;
+    if (!statusRef.current.authenticated || phaseRef.current!=='idle' || bridgeOperation.current || sourceOperation.current || retentionRef.current) return;
     const all=Array.from(files || []);if(!all.length)return;
     if(decodeBusy.current){setError(new ChatClientError('CHAT_IMAGE_BUSY'));return;}decodeBusy.current=true;
     const scope=scoped(), decode=managedController();setImagePending(count=>count+1);setError(null);
@@ -207,10 +223,10 @@ export function ChatPage({ lang='zh', caseId=null, guidanceAgency='unknown', onC
     } catch(failure){if(current(scope))setError(failure instanceof ChatClientError?failure:new ChatClientError('CHAT_IMAGE_INVALID'));}
     finally{controllers.current.delete(decode);if(current(scope)){decodeBusy.current=false;setImagePending(count=>Math.max(0,count-1));}}
   }
-  function removeImage(id){if (retentionRef.current || bridgeOperation.current || phaseRef.current !== 'idle') return;const removed=imageRef.current.find(image=>image.id===id);if(removed)revoke(removed.preview);updateImages(imageRef.current.filter(image=>image.id!==id));}
+  function removeImage(id){if (retentionRef.current || bridgeOperation.current || sourceOperation.current || phaseRef.current !== 'idle') return;const removed=imageRef.current.find(image=>image.id===id);if(removed)revoke(removed.preview);updateImages(imageRef.current.filter(image=>image.id!==id));}
   function receiveFiles(files){
     if(!statusRef.current.authenticated){setError(new ChatClientError('AUTH_REQUIRED'));return;}
-    if(phaseRef.current!=='idle'||bridgeOperation.current||retentionRef.current){setError(new ChatClientError('CHAT_CONVERSATION_BUSY'));return;}
+    if(phaseRef.current!=='idle'||bridgeOperation.current||sourceOperation.current||retentionRef.current){setError(new ChatClientError('CHAT_CONVERSATION_BUSY'));return;}
     const all=Array.from(files||[]), accepted=all.filter(file=>['image/png','image/jpeg'].includes(file.type));
     const documents=all.filter(file=>!accepted.includes(file)&&/\.(pdf|txt|csv|xlsx|xls)$/iu.test(file.name));
     if(all.length!==accepted.length+documents.length)setNotice('unsupportedFile');
@@ -229,16 +245,17 @@ export function ChatPage({ lang='zh', caseId=null, guidanceAgency='unknown', onC
 
   async function send(event){
     event?.preventDefault();
-    if(phaseRef.current!=='idle'||bridgeOperation.current||retentionRef.current||imagePending)return;
+    if(phaseRef.current!=='idle'||bridgeOperation.current||sourceOperation.current||retentionRef.current||imagePending)return;
     if(!statusRef.current.authenticated){setError(new ChatClientError('AUTH_REQUIRED'));return;}
     if(!statusRef.current.liveEnabled){setError(new ChatClientError('LIVE_DISABLED'));return;}
-    const retrievalRequested=libraryConsent===true;
+    const retrievalRequested=libraryConsent===true, actionsRequested=actionConsent===true;
     if(retrievalRequested && statusRef.current.libraryRetrievalEnabled!==true){setLibraryConsent(false);setError(new ChatClientError('LIBRARY_UNAVAILABLE'));return;}
     const text=inputRef.current.trim(), attached=[...imageRef.current];
     if(!text&&!attached.length){setError(new ChatClientError('CHAT_EMPTY'));return;}
     if(text.length>CHAT_BOUNDS.text){setError(new ChatClientError('CHAT_TOO_LARGE'));return;}
-    setLibraryConsent(false);setLibraryActivity(null);setLibrarySources(null);
+    setActionConsent(false);setActionBatch(null);setLibraryConsent(false);setLibraryActivity(null);setLibrarySources(null);
     const scope=scoped(), active=managedController();controller.current=active;stopRequested.current=false;
+    const proposals=[];
     let user=null,assistant=null,completed=false;updatePhase('saving');setError(null);setNotice('');
     try{
       if(!scope.caseId){
@@ -250,7 +267,7 @@ export function ChatPage({ lang='zh', caseId=null, guidanceAgency='unknown', onC
         conversationRef.current=result.conversation.id;scope.conversationId=result.conversation.id;setConversationId(result.conversation.id);setConversations(rows=>[result.conversation,...rows]);
       }
       const clientMessageId=crypto.randomUUID();
-      const payload=buildChatTurn({caseId:scope.caseId,conversationId:scope.conversationId,clientMessageId,text,images:attached,lang,libraryConsent:retrievalRequested,guidanceAgency});
+      const payload=buildChatTurn({caseId:scope.caseId,conversationId:scope.conversationId,clientMessageId,text,images:attached,lang,libraryConsent:retrievalRequested,actionConsent:actionsRequested,guidanceAgency});
       user={id:crypto.randomUUID(),clientMessageId,role:'user',content:text,images:attached,state:'complete',localOnly:true};
       assistant={id:crypto.randomUUID(),role:'assistant',content:'',state:'interrupted',streaming:true,localOnly:true};
       lastTurn.current={user,assistant};pendingSendText.current=text;saveDraft({input:text,conversationId:scope.conversationId});updateMessages([...messageRef.current,user,assistant]);updateImages([]);setInput('');inputRef.current='';updatePhase('streaming');
@@ -267,14 +284,20 @@ export function ChatPage({ lang='zh', caseId=null, guidanceAgency='unknown', onC
         if(packet.type==='delta'){assistant.content+=packet.text;updateMessages([...messageRef.current]);}
         else if(packet.type==='activity'){if(!retrievalRequested)throw new ChatClientError('CHAT_STREAM_FAILED');setLibraryActivity(packet);}
         else if(packet.type==='sources'){if(!retrievalRequested)throw new ChatClientError('CHAT_STREAM_FAILED');assistant.content+=packet.appendix;setLibrarySources({requestId:packet.requestId,items:packet.items});updateMessages([...messageRef.current]);}
+        else if(packet.type==='proposal'){
+          if(!actionsRequested || !proposalMatchesScope(packet.proposal,scope))throw new ChatClientError('CHAT_STREAM_FAILED');
+          proposals.push(packet);setActionBatch({userId:scope.userId,caseId:scope.caseId,conversationId:scope.conversationId,ready:false,items:[...proposals]});
+        }
         else if(packet.type==='conversation'){if(packet.conversationId!==scope.conversationId)throw new ChatClientError('CHAT_STREAM_FAILED');user.id=packet.userMessageId;}
-        else if(packet.type==='done'){completed=true;pendingSendText.current='';clearDraft();assistant.id=packet.assistantMessageId;assistant.state='complete';assistant.localOnly=false;assistant.streaming=false;user.localOnly=false;updateMessages([...messageRef.current]);}
+        else if(packet.type==='done'){if(actionsRequested&&packet.conversationId!==scope.conversationId)throw new ChatClientError('CHAT_STREAM_FAILED');completed=true;pendingSendText.current='';clearDraft();assistant.id=packet.assistantMessageId;assistant.state='complete';assistant.localOnly=false;assistant.streaming=false;user.localOnly=false;updateMessages([...messageRef.current]);}
         else if(packet.type==='error')throw new ChatClientError(packet.code);
       }
       if(!completed)throw new ChatClientError('CHAT_INCOMPLETE');
+      if(proposals.length)setActionBatch({userId:scope.userId,caseId:scope.caseId,conversationId:scope.conversationId,ready:true,items:[...proposals]});
       setNotice('saved');
     }catch(failure){
       if(!current(scope))return;
+      setActionBatch(null);
       if(assistant){assistant.streaming=false;assistant.state=completed?'complete':stopRequested.current?'interrupted':'failed';updateMessages([...messageRef.current]);}
       if(stopRequested.current)setNotice('stopped');else setError(failure instanceof ChatClientError||failure.code?failure:new ChatClientError(failure.name==='AbortError'||failure.name==='TimeoutError'?'CHAT_INCOMPLETE':'NETWORK_ERROR'));
       if(!user){setInput(text);inputRef.current=text;}
@@ -298,7 +321,9 @@ export function ChatPage({ lang='zh', caseId=null, guidanceAgency='unknown', onC
 
   if(!status.authenticated)return <Card className="paper-card"><CardContent><p>{words.signIn}</p></CardContent></Card>;
   return <section className="chat-workspace" aria-label={words.title} data-feature="chat">
-    {onOpenMaterials && onOpenDocuments && <ChatCaseWorkflow api={api} lang={lang} caseId={caseId} userId={status.userId} disabled={busy} active={active} refreshKey={`${conversationId}:${messages.length}:${phase === 'idle'}`} onSavedTitle={setTitle} onOpenMaterials={onOpenMaterials} onOpenDocuments={onOpenDocuments} />}
+    {onOpenMaterials && onOpenDocuments && <ChatCaseWorkflow api={api} lang={lang} caseId={caseId} userId={status.userId} disabled={busy} active={active} refreshKey={`${conversationId}:${messages.length}:${phase === 'idle'}:${actionRevision}`} onSavedTitle={setTitle} onOpenMaterials={onOpenMaterials} onOpenDocuments={onOpenDocuments} />}
+    {onOpenSourceCase && <ChatLookup api={api} userId={status.userId} caseId={caseRef.current} lang={lang} active={active}
+      disabled={phase !== 'idle' || bridgeBusy || retentionBusy || imagePending > 0} onOpenSourceCase={onOpenSourceCase} claimOperation={claimSourceOperation} releaseOperation={releaseSourceOperation} />}
     <Card className="chat-surface">
       <CardHeader className="chat-toolbar"><CardTitle className="truncate text-base">{title||words.title}</CardTitle>
         <div className="flex flex-wrap items-center gap-3"><Label className="sr-only" htmlFor={`${inputId}-conversation`}>{words.conversation}</Label>
@@ -324,18 +349,14 @@ export function ChatPage({ lang='zh', caseId=null, guidanceAgency='unknown', onC
           </article>)}
           <div ref={endOfThread}/>
         </div>
+        {actionBatch && actionBatch.userId===status.userId && actionBatch.caseId===caseRef.current && actionBatch.conversationId===conversationId && actionBatch.items.map((packet,index)=><ConversationActionReview key={`${status.userId}:${caseRef.current}:${conversationId}:${packet.requestId}:${index}`} proposal={packet.proposal} api={api} lang={lang} userId={status.userId} caseId={caseRef.current} conversationId={conversationId} ready={actionBatch.ready && phase==='idle'} disabled={busy} claimOperation={claimBridgeOperation} releaseOperation={releaseBridgeOperation} onApplied={()=>setActionRevision(value=>value+1)} onOpenDocuments={onOpenDocuments} onOpenMaterials={onOpenMaterials} />)}
         {libraryActivity&&<div role="status" className="paper-note rounded px-3 py-2 text-sm" aria-label={words.libraryActivity}>
           <p>{libraryActivityText(libraryActivity,lang)}{libraryActivity.count!==undefined?` · ${words.libraryCount}: ${libraryActivity.count}`:''}</p>
           {libraryActivity.code&&<p>{chatErrorText(libraryActivity,lang)}</p>}
         </div>}
-        {librarySources&&<section aria-label={words.librarySources} className="space-y-2 rounded border p-3">
-          <h2 className="text-sm font-semibold">{words.librarySources}</h2><p className="text-xs text-muted-foreground">{words.librarySourcesNote}</p>
-          <ul className="space-y-2 text-xs">{librarySources.items.map(source=><li key={source.sourceId} className="break-words">
-            <p><strong>{source.sourceId}</strong> · {words[{client:'libraryClient',case:'libraryCase',asset:'libraryAsset',artifact:'libraryArtifact'}[source.kind]]} · {source.title} {source.titleTruncated&&`(${words.libraryTitleTruncated})`}</p>
-            <p>{words.libraryVersion} {source.version} · {words[{metadata:'libraryMetadata',read:'libraryRead',unavailable:'libraryUnreadable'}[source.retrievalState]]}{source.truncated&&` · ${words.libraryExcerptTruncated}`}{source.status&&` · ${words[source.status==='final'?'libraryFinal':'libraryDraft']}`}{(source.isStale||source.needsRegeneration)&&` · ${words.libraryStale}`}</p>
-            <p className="text-muted-foreground">{source.id}</p>
-          </li>)}</ul>
-        </section>}
+        {librarySources&&<ChatSourceNavigation api={api} sources={librarySources} userId={status.userId} caseId={caseRef.current} lang={lang} active={active}
+          disabled={phase !== 'idle' || bridgeBusy || retentionBusy || imagePending > 0} onOpenSourceCase={onOpenSourceCase} claimOperation={claimSourceOperation} releaseOperation={releaseSourceOperation} />}
+        {!librarySources && messages.some(message => message.role === 'assistant') && <p className="text-xs text-muted-foreground">{(sourceNavigationCopy[lang] || sourceNavigationCopy.zh).history}</p>}
         {error&&<Alert variant="destructive"><AlertDescription>{chatErrorText(error,lang)}</AlertDescription></Alert>}
         {cacheStatus==='unavailable'&&<p role="status" className="text-sm text-destructive">{words.cacheUnavailable}</p>}
         {notice&&<p role="status" className="paper-note rounded px-3 py-2 text-sm">{words[notice]}</p>}
@@ -348,11 +369,15 @@ export function ChatPage({ lang='zh', caseId=null, guidanceAgency='unknown', onC
             onPaste={event=>{const files=Array.from(event.clipboardData.files||[]);if(files.length){event.preventDefault();const text=event.clipboardData.getData('text/plain');if(text){const next=(inputRef.current+text).slice(0,CHAT_BOUNDS.text);inputRef.current=next;setInput(next);}receiveFiles(files);}}}/>
           <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">{input.length>7000&&<span>{input.length.toLocaleString()} / 8,000</span>}{imagePending>0&&<span role="status">{words.decoding}</span>}</div>
           {!!images.length&&<div className="flex flex-wrap gap-3">{images.map(image=><div key={image.id} className="flex items-center gap-2 rounded border p-2"><img src={image.preview} alt={words.imageOnly} className="h-16 w-16 object-contain"/><Button type="button" variant="ghost" size="sm" disabled={busy} onClick={()=>removeImage(image.id)} aria-label={words.remove}>{words.remove}</Button></div>)}</div>}
-          <ChatOriginalRetention api={api} userId={status.userId} authenticated={status.authenticated} caseId={caseRef.current} images={images} lang={lang} disabled={phase !== 'idle' || bridgeBusy || imagePending > 0} ensureCase={ensureCase} onBusyChange={updateRetentionBusy} onOpenMaterials={onOpenMaterials} />
+          <ChatOriginalRetention api={api} userId={status.userId} authenticated={status.authenticated} caseId={caseRef.current} images={images} lang={lang} disabled={phase !== 'idle' || bridgeBusy || sourceBusy || imagePending > 0} ensureCase={ensureCase} onBusyChange={updateRetentionBusy} onOpenMaterials={onOpenMaterials} />
           <div className="space-y-2 rounded border p-3">
             <div className="flex items-start gap-2"><Checkbox id={libraryConsentId} checked={libraryConsent} disabled={busy||status.libraryRetrievalEnabled!==true} onCheckedChange={value=>setLibraryConsent(value===true)}/><Label htmlFor={libraryConsentId} className="text-xs leading-relaxed">{words.libraryConsent}</Label></div>
             <p className="text-xs leading-relaxed text-muted-foreground">{words.libraryBoundary}</p>
             {status.libraryRetrievalEnabled!==true&&<p className="text-xs text-muted-foreground">{words.libraryUnavailable}</p>}
+          </div>
+          <div className="space-y-2 rounded border p-3">
+            <div className="flex items-start gap-2"><Checkbox id={actionConsentId} checked={actionConsent} disabled={busy} onCheckedChange={value=>setActionConsent(value===true)}/><Label htmlFor={actionConsentId} className="text-xs leading-relaxed">{lang==='en'?'Prepare reviewable case updates or English drafts for this message':'为本条消息准备可核对的案例更新或英文草稿'}</Label></div>
+            <p className="text-xs text-muted-foreground">{lang==='en'?'Read-only previews from this saved conversation. Nothing is applied until you review and explicitly apply a proposal. This permission resets after each message.':'仅从本次已存对话生成只读预览。核对后点击应用才会保存建议，每条消息均需重新选择。'}</p>
           </div>
           <div className="chat-composer-actions">
             <Button type="button" variant="ghost" size="sm" disabled={busy||imagePending>0} onClick={()=>fileInput.current?.click()} title={words.attach}><Paperclip aria-hidden="true" />{words.attach}</Button>

@@ -1,5 +1,6 @@
 /** Customer/case/conversation/artifact HTTP operations, always scoped to the authenticated identity. */
 import { randomUUID } from 'node:crypto';
+import { loadConversationAction } from './conversation-action-contract.js';
 import { FIELDS } from './public/core.js';
 import { mergeDocumentContext, assessDocumentReadiness, generateReviewedDocument } from './document-context.js';
 export class CaseRecordsError extends Error {
@@ -21,7 +22,7 @@ function query(url, allowed) {
 }
 export function isCaseRecordsPath(path) {
   return path === '/api/clients' || new RegExp(`^/api/clients/${UUID}(?:/(?:cases|artifacts))?$`).test(path) ||
-    new RegExp(`^/api/cases/${UUID}/(?:readiness|document-context|issues|conversations|artifacts(?:/generate)?)$`).test(path) ||
+    new RegExp(`^/api/cases/${UUID}/(?:readiness|document-context|issues|conversations|conversation-actions/prepare|artifacts(?:/generate)?)$`).test(path) ||
     new RegExp(`^/api/conversations/${UUID}$`).test(path) || new RegExp(`^/api/artifacts/${UUID}(?:/download)?$`).test(path);
 }
 
@@ -53,7 +54,7 @@ export async function handleCaseRecords({ request, response, url, session, stora
       return json(200,{client:updated});
     }
   }
-  const caseRoute = new RegExp(`^/api/cases/(${UUID})/(readiness|document-context|issues|conversations|artifacts(?:/generate)?)$`).exec(path);
+  const caseRoute = new RegExp(`^/api/cases/(${UUID})/(readiness|document-context|issues|conversations|conversation-actions/prepare|artifacts(?:/generate)?)$`).exec(path);
   if (caseRoute) {
     const record = ownCase(caseRoute[1]), action = caseRoute[2];
     if (action === 'readiness' && method === 'GET') {
@@ -61,8 +62,19 @@ export async function handleCaseRecords({ request, response, url, session, stora
       return json(200,assessDocumentReadiness(record,{kind:url.searchParams.get('kind') || record.draftType,locale:url.searchParams.get('locale') || 'zh'}));
     }
     query(url,[]);
-    if (action === 'document-context' && method === 'PATCH') {
+    if (action === 'conversation-actions/prepare' && method === 'POST') {
       const body = await readJson(request,100000);
+      return json(200,{proposal:loadConversationAction(storage,userId,record,body)});
+    }
+    if (action === 'document-context' && method === 'PATCH') {
+      let body = await readJson(request,100000);
+      if (plain(body) && Object.hasOwn(body,'conversationAction')) {
+        keys(body,['conversationAction'],['conversationAction']);
+        const proposal = loadConversationAction(storage,userId,record,body.conversationAction);
+        if (proposal.action !== 'prepare_case_suggestion') fail('CONVERSATION_ACTION_INVALID');
+        if (proposal.conflicts.length) fail('DOCUMENT_CONTEXT_CONFLICT',409,{fields:proposal.conflicts});
+        body = {changes:proposal.changes,factChanges:proposal.factChanges,confirm:false,expectedVersion:proposal.expectedVersion};
+      }
       keys(body,['changes','factChanges','confirm','expectedVersion','namesVerified'],['confirm','expectedVersion']);
       if (typeof body.confirm !== 'boolean' || (body.namesVerified !== undefined && typeof body.namesVerified !== 'boolean')) fail('DOCUMENT_CONTEXT_INVALID');
       checkVersion(record,body.expectedVersion);
@@ -125,6 +137,12 @@ export async function handleCaseRecords({ request, response, url, session, stora
     if (['artifacts','artifacts/generate'].includes(action) && method === 'POST') {
       const body = await readJson(request,220000);
       const generate = action.endsWith('/generate');
+      if (!generate && plain(body) && Object.hasOwn(body,'conversationAction')) {
+        keys(body,['conversationAction'],['conversationAction']);
+        const artifact = storage.createConversationAnswerDraft(userId,record.id,body.conversationAction);
+        if (!artifact) fail('CASE_NOT_FOUND',404);
+        return json(201,{artifact});
+      }
       keys(body,generate ? ['kind','title','status','expectedCaseVersion'] : ['kind','title','status','content','sourceConversationId','sourceMessageId','expectedCaseVersion'],['kind','status','expectedCaseVersion',...(generate ? [] : ['content'])]);
       checkVersion(record,body.expectedCaseVersion);
       if (!['draft','final'].includes(body.status)) fail('ARTIFACT_INVALID');

@@ -56,7 +56,7 @@ function AccountWorkspace({ lang, view, navigate }) {
   const markChatDirty = useCallback(value => { dirty.current.chat = value; }, []);
   const markDocumentsDirty = useCallback(value => { dirty.current.documents = value; }, []);
   const markIntakeDirty = useCallback(value => { dirty.current.intake = value; }, []);
-  const openCase = useCallback(nextId => {
+  const openCase = useCallback((nextId, destination = 'chat') => {
     if (nextId !== caseIdRef.current) {
       if (Object.values(dirty.current).some(Boolean) && !window.confirm(lang === 'zh' ? '切换案例会丢失当前未保存的输入，并停止正在进行的请求。继续？' : 'Switching cases clears unsaved input and stops active requests. Continue?')) return false;
       dirty.current = { chat: false, documents: false, intake: false };
@@ -68,7 +68,7 @@ function AccountWorkspace({ lang, view, navigate }) {
       setGuidanceAgency(DEFAULT_GUIDANCE_AGENCY);
       setCaseId(nextId);
     }
-    navigate('chat');
+    navigate(destination);
     return true;
   }, [lang, navigate, workspaceKey]);
   const bindCurrentCase = useCallback(nextId => {
@@ -106,8 +106,16 @@ function AccountWorkspace({ lang, view, navigate }) {
     navigate('documents');
     return true;
   }, [navigate]);
+  const openSourceCase = useCallback(request => {
+    if (!request || request.userId !== userIdRef.current || request.caseId !== caseIdRef.current ||
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u.test(request.targetCaseId) ||
+        !['chat', 'intake', 'documents'].includes(request.view)) return false;
+    // Same-case continuation preserves the mounted editors and material guard.
+    if (request.targetCaseId === caseIdRef.current && request.view === 'documents') return continueDocument(request);
+    return openCase(request.targetCaseId, request.view);
+  }, [openCase, continueDocument]);
   const slots = {
-    chat: [modules.chat?.ChatPage, { caseId, guidanceAgency, onCaseChange: bindCurrentCase, onDirtyChange: markChatDirty, onImportFiles: importFiles, onReviewMessage: reviewConversation, onOpenMaterials: openIntake, onOpenDocuments: continueDocument, active: view === 'chat' }],
+    chat: [modules.chat?.ChatPage, { caseId, guidanceAgency, onCaseChange: bindCurrentCase, onDirtyChange: markChatDirty, onImportFiles: importFiles, onReviewMessage: reviewConversation, onOpenMaterials: openIntake, onOpenDocuments: continueDocument, onOpenSourceCase: openSourceCase, active: view === 'chat' }],
     intake: [modules.intake?.IntakePage, { caseId, onCaseChange: bindCurrentCase, onDirtyChange: markIntakeDirty, importRequest, onImportHandled: imported, textReviewRequest, onTextReviewHandled: reviewedConversation, onOpenDocuments: openDocuments, active: view === 'intake' }],
     customers: [modules.customers?.CustomersPage, { onOpenCase: openCase, active: view === 'customers' }],
     documents: [modules.documents?.DocumentsPage, { caseId, onDirtyChange: markDocumentsDirty, onOpenIntake: openIntake, active: view === 'documents' }],

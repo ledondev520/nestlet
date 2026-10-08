@@ -1,3 +1,4 @@
+import { normalizeConversationProposal } from './conversation-actions.js';
 import { normalizeLibraryActivity, normalizeLibrarySources } from './retrieval.js';
 import { AGENCY_OPTIONS } from '../../../public/agency-guidance.js';
 /** Bounded chat protocol helpers. No provider simulation or browser persistence. */
@@ -35,16 +36,16 @@ export function imageDimensions(bytes, mimeType) {
   if(!width||!height||width>CHAT_BOUNDS.imageSide||height>CHAT_BOUNDS.imageSide)fail('CHAT_IMAGE_INVALID');
   return {width,height};
 }
-export function buildChatTurn({ caseId, conversationId, clientMessageId, text, images = [], lang = 'zh', libraryConsent = false, guidanceAgency = 'unknown' }) {
+export function buildChatTurn({ caseId, conversationId, clientMessageId, text, images = [], lang = 'zh', libraryConsent = false, actionConsent = false, guidanceAgency = 'unknown' }) {
   if (!AGENCY_OPTIONS.some(option => option.id === guidanceAgency)) fail('CHAT_INVALID');
-  if (typeof libraryConsent !== 'boolean' || !uuid(caseId) || !uuid(conversationId) || !uuid(clientMessageId) || !['zh', 'en'].includes(lang) || typeof text !== 'string' || /\u0000/u.test(text)) fail('CHAT_INVALID');
+  if (typeof actionConsent !== 'boolean' || typeof libraryConsent !== 'boolean' || !uuid(caseId) || !uuid(conversationId) || !uuid(clientMessageId) || !['zh', 'en'].includes(lang) || typeof text !== 'string' || /\u0000/u.test(text)) fail('CHAT_INVALID');
   if (text.length > CHAT_BOUNDS.text || !Array.isArray(images) || images.length > CHAT_BOUNDS.images) fail('CHAT_TOO_LARGE');
   if (!text.trim() && !images.length) fail('CHAT_EMPTY');
   const cleanImages = images.map(image => {
     if (!['image/png', 'image/jpeg'].includes(image.mimeType) || typeof image.data !== 'string' || !image.data || image.data.length > Math.ceil(CHAT_BOUNDS.imageBytes / 3) * 4 || !/^[A-Za-z0-9+/]+={0,2}$/u.test(image.data)) fail('CHAT_IMAGE_INVALID');
     return { mimeType: image.mimeType, data: image.data };
   });
-  return { caseId, conversationId, clientMessageId, locale: lang, consent: true, guidanceAgency, ...(libraryConsent ? {libraryConsent:true} : {}),
+  return { caseId, conversationId, clientMessageId, locale: lang, consent: true, guidanceAgency, ...(libraryConsent ? {libraryConsent:true} : {}), ...(actionConsent ? {actionConsent:true} : {}),
     messages: [{ role: 'user', content: text, ...(cleanImages.length ? { images: cleanImages } : {}) }] };
 }
 export function normalizeMessages(messages) {
@@ -71,7 +72,7 @@ export function restoredMessages(stored, localUser, localAssistant) {
 export async function* readChatEvents(body, signal) {
   if (!body?.getReader) fail('CHAT_STREAM_FAILED');
   const reader = body.getReader(), decoder = new TextDecoder('utf-8', {fatal:true});
-  let buffer = '', doneSeen = false, sourcesRequestId = null, outputLength = 0, bytes = 0;
+  let buffer = '', doneSeen = false, sourcesRequestId = null, proposalRequestId = null, proposalCount = 0, outputLength = 0, bytes = 0;
   const abort = () => { reader.cancel().catch(() => {}); };
   signal?.addEventListener('abort', abort, {once:true});
   const check = () => { if (signal?.aborted) throw new DOMException('Request aborted','AbortError'); };
@@ -97,14 +98,20 @@ export async function* readChatEvents(body, signal) {
           yield {type:'activity',...normalizeLibraryActivity(value)};
         } else if (name === 'sources') {
           if (doneSeen || sourcesRequestId) fail('CHAT_STREAM_FAILED');
-          const sources=normalizeLibrarySources(value); sourcesRequestId=sources.requestId;
+          const sources=normalizeLibrarySources(value); if(proposalRequestId && proposalRequestId!==sources.requestId)fail('CHAT_STREAM_FAILED'); sourcesRequestId=sources.requestId;
           outputLength+=sources.appendix.length; if(outputLength>CHAT_BOUNDS.output)fail('CHAT_TOO_LARGE');
           yield {type:'sources',...sources};
+        } else if (name === 'proposal') {
+          if (doneSeen || ++proposalCount > 8) fail('CHAT_STREAM_FAILED');
+          const packet=normalizeConversationProposal(value);
+          if (proposalRequestId && proposalRequestId !== packet.requestId || sourcesRequestId && sourcesRequestId !== packet.requestId) fail('CHAT_STREAM_FAILED');
+          proposalRequestId=packet.requestId;
+          yield {type:'proposal',...packet};
         } else if (name === 'conversation') {
           if (!uuid(value.conversationId) || !uuid(value.userMessageId)) fail('CHAT_STREAM_FAILED');
           yield {...value,type:'conversation'};
         } else if (name === 'done') {
-          if (doneSeen || sourcesRequestId && sourcesRequestId !== value.requestId || !uuid(value.requestId) || !uuid(value.assistantMessageId)) fail('CHAT_STREAM_FAILED');
+          if (doneSeen || proposalRequestId && proposalRequestId !== value.requestId || sourcesRequestId && sourcesRequestId !== value.requestId || !uuid(value.requestId) || !uuid(value.assistantMessageId)) fail('CHAT_STREAM_FAILED');
           doneSeen = true; yield {...value,type:'done'};
         } else if (name === 'error') {
           if (doneSeen || sourcesRequestId && sourcesRequestId !== value.requestId) fail('CHAT_STREAM_FAILED');

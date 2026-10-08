@@ -2,6 +2,20 @@
 
 Checkpoint: 2026-10-07. This is a development checkpoint, not final acceptance. Deployment and real-browser integration remain separate; rerun after the final source freeze.
 
+## Chat source navigation and read-only lookup, 2026-10-07
+
+Branch `fix/chat-source-navigation`, based on `0ad9184`. Explicit lookup uses existing authenticated GET endpoints to find saved customers and case titles without an AI call, conversation write, or case creation. Search results and structured live retrieval sources offer explicit case selection, fresh version/ownership/association checks, private original links, and text-only historical artifact inspection. App owns case changes and guards unsaved chat/material/document edits. No IDs or URLs are parsed from assistant prose; saved reply citations remain text-only.
+
+- `npm run check`: passed
+- `npm test`: **325/325 passed**, zero failed/skipped
+- `npm run test:frontend`: **284/284 passed**, zero failed/skipped
+- `npm run build`: passed; existing bundle-size advisory remains
+- Six real HTTP/SQLite + React-DOM tests cover duplicate-title customer choices, malformed IDs, stale versions/associations, cross-user 404 and controlled 403, exact original bytes, escaped historical artifact content/stale labels, repeated clicks, cancellation, hidden/account/case changes, dirty-editor decline/approval, read-only search/empty results, and actual empty-App lookup with live AI disabled. The App retrieval test uses controlled SSE envelopes; it is not provider acceptance.
+- Added a Playwright scenario for actual UI lookup, exact selection and dirty guards. The targeted browser command attempted this and the existing chat workflow scenario, but Chromium failed **before either test body** with `socket() failed: Operation not permitted`. Approved escalation produced the same launch failure. Browser interactions/screenshots remain **not run**; the command failed at environment launch, not a proven product assertion failure.
+- Dependencies already present in this task were reused; `npm ls --depth=0` verified installed package versions. No install, live provider, deployed service, auth/schema/security or document-export changes were made.
+
+Remaining boundaries: ordinary AI first-send still uses the existing durable case/conversation creation flow. Users needing lookup only use the explicit read-only lookup. Full natural-language action planning, combined-branch browser acceptance, remote CI, production acceptance and deployment are not established by this checkpoint. Rollback: revert the source-navigation commit; no data migration is required.
+
 ## Official-reference React migration regression, 2026-10-07
 
 Based on exact main `73255d90826e4934b1f0f489d3ed836e076096ed`, the existing official-source registry was previously reachable only in the legacy UI. The promoted React root now exposes a compact bilingual reference disclosure in chat/materials/documents, separate from case facts. Chat sends an allowlisted reference ID; the server supplies bounded registry observations and explicit case-applicability/version uncertainty to both ordinary and library-assisted requests. No new source assertions, official-form mapping, model, network tool, schema or authorization behavior is added. The registry's recorded check dates are reused, not a claim of fresh source verification in this change.
@@ -368,3 +382,44 @@ For head `f93099504908c4245bfc9b15e3adca8d73248762`, official [Node checks 37658
 A separate unpublished branch based on `1bad360` fixes the stale chat toolbar title after a same-case rename. The existing account/case-scoped progress read now supplies only its validated saved title to Chat; it does not reload conversation history, replace the selected conversation, or clear unsaved inputs. No request/storage/schema contract changed.
 
 The new focused actual HTTP/SQLite/React DOM test reproduced the stale title on the base, then passed after the patch. It renames and saves through Materials, returns to Chat without reloading, verifies the title and selected conversation, and preserves both an unsent chat question and a later unsaved material draft. Syntax, Vite build, **278/278 frontend** and **325/325 backend** checks passed. No local Chromium, provider call, publication or deployment was performed. PR26’s branch remains at `1bad360`; its earlier official CI result does not certify this unpublished follow-up.
+
+### Desktop document export follow-up, 2026-10-07
+
+A bounded test-only follow-up on `0ad9184` adds repeated export and unsaved-edit gating assertions to the existing real HTTP/SQLite/React DOM document integration. Copy, TXT payload and print-page text remain byte-for-byte equal to the saved preview on two successive actions, without extra artifact versions. Unsaved edits disable download, print and final generation; existing stale-final 409 and preserved-editor assertions still pass. Clipboard, download initiation and popup printing in this integration are captured side effects, not real OS/browser acceptance.
+
+Added `test/frontend-browser/document-exports.spec.js` for the supported desktop Chromium gate. It uses the actual synthetic-account UI/HTTP/SQLite fixture and covers unreviewed-final rejection, the chat-to-document bridge, confirmed generation, repeated clipboard/TXT exports, draft saving, literal HTML-looking print text, print-media/PDF rendering, version-switch cancel/accept, and stale-final rejection. Syntax and Playwright discovery passed. **The new browser scenario was NOT RUN locally**: the coordinator reported a denied Chromium IPC launch in this environment; this lane did not retry or bypass that restriction. Native print-dialog/paper/PDF completion remains unverified, and even the prepared headless PDF assertion would only certify rendering, not an OS save dialog.
+
+Checks passed: `npm run check`, `npm run build`, focused documents **22/22**, expanded HTTP/DOM integration **1/1**, aggregate frontend **278/278**, backend **325/325**, and `git diff --check`. The build retains its existing large-chunk warning; the development DOM harness emits React act warnings. An interrupted fresh `npm ci` and offline cache miss prevented a clean reinstall; the dependency tree was copied from the coordinator's validated independent checkout only after an exact lockfile comparison. No dependencies or product code changed. No model/provider call, genuine email delivery, production-data access, merge or deployment occurred. Publication and official exact-SHA browser acceptance remain outstanding.
+## October 7, 2026 — conversation-action backend candidate
+
+Isolated candidate based on `0ad91847`; no merge, deployment, credentials or live-provider calls. Adds read-only source-bound prepare tools and explicit unconfirmed application using the existing owner-scoped case APIs; no schema/auth policy changes. See [conversation action contract](conversation-actions.md).
+
+- `npm ci --ignore-scripts --cache /tmp/nestlet-actions-npm-cache`: passed after the default npm cache path was unavailable.
+- `npm run check` and `npm run build`: passed. Build retains the existing large-chunk warning.
+- New action tests plus existing library-tool/protocol tests: 39 passed, 0 skipped. Real disposable HTTP/SQLite and concurrent independent processes are distinguished from authored provider-protocol fixtures.
+- Existing frontend unit/DOM suite: 278 passed, 0 skipped; this does not establish new proposal UI or real-browser acceptance.
+- Full aggregate initially failed two static-serving checks before a production frontend build existed. After build, only the new-error bilingual audit failed; the separate frontend owner is adding its explicit mappings. This candidate alone is not a full aggregate pass until that integration is checked.
+- Actual Docker runtime, new frontend browser flow and live-provider tool execution: not run. Docker is not available in this executor. Packaging allowlist/COPY declarations include the new runtime module.
+
+## Integrated desktop conversational proposals, 2026-10-07 23:49 UTC
+
+Isolated local candidate combines the reviewed source navigation, test-only desktop document export coverage, provenance-bound backend proposals, and new desktop chat review UI. No schema or authentication policy change, visual redesign, publication, merge or deployment was performed.
+
+- Syntax checks and production build passed. The existing bundle-size advisory remains.
+- Combined backend suite: **342/342** passed; frontend suite: **292/292** passed; disclosed simulated email-contract suite: **53/53** passed. New action-focused frontend tests: **8/8** passed, including actual loopback HTTP, SQLite, React StrictMode DOM and a disclosed controlled chat SSE fixture. This is not a live provider response or Chromium acceptance.
+- Covered per-send consent reset, cancel with zero writes, proposal blocking until successful terminal stream, exact case/conversation/request binding, double-apply prevention, persisted unreviewed provenance, reviewed and unconfirmed conflict blocking, draft-only saving, stale-version rejection, lost-write uncertainty without replay, stale account completion suppression and preservation of unsent input.
+- Independent code review found and verified fixes for React StrictMode effect replay, already-unconfirmed conflicts and terminal conversation binding; its combined backend/frontend/localization focused suite passed **30/30**.
+- Source-navigation and document-export test commits are included; the new browser scenarios remain **NOT RUN** here. The previously reported Chromium IPC launch denial was respected without retry or alternate browser route. Exact-commit official CI, Chromium rendering, real provider tool execution, live-account journeys and production rollout remain separate gates.
+- Existing pinned dependencies were reused from the backend candidate with an identical lockfile. No dependency package or lockfile change was introduced by the UI work.
+
+### PR28 frontend container-input repair, 2026-10-07 23:58 UTC
+
+The first exact-head container CI exposed a packaging omission: the new browser-side proposal validator imports root `document-context.js`, but the Docker frontend build stage had not copied that file. Its sole transitive dependency, `public/core.js`, was already included. The minimal repair adds `COPY document-context.js ./` to that stage; the Docker context allowlist and runtime stage already include it.
+
+A new regression constructs an isolated source tree using the frontend stage's actual COPY declarations and runs Vite against that restricted tree with the same pinned installed dependencies. It reproduced the missing-module failure before the fix and passed afterward. This checks build inputs without claiming an actual Docker image/container run. The nine packaging/action-focused checks, syntax checks, full-worktree production build, **293/293 frontend** checks and diff checks passed with zero skipped tests. New exact-head official container/browser results are still required; no merge or deployment was performed.
+
+### Official proposal-browser gate prepared, 2026-10-08 00:02 UTC
+
+Added `test/frontend-browser/conversation-actions.spec.js` to close the proposal UI's Chromium coverage gap. It uses a disposable real server, authentication, case creation, prepare/apply endpoints and SQLite. **Provider behavior is mocked explicitly:** a browser-only controlled ReadableStream supplies authored SSE packets, the chat-enabled status is a UI fixture, and source messages are authored directly into the disposable fixture database. No live key or real provider request is used; this scenario cannot establish provider/tool-selection quality.
+
+The scenario checks preview-disabled-before-completion, reset one-message consent, complete-stream gating, cancel with zero apply writes, explicit unreviewed application, retained unsent input, and a real saved unresolved conflict that blocks application. It captures desktop screenshots and checks visible control overflow and the normal CSP/error monitor. Syntax and official Playwright discovery pass (**23 scenarios in 12 files**). Local Chromium execution was not attempted because the previously reported IPC restriction remains in force. Execution evidence must come from the new exact-head official CI result; previous 22-scenario runs do not cover this addition.
