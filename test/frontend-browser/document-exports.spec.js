@@ -26,7 +26,9 @@ for (const delayedReadiness of [false, true]) test(`desktop document review gate
     if (delayedReadiness) await expect(documents.locator('#document-answer-property')).toHaveCount(0);
   } finally {
     releaseReadiness();
-    if (delayedReadiness) await page.unroute(readinessPattern, holdReadiness);
+    // This page installs only the readiness handler. Drain its callbacks before
+    // disabling interception so pending routes are not continued twice.
+    if (delayedReadiness) await page.unrouteAll({behavior:'wait'});
   }
   // Artifact loading can finish before readiness. Never treat an input not yet
   // rendered as an already-reviewed fact and silently skip it in the fill loop.
