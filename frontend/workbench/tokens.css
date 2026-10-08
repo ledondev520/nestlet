@@ -9,10 +9,11 @@
    overrides re-skin every component that consumes the shared CSS variables. */
 
 .wb {
-  /* Primitives: warm-forest palette */
-  --paper: #f6f4ee;        /* warm neutral canvas */
-  --paper-deep: #edeae0;   /* recessed fills, tracks */
-  --sheet: #fdfcf8;        /* raised working surface */
+  /* Primitives: warm-forest palette — center reads warm neutral WHITE,
+     not yellow-paper (root review of head 0df5005). */
+  --paper: #faf9f6;        /* warm neutral canvas, minimal yellow cast */
+  --paper-deep: #f0eee8;   /* recessed fills, tracks */
+  --sheet: #fefdfb;        /* raised working surface */
   --ink: #232b24;          /* warm graphite text */
   --ink-soft: #4c544a;     /* secondary text */
   --faint: #8b8f82;        /* decorative markers only — never for information */

@@ -189,7 +189,10 @@
   .wb-case-header { padding-inline: 12px; }
 }
 @media (prefers-reduced-motion: no-preference) {
-  .wb-rail, .wb-context { transition: transform 220ms cubic-bezier(.22, .8, .32, 1), visibility 220ms; }
+  /* visibility must flip instantly on open (focus moves into the drawer
+     immediately) and only after slide-out on close. */
+  .wb-rail, .wb-context { transition: transform 220ms cubic-bezier(.22, .8, .32, 1), visibility 0s linear 220ms; }
+  .wb-rail[data-open="true"], .wb-context[data-open="true"] { transition: transform 220ms cubic-bezier(.22, .8, .32, 1); }
   .wb-scrim { transition: opacity 220ms cubic-bezier(.22, .8, .32, 1); }
   .wb-icon-button, .wb-rail-item { transition: background-color 180ms cubic-bezier(.22, .8, .32, 1); }
 }
@@ -228,3 +231,38 @@
   .wb-brand { font-size: 14px; }
   .wb-topbar { padding-inline: 10px; gap: 6px; }
 }
+
+/* --- Visual iteration round 2 (root review of 0df5005) --- */
+
+/* Stronger forest hierarchy: selected view tab is solid forest. */
+.wb-tab[aria-current="true"] { background: var(--forest); color: #fbfaf6; }
+@media (hover: hover) and (pointer: fine) {
+  .wb-tab[aria-current="true"]:hover { background: var(--forest-deep); color: #fbfaf6; }
+}
+
+/* One compact case/context toolbar: the chat surface's own title duplicates
+   the workbench header — keep its controls, drop the repeated heading. */
+.wb .chat-toolbar [data-slot="card-title"] { display: none; }
+.wb .chat-toolbar { padding-block: 6px; gap: 8px; }
+
+/* Compact consent: the two per-message permission boxes stay fully visible
+   (explicit opt-in, unchecked defaults, consequences intact) but no longer
+   dominate the composer. Side-by-side on wide centers, stacked on mobile. */
+.wb .chat-composer > div:has([data-slot="checkbox"]) {
+  padding: 8px 10px;
+  border-color: var(--hairline);
+  background: var(--paper);
+}
+.wb .chat-composer > div:has([data-slot="checkbox"]) p { margin: 0; }
+@media (min-width: 700px) {
+  .wb .chat-composer { display: grid; grid-template-columns: 1fr 1fr; column-gap: 10px; }
+  .wb .chat-composer > :not(div:has([data-slot="checkbox"])) { grid-column: 1 / -1; }
+}
+
+/* Mobile proportion rebalance: the empty state yields space to the composer. */
+.wb .chat-messages { min-height: 24dvh; }
+.wb .chat-empty { min-height: 22dvh; }
+.wb .chat-empty h1 { font-size: 20px; }
+
+/* User bubbles take the restrained apricot of the approved reference. */
+.wb .chat-message--user { background: var(--apricot-tint); }

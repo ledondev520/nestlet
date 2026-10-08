@@ -1,54 +1,56 @@
-# Workbench evidence — design/inbox-warm-forest Phase 1
+# Workbench evidence — design/inbox-warm-forest
 
-Source: branch `design/inbox-warm-forest`, base `main` @ `05923a88156d8d2d1c497d22c3ef56414452d063`.
-Rendered via the preview-only vite config (`vite.workbench.config.mjs`, dev server) against a real local backend (main @ 05923a8) with synthetic fixtures only. This is a source-build design preview — not a production deployment, not functional acceptance.
+Round 2 head: after first-review iteration (data-integrity, drawer dialog semantics, visual hierarchy). Base `main` @ `05923a88156d8d2d1c497d22c3ef56414452d063`.
+Rendered via the preview-only vite config against a real local backend with deterministic synthetic fixtures (direct SQLite seeding, same method as the repo's browser specs; no provider calls). Source-build design preview — not a production deployment, not functional acceptance.
 
-## Screenshot index
+## Synthetic fixtures used
+
+- One synthetic case ("Synthetic review case", id `09928ba2-…`), five reviewed facts.
+- One seeded conversation (6 messages, zh+en mixed, clearly synthetic content) inserted directly into the disposable local database — no live model involved.
+- One draft artifact ("Conversation draft · ed73a5d1", v1) saved through the real "save answer as unreviewed draft" message action.
+
+## Screenshot index (round 2)
 
 | File | Surface / state |
 | --- | --- |
-| w11-d-chat-case-zh | Chat, case selected (desktop zh) |
-| w12/w13/w14/w15-d-*-zh | Materials / Documents / Customers / Settings (desktop zh) |
-| w16-d-chat-context-collapsed-zh | Right context panel collapsed |
-| w17-d-chat-context-open-officialref-zh | Context open, official references expanded |
-| w18/w19/w20/w21-d-*-en | Chat / Materials / Documents / Settings (desktop en) |
-| w23-m-chat-case-zh · w27-m-chat-case-en | Chat, case selected (390px, zh + en) |
-| w24-m-rail-drawer-open-zh | Rail drawer open (390px) |
-| w25-m-context-drawer-open-zh | Context drawer open (390px) |
-| w28-s-chat-case-zh | Chat, case selected (320px) |
-| w29-s-rail-drawer-open-zh | Rail drawer open (320px) |
-| w31-640-reflow-zh | 640px CSS width = real 200% browser zoom at 1280: single-column reflow |
-| w22-d-chat-zoom200 | body-zoom-2 artifact capture (kept for the record; see findings) |
+| w40-d-chat-populated-zh | Populated conversation, compact side-by-side consent (desktop zh) |
+| w41-d-chat-scrolled-bottom-zh | Scrolled to absolute bottom: last message clears composer by 80px |
+| w42-d-chat-midscroll-zh | Mid-thread: composer docked (expected sticky behavior) |
+| w43-d-chat-artifact-context-zh | Context panel showing readiness + saved draft artifact |
+| w44-d-chat-populated-en | Populated conversation (desktop en) |
+| w45-d-documents-with-draft-zh | Documents with the saved draft version (desktop zh) |
+| w46-m-chat-populated-zh / w47-m-chat-bottom-zh | Populated chat top / bottom (390px zh) |
+| w48-m-rail-drawer-zh / w49-m-context-drawer-zh | Modal drawers with dialog semantics (390px zh) |
+| w50-s-chat-en | Chat (320px en) |
+| w51-s-rail-drawer-en | Rail drawer (320px en) |
+| w31-640-reflow-zh | 640px CSS width (= 200% browser zoom at 1280): single-column reflow |
 
-## Interaction checklist results (good-css vetted checklist)
+Round-1 shots w10–w30 remain in git history for reference.
+
+## Interaction checklist (round 2, re-verified on the current head)
 
 | Check | Result | Evidence |
 | --- | --- | --- |
-| Keyboard focus visible (2px forest outline, `:focus-visible`) | **Passed** — tabs, rail items, drawer toggles | w24, measured `outline: 2px solid rgb(31,74,51)` |
-| 44px hit areas (icon buttons, tabs, rail rows) | **Passed** — all ≥ 44×44px | measured offsets |
-| Drawer Escape close + focus return to trigger | **Passed** — both drawers, 390px | activeElement aria-label verified |
-| Horizontal overflow 320/390px, all views, zh+en | **Passed** — `scrollWidth == clientWidth` everywhere | measured |
-| Composer/action reachability (scroll-padding) | **Passed** — `.wb-center` has `scroll-padding-block-end: 140px`; composer in-flow after messages; last interactive content clears the stuck composer | measured rects |
-| 200% text enlargement | **Passed** via real-viewport equivalent (640px CSS width reflows to single column + drawers) | w31 |
-| Reduced motion | **Passed (static)** — all transitions gated behind `prefers-reduced-motion: no-preference`; no animation carries information | `workbench.css` |
-| Long bilingual content | **Passed** — rail items ellipsize; long SFHA source titles wrap inside the context panel | w17, w25 |
-| Console errors during evidence pass | **Passed** — zero errors across all views/viewports | browse console |
-| Live model streaming / proposal-card rendering | **Not run** — DeepSeek not configured in the review environment (honest disabled state visible in shots) | w11 |
-| Real device / screen reader | **Not run** — no authorized devices | — |
+| Drawer dialog semantics | **Passed** — `role="dialog"` + `aria-modal`, background inert while open | w48/w49 + attribute inspection |
+| Drawer initial focus / Tab containment / Escape / focus return | **Passed** — initial focus lands on first rail item; Tab cycles inside; Escape and scrim close with focus back on the owning toggle; rail selection closes the drawer and moves focus to the center | measured `document.activeElement` per step |
+| Hidden drawers non-focusable | **Passed** — `inert` + `visibility:hidden` when closed | attribute inspection |
+| Mobile initial load does not auto-open the desktop-expanded panel | **Passed** — `data-open="false"` at 390px on load | measured |
+| Composer reachability with populated thread | **Passed** — at absolute scroll bottom, last message bottom → composer top gap = 80px; `scroll-padding-block-end: 140px` keeps focused targets clear | measured rects (w41) |
+| 44px hit areas | **Passed** — icon buttons 44×44, tabs 50×44, rail rows 239×44 | measured |
+| Horizontal overflow 320/390, zh+en | **Passed** — `scrollWidth == clientWidth` on all views | measured |
+| 200% zoom | **Passed with method note** — CSS `zoom` probes do not reflow media queries; real browser zoom was verified by its CSS-pixel equivalent (640px width → single column + drawers, w31). Claim scoped accordingly. | w31 |
+| Reduced motion | **Passed (static)** — all motion gated behind `prefers-reduced-motion: no-preference`; visibility flips instantly on drawer open so focus never lands in a hidden element | workbench.css |
+| Live model streaming / proposal cards | **Not run** — no provider key in this environment; consent affordances render unchecked and explicit | w40 |
+| Real device / screen reader | **Not run** | — |
 
-## Findings and resolutions in this pass
+## Round-2 changes prompted by the first review
 
-1. **200% zoom center crush (initially reported):** caused by the `body.style.zoom=2` probe method, which doubles content without changing CSS viewport width. Real browser zoom changes CSS pixels; verified at the equivalent 640px CSS width that the single-column + drawer layout engages (w31). No defect after method correction; capture kept as w22 for transparency.
-2. **320px brand wrap ("秘" dropping to a second line): fixed** — `.wb-brand` now `white-space: nowrap` with compact padding ≤640px; re-verified no overflow.
-3. **Mixed-language readiness labels in en UI: fixed** — context panel now passes `?locale=` to the readiness endpoint.
-4. Known, accepted for Phase 1: the view tab strip scrolls horizontally at 390/320px (no document overflow); drawer open state persists across viewport resizes (no functional impact).
+1. Data integrity (`context-panel.jsx`, `case-rail.jsx`): state keyed to the exact (userId, caseId, lang, refreshTick) request; switching identity clears immediately; late responses discarded; explicit loading/error states; manual refresh control.
+2. Drawer accessibility (`shell.jsx`): full modal semantics as listed above; mobile drawer state separated from desktop panel state.
+3. Visual iteration: canvas moved to warm neutral white (`#faf9f6`, yellow cast removed); selected view tab is solid forest; duplicated chat-surface heading removed; consent boxes compacted (side-by-side on wide centers) with all consent text, unchecked defaults and consequences intact; mobile empty-state height reduced.
 
-## Feature preservation note
+## Known Phase-1 limitations (for Phase-2 coordination)
 
-All center surfaces are the real production feature components imported unchanged
-(`ChatPage`, `IntakeWorkspace`, `CustomerWorkspace`, `DocumentsPage`, `SettingsPage`,
-`AuthPanel`, `AgencyGuidance`). The workbench composition omits ChatPage's optional
-`onOpenMaterials`/`onOpenDocuments`/`onOpenSourceCase`/`onImportFiles` callbacks so the
-permanent workflow card and search form no longer stack above the conversation; the same
-destinations remain reachable through the view tabs and the context panel, and ChatPage's
-built-in fallbacks (notice instead of import handoff) apply. No functional file is edited.
+- The workbench composition is a preview: production adoption must wrap the existing `AccountWorkspace` (root-owned) so dirty-input guards, workspace epochs, draft vault and handoff callbacks are preserved. ChatPage's optional workflow/lookup/import callbacks are unwired here by design; its notice fallbacks apply.
+- The view tab strip scrolls horizontally at ≤390px; acceptable for Phase 1.
+- Context panel refreshes on case/language change or manual refresh; event-driven refresh after saves elsewhere is Phase-2 functional wiring (root coordination).
