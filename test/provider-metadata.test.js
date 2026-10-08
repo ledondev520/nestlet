@@ -25,3 +25,12 @@ test('titles use only bounded user topic and reject malformed output without fab
   }});assert.equal(title,'准备租约材料');
   for(const bad of ['x'.repeat(81),'two\nlines','<script>','# heading'])assert.equal(await generateConversationTitle({userText:'topic',transport:async()=>result(bad)}),null);
 });
+
+test('legacy fixture classifies only the bounded post-persistence title and rejects extra provider work',async()=>{
+  const {assertLegacyTitleRequest,LEGACY_REVIEW_REQUEST}=await import('./helpers/legacy-review-browser-fixture.mjs');
+  const body={model:'deepseek-flash',stream:false,temperature:0,max_tokens:80,thinking:{type:'disabled'},messages:[{role:'system',content:'Generate a short descriptive conversation title in English.'},{role:'user',content:LEGACY_REVIEW_REQUEST}]};
+  const context={primaryCount:1,titleCount:0,completedAssistant:true,mode:'prepared'};
+  assert.doesNotThrow(()=>assertLegacyTitleRequest(body,context));
+  for(const change of [{primaryCount:0},{primaryCount:2},{titleCount:1},{completedAssistant:false},{mode:'save-failure'}])assert.throws(()=>assertLegacyTitleRequest(body,{...context,...change}));
+  for(const change of [{stream:true},{max_tokens:81},{model:'other'},{tools:[]},{messages:[body.messages[0],{role:'user',content:'Unexpected case or library data'}]}])assert.throws(()=>assertLegacyTitleRequest({...body,...change},context));
+});

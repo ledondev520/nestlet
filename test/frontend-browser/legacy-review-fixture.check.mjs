@@ -58,6 +58,9 @@ for (const mode of ['prepared', 'no-preview', 'save-failure']) {
     const history = await fetch(app.origin + `/api/conversations/${app.conversation.id}`, { headers });
     assert.equal(history.status, 200);
     assert.deepEqual((await history.json()).messages, app.messages());
+    if (mode !== 'save-failure') await app.waitForTitle();
+    assert.equal(app.primaryRequests.length, 1);
+    assert.equal(app.titleRequests.length, mode === 'save-failure' ? 0 : 1);
     app.assertUnchanged();
     app.assertHealthy();
     console.log(`PASS: pinned legacy fixture ${mode}; real current HTTP/SQLite, authored provider transport only`);
