@@ -2,6 +2,20 @@
 
 Checkpoint: 2026-10-07. This is a development checkpoint, not final acceptance. Deployment and real-browser integration remain separate; rerun after the final source freeze.
 
+## Conversational review guidance, 2026-10-08
+
+Branch `fix/chat-review-guidance`, based on `bbd240c`. A live synthetic conversation on that base described the materials editor as the conflict-resolution path despite the existing in-chat human review controls. It reused historical messages; historical influence is plausible, not proven. Inspection found that the action-enabled prompt did not describe the current in-chat review path.
+
+This bounded change updates instructions only: prefer the supported in-chat review after a successful preparation and complete saved answer; preserve fresh targeted human confirmation, conflict evidence review, single-detail correction limits, optional manual editing, and truthful save/card claims. General guidance also excludes unsolicited document drafts, invented sender representation/authority, and internal API/field jargon. No schema, endpoint, tool capability, UI write path, or provenance changes.
+
+- `npm ci`, `npm run check`, `npm run build`, and `git diff --check`: passed. Build retains its existing chunk-size warning.
+- Focused conversation-action tests: **17/17 passed**. The new synthetic provider-protocol test checks outbound instructions, unchanged historical messages, no invented proposal event, and no case mutation. It does not prove model obedience.
+- `npm test`: **397/397 passed** after building assets. The initial fresh-clone run was **396/397** because the production entry-point test correctly returned 503 before a frontend build.
+- `npm run test:frontend`: **319/319 passed**, including real local HTTP/SQLite and React DOM fixtures.
+- Independent correctness/maintainability review found no blocking issues; its separate action/review/HTTP/React DOM run passed **31/31**.
+- Focused Chromium action/review browser tests were attempted but **both blocked before test execution** by this container’s Chromium launch restrictions (read-only crash-report directory and process-singleton socket permission). No browser pass is claimed for this change.
+- No real provider request or deployment was performed. A later authorized live turn must establish whether actual model wording improves, including when old replies remain in history. Rollback is a revert of this prompt/test/documentation commit; no data rollback is needed.
+
 ## Chat source navigation and read-only lookup, 2026-10-07
 
 Branch `fix/chat-source-navigation`, based on `0ad9184`. Explicit lookup uses existing authenticated GET endpoints to find saved customers and case titles without an AI call, conversation write, or case creation. Search results and structured live retrieval sources offer explicit case selection, fresh version/ownership/association checks, private original links, and text-only historical artifact inspection. App owns case changes and guards unsaved chat/material/document edits. No IDs or URLs are parsed from assistant prose; saved reply citations remain text-only.
