@@ -1,3 +1,4 @@
+import { serviceAvailabilityError } from './service-availability.js';
 import { ConversationOpening } from './opening.jsx';
 import { createPortal } from 'react-dom';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
@@ -342,6 +343,8 @@ export function ChatPage({ lang='zh', caseId=null, initialConversationId=null, c
     event?.preventDefault();
     if(unavailableExactRef.current||recoveryUnavailable||phaseRef.current!=='idle'||bridgeOperation.current||sourceOperation.current||retentionRef.current||imagePending||permissionGate.current||permissionPending.current&&!permissionSnapshot)return;
     if(!statusRef.current.authenticated){setError(new ChatClientError('AUTH_REQUIRED'));return;}
+    const serviceFailure=serviceAvailabilityError(statusRef.current);
+    if(serviceFailure){setError(new ChatClientError(serviceFailure));return;}
     const targeted=factReplyTarget.current;
     if(targeted&&targeted.scope===`${statusRef.current.userId}:${caseRef.current}:${conversationRef.current}`){
       // Only direct, attachment-free human text is routed to the visible question.
@@ -457,11 +460,11 @@ export function ChatPage({ lang='zh', caseId=null, initialConversationId=null, c
       }
     }
   }
-  async function checkConnection(){
+  async function checkConnection({serviceOnly=false}={}){
     if(busy)return;
     const scope=scoped(),active=managedController();controller.current=active;updatePhase('checking');setError(null);
-    try{await refresh({signal:timeoutSignal(active.signal)});requireCurrent(scope);setNotice('connectionRefreshed');}
-    catch(failure){if(current(scope)&&failure.name!=='AbortError')setError(new ChatClientError('SESSION_REFRESH_FAILED'));}
+    try{await refresh({signal:timeoutSignal(active.signal)});requireCurrent(scope);setNotice(serviceOnly?'serviceRefreshed':'connectionRefreshed');}
+    catch(failure){if(current(scope)&&failure.name!=='AbortError')setError(new ChatClientError(serviceOnly?'SERVICE_REFRESH_FAILED':'SESSION_REFRESH_FAILED'));}
     finally{controllers.current.delete(active);if(current(scope)){controller.current=null;updatePhase('idle');}}
   }
   function retry(){const last=[...messageRef.current].reverse().find(message=>message.role==='user');if(!last)return;setInput(last.content);inputRef.current=last.content;setNotice(last.imageMetadata?.length?'oldImage':'retryNote');setError(null);composer.current?.focus();}
@@ -469,6 +472,7 @@ export function ChatPage({ lang='zh', caseId=null, initialConversationId=null, c
   const stop=()=>{stopRequested.current=true;controller.current?.abort();};
 
   if(!status.authenticated)return <Card className="paper-card"><CardContent><p>{words.signIn}</p></CardContent></Card>;
+  const serviceFailure=serviceAvailabilityError(status);
   const indexedConversations=conversationIndex?.data||conversations;
   const currentOption=conversationId&&!indexedConversations.some(item=>item.id===conversationId)?conversations.find(item=>item.id===conversationId&&item.caseId===caseRef.current)||{id:conversationId,caseId:caseRef.current,title:recoveryUnavailable?words.recoveredConversation:words.title}:null;
   const listedConversations=currentOption?[currentOption,...indexedConversations]:indexedConversations;
@@ -513,11 +517,12 @@ export function ChatPage({ lang='zh', caseId=null, initialConversationId=null, c
         {librarySources&&<ChatSourceNavigation api={api} sources={librarySources} userId={status.userId} caseId={caseRef.current} lang={lang} active={active}
           disabled={phase !== 'idle' || bridgeBusy || retentionBusy || imagePending > 0} onOpenSourceCase={onOpenSourceCase} claimOperation={claimSourceOperation} releaseOperation={releaseSourceOperation} />}
         {!librarySources && messages.some(message => message.role === 'assistant') && <p className="text-xs text-muted-foreground">{(sourceNavigationCopy[lang] || sourceNavigationCopy.zh).history}</p>}
-        {error&&<Alert variant="destructive"><AlertDescription>{chatErrorText(error,lang)}</AlertDescription></Alert>}
+        {error&&error.code!==serviceFailure&&<Alert variant="destructive"><AlertDescription>{chatErrorText(error,lang)}</AlertDescription></Alert>}
         {unavailableExactConversation&&phase==='idle'&&<p role="status" className="text-sm text-muted-foreground">{lang==='en'?'This conversation could not be loaded. Reload it or start a new conversation to continue.':'这段对话暂时无法读取。请重新读取，或开始新对话。'}</p>}
         {recoveryUnavailable&&<Alert><AlertDescription>{words.recoveryUnavailable}</AlertDescription><Button variant="outline" type="button" disabled={busy} onClick={reloadConversation}>{words.retryOpening}</Button></Alert>}
         {error?.code==='CHAT_SAVE_FAILED'&&<Button variant="outline" type="button" disabled={busy} onClick={reloadConversation}>{words.checkSavedReply}</Button>}
-        {(status.liveEnabled!==true||['CSRF_REJECTED','SESSION_REFRESH_FAILED'].includes(error?.code))&&<Button variant="outline" type="button" disabled={busy} onClick={checkConnection}>{words.checkConnection}</Button>}
+        {serviceFailure&&<Alert><AlertDescription>{chatErrorText({code:serviceFailure},lang)}</AlertDescription><Button type="button" variant="outline" disabled={busy} onClick={()=>checkConnection({serviceOnly:true})}>{words.refreshService}</Button></Alert>}
+        {!serviceFailure&&(status.liveEnabled!==true||['CSRF_REJECTED','SESSION_REFRESH_FAILED'].includes(error?.code))&&<Button variant="outline" type="button" disabled={busy} onClick={checkConnection}>{words.checkConnection}</Button>}
         {cacheStatus==='unavailable'&&<p role="status" className="text-sm text-destructive">{words.cacheUnavailable}</p>}
         {notice&&<p role="status" className="paper-note rounded px-3 py-2 text-sm">{words[notice]}</p>}
         {(error||notice==='stopped')&&messages.some(message=>message.role==='user')&&<Button variant="outline" type="button" disabled={busy} onClick={retry}>{words.retry}</Button>}
@@ -536,11 +541,11 @@ export function ChatPage({ lang='zh', caseId=null, initialConversationId=null, c
           <div className="chat-composer-actions">
             <Button type="button" variant="ghost" size="sm" disabled={busy||imagePending>0} onClick={()=>fileInput.current?.click()} title={words.attach}><Paperclip aria-hidden="true" />{words.attach}</Button>
             <div className="flex items-center gap-2"><span className="chat-keyboard-hint">{words.keyboardHint}</span>
-            {phase!=='idle'&&phase!=='loading'?<Button type="button" aria-label={words.stop} onClick={stop}><Square aria-hidden="true" />{words.stop}</Button>:<Button type="submit" aria-label={words.send} disabled={busy||unavailableExactConversation||recoveryUnavailable||imagePending>0||!status.liveEnabled||(!input.trim()&&!images.length)}><ArrowUp aria-hidden="true" />{words.send}</Button>}</div>
+            {phase!=='idle'&&phase!=='loading'?<Button type="button" aria-label={words.stop} onClick={stop}><Square aria-hidden="true" />{words.stop}</Button>:<Button type="submit" aria-label={words.send} disabled={busy||Boolean(serviceFailure)||unavailableExactConversation||recoveryUnavailable||imagePending>0||!status.liveEnabled||(!input.trim()&&!images.length)}><ArrowUp aria-hidden="true" />{words.send}</Button>}</div>
             <input id={fileId} ref={fileInput} className="sr-only" type="file" accept="image/png,image/jpeg,.pdf,.txt,.csv,.xlsx,.xls" multiple onChange={event=>{receiveFiles(event.target.files);event.target.value='';}}/>
           </div>
           {['saving','streaming','refreshing','checking'].includes(phase)&&<p role="status" className="text-xs text-muted-foreground">{phase==='saving'?words.saving:phase==='streaming'?words.sending:phase==='checking'?words.checkingConnection:words.loading}</p>}
-          {!status.liveEnabled&&<p className="text-sm text-destructive">{words.unavailable}</p>}
+          {!status.liveEnabled&&!serviceFailure&&<p className="text-sm text-destructive">{words.unavailable}</p>}
         </form>
       </CardContent>
     </Card>

@@ -580,3 +580,15 @@ test('development React: only assistant Markdown is formatted and Copy preserves
   await app.click([...assistant.querySelectorAll('button')].find(button=>button.textContent==='Copy reply'));
   assert.equal(copied,source);
 });
+
+for(const state of ['paused','expired','quota'])test(`known ${state} service preserves text and blocks all new AI scope writes until read-only refresh`,async context=>{
+ const blocked={...identity,service:{userId:identity.userId,status:state==='quota'?'available':state,aiAllowed:state==='quota',remaining:state==='quota'?0:10}};let checks=0;
+ const available={...identity,service:{userId:identity.userId,status:'available',aiAllowed:true,remaining:5}};
+ const app=await mount({status:blocked,statusHandler:()=>response(++checks===1?blocked:available),fetchHandler:async()=>response({},500)});context.after(app.close);
+ await app.type('Keep this draft while service is unavailable');assert.equal(app.button('Send').disabled,true);
+ await import('react').then(React=>React.act(async()=>{app.dom.window.document.querySelector('form.chat-composer').dispatchEvent(new app.dom.window.Event('submit',{bubbles:true,cancelable:true}));app.dom.window.document.querySelector('textarea').dispatchEvent(new app.dom.window.KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true}));}));await app.flush();
+ assert.equal(app.requests.some(item=>item.options.method==='POST'||item.options.method==='PUT'),false,'No case, conversation, grant or model write while known unavailable');
+ assert.doesNotMatch(app.dom.window.document.body.textContent,/Sign in again|Check connection|Connect DeepSeek/);
+ await app.click(app.button('Refresh service status'));await app.flush();assert.equal(checks,2);assert.equal(app.button('Send').disabled,false);
+ assert.equal(app.dom.window.document.querySelector('textarea').value,'Keep this draft while service is unavailable');assert.equal(app.requests.some(item=>item.options.method==='POST'||item.options.method==='PUT'),false,'Refresh is read-only and never resends');
+});
