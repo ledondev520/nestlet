@@ -44,3 +44,40 @@
 .wb-context [data-chat-workflow-slot] [data-slot="card-content"] { padding: 8px 14px 14px; }
 .wb-context [data-slot="button"] { max-inline-size: 100%; }
 .wb-rail [data-chat-lookup-slot] form > .flex > button { align-self: flex-end; }
+/* The viewport owns the shell; only the thread and sidebars scroll. */
+.wb, .wb-theme {
+ --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", "WenQuanYi Zen Hei", Arial, sans-serif;
+ --sans: var(--font-body);
+ --text-body: 400 14px/1.65 var(--font-body);
+ font-family: var(--font-body);
+}
+.wb { block-size: 100dvh; min-block-size: 0; }
+.wb-center:has(>section:not([hidden]) [data-feature="chat"]) { overflow: hidden; }
+.wb-center > section:not([hidden]):has([data-feature="chat"]) { flex: 1; min-block-size: 0; display: flex; flex-direction: column; overflow: hidden; }
+.wb-center > section:not([hidden]):has([data-feature="chat"]) > div { flex: 1; min-block-size: 0; display: flex; flex-direction: column; }
+.wb .chat-workspace { flex: 1; min-block-size: 0; inline-size: 100%; max-inline-size: none; display: flex; flex-direction: column; }
+.wb .chat-surface[data-slot="card"] { flex: 1; min-block-size: 0; display: flex; flex-direction: column; }
+.wb .chat-toolbar { flex-shrink: 0; }
+.wb .chat-body[data-slot="card-content"] { flex: 1; min-block-size: 0; gap: 8px; }
+.wb .chat-thread { flex: 1; min-block-size: 0; overflow-y: auto; overscroll-behavior: contain; padding-block-end: 8px; }
+.wb .chat-messages { min-block-size: 0; padding-block: 12px; }
+.wb .chat-empty { min-block-size: 12dvh; }
+.wb .chat-composer { position: static; display: flex; flex-direction: column; flex-shrink: 0; min-block-size: 0; max-block-size: min(48dvh,320px); margin: 0; }
+.wb .chat-compose-fields { min-block-size: 0; overflow-y: auto; overscroll-behavior: contain; }
+.wb .chat-composer-actions { flex-shrink: 0; }
+.wb .chat-input[data-slot="textarea"] { min-block-size: 60px; max-block-size: 120px; }
+.inbox-account-menu { display: flex; flex-direction: column; gap: 10px; }
+.inbox-account-menu > div { max-inline-size: 250px; }
+@media(max-width:960px) {
+ .wb-topbar { flex-wrap: nowrap; block-size: 56px; padding: 6px 8px; gap: 2px; }
+ .wb-topbar .wb-spacer { flex-wrap: nowrap; margin-inline-start: auto; gap: 0; }
+ .wb-topbar .wb-brand { min-inline-size: 0; font-size: 13px; gap: 4px; }
+ .wb-topbar .wb-brand img { inline-size: 20px; block-size: 20px; }
+ .wb-topbar .wb-spacer [aria-label="Model settings"] span, .wb-topbar .wb-spacer [aria-label="模型设置"] span { display: none; }
+ .wb-topbar .wb-spacer [aria-label="Model settings"], .wb-topbar .wb-spacer [aria-label="模型设置"] { inline-size: 44px; padding-inline: 10px; }
+ .wb .chat-toolbar { gap: 4px; }
+ .wb .chat-composer { padding: 8px; max-block-size: 48dvh; }
+ .wb .chat-input[data-slot="textarea"] { min-block-size: 56px; }
+}
+.wb-topbar [data-slot="button"] { min-inline-size: 44px; }
+.wb .chat-thread:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }

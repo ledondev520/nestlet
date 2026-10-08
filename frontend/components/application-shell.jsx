@@ -1,6 +1,7 @@
+import { Popover } from 'radix-ui';
 import { useState } from 'react';
 import { WorkbenchShell } from '@/workbench/shell';
-import { MessageSquare, Users, FileText, Files, Globe } from 'lucide-react';
+import { MessageSquare, Users, UserRound, FileText, Files, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const navigation = {
@@ -8,11 +9,11 @@ const navigation = {
   en: [['chat', 'Conversation', MessageSquare], ['intake', 'Materials & facts', Files], ['customers', 'Customers', Users], ['documents', 'Documents', FileText]]
 };
 
-export function ApplicationShell({ children, lang = 'zh', onLanguageChange, view = 'chat', onNavigate, account, migrationNotice, inbox = false, rail, context, onNewCase, navigationKey }) {
+export function ApplicationShell({ children, lang = 'zh', onLanguageChange, view = 'chat', onNavigate, account, model, migrationNotice, inbox = false, rail, context, onNewCase, navigationKey }) {
   const [contextOpen, setContextOpen] = useState(true);
   if (inbox) return <WorkbenchShell navigationKey={navigationKey} lang={lang} contextOpen={contextOpen} onContextOpenChange={setContextOpen}
     brand={<span className="wb-brand"><img src="/logo.svg" alt="" width="24" height="24" /><span>{lang === 'zh' ? '巢小秘' : 'Nestlet'}</span></span>}
-    topbarEnd={<>{account}<Button variant="ghost" size="sm" onClick={onLanguageChange} aria-label={lang === 'zh' ? 'Switch interface to English' : '切换界面为中文'}><Globe aria-hidden="true" /><span lang={lang === 'zh' ? 'en' : 'zh-CN'}>{lang === 'zh' ? 'EN' : '中文'}</span></Button></>}
+    topbarEnd={mobile => <>{model}{mobile ? <InboxAccountMenu key={view} lang={lang} account={account} onLanguageChange={onLanguageChange} /> : <>{account}<LanguageButton lang={lang} onClick={onLanguageChange}/></>}</>}
     rail={<><button type="button" className="wb-rail-item" onClick={event => { if (onNewCase?.() === false) event.preventDefault(); }}>{lang === 'zh' ? '新事项' : 'New case'}</button>{rail}</>}
     context={context} center={<><nav className="inbox-navigation wb-tabs" aria-label={lang === 'zh' ? '工作区导航' : 'Workspace navigation'}>{navigation[lang].map(([id,label,Icon]) => <button key={id} type="button" className="wb-tab" aria-current={view === id ? 'page' : undefined} onClick={() => onNavigate(id)}><Icon aria-hidden="true" size={18}/>{label}</button>)}</nav>{children}</>} />;
   return <div className="paper-shell">
@@ -23,7 +24,7 @@ export function ApplicationShell({ children, lang = 'zh', onLanguageChange, view
         <div className="paper-title min-w-0 text-[23px] font-bold leading-tight">{lang === 'zh' ? '巢小秘' : 'Nestlet'}<span className="paper-tagline mt-1 block font-sans text-[10px] font-normal tracking-[.14em] text-muted-foreground">{lang === 'zh' ? 'NESTLET' : 'ONE DOCUMENT. ONE STEP FORWARD.'}</span></div>
       </a>
       <div className="paper-tools flex min-w-0 flex-wrap items-center justify-end gap-2">
-        {account}
+        {model}{account}
         <Button variant="outline" size="sm" onClick={onLanguageChange} aria-label={lang === 'zh' ? 'Switch interface to English' : '切换界面为中文'}><Globe aria-hidden="true" /><span lang={lang === 'zh' ? 'en' : 'zh-CN'}>{lang === 'zh' ? 'English' : '中文'}</span></Button>
       </div>
     </header>
@@ -34,4 +35,12 @@ export function ApplicationShell({ children, lang = 'zh', onLanguageChange, view
     <main id="workspace" tabIndex={-1} className="mt-8 outline-none">{children}</main>
 
   </div>;
+}
+
+function LanguageButton({lang,onClick}) {
+  return <Button variant="ghost" size="sm" onClick={onClick} aria-label={lang==='zh'?'Switch interface to English':'切换界面为中文'}><Globe aria-hidden="true"/><span lang={lang==='zh'?'en':'zh-CN'}>{lang==='zh'?'English':'中文'}</span></Button>;
+}
+function InboxAccountMenu({lang,account,onLanguageChange}) {
+  const [open,setOpen]=useState(false);
+  return <Popover.Root open={open} onOpenChange={setOpen}><Popover.Trigger asChild><Button variant="ghost" size="icon" aria-label={lang==='zh'?'账户菜单':'Account menu'}><UserRound aria-hidden="true"/></Button></Popover.Trigger><Popover.Portal><Popover.Content onClick={event=>{if(event.target.closest('[data-account-settings]'))setOpen(false);}} align="end" sideOffset={8} collisionPadding={12} aria-label={lang==='zh'?'账户菜单':'Account menu'} className="z-50 max-w-[calc(100vw-1.5rem)] rounded-xl border bg-background p-3 text-foreground shadow-lg inbox-account-menu">{account}<LanguageButton lang={lang} onClick={()=>{onLanguageChange();setOpen(false);}}/></Popover.Content></Popover.Portal></Popover.Root>;
 }

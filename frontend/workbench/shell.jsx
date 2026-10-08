@@ -38,7 +38,7 @@ export function WorkbenchShell({lang='zh',brand,topbarEnd,rail,center,context,co
   <a href="#workspace" className="inbox-skip" inert={!!modal} onClick={event=>{event.preventDefault();mainRef.current?.focus();}}>{t.skip}</a>
   <header className="wb-topbar" inert={!!modal}>
    {mobile&&<button ref={railToggle} type="button" className="wb-icon-button" aria-label={t.openNav} aria-controls={`${id}-rail`} aria-expanded={modal==='rail'} onClick={()=>setDrawer('rail')}><PanelLeft aria-hidden="true" size={20}/></button>}
-   {brand}<div className="wb-spacer">{topbarEnd}</div>
+   {brand}<div className="wb-spacer">{typeof topbarEnd==='function'?topbarEnd(mobile):topbarEnd}</div>
    <button ref={contextToggle} type="button" className="wb-icon-button" aria-label={(!mobile&&contextOpen)?t.closeContext:t.openContext} aria-controls={`${id}-context`} aria-expanded={mobile?modal==='context':contextOpen} onClick={()=>mobile?setDrawer('context'):onContextOpenChange(!contextOpen)}><PanelRight aria-hidden="true" size={20}/></button>
   </header>
   <div className="wb-body" data-context-open={!mobile&&contextOpen?'true':'false'}>

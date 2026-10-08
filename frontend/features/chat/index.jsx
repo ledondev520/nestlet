@@ -394,6 +394,7 @@ export function ChatPage({ lang='zh', caseId=null, guidanceAgency='unknown', onC
         {!conversations.length&&phase!=='loading'&&<p id={`${inputId}-conversation-empty`} className="text-xs text-muted-foreground">{words.noConversationsReason}</p>}
       </CardHeader>
       <CardContent className="chat-body">
+        <div className="chat-thread" tabIndex={0} aria-label={lang==='en'?'Conversation history':'对话记录'}>
         {phase==='loading'&&<p role="status" className="text-sm text-muted-foreground">{words.loading}</p>}
         <div id={threadId} className="chat-messages" role="log" aria-label={words.conversation} aria-live="polite" aria-relevant="additions text">
           {!messages.length&&phase!=='loading'&&<div className="chat-empty"><MessageSquare className="size-9" aria-hidden="true" /><h1>{words.empty}</h1></div>}
@@ -420,7 +421,9 @@ export function ChatPage({ lang='zh', caseId=null, guidanceAgency='unknown', onC
         {cacheStatus==='unavailable'&&<p role="status" className="text-sm text-destructive">{words.cacheUnavailable}</p>}
         {notice&&<p role="status" className="paper-note rounded px-3 py-2 text-sm">{words[notice]}</p>}
         {(error||notice==='stopped')&&messages.some(message=>message.role==='user')&&<Button variant="outline" type="button" disabled={busy} onClick={retry}>{words.retry}</Button>}
+        </div>
         <form className="chat-composer" onSubmit={send} onDragOver={event=>{event.preventDefault();setDragging(true);}} onDragLeave={()=>setDragging(false)} onDrop={event=>{event.preventDefault();setDragging(false);receiveFiles(event.dataTransfer.files);}}>
+          <div className="chat-compose-fields">
           <Label className="sr-only" htmlFor={inputId}>{words.composer}</Label>
           <Textarea ref={composer} id={inputId} value={input} maxLength={CHAT_BOUNDS.text} disabled={busy} className={`chat-input ${dragging?'ring-2 ring-ring':''}`} placeholder={words.placeholder}
             onKeyDown={event=>{if(event.key==='Enter'&&!event.shiftKey&&!event.nativeEvent.isComposing&&event.keyCode!==229){event.preventDefault();send(event);}}}
@@ -430,6 +433,7 @@ export function ChatPage({ lang='zh', caseId=null, guidanceAgency='unknown', onC
           {!!images.length&&<div className="flex flex-wrap gap-3">{images.map(image=><div key={image.id} className="flex items-center gap-2 rounded border p-2"><img src={image.preview} alt={words.imageOnly} className="h-16 w-16 object-contain"/><Button type="button" variant="ghost" size="sm" disabled={busy} onClick={()=>removeImage(image.id)} aria-label={words.remove}>{words.remove}</Button></div>)}</div>}
           <ChatOriginalRetention api={api} userId={status.userId} authenticated={status.authenticated} caseId={caseRef.current} images={images} lang={lang} disabled={phase !== 'idle' || bridgeBusy || sourceBusy || imagePending > 0} ensureCase={ensureCase} onBusyChange={updateRetentionBusy} onOpenMaterials={onOpenMaterials} />
           <p className="text-xs leading-relaxed text-muted-foreground">{permissionWords.ordinary} <a href="#settings" className="underline">{permissionWords.settings}</a></p>
+          </div>
           <div className="chat-composer-actions">
             <Button type="button" variant="ghost" size="sm" disabled={busy||imagePending>0} onClick={()=>fileInput.current?.click()} title={words.attach}><Paperclip aria-hidden="true" />{words.attach}</Button>
             <div className="flex items-center gap-2"><span className="chat-keyboard-hint">{words.keyboardHint}</span>

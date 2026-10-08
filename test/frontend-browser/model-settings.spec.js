@@ -1,3 +1,4 @@
+import { accountSettings, switchLanguage } from './support.js';
 import { test, expect } from '@playwright/test';
 import { noHorizontalOverflow } from './support.js';
 
@@ -25,7 +26,8 @@ for (const [lang, width] of [['en', 1280], ['zh', 390], ['en', 320]]) test(`key-
   await page.setViewportSize({ width, height: 900 });
   const writes = await fixture(page);
   await page.goto('/');
-  if (lang === 'en') await page.getByRole('button', { name: 'Switch interface to English' }).click();
+  if (lang === 'en') await switchLanguage(page,'en');
+  if(width<960)expect((await page.locator('.wb-topbar').boundingBox()).height).toBeLessThanOrEqual(64);
   const trigger = page.getByRole('button', { name: lang === 'zh' ? '模型设置' : 'Model settings', exact: true });
   await trigger.hover(); await expect(page.getByRole('tooltip')).toBeVisible();
   await trigger.focus(); await trigger.press('Enter');

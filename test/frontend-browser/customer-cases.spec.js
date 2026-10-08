@@ -1,3 +1,4 @@
+import { accountSettings, switchLanguage } from './support.js';
 import { test, expect, CUSTOMER_USERS, signInCustomer, getJson, apiWrite, responseFor, createCustomer,
   customerRecord, selectCustomer, createLinkedCase, openLinkedCase, saveLinkedMaterial, createEmptyConversation } from './customer-case-support.js';
 import { ENTRY_PATH, SOURCE, english, navigate, reload, logout, downloadedBytes, screenshot, watchBrowser } from './support.js';
@@ -173,7 +174,7 @@ test('customer → two cases → resolved question and document versions → rea
       }
       expect((await apiWrite(page, app, `/api/clients/${client.id}`, 'PUT', { displayName: 'Forbidden rename', expectedVersion: client.version })).status()).toBe(404);
       expect((await apiWrite(page, app, `/api/cases/${first.id}`, 'DELETE', { expectedVersion: first.version })).status()).toBe(404);
-      await page.getByRole('button', { name: 'Account and settings', exact: true }).click();
+      await accountSettings(page);
       await expect(page.getByTestId('account-access')).toBeVisible();
       await expect(page.getByTestId('account-access')).toHaveText(username === 'owner' ? 'Owner' : 'Ordinary user');
       await expect(page.getByRole('button', { name: 'Model settings', exact: true })).toHaveCount(username === 'owner' ? 1 : 0);
