@@ -4,6 +4,7 @@
 !package-lock.json
 !server.js
 !provider-metadata.js
+!provider-config-storage.js
 !auth.js
 !auth-session-storage.js
 !account-administration.js

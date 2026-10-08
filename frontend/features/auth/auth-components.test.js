@@ -20,8 +20,8 @@ before(async()=>{
 });
 afterEach(async()=>{if(root)await React.act(async()=>root.unmount());root=null;host?.remove();globalThis.fetch=originalFetch;});
 after(async()=>{await server?.close();dom.window.close();});
-const owner={authenticated:true,userId:'fixture-owner',username:'owner',role:'owner',canManageSettings:true,authConfigured:true,secureSettings:true,secureLogin:true,csrfToken:'fixture-csrf'};
-function fixture(status,settings={configured:false,liveEnabled:false,secureSettings:true,keyStorage:null},failSave=false){
+const owner={authenticated:true,userId:'fixture-owner',username:'owner',role:'owner',canManageSettings:true,authConfigured:true,secureSettings:true,persistentSettingsAvailable:true,secureLogin:true,csrfToken:'fixture-csrf'};
+function fixture(status,settings={configured:false,liveEnabled:false,secureSettings:true,persistentSettingsAvailable:true,keyStorage:null},failSave=false){
  const calls=[];
  globalThis.fetch=async(path,options={})=>{
    calls.push({path,method:options.method||'GET',body:options.body?JSON.parse(options.body):null});
@@ -48,7 +48,7 @@ test('ordinary account never mounts provider controls or reads owner settings',a
  assert.doesNotMatch(host.textContent,/API Key/);
 });
 test('owner key stays blank on read, edits do not post, explicit save clears input',async()=>{
- const calls=fixture(owner,{configured:true,liveEnabled:false,secureSettings:true,keyStorage:'server-memory',apiKey:'unexpected-response-secret'});
+ const calls=fixture(owner,{configured:true,liveEnabled:false,secureSettings:true,persistentSettingsAvailable:true,keyStorage:'server-memory',apiKey:'unexpected-response-secret'});
  await render(FormHarness);
  const field=host.querySelector('input[type=password]');assert.ok(field);assert.equal(field.value,'');
  assert.doesNotMatch(host.innerHTML,/unexpected-response-secret/);
@@ -92,7 +92,7 @@ test('email registration requires confirmation and stays signed out on generic20
  assert.equal(host.querySelector('input[type=password]'),null);assert.match(host.textContent,/Check your inbox if eligible/);assert.doesNotMatch(host.textContent,/Signed in/);assert.equal(calls.filter(c=>c.path==='/api/status').length,1);
 });
 test('model settings has only explicit Save and never calls the obsolete test endpoint',async()=>{
- const calls=fixture(owner,{configured:true,liveEnabled:false,secureSettings:true,keyStorage:'server-memory'});await render(FormHarness);
+ const calls=fixture(owner,{configured:true,liveEnabled:false,secureSettings:true,persistentSettingsAvailable:true,keyStorage:'server-memory'});await render(FormHarness);
  assert.deepEqual([...host.querySelectorAll('button')].map(button=>button.textContent),['Save']);
  assert.equal(calls.filter(c=>c.method==='POST').length,0);
 });
@@ -133,3 +133,16 @@ test('remembered login uses native autofill values and stores only username',asy
   assert.equal(document.querySelector('[role=dialog]'),null);
   assert.equal(calls.filter(c=>c.method==='POST').length,0);
  });
+
+test('missing secure storage disables key entry and never sends an unpersistable candidate',async()=>{
+ const calls=fixture(owner,{configured:true,liveEnabled:true,secureSettings:true,persistentSettingsAvailable:false,keyStorage:'server-environment'});await render(FormHarness);
+ assert.equal(host.querySelector('input[type=password]'),null);
+ assert.match(host.textContent,/Secure storage is not ready/);
+ assert.equal(calls.filter(call=>call.method==='POST').length,0);
+});
+test('encrypted storage metadata is shown without ever filling or exposing the saved key',async()=>{
+ fixture(owner,{configured:true,liveEnabled:true,secureSettings:true,persistentSettingsAvailable:true,keyStorage:'encrypted-database',connectionVerifiedAt:'2026-10-08T23:00:00.000Z',apiKey:'SYNTHETIC_UNEXPECTED_SERVER_KEY'});await render(FormHarness);
+ assert.equal(host.querySelector('input[type=password]').value,'');
+ assert.match(host.textContent,/stored encrypted and remains available after a service restart/);
+ assert.doesNotMatch(host.innerHTML,/SYNTHETIC_UNEXPECTED_SERVER_KEY/);
+});

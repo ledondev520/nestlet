@@ -324,7 +324,7 @@ const authErrorKeys = {
   REGISTRATION_INVALID: 'errorRegistration', USER_EXISTS: 'errorUsernameExists', USER_LIMIT_REACHED: 'registrationUnavailable', REGISTRATION_RATE_LIMITED: 'errorRegistrationRate',
   TRIAL_LIMIT_REACHED: 'errorTrialLimit', USER_INVALID: 'errorCredentials', OWNER_REQUIRED: 'errorOwnerRequired', AUTH_REQUIRED: 'errorAuth', CSRF_REJECTED: 'errorSession', OPERATOR_SETUP_REQUIRED: 'operatorSetupHelp', HTTPS_REQUIRED: 'errorHttps',
   INVALID_CREDENTIALS: 'errorCredentials', LOGIN_RATE_LIMITED: 'errorRateLimit', SETTINGS_RATE_LIMITED: 'errorRateLimit',
-  INVALID_SETTINGS: 'errorSettings', API_KEY_REQUIRED: 'errorKeyRequired', USE_SETTINGS_SAVE: 'errorSettings', CONNECTION_FAILED: 'errorConnection', MODEL_UNAVAILABLE: 'errorModel',
+  INVALID_SETTINGS: 'errorSettings', API_KEY_REQUIRED: 'errorKeyRequired', PROVIDER_SETTINGS_UNAVAILABLE: 'errorSettings', USE_SETTINGS_SAVE: 'errorSettings', CONNECTION_FAILED: 'errorConnection', MODEL_UNAVAILABLE: 'errorModel',
   BUSY: 'errorBusy', LIVE_DISABLED: 'errorConfig',
   CLIENT_INVALID: 'errorClientInvalid', CLIENT_NOT_FOUND: 'errorClientNotFound', CLIENT_CONFLICT: 'errorClientConflict',
   CONVERSATION_ACTION_INVALID: 'errorConversationInvalid', CONVERSATION_ACTION_SOURCE_NOT_FOUND: 'errorConversationNotFound', CONVERSATION_ACTION_SOURCE_INCOMPLETE: 'errorArtifactSource',

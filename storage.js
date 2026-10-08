@@ -186,7 +186,7 @@ function artifactPayload(payload, options) {
   return { kind:payload.kind,title,status:payload.status,content,sourceConversationId,sourceMessageId,expectedCaseVersion:payload.expectedCaseVersion,generationMethod };
 }
 
-function prepareFile(filename) {
+export function preparePrivateStorageFile(filename) {
   if (typeof filename !== 'string' || !filename.trim() || filename === ':memory:' || filename.includes('\0')) fail('STORAGE_PATH_INVALID', 500);
   const path = resolve(filename);
   const directory = dirname(path);
@@ -235,7 +235,7 @@ function prepareFile(filename) {
 /** Server-only interface. Lookup methods return hashes for authentication; never send those objects over HTTP. */
 export function openStorage({ filename, reservedUsername = process.env.NESTLET_OPERATOR_USERNAME || 'owner' } = {}) {
   const reservedAlias = typeof reservedUsername === 'string' && /^[\x00-\x7f]*$/u.test(reservedUsername) ? reservedUsername.trim().toLowerCase() : null;
-  const path = prepareFile(filename);
+  const path = preparePrivateStorageFile(filename);
   const recovery = acquireServiceRecoveryFence(path), recoveryFence = recovery.fence;
   let db;
   try {

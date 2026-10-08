@@ -1,3 +1,4 @@
+import { openProviderConfig, ProviderConfigError } from './provider-config-storage.js';
 import { validateModelKey, generateConversationTitle, conversationTitleTopic } from './provider-metadata.js';
 import { ServiceEntitlementError } from './service-entitlements.js';
 import { newReviewReceipt, reviewReceiptSnapshot } from './review-operation.js';
@@ -42,6 +43,20 @@ let enabled = process.env.ENABLE_LIVE_AI === 'true' && Boolean(apiKey);
 let connectionVerifiedAt = null;
 let configurationRevision = 0;
 const storage = openStorage({ filename: process.env.NESTLET_DB_PATH || fileURLToPath(new URL('./data/nestlet.sqlite', import.meta.url)) });
+let providerConfig, savedProviderConfig=null, providerSettingsError=false;
+try {
+  providerConfig = openProviderConfig({ filename: process.env.NESTLET_PROVIDER_CONFIG_PATH || resolve(dirname(process.env.NESTLET_DB_PATH || fileURLToPath(new URL('./data/nestlet.sqlite', import.meta.url))), 'provider-config.sqlite'), wrappingKeyFile: process.env.NESTLET_PROVIDER_WRAPPING_KEY_FILE || '', excludedDirectories:[dirname(process.env.NESTLET_DB_PATH || fileURLToPath(new URL('./data/nestlet.sqlite', import.meta.url))), ...(process.env.NESTLET_ASSETS_PATH ? [process.env.NESTLET_ASSETS_PATH] : [])] });
+  savedProviderConfig=providerConfig.load();
+} catch (error) {
+  if (!(error instanceof ProviderConfigError)) throw error;
+  // Fail closed for AI only: ordinary authenticated case access remains available.
+  // In particular, never fall back to an environment credential after a store error.
+  apiKey=''; enabled=false; connectionVerifiedAt=null; providerSettingsError=true;
+  providerConfig={available:false,save(){throw new ProviderConfigError();}};
+}
+if (savedProviderConfig) { apiKey=savedProviderConfig.apiKey; enabled=savedProviderConfig.enabled; connectionVerifiedAt=savedProviderConfig.verifiedAt; }
+let providerKeyStorage = providerSettingsError ? 'unavailable' : savedProviderConfig ? 'encrypted-database' : apiKey ? 'server-environment' : 'none';
+
 const assetDirectory = process.env.NESTLET_ASSETS_PATH || resolve(dirname(process.env.NESTLET_DB_PATH || fileURLToPath(new URL('./data/nestlet.sqlite', import.meta.url))), 'assets');
 const publicDirectory = fileURLToPath(root);
 if (assetDirectory === publicDirectory.slice(0,-1) || assetDirectory.startsWith(publicDirectory)) throw new Error('Private assets must be outside the public directory.');
@@ -130,7 +145,7 @@ function settingsStatus(request) {
   // Only the authenticated owner sees provider-configuration metadata; never credential bytes.
 
   return { ...common, configured: Boolean(apiKey), operatorSetupInvalid: auth.setupInvalid, emailDelivery: emailAuth.deliveryStatus(),
-    connectionVerifiedAt, keyStorage: apiKey ? (apiKey === process.env.DEEPSEEK_API_KEY ? 'server-environment' : 'server-memory') : 'none' };
+    connectionVerifiedAt, keyStorage: providerKeyStorage, persistentSettingsAvailable: providerConfig.available, providerSettingsError };
 }
 
 function consumeTrialAiAllowance(session, requestId) {
@@ -460,9 +475,15 @@ const server = http.createServer(async (request, response) => {
       if (body.enableLive && !body.apiKey && !apiKey) throw new RequestError(400, 'API_KEY_REQUIRED', 'Configure an API key before enabling live extraction.');
       if (activeConnectionTests) throw new RequestError(429, 'BUSY', 'A connection check is already running.');
       if (!body.enableLive && !body.apiKey) {
+        if (apiKey) {
+          if (!providerConfig.available || !connectionVerifiedAt) throw new ProviderConfigError();
+          providerConfig.save({apiKey,enabled:false,model,verifiedAt:connectionVerifiedAt});
+          providerKeyStorage='encrypted-database';
+        }
         enabled = false; configurationRevision++;
         return json(200, settingsStatus(request));
       }
+      if (!providerConfig.available) throw new ProviderConfigError();
       // Candidate credentials remain local until a single bounded inference succeeds.
       // Failed/aborted checks cannot replace the last working configuration.
       const candidateKey = body.apiKey || apiKey;
@@ -474,6 +495,8 @@ const server = http.createServer(async (request, response) => {
         if (revision !== configurationRevision) throw new RequestError(409, 'SETTINGS_CHANGED', 'Settings changed during verification.');
         const currentSession = requireOwnerSession(request);
         if (currentSession.token !== settingsSession.token) throw new RequestError(401, 'AUTH_REQUIRED', 'Sign in again before changing settings.');
+        providerConfig.save({apiKey:candidateKey,enabled:body.enableLive,model,verifiedAt:result.verifiedAt});
+        providerKeyStorage='encrypted-database';
         apiKey = candidateKey;
         enabled = body.enableLive;
         connectionVerifiedAt = result.verifiedAt;
@@ -882,7 +905,7 @@ const server = http.createServer(async (request, response) => {
     if (file.startsWith('samples/')) response.setHeader('Content-Disposition', `attachment; filename="${file.slice('samples/'.length)}"`);
     response.end(content);
   } catch (error) {
-    if (error instanceof ServiceEntitlementError || error instanceof LibraryPermissionError || error instanceof AccountAdministrationError || error instanceof EmailAuthError || error instanceof AssetError || error instanceof RequestError || error instanceof StorageError || error instanceof TelemetryError || error instanceof ChatError || error instanceof CaseRecordsError || error instanceof DocumentContextError) return json(error.status, { error: error.message, code: error.code, ...(error.details ? {details:error.details} : {}) });
+    if (error instanceof ProviderConfigError || error instanceof ServiceEntitlementError || error instanceof LibraryPermissionError || error instanceof AccountAdministrationError || error instanceof EmailAuthError || error instanceof AssetError || error instanceof RequestError || error instanceof StorageError || error instanceof TelemetryError || error instanceof ChatError || error instanceof CaseRecordsError || error instanceof DocumentContextError) return json(error.status, { error: error.message, code: error.code, ...(error.details ? {details:error.details} : {}) });
     return json(500, { error: 'Request could not be completed', code: 'INTERNAL_ERROR' });
   }
 });
