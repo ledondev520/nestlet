@@ -18,6 +18,7 @@ import { ASSET_LIMITS, ASSET_TYPES } from './asset-domain.js';
 import { CaseRecordsError, isCaseRecordsPath, handleCaseRecords } from './case-records.js';
 import { DocumentContextError } from './document-context.js';
 import { createTelemetry, TelemetryError, telemetryId, telemetryPageOptions } from './telemetry.js';
+import { conversationActionContext } from './conversation-action-contract.js';
 import { CHAT_LIMITS, CHAT_IMAGE_TYPES, ChatError, validateChatRequest, conversationHistory, chatProviderMessages, openChatStream, openLibraryChatStream, createConversationToolSession, librarySourceEvent, libraryActivityEvent, LIBRARY_CHAT_ERRORS } from './chat.js';
 import { createLibraryToolSession, LIBRARY_AGENT_LIMITS } from './agent-library-tools.js';
 
@@ -673,7 +674,7 @@ const server = http.createServer(async (request, response) => {
           if (!userMessage) throw new ChatError('CONVERSATION_NOT_FOUND',404);
         }
         if (input.actionConsent) {
-          input.actionContext = {caseId:record.id,expectedVersion:record.version,conversationId:conversation.id,messages:[...history.filter(message=>message.state==='complete').slice(-10),userMessage].map(message=>({id:message.id,role:message.role}))};
+          input.actionContext = conversationActionContext(storage,session.userId,record,conversation.id);
           library = createConversationToolSession({storage,userId:session.userId,record,conversationId:conversation.id,library,signal});
         }
         const stream = library?await openLibraryChatStream({apiKey,input,record,signal,library,requestId}):await openChatStream({ apiKey, input, record, signal });

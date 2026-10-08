@@ -64,8 +64,49 @@ export function loadConversationAction(storage, userId, record, input) {
   return prepareConversationAction(request, {record, conversation, message});
 }
 
+/** Bounded, server-owned source catalogue. Excerpts are evidence, never instructions.
+ * Keep eligible older answers separately from recent messages so a new user turn
+ * or bilingual/interrupted assistant reply cannot displace the draft source. */
+export function conversationActionContext(storage, userId, record, conversationId) {
+  const conversation = storage.getConversation(userId, conversationId);
+  if (!conversation || conversation.caseId !== record.id) fail('CONVERSATION_ACTION_SOURCE_NOT_FOUND', 404);
+  const all = storage.listMessages(userId, conversationId) || [];
+  const complete = all.filter(message => message.state === 'complete' && !message.localOnly && !message.streaming && typeof message.content === 'string' && message.content.trim());
+  const eligible = message => {
+    if (message.role !== 'assistant') return false;
+    try { conversationAnswerContent(message); return true; } catch { return false; }
+  };
+  const recent = complete.slice(-10), answers = complete.filter(eligible).slice(-10);
+  const selected = complete.filter(message => recent.includes(message) || answers.includes(message));
+  const artifacts = (storage.listArtifacts(userId, record.id) || []).filter(artifact => artifact.sourceConversationId === conversationId);
+  return {
+    caseId: record.id, expectedVersion: record.version, conversationId,
+    sourceCatalogueIncomplete: selected.length < complete.length,
+    messages: selected.map(message => {
+      const saved = artifacts.filter(artifact => artifact.sourceMessageId === message.id);
+      return {id: message.id, role: message.role, state: 'complete',
+        contentPreview: message.content.slice(0, 350), contentPreviewIncomplete: message.content.length > 350,
+        answerDraftEligible: eligible(message),
+        savedArtifacts: saved.slice(0, 5).map(artifact => ({id: artifact.id, kind: artifact.kind, status: artifact.status, version: artifact.version, sourceCaseVersion: artifact.sourceCaseVersion, isStale: artifact.isStale})),
+        savedArtifactsIncomplete: saved.length > 5};
+    })
+  };
+}
+
+/** Provider schema narrows source selection; storage still revalidates every call. */
+export function conversationActionTools(context) {
+  return CONVERSATION_ACTION_TOOLS.flatMap(tool => {
+    const ids = context.messages.filter(message => tool.function.name !== 'prepare_answer_draft' || message.answerDraftEligible).map(message => message.id);
+    if (!ids.length) return [];
+    const copy = structuredClone(tool);
+    copy.function.parameters.properties.sourceConversationId.enum = [context.conversationId];
+    copy.function.parameters.properties.sourceMessageId.enum = ids;
+    return [copy];
+  });
+}
+
 const valueMap = names => ({type:'object',additionalProperties:false,properties:Object.fromEntries(names.map(key => [key,{type:'object',additionalProperties:false,properties:{value:{type:'string'}},required:['value']}]))});
-const sourceProperties = {expectedVersion:{type:'integer',minimum:1},sourceConversationId:{type:'string'},sourceMessageId:{type:'string'}};
+const sourceProperties = {expectedVersion:{type:'integer',minimum:1},sourceConversationId:{type:'string'},sourceMessageId:{type:'string',description:'Use the exact ID from the server source catalogue; draft sources must have answerDraftEligible true. Never use a user turn for an answer draft.'}};
 export const CONVERSATION_ACTION_TOOLS = Object.freeze([
   {type:'function',function:{name:'prepare_case_suggestion',description:'Preview unconfirmed changes for the current case from a complete saved conversation message. Read-only; a person must explicitly apply the preview. Never confirms facts or resolves issues.',parameters:{type:'object',additionalProperties:false,properties:{...sourceProperties,factChanges:valueMap(FIELDS),changes:valueMap(DOCUMENT_DETAIL_KEYS)},required:Object.keys(sourceProperties)}}},
   {type:'function',function:{name:'prepare_answer_draft',description:'Preview an unreviewed English draft from a complete already-saved assistant answer in the current conversation. No write; cannot save an answer still being generated or make a final document.',parameters:{type:'object',additionalProperties:false,properties:{...sourceProperties,kind:{type:'string',enum:DRAFT_TYPES}},required:[...Object.keys(sourceProperties),'kind']}}}
