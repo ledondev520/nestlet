@@ -32,7 +32,11 @@ test('real CSV/PDF/XLSX/XLS parsing, mapping, exact originals, image honesty, an
     const preview = chat.getByRole('img', { name: 'Question with images', exact: true });
     await expect(preview).toBeVisible();
     await expect.poll(() => preview.evaluate(image => image.complete && image.naturalWidth === 1 && image.naturalHeight === 1)).toBe(true);
-    await expect(chat.getByRole('checkbox', { name: /^For this send only: allow AI/u })).not.toBeChecked();
+    await expect(chat.getByRole('checkbox')).toHaveCount(0);
+    const permissionResponse = await page.request.get('/api/library-permission');
+    expect(permissionResponse.status()).toBe(200);
+    expect(await permissionResponse.json()).toMatchObject({ decision: 'unset', version: 0 });
+    expect(providerRequests).toEqual([]);
     await expect(chat.getByRole('button', { name: 'Send', exact: true })).toBeDisabled();
     await screenshot(page, testInfo, 'file-formats-chat-local-image-preview');
     await chat.getByRole('button', { name: 'Remove image', exact: true }).click();
