@@ -2,6 +2,19 @@
 
 Checkpoint: 2026-10-07. This is a development checkpoint, not final acceptance. Deployment and real-browser integration remain separate; rerun after the final source freeze.
 
+## Tool-specific conversation source eligibility, 2026-10-08
+
+Branch `fix/action-source-repair`, based on `e8a08bf`. Post-release live testing found mixed results: a fresh synthetic conversation produced a real conflict card and Chinese in-chat guidance; a historical conversation incorrectly described fact suggestions as needing assistant-only draft sources and narrated an internal tool error in English. No raw failed tool arguments were captured, so the exact failed validation and whether that narrated error was current are unproven. No case mutation occurred in that failed turn.
+
+Code inspection established a separate concrete ambiguity: both tools shared a source-ID description focused only on draft eligibility, the source catalogue had only `answerDraftEligible`, and most invalid fact calls returned no tool-specific repair guidance. This fix explicitly labels `caseSuggestionEligible` for complete saved user/assistant messages; separates per-tool descriptions and eligible-ID enums; constrains the supplied version; and returns bounded, same-scope repair metadata for recoverable invalid calls. Repair never substitutes a source, writes, or bypasses the existing validator. Provider-tool metadata changes only; no HTTP/storage schema, permissions, UI, model, or provenance rules change. Current-request evidence and ordinary localized failure wording are reinforced without rewriting stored history.
+
+- `npm run check`, `npm run build`, `git diff --check`: passed; existing build chunk-size warning remains.
+- Focused conversation-action tests: **20/20 passed**. Includes separate user/assistant/draft eligibility, invalid fact-shape repair with no cross-case ID disclosure, and a synthetic three-round invalid-call → repair → successful user-source preview flow while preserving historical messages and zero writes.
+- `npm test`: **400/400 passed**; `npm run test:frontend`: **319/319 passed**.
+- Independent correctness/security review: no blocking findings; **31/31** action/library-protocol tests passed, plus near-limit result-budget and invalid-source checks. Terminal policy/version failures receive no repair hints.
+- Tests use synthetic provider responses. No real provider call or deployment was made for this change; historical-conversation live success remains an acceptance gate.
+- Rollback: revert this bounded commit. No data migration or database rollback is needed.
+
 ## Conversational review guidance, 2026-10-08
 
 Branch `fix/chat-review-guidance`, based on `bbd240c`. A live synthetic conversation on that base described the materials editor as the conflict-resolution path despite the existing in-chat human review controls. It reused historical messages; historical influence is plausible, not proven. Inspection found that the action-enabled prompt did not describe the current in-chat review path.

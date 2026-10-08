@@ -203,6 +203,8 @@ test('wrong user source returns recoverable eligible IDs and never substitutes o
   assert.equal(store.listArtifacts('owner',record.id).length,0);
   const mixed=session.executeRound([call('bilingual',bilingual.id)]);
   assert.equal(JSON.parse(mixed.messages[0].content).error.code,'DOCUMENT_ENGLISH_REQUIRED');
+  assert.equal(JSON.parse(mixed.messages[0].content).error.tool,'prepare_answer_draft');
+  assert.deepEqual(JSON.parse(mixed.messages[0].content).error.eligibleSourceMessageIds,[message.id]);
   const retried=session.executeRound([call('retry',message.id)]);
   assert.equal(retried.proposals[0].sourceMessageId,message.id);assert.match(retried.proposals[0].content,new RegExp(message.content));
   assert.equal(store.listArtifacts('owner',record.id).length,0);
@@ -275,4 +277,91 @@ test('action-enabled prompt prefers supported in-chat human review over historic
   assert.equal(events.filter(event=>event.type==='proposal').length, 0);
   assert.equal(store.getCase('owner',record.id).version, record.version);
   assert.doesNotMatch(chatProviderMessages({...input,actionConsent:false},record)[0].content, /existing in-chat review controls/);
+});
+
+test('fact and draft source schemas advertise separate eligibility and current version', t => {
+  const {store,record,conversation,message}=fixture(t);
+  const user=store.appendMessage('owner',conversation.id,{role:'user',state:'complete',content:'申请租金 $2200，待核实。'});
+  const bilingual=store.appendMessage('owner',conversation.id,{role:'assistant',state:'complete',content:'请确认 synthetic detail'});
+  const incomplete=store.appendMessage('owner',conversation.id,{role:'assistant',state:'interrupted',content:'Partial'});
+  const context=conversationActionContext(store,'owner',record,conversation.id),tools=conversationActionTools(context);
+  const fact=tools.find(tool=>tool.function.name==='prepare_case_suggestion').function;
+  const draft=tools.find(tool=>tool.function.name==='prepare_answer_draft').function;
+  assert.deepEqual(fact.parameters.properties.sourceMessageId.enum,[message.id,user.id,bilingual.id]);
+  assert.deepEqual(draft.parameters.properties.sourceMessageId.enum,[message.id]);
+  assert.deepEqual(fact.parameters.properties.expectedVersion.enum,[record.version]);
+  assert.match(fact.parameters.properties.sourceMessageId.description,/user messages are valid fact sources/);
+  assert.doesNotMatch(fact.parameters.properties.sourceMessageId.description,/must have answerDraftEligible/);
+  assert.match(draft.parameters.properties.sourceMessageId.description,/User messages are not eligible/);
+  assert.ok(context.messages.every(row=>row.caseSuggestionEligible));
+  assert.equal(context.messages.find(row=>row.id===user.id).answerDraftEligible,false);
+  assert.ok(!context.messages.some(row=>row.id===incomplete.id));
+});
+
+test('invalid fact arguments receive fact-specific repair IDs; retry uses user provenance without writes', t => {
+  const {store,record,conversation,message}=fixture(t);
+  const user=store.appendMessage('owner',conversation.id,{role:'user',state:'complete',content:'Synthetic proposed rent $2200.'});
+  const other=store.createCase('owner',{...base,title:'Other scope'});
+  const foreignConversation=store.createConversation('owner',other.id,{});
+  const foreign=store.appendMessage('owner',foreignConversation.id,{role:'user',state:'complete',content:'Private other-case source'});
+  const session=createConversationToolSession({storage:store,userId:'owner',record,conversationId:conversation.id});
+  const args={expectedVersion:record.version,sourceConversationId:conversation.id,sourceMessageId:user.id,factChanges:{rent:{value:'$2200'}}};
+  const call=(id,changes)=>({id,type:'function',function:{name:'prepare_case_suggestion',arguments:JSON.stringify(changes)}});
+  const failed=session.executeRound([call('bad-shape',{...args,factChanges:{rent:'$2200'}})]);
+  const error=JSON.parse(failed.messages[0].content).error;
+  assert.equal(error.code,'CONVERSATION_ACTION_INVALID');
+  assert.equal(error.tool,'prepare_case_suggestion');
+  assert.match(error.reason,/saved user or assistant message/);
+  assert.match(error.reason,/Draft-only assistant eligibility does not apply/);
+  assert.deepEqual(error.eligibleSourceMessageIds,[message.id,user.id]);
+  assert.ok(!JSON.stringify(error).includes(foreign.id));
+  assert.equal(error.sourceConversationId,conversation.id);
+  assert.equal(error.expectedVersion,record.version);
+  assert.equal(failed.proposals.length,0);
+  const retried=session.executeRound([call('repaired',args)]);
+  assert.equal(retried.proposals.length,1);
+  assert.equal(retried.proposals[0].sourceMessageId,user.id);
+  assert.match(retried.proposals[0].factChanges.rent.source,new RegExp('Unconfirmed user message '+user.id));
+  assert.equal(retried.proposals[0].confirm,false);
+  assert.equal(store.getCase('owner',record.id).version,record.version);
+  assert.equal(store.listArtifacts('owner',record.id).length,0);
+});
+
+test('historical draft-only error cannot change current fact-tool protocol or user-source recovery', async t => {
+  const {openLibraryChatStream}=await import('../chat.js');
+  const {store,record,conversation,message}=fixture(t);
+  const user=store.appendMessage('owner',conversation.id,{role:'user',state:'complete',content:'申请租金改为 $2200，先给我核对。'});
+  const history=[{role:'assistant',content:'The case suggestion failed. Only draft-eligible assistant answers can be sources.'},{role:'user',content:user.content}];
+  const context=conversationActionContext(store,'owner',record,conversation.id);
+  const library=createConversationToolSession({storage:store,userId:'owner',record,conversationId:conversation.id});
+  const args={expectedVersion:record.version,sourceConversationId:conversation.id,sourceMessageId:user.id,factChanges:{rent:{value:'$2200'}}};
+  let round=0;
+  const response=(delta,finish)=>new Response('data: '+JSON.stringify({choices:[{delta}]})+'\n\ndata: '+JSON.stringify({choices:[{delta:{},finish_reason:finish}]})+'\n\ndata: [DONE]\n\n',{headers:{'Content-Type':'text/event-stream'}});
+  const fetchImpl=async(_url,options)=>{
+    const body=JSON.parse(options.body),system=body.messages[0].content;
+    assert.match(system,/answerDraftEligible applies ONLY to prepare_answer_draft, never to case suggestions/);
+    assert.match(system,/Never present a historical or merely narrated tool failure as a current tool result/);
+    assert.match(system,/requested interface language, without tool names or error codes/);
+    if(round===0){
+      assert.deepEqual(body.messages.slice(-2),history);
+      round++;
+      return response({tool_calls:[{index:0,id:'bad',type:'function',function:{name:'prepare_case_suggestion',arguments:JSON.stringify({...args,action:'prepare_case_suggestion'})}}]},'tool_calls');
+    }
+    if(round===1){
+      const result=JSON.parse(body.messages.at(-1).content);
+      assert.equal(result.ok,false);
+      assert.equal(result.error.tool,'prepare_case_suggestion');
+      assert.deepEqual(result.error.eligibleSourceMessageIds,[message.id,user.id]);
+      round++;
+      return response({tool_calls:[{index:0,id:'retry',type:'function',function:{name:'prepare_case_suggestion',arguments:JSON.stringify(args)}}]},'tool_calls');
+    }
+    const result=JSON.parse(body.messages.at(-1).content);
+    assert.equal(result.ok,true);assert.equal(result.proposal.sourceMessageId,user.id);
+    round++;return response({content:'请在对话中的卡片核对后确认或取消。'},'stop');
+  };
+  const events=[];
+  for await(const event of await openLibraryChatStream({apiKey:'synthetic-only',input:{actionConsent:true,locale:'zh',messages:history,actionContext:context},record,library,requestId:randomUUID(),fetchImpl}))events.push(event);
+  assert.equal(round,3);
+  assert.equal(events.filter(event=>event.type==='proposal').length,1);
+  assert.equal(store.getCase('owner',record.id).version,record.version);
 });
