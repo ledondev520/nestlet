@@ -176,7 +176,7 @@ test('customer → two cases → resolved question and document versions → rea
       await page.getByRole('button', { name: 'Account and settings', exact: true }).click();
       await expect(page.getByTestId('account-access')).toBeVisible();
       await expect(page.getByTestId('account-access')).toHaveText(username === 'owner' ? 'Owner' : 'Ordinary user');
-      await expect(page.getByText('DeepSeek connection', { exact: true })).toHaveCount(username === 'owner' ? 1 : 0);
+      await expect(page.getByRole('button', { name: 'Model settings', exact: true })).toHaveCount(username === 'owner' ? 1 : 0);
       expect((await page.request.get(app.origin + '/api/settings')).status()).toBe(username === 'owner' ? 200 : 403);
       await navigate(page, 'Customers');
     }
