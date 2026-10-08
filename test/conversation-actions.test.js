@@ -8,7 +8,7 @@ import {randomUUID} from 'node:crypto';
 import {spawn} from 'node:child_process';
 import {FIELDS} from '../public/core.js';
 import {openStorage} from '../storage.js';
-import {loadConversationAction,validateConversationAction,conversationActionContext,conversationActionTools} from '../conversation-action-contract.js';
+import {loadConversationAction,validateConversationAction,conversationActionContext,conversationActionTools,conversationActionObservation} from '../conversation-action-contract.js';
 import {createConversationToolSession,validateChatRequest,chatProviderMessages} from '../chat.js';
 const base={title:'Synthetic case',sourceText:'',fields:[],draftType:'followup',draftText:''};
 function fixture(t){
@@ -229,7 +229,7 @@ test('provider receives grounded source mapping and truthful, English-only draft
   const fetchImpl=async(_url,options)=>{
     called++;const body=JSON.parse(options.body),system=body.messages[0].content;
     assert.match(system,/entire response English/);assert.match(system,/Never ask the end user to supply internal message IDs/);
-    assert.match(system,/preview exists only after a prepare tool returns ok:true/);
+    assert.match(system,/preview exists only after a prepare tool’s current observation explicitly says a case-fact review preview or an English draft preview was prepared/);
     assert.match(system,/savedArtifacts/);assert.match(system,new RegExp(message.content));
     const draft=body.tools.find(tool=>tool.function.name==='prepare_answer_draft');
     assert.deepEqual(draft.function.parameters.properties.sourceMessageId.enum,[message.id]);
@@ -356,12 +356,69 @@ test('historical draft-only error cannot change current fact-tool protocol or us
       return response({tool_calls:[{index:0,id:'retry',type:'function',function:{name:'prepare_case_suggestion',arguments:JSON.stringify(args)}}]},'tool_calls');
     }
     const result=JSON.parse(body.messages.at(-1).content);
-    assert.equal(result.ok,true);assert.equal(result.proposal.sourceMessageId,user.id);
+    assert.match(result['Review preview'],/case-fact review preview was prepared/);assert.equal(result.Source['Saved message'],user.id);
     round++;return response({content:'请在对话中的卡片核对后确认或取消。'},'stop');
   };
   const events=[];
   for await(const event of await openLibraryChatStream({apiKey:'synthetic-only',input:{actionConsent:true,locale:'zh',messages:history,actionContext:context},record,library,requestId:randomUUID(),fetchImpl}))events.push(event);
   assert.equal(round,3);
   assert.equal(events.filter(event=>event.type==='proposal').length,1);
+  assert.deepEqual(events.find(event=>event.type==='proposal').proposal,loadConversationAction(store,'owner',record,{...args,action:'prepare_case_suggestion'}));
+  assert.equal(events.filter(event=>event.type==='delta').map(event=>event.text).join(''),'请在对话中的卡片核对后确认或取消。');
   assert.equal(store.getCase('owner',record.id).version,record.version);
+});
+
+test('success observation hides control bookkeeping while exact conflict proposal and provenance remain intact', t => {
+  const f=fixture(t), {store,conversation}=f;
+  const record=store.updateCase('owner',f.record.id,{...base,fields:FIELDS.map(key=>({key,value:key==='rent'?'$2100':'',source:'Synthetic reviewed source',confirmed:key==='rent',conflict:false,edited:false}))},f.record.version);
+  const user=store.appendMessage('owner',conversation.id,{role:'user',state:'complete',content:'Synthetic rent suggestion: $2200'});
+  const request={action:'prepare_case_suggestion',expectedVersion:record.version,sourceConversationId:conversation.id,sourceMessageId:user.id,factChanges:{rent:{value:'$2200'}}};
+  const expected=loadConversationAction(store,'owner',record,request),before=JSON.stringify(expected);
+  assert.deepEqual(expected.factChanges,{}); // This internal map must not be mistaken for the business preview.
+  const {action,...args}=request;
+  const session=createConversationToolSession({storage:store,userId:'owner',record,conversationId:conversation.id});
+  const result=session.executeRound([{id:'conflict',type:'function',function:{name:action,arguments:JSON.stringify(args)}}]);
+  assert.deepEqual(result.proposals,[expected]);
+  assert.equal(JSON.stringify(expected),before);
+  const observation=JSON.parse(result.messages[0].content);
+  assert.deepEqual(observation.Source,{'Saved conversation':conversation.id,'Saved message':user.id});
+  assert.deepEqual(observation['Facts to review'],[{'Fact':'Requested rent','Current value':'$2100','Suggested value':'$2200','Review':'Conflicting values; the user must check the evidence and choose the correct value.'}]);
+  assert.match(observation['Review warning'],/not agency approval/);
+  assert.match(observation['Next step'],/complete and saved.*confirm or cancel/);
+  assert.doesNotMatch(result.messages[0].content,/requiresExplicitApply|factChanges|"changes"|"confirm"|"ok"|\/api\/cases|"request"|"apply"/);
+  assert.equal(session.getStats().resultChars,Math.max(JSON.stringify({ok:true,proposal:expected}).length,result.messages[0].content.length));
+  assert.equal(store.getCase('owner',record.id).version,record.version);
+  assert.equal(store.getCase('owner',record.id).fields.find(row=>row.key==='rent').value,'$2100');
+});
+
+test('review observations distinguish unchanged, missing and unreviewed values without altering their text', t => {
+  const {store,record,conversation,message}=fixture(t);
+  const current=store.updateCase('owner',record.id,{...base,fields:FIELDS.map(key=>({key,value:key==='owner'?'Synthetic owner':'',source:'Synthetic source',confirmed:['owner','pha'].includes(key),conflict:false,edited:false}))},record.version);
+  const proposal=loadConversationAction(store,'owner',current,{action:'prepare_case_suggestion',expectedVersion:current.version,sourceConversationId:conversation.id,sourceMessageId:message.id,factChanges:{owner:{value:'Synthetic owner'},pha:{value:''},rent:{value:''}},changes:{attachments:{value:'User-authored factChanges and confirm words remain evidence.'}}});
+  const observation=conversationActionObservation(proposal),rows=observation['Facts to review'];
+  assert.match(rows.find(row=>row.Fact==='Owner').Review,/Already reviewed and unchanged/);
+  assert.match(rows.find(row=>row.Fact==='Housing authority').Review,/Already reviewed and unchanged/);
+  assert.equal(Object.hasOwn(rows.find(row=>row.Fact==='Housing authority'),'Missing information'),false);
+  assert.match(rows.find(row=>row.Fact==='Requested rent')['Missing information'],/provide a value before confirming/);
+  assert.equal(rows.find(row=>row.Fact==='Attachments')['Suggested value'],'User-authored factChanges and confirm words remain evidence.');
+  assert.match(rows.find(row=>row.Fact==='Attachments').Review,/Unreviewed suggestion/);
+  const unchanged=loadConversationAction(store,'owner',current,{action:'prepare_case_suggestion',expectedVersion:current.version,sourceConversationId:conversation.id,sourceMessageId:message.id,factChanges:{owner:{value:'Synthetic owner'},pha:{value:''}}});
+  assert.match(conversationActionObservation(unchanged)['Next step'],/without confirming them again/);
+  assert.equal(store.getCase('owner',current.id).version,current.version);
+});
+
+test('draft observation preserves complete substantive draft and warnings, not executable save instructions', t => {
+  const {store,record,conversation,request}=fixture(t);
+  const expected=loadConversationAction(store,'owner',record,request),{action,...args}=request;
+  const session=createConversationToolSession({storage:store,userId:'owner',record,conversationId:conversation.id});
+  const result=session.executeRound([{id:'draft',type:'function',function:{name:action,arguments:JSON.stringify(args)}}]);
+  const observation=JSON.parse(result.messages[0].content);
+  assert.deepEqual(result.proposals,[expected]);
+  assert.equal(observation['English draft'],expected.content);
+  assert.match(observation['English draft'],/DRAFT — UNREVIEWED CONVERSATION ANSWER/);
+  assert.match(observation['Review preview'],/has not been saved/);
+  assert.match(observation['Next step'],/explicitly save it as an unreviewed English draft, or cancel/);
+  assert.equal(observation.Source['Saved message'],request.sourceMessageId);
+  assert.doesNotMatch(result.messages[0].content,/requiresExplicitApply|\/api\/cases|"request"|"apply"|"ok"/);
+  assert.equal(store.listArtifacts('owner',record.id).length,0);
 });

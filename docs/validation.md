@@ -2,6 +2,19 @@
 
 Checkpoint: 2026-10-07. This is a development checkpoint, not final acceptance. Deployment and real-browser integration remain separate; rerun after the final source freeze.
 
+## Business-facing successful review observations, 2026-10-08
+
+Branch `fix/action-review-observation`, based on `d1b746e`. A live historical-conversation retest on that base produced a genuine user-sourced conflict card, and cancelling preserved the case and document. Its prose still repeated internal success flags and change-map bookkeeping. Inspection confirmed that the model received the whole `{ok:true, proposal}` object, including execution metadata; empty internal change maps for previously confirmed fields do not mean the displayed conflict preview is empty.
+
+This change separates only the successful model-facing observation from the canonical validated UI/SSE proposal. The model receives readable current/proposed values, conflict/missing/already-reviewed descriptions, complete draft text where applicable, source references, review warnings, and a plain next step. UI/SSE payloads and their explicit human-write gates remain exact. Error repair, source eligibility, stored history, and final assistant prose are not rewritten. Aggregate charging uses the larger of canonical payload and observation size, preserving the original proposal limit even when observation text is smaller. No HTTP/storage schema, permissions, or model changes.
+
+- `npm run check`, `npm run build`, `git diff --check`: passed; existing bundle-size warning remains.
+- Focused action tests: **23/23 passed**. Regressions compare exact canonical UI and streamed proposals, preserve source IDs/full draft text/warnings, distinguish conflict/unchanged/missing facts, retain user-authored words, verify final assistant text is not replaced, and check zero writes plus conservative byte accounting.
+- `npm test`: **403/403 passed**; `npm run test:frontend`: **319/319 passed**.
+- Independent review passed **43/43** targeted tests plus label-coverage, canonical-limit and six-call budget stress checks. A contradictory warning for already-reviewed empty values was found and fixed before publication; regression includes reviewed-empty facts.
+- All provider responses in these tests are synthetic. No live-provider call or deployment was performed for this change. Removing fresh bookkeeping from success observations does not guarantee that a model will stop repeating jargon already present in historical messages or schemas; a historical-conversation real-provider retest remains required.
+- Rollback is a revert of this bounded commit; no data migration or database rollback is needed.
+
 ## Tool-specific conversation source eligibility, 2026-10-08
 
 Branch `fix/action-source-repair`, based on `e8a08bf`. Post-release live testing found mixed results: a fresh synthetic conversation produced a real conflict card and Chinese in-chat guidance; a historical conversation incorrectly described fact suggestions as needing assistant-only draft sources and narrated an internal tool error in English. No raw failed tool arguments were captured, so the exact failed validation and whether that narrated error was current are unproven. No case mutation occurred in that failed turn.

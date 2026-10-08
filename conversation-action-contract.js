@@ -128,3 +128,39 @@ export function conversationActionRepair(context, toolName, code) {
     eligibleSourceMessageIds: context.messages.filter(message => suggestion ? message.caseSuggestionEligible : message.answerDraftEligible).map(message => message.id)
   };
 }
+
+const reviewLabels = Object.freeze({
+  property:'Property address', owner:'Owner', pha:'Housing authority', caseReference:'Case reference', rent:'Requested rent',
+  documentDate:'Document date', recipientName:'Recipient name', recipientContact:'Recipient contact',
+  recipientOrganization:'Recipient organization', salutation:'Salutation', senderName:'Sender name',
+  senderContact:'Sender contact', senderRole:'Sender role', senderOrganization:'Sender organization',
+  attachments:'Attachments', nextActionOwner:'Next action owner', targetDate:'Target date'
+});
+/** Model-facing reading of an already validated preview, never a replacement for
+ * the exact UI proposal. Values and draft text remain untrusted evidence. */
+export function conversationActionObservation(proposal) {
+  const source = {'Saved conversation':proposal.sourceConversationId, 'Saved message':proposal.sourceMessageId};
+  if (proposal.action === 'prepare_answer_draft') return {
+    'Review preview':'An English draft preview was prepared. It has not been saved as a document.',
+    'Source':source,
+    'English draft':proposal.content,
+    'Review warning':'Unreviewed conversation answer. Not an official form, agency approval, submission, or verified statement of case facts.',
+    'Next step':'Once this answer is complete and saved, the user can inspect the draft preview and explicitly save it as an unreviewed English draft, or cancel. Nothing has been sent.'
+  };
+  const pending = proposal.preview.filter(row=>!(row.confirmed && !row.conflict && row.before===row.after));
+  return {
+    'Review preview':'A case-fact review preview was prepared. No case facts have been saved, confirmed, or resolved by this tool.',
+    'Source':source,
+    'Facts to review':proposal.preview.map(row=>({
+      'Fact':reviewLabels[row.key], 'Current value':row.before, 'Suggested value':row.after,
+      'Review':row.conflict ? 'Conflicting values; the user must check the evidence and choose the correct value.'
+        : row.confirmed && row.before===row.after ? 'Already reviewed and unchanged; no new confirmation is needed.'
+        : 'Unreviewed suggestion; explicit human review is required.',
+      ...(!row.after.trim() && !(row.confirmed && !row.conflict && row.before===row.after) ? {'Missing information':'No suggested value was supplied; the user must provide a value before confirming.'} : {})
+    })),
+    'Review warning':'Human review is not agency approval or a submission. A preview is not a saved change.',
+    'Next step':pending.length
+      ? 'Once this answer is complete and saved, the user can check the displayed values and explicitly confirm or cancel in the conversation. When only one detail needs review, it can be corrected with “change to …” or “改为……”. Do not choose conflicting values for the user.'
+      : 'These values are already reviewed and unchanged. The user can continue without confirming them again.'
+  };
+}
