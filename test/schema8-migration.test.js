@@ -194,7 +194,7 @@ test('future schema10 startup and backup reject before changing bytes or nested 
   }
 });
 
-test('schema7 backup and verification are read-only and restore keeps the historical schema and all original data', async t => {
+test('schema7 backup and verification are read-only and restore keeps the historical schema/business data while invalidating email actions', async t => {
   const f = fixture(t), before = inspect(f.filename, snapshot), sourceBefore = fileTree(f.source);
   const output = join(f.root, 'schema7-backup');
   const result = await backupPrivateData({ ...f, output });
@@ -212,7 +212,8 @@ test('schema7 backup and verification are read-only and restore keeps the histor
   assert.equal(restored.schemaVersion, 7);
   inspect(restored.filename, db => {
     assert.equal(version(db), 7);
-    preserved(db, before);
+    assert.equal(db.prepare('SELECT COUNT(*) AS n FROM email_actions').get().n, 0);
+    preserved(db, before, { omit: ['email_actions'] });
     assert.deepEqual(ddl(db), before.schema);
   });
   assert.deepEqual(fileTree(restored.assetsDirectory), fileTree(f.assetsDirectory));
@@ -220,7 +221,7 @@ test('schema7 backup and verification are read-only and restore keeps the histor
   assert.deepEqual(fileTree(f.source), sourceBefore);
 });
 
-test('current schema backup retains sessions but restore purges them without changing the snapshot or business records', async t => {
+test('current schema backup retains sessions and email actions but restore purges them without changing the snapshot or business records', async t => {
   const f = fixture(t), historical = inspect(f.filename, snapshot);
   let store = openStorage({ filename: f.filename });
   t.after(() => store.close());
@@ -249,7 +250,8 @@ test('current schema backup retains sessions but restore purges them without cha
   inspect(restored.filename, db => {
     assert.equal(version(db), 9);
     assert.equal(db.prepare('SELECT COUNT(*) AS n FROM auth_sessions').get().n, 0);
-    preserved(db, before, { omit: ['auth_sessions'] });
+    assert.equal(db.prepare('SELECT COUNT(*) AS n FROM email_actions').get().n, 0);
+    preserved(db, before, { omit: ['auth_sessions', 'email_actions'] });
     assert.deepEqual(ddl(db), before.schema);
   });
   store = openStorage({ filename: restored.filename });
@@ -258,7 +260,10 @@ test('current schema backup retains sessions but restore purges them without cha
   assert.equal(store.accountAdministration.administrator(f.id), true);
   assert.deepEqual(openAssetVault({ directory: restored.assetsDirectory }).read(store.getAsset(f.id, f.asset)), original);
   store.close();
-  inspect(restored.filename, db => preserved(db, historical));
+  inspect(restored.filename, db => {
+    assert.equal(db.prepare('SELECT COUNT(*) AS n FROM email_actions').get().n, 0);
+    preserved(db, historical, { omit: ['email_actions'] });
+  });
   assert.deepEqual(fileTree(output), snapshotBefore);
   assert.deepEqual(fileTree(f.source), revokedSource);
   assert.equal(verifyPrivateBackup({ input: output }).schemaVersion, 9);
