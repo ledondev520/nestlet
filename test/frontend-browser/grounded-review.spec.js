@@ -195,7 +195,12 @@ test('atomic saved review reveals the canonical card only on completion; explici
  await review.settled();
  await expect(review.cards).toHaveCount(1);
  await expect(review.cards).toContainText('128 Synthetic Review Lane');
- await expect(review.cards).toContainText(packet.done.reviewResult.proposals[0].sourceMessageId);
+ const proposal=packet.done.reviewResult.proposals[0];
+ expect(proposal.sourceDisplayId).toMatch(/^XX\d{8}$/u);
+ await expect(review.cards).toContainText(proposal.sourceDisplayId);
+ expect(proposal.request.sourceMessageId).toBe(proposal.sourceMessageId);
+ expect(proposal.sourceMessageId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u);
+ expect(proposal.request.sourceMessageId).not.toBe(proposal.sourceDisplayId);
  await expect(review.cards).toContainText(`Case version ${packet.done.reviewResult.proposals[0].expectedVersion}`);
  await expect(review.cards.getByRole('button',{name:'Apply as unreviewed suggestions',exact:true})).toBeEnabled();
  await expect(review.chat.getByText(packet.done.reviewResult.text,{exact:true})).toBeVisible();
