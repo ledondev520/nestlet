@@ -32,6 +32,8 @@ For an authorized restore, stop the service, preserve the currently working encr
 
 Encryption and revision authentication do not provide an external anti-rollback anchor: restoring an older valid database with its matching wrapping key is accepted. Complete deletion of the credential database is indistinguishable from an unused installation; when no file/sidecar remains, an explicitly configured environment baseline can be used again. Protect filesystem access, retain backup provenance, and have an operator review any restoration or deletion.
 
+A binary rollback to a release predating this store does not retain the new provider-state semantics: that older server ignores encrypted settings and may use its old environment baseline instead, including a stale enabled state. Preserve both ciphertext and wrapping-key recovery material, and have the approved operator verify the intended AI configuration or leave AI disabled. Do not export the key to plaintext merely to make an old release read it.
+
 Key rotation is not an automatic file overwrite: first establish an approved migration/recovery plan that decrypts with the old wrapping key and re-encrypts with the new one atomically. Replacing only the wrapping file deliberately fails provider initialization and disables AI. No rotation tool or production rotation is claimed by this release.
 
 ## Synthetic evidence
