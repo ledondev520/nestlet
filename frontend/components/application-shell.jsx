@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { WorkbenchShell } from '@/workbench/shell';
 import { MessageSquare, Users, FileText, Files, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -6,7 +8,13 @@ const navigation = {
   en: [['chat', 'Conversation', MessageSquare], ['intake', 'Materials & facts', Files], ['customers', 'Customers', Users], ['documents', 'Documents', FileText]]
 };
 
-export function ApplicationShell({ children, lang = 'zh', onLanguageChange, view = 'chat', onNavigate, account, migrationNotice }) {
+export function ApplicationShell({ children, lang = 'zh', onLanguageChange, view = 'chat', onNavigate, account, migrationNotice, inbox = false, rail, context, onNewCase }) {
+  const [contextOpen, setContextOpen] = useState(true);
+  if (inbox) return <WorkbenchShell lang={lang} contextOpen={contextOpen} onContextOpenChange={setContextOpen}
+    brand={<span className="wb-brand"><img src="/logo.svg" alt="" width="24" height="24" /><span>{lang === 'zh' ? '巢小秘' : 'Nestlet'}</span></span>}
+    topbarEnd={<>{account}<Button variant="ghost" size="sm" onClick={onLanguageChange} aria-label={lang === 'zh' ? 'Switch interface to English' : '切换界面为中文'}><Globe aria-hidden="true" /><span lang={lang === 'zh' ? 'en' : 'zh-CN'}>{lang === 'zh' ? 'EN' : '中文'}</span></Button></>}
+    rail={<><button type="button" className="wb-rail-item" onClick={onNewCase}>{lang === 'zh' ? '新事项' : 'New case'}</button>{rail}</>}
+    context={context} center={<><nav className="inbox-navigation wb-tabs" aria-label={lang === 'zh' ? '工作区导航' : 'Workspace navigation'}>{navigation[lang].map(([id,label,Icon]) => <button key={id} type="button" className="wb-tab" aria-current={view === id ? 'page' : undefined} onClick={() => onNavigate(id)}><Icon aria-hidden="true" size={18}/>{label}</button>)}</nav>{children}</>} />;
   return <div className="paper-shell">
     <a href="#workspace" className="sr-only focus:not-sr-only focus:block focus:py-2">{lang === 'zh' ? '跳到工作区' : 'Skip to workspace'}</a>
     <header className="paper-masthead">

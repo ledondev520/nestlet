@@ -12,7 +12,8 @@ import { useSession } from '@/lib/session';
 import { draftVault } from '@/lib/draft-vault';
 import { captureAuthFragment } from '@/features/auth/auth-route';
 import { DraftWorkspaceProvider } from '@/lib/suspended-draft';
-import { AgencyGuidance } from '@/components/agency-guidance';
+import { CaseRail } from '@/workbench/case-rail';
+import { ContextPanel } from '@/workbench/context-panel';
 import { handoffMatches } from '@/lib/conversation-handoff';
 import { DEFAULT_GUIDANCE_AGENCY } from '../public/agency-guidance.js';
 
@@ -27,7 +28,7 @@ function PageUnavailable({ lang }) {
   return <Alert><AlertDescription>{lang === 'zh' ? '页面加载失败，请刷新重试。' : 'This page could not load. Refresh and try again.'}</AlertDescription></Alert>;
 }
 
-function AccountWorkspace({ lang, view, navigate }) {
+function AccountWorkspace({ lang, view, navigate, shellProps, notices }) {
   const { status, journey } = useSession();
   const [recoveredWorkspace] = useState(() => draftVault.read({ userId: status.userId, workspaceKey: 'active', feature: 'workspace' }));
   const [workspaceKey, setWorkspaceKey] = useState(() => recoveredWorkspace?.workspaceKey || crypto.randomUUID());
@@ -123,14 +124,18 @@ function AccountWorkspace({ lang, view, navigate }) {
     settings: [modules.auth?.SettingsPage, { active: view === 'settings' }]
   };
   return <DraftWorkspaceProvider userId={status.userId} workspaceKey={workspaceKey}>
-    {['chat', 'intake', 'documents'].includes(view) && <AgencyGuidance key={workspaceEpoch} lang={lang} agency={guidanceAgency} onAgencyChange={setGuidanceAgency} />}
+    <ApplicationShell {...shellProps} inbox
+      rail={<CaseRail lang={lang} selectedCaseId={caseId} onSelectCase={nextId => openCase(nextId)} refreshKey={view} />}
+      context={<ContextPanel lang={lang} caseId={caseId} guidanceAgency={guidanceAgency} onAgencyChange={setGuidanceAgency} onOpenMaterials={openIntake} onOpenDocuments={() => continueDocument({ userId: status.userId, caseId })} refreshKey={view} />}
+      onNewCase={() => openCase(null)}>
+    {notices}
     {views.filter(id => visited.has(id) || id === view).map(id => {
     const [Page, props] = slots[id];
     // Explicit case switches remount after the dirty guard. First-save binding
     // keeps the current chat composer mounted, including prepared image previews.
     const key = ['chat', 'intake', 'documents'].includes(id) ? `${id}:${workspaceEpoch}` : id;
     return <section key={key} hidden={view !== id} aria-label={viewLabels[lang][id]}><FeatureBoundary lang={lang}>{Page ? <Page lang={lang} {...props} /> : <PageUnavailable lang={lang} />}</FeatureBoundary></section>;
-  })}</DraftWorkspaceProvider>;
+  })}</ApplicationShell></DraftWorkspaceProvider>;
 }
 
 export default function App({ initialAuthLink = null }) {
@@ -181,12 +186,14 @@ export default function App({ initialAuthLink = null }) {
     navigate(workspace?.view || 'chat');
   };
   if (window.location.hash === '#components') return <ComponentPreview />;
-  return <ApplicationShell lang={lang} view={view} onNavigate={status.authenticated ? navigate : undefined}
-    onLanguageChange={() => setLang(value => value === 'zh' ? 'en' : 'zh')}
-    account={status.authenticated ? <><ModelSettingsPopover key={`${status.userId}:${view}`} lang={lang} active={!authLink && !loading && view !== 'settings'} /><Button variant="outline" size="sm" onClick={() => navigate('settings')} aria-label={lang === 'zh' ? '账户与设置' : 'Account and settings'}><Settings aria-hidden="true" /></Button>{AccountControls && <AccountControls lang={lang} />}</> : null}>
+  const shellProps = { lang, view, onNavigate: status.authenticated ? navigate : undefined, onLanguageChange: () => setLang(value => value === 'zh' ? 'en' : 'zh'), account: status.authenticated ? <><ModelSettingsPopover key={`${status.userId}:${view}`} lang={lang} active={!authLink && !loading && view !== 'settings'} /><Button variant="outline" size="sm" onClick={() => navigate('settings')} aria-label={lang === 'zh' ? '账户与设置' : 'Account and settings'}><Settings aria-hidden="true" /></Button>{AccountControls && <AccountControls lang={lang} />}</> : null };
+  const notices = <>
     {recovery === 'suspended' && <Alert className="mb-5"><AlertDescription>{lang === 'zh' ? '登录已过期。请在 30 分钟内使用同一账号重新登录，并保持当前页面打开，以恢复未保存的文字。' : 'Your session expired. Keep this page open and sign in with the same account within 30 minutes to recover unsaved text.'}</AlertDescription></Alert>}
     {recovery === 'restored' && <Alert className="mb-5"><AlertDescription>{lang === 'zh' ? '已恢复未保存的文字，请重新添加图片和文件。' : 'Unsaved text restored. Reattach images and files.'}</AlertDescription></Alert>}
     {error && <Alert variant="destructive" className="mb-5"><AlertDescription>{lang === 'zh' ? '连接状态未能刷新，请重试。' : 'Connection status could not be refreshed. Try again.'}<Button variant="outline" size="sm" onClick={() => refresh().catch(() => {})}>{lang === 'zh' ? '重试' : 'Retry'}</Button></AlertDescription></Alert>}
-    {loading ? <div role="status" aria-label={lang === 'zh' ? '正在连接' : 'Connecting'} className="space-y-4"><Skeleton className="h-8 w-48" /><Skeleton className="h-60 w-full" /></div> : authLink && EmailLinkPanel ? <EmailLinkPanel key={authLink.id} link={authLink} lang={lang} onClose={() => replaceAuthLink(null)} /> : status.authenticated && status.userId ? <AccountWorkspace key={status.userId} lang={lang} view={view} navigate={navigate} /> : AuthPanel ? <AuthPanel lang={lang} onAuthenticated={authenticated} /> : <Card><CardHeader><CardTitle>{lang === 'zh' ? '登录后继续' : 'Sign in to continue'}</CardTitle></CardHeader><CardContent><PageUnavailable lang={lang} /></CardContent></Card>}
+  </>;
+  if (!loading && !authLink && status.authenticated && status.userId) return <AccountWorkspace key={status.userId} lang={lang} view={view} navigate={navigate} shellProps={shellProps} notices={notices} />;
+  return <ApplicationShell {...shellProps}>{notices}
+    {loading ? <div role="status" aria-label={lang === 'zh' ? '正在连接' : 'Connecting'} className="space-y-4"><Skeleton className="h-8 w-48" /><Skeleton className="h-60 w-full" /></div> : authLink && EmailLinkPanel ? <EmailLinkPanel key={authLink.id} link={authLink} lang={lang} onClose={() => replaceAuthLink(null)} /> : AuthPanel ? <AuthPanel lang={lang} onAuthenticated={authenticated} /> : <Card><CardHeader><CardTitle>{lang === 'zh' ? '登录后继续' : 'Sign in to continue'}</CardTitle></CardHeader><CardContent><PageUnavailable lang={lang} /></CardContent></Card>}
   </ApplicationShell>;
 }

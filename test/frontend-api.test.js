@@ -99,3 +99,16 @@ test('email binding wrong password preserves the session; expired binding still 
   await assert.rejects(api.post('/api/auth/email/verify', {}));
   assert.equal(expired, 2);
 });
+
+test('read-model invalidation publishes only acknowledged current-session writes without private data', async () => {
+  let csrf = 'same-session', reply, release;
+  const events = [];
+  const api = createApiClient({getCsrfToken:()=>csrf,onMutation:event=>events.push(event),fetchImpl:async()=>new Promise(resolve=>{release=()=>resolve(reply);})});
+  reply={ok:true,json:async()=>({case:{sourceText:'private fixture'}})};
+  let request=api.post('/api/cases',{sourceText:'private fixture'});release();await request;
+  assert.deepEqual(events,[{path:'/api/cases',method:'POST'}]);
+  request=api.get('/api/cases');release();await request;assert.equal(events.length,1);
+  request=api.post('/api/cases',{});csrf='new-session';release();await request;assert.equal(events.length,1);
+  reply={ok:false,status:409,json:async()=>({code:'CASE_CONFLICT'})};request=api.put('/api/cases/id',{});release();await assert.rejects(request);assert.equal(events.length,1);
+  reply={ok:true,json:async()=>{throw Error('invalid');}};request=api.post('/api/cases',{});release();await assert.rejects(request);assert.equal(events.length,1);
+});

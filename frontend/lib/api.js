@@ -10,7 +10,7 @@ export class ApiError extends Error {
   }
 }
 
-export function createApiClient({ fetchImpl = (...args) => fetch(...args), getCsrfToken = () => '', onUnauthorized = () => {}, getJourney = () => null } = {}) {
+export function createApiClient({ fetchImpl = (...args) => fetch(...args), getCsrfToken = () => '', onUnauthorized = () => {}, onMutation = () => {}, getJourney = () => null } = {}) {
   async function request(path, { method = 'GET', body, signal, rawBody, contentType, filename, assetConsent, documentConsent, telemetry } = {}) {
     if (typeof path !== 'string' || !path.startsWith('/api/') || path.includes('\\') || /[\r\n]/.test(path)) {
       throw new ApiError('INVALID_API_PATH');
@@ -67,6 +67,10 @@ export function createApiClient({ fetchImpl = (...args) => fetch(...args), getCs
       if (response.status === 401 && !path.startsWith('/api/login') && !rejectedBindingPassword && requestCsrf === getCsrfToken()) onUnauthorized();
       // Never render arbitrary backend exception text as interface copy.
       throw new ApiError(typeof data?.code === 'string' ? data.code : 'REQUEST_FAILED', response.status, data?.details);
+    }
+    // Acknowledged current-session writes only; no private payload is published.
+    if (!['GET', 'HEAD'].includes(method) && requestCsrf && requestCsrf === getCsrfToken()) {
+      try { onMutation({ path, method }); } catch { /* A read-model refresh cannot change write success. */ }
     }
     return data;
   }

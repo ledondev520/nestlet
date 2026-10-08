@@ -1,0 +1,24 @@
+/* Root entry adaptation; the shared preview's visual files remain unchanged. */
+.inbox-navigation { padding: 8px 12px; border-block-end: 1px solid var(--hairline); }
+.inbox-navigation .wb-rail-item { gap: 10px; }
+.inbox-navigation [aria-current="page"] { background: var(--forest); color: #fff; }
+.inbox-content { padding: 16px; min-inline-size: 0; flex: 1; }
+.inbox-content > section[hidden] { display: none; }
+.wb .chat-toolbar [data-slot="card-title"] { display: block; }
+.wb .chat-composer { position: static; }
+.wb .chat-messages { max-block-size: none; overflow: visible; }
+.wb .paper-title { font-family: var(--font-body); }
+.wb-topbar [data-slot="button"] { min-block-size: 44px; flex-shrink: 0; }
+.wb-topbar .wb-spacer { min-inline-size: 0; flex-wrap: wrap; gap: 4px; }
+@media(max-width: 640px) {
+ .inbox-content { padding: 10px; }
+ .wb-topbar { flex-wrap: wrap; }
+ .wb-topbar .wb-spacer { margin-inline-start: auto; }
+ .wb .chat-toolbar > div { gap: 6px; }
+}
+.wb-tabs.inbox-navigation { margin-inline-start: 0; flex-shrink: 0; gap: 4px; }
+.inbox-navigation .wb-tab { display: inline-flex; align-items: center; gap: 6px; }
+.inbox-navigation .wb-tab[aria-current="page"] { background: var(--forest); color: #fff; }
+.wb-center > section { padding: 16px; min-inline-size: 0; }
+.wb-center > section[hidden] { display: none; }
+@media(max-width:640px) { .wb-center > section { padding: 10px; } }
