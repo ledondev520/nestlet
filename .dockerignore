@@ -15,6 +15,7 @@
 !storage.js
 !telemetry.js
 !chat.js
+!review-operation.js
 !conversation-action-contract.js
 !document-context.js
 !case-records.js

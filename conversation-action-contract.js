@@ -1,3 +1,4 @@
+import { reviewHistoryText } from './review-operation.js';
 /** Read-only, provenance-bound proposals. Model output never authorizes application. */
 import { FIELDS, DRAFT_TYPES, hasCJKText } from './public/core.js';
 import { DOCUMENT_DETAIL_KEYS, DocumentContextError, mergeDocumentContext } from './document-context.js';
@@ -67,7 +68,7 @@ export function loadConversationAction(storage, userId, record, input) {
 /** Bounded, server-owned source catalogue. Excerpts are evidence, never instructions.
  * Keep eligible older answers separately from recent messages so a new user turn
  * or bilingual/interrupted assistant reply cannot displace the draft source. */
-export function conversationActionContext(storage, userId, record, conversationId) {
+export function conversationActionContext(storage, userId, record, conversationId, {reviewOperation=false}={}) {
   const conversation = storage.getConversation(userId, conversationId);
   if (!conversation || conversation.caseId !== record.id) fail('CONVERSATION_ACTION_SOURCE_NOT_FOUND', 404);
   const all = storage.listMessages(userId, conversationId) || [];
@@ -85,7 +86,7 @@ export function conversationActionContext(storage, userId, record, conversationI
     messages: selected.map(message => {
       const saved = artifacts.filter(artifact => artifact.sourceMessageId === message.id);
       return {id: message.id, role: message.role, state: 'complete',
-        contentPreview: message.content.slice(0, 350), contentPreviewIncomplete: message.content.length > 350,
+        contentPreview: (reviewOperation?reviewHistoryText(message):message.content).slice(0, 350), contentPreviewIncomplete: (reviewOperation?reviewHistoryText(message):message.content).length > 350,
         caseSuggestionEligible: ['user', 'assistant'].includes(message.role), answerDraftEligible: eligible(message),
         savedArtifacts: saved.slice(0, 5).map(artifact => ({id: artifact.id, kind: artifact.kind, status: artifact.status, version: artifact.version, sourceCaseVersion: artifact.sourceCaseVersion, isStale: artifact.isStale})),
         savedArtifactsIncomplete: saved.length > 5};

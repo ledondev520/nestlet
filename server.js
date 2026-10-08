@@ -1,3 +1,4 @@
+import { newReviewReceipt, reviewReceiptSnapshot } from './review-operation.js';
 import { LibraryPermissionError } from './library-consent-storage.js';
 import http from 'node:http';
 import { randomUUID, randomBytes } from 'node:crypto';
@@ -19,7 +20,7 @@ import { ASSET_LIMITS, ASSET_TYPES } from './asset-domain.js';
 import { CaseRecordsError, isCaseRecordsPath, handleCaseRecords } from './case-records.js';
 import { DocumentContextError } from './document-context.js';
 import { createTelemetry, TelemetryError, telemetryId, telemetryPageOptions } from './telemetry.js';
-import { conversationActionContext } from './conversation-action-contract.js';
+import { conversationActionContext, loadConversationAction } from './conversation-action-contract.js';
 import { CHAT_LIMITS, CHAT_IMAGE_TYPES, ChatError, validateChatRequest, conversationHistory, chatProviderMessages, openChatStream, openLibraryChatStream, createConversationToolSession, librarySourceEvent, libraryActivityEvent, LIBRARY_CHAT_ERRORS } from './chat.js';
 import { createLibraryToolSession, LIBRARY_AGENT_LIMITS } from './agent-library-tools.js';
 
@@ -669,7 +670,7 @@ const server = http.createServer(async (request, response) => {
       const history = conversation ? storage.listMessages(session.userId,conversation.id) : [];
       if (history.some(message => message.role === 'user' && message.clientMessageId === input.clientMessageId)) throw new ChatError('CHAT_TURN_EXISTS',409);
       const currentMessage = input.messages[0];
-      if (conversation) input.messages = [...conversationHistory(history,body.messages[0].content.length),currentMessage];
+      if (conversation) input.messages = [...conversationHistory(history,body.messages[0].content.length,{reviewOperation:input.reviewOperation}),currentMessage];
       chatProviderMessages(input, record); // Validate bounded stored evidence before spending provider quota.
       if(input.libraryConsent)response.setHeader('X-Library-Retrieval','enabled');
       if (!enabled) throw new RequestError(503, 'LIVE_DISABLED', 'Live AI is disabled. The administrator must configure the provider before chatting.');
@@ -695,6 +696,7 @@ const server = http.createServer(async (request, response) => {
       const signal = AbortSignal.any([cancel.signal, chatAbort.signal, AbortSignal.timeout(remaining)]);
       let streaming = false, userMessage = null, assistantMessage = null, answer = '', completed = false;
       let library=null;
+      const reviewReceipt=input.reviewOperation?newReviewReceipt(requestId):null;
       let sourceEvent=null,sourceAppended=false,sourcesSent=false;
       const appendSources=provided=>{
         if(sourceAppended||!library)return sourceEvent;
@@ -719,16 +721,40 @@ const server = http.createServer(async (request, response) => {
           if (!userMessage) throw new ChatError('CONVERSATION_NOT_FOUND',404);
         }
         if (input.actionConsent) {
-          input.actionContext = conversationActionContext(storage,session.userId,record,conversation.id);
-          library = createConversationToolSession({storage,userId:session.userId,record,conversationId:conversation.id,library,signal});
+          input.actionContext = conversationActionContext(storage,session.userId,record,conversation.id,{reviewOperation:input.reviewOperation});
+          library = createConversationToolSession({storage,userId:session.userId,record,conversationId:conversation.id,library,signal,reviewOperation:input.reviewOperation});
         }
-        const stream = library?await openLibraryChatStream({apiKey,input,record,signal,library,requestId,authorizeLibrary}):await openChatStream({ apiKey, input, record, signal });
+        const stream = library?await openLibraryChatStream({apiKey,input,record,signal,library,requestId,authorizeLibrary,reviewReceipt}):await openChatStream({ apiKey, input, record, signal });
         response.writeHead(200, { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-store', 'X-Accel-Buffering': 'no' });
         response.flushHeaders(); streaming = true;
         if (conversation) await writeChatEvent(response,signal,'conversation',{conversationId:conversation.id,userMessageId:userMessage.id});
         for await (const event of stream) {
           authorizeLibrary?.();
-          if (event.type === 'delta') { answer += event.text; await writeChatEvent(response, signal, 'delta', { text: event.text }); }
+          if(event.type==='review-result') {
+            if(!reviewReceipt||!conversation||signal.aborted)throw new ChatError('REQUEST_CANCELLED',499);
+            // Revalidate against current scoped state before persistence, then send
+            // one complete frame. A partial frame cannot expose a usable card.
+            const current=storage.getCase(session.userId,record.id);
+            const proposals=event.proposals.map(proposal=>loadConversationAction(storage,session.userId,current,proposal.request));
+            answer=event.text;
+            saveAssistant('complete');
+            if(signal.aborted)throw new ChatError('REQUEST_CANCELLED',499);
+            const outcome=proposals.length?'prepared':'no_preview';
+            if(input.reviewResultVersion===1) {
+              const receipt=reviewReceiptSnapshot({...reviewReceipt,outcome,emittedProposals:proposals.length});
+              await writeChatEvent(response,signal,'done',{requestId,assistantMessageId:assistantMessage.id,conversationId:conversation.id,reviewResult:{text:answer,proposals,receipt}});
+              reviewReceipt.emittedProposals=proposals.length;
+            } else {
+              // Older logged-in pages understand only legacy events. All remain
+              // post-persistence; their existing controls require done to enable.
+              for(const proposal of proposals){await writeChatEvent(response,signal,'proposal',{requestId,proposal});reviewReceipt.emittedProposals++;}
+              await writeChatEvent(response,signal,'delta',{text:answer});
+              await writeChatEvent(response,signal,'done',{requestId,assistantMessageId:assistantMessage.id,conversationId:conversation.id,reviewReceipt:reviewReceiptSnapshot({...reviewReceipt,outcome})});
+            }
+            reviewReceipt.outcome=outcome;
+            completed=true;recordTracking(200,undefined,'success');
+          }
+          else if (event.type === 'delta') { answer += event.text; await writeChatEvent(response, signal, 'delta', { text: event.text }); }
           else if(event.type==='proposal'){await writeChatEvent(response,signal,'proposal',{requestId,proposal:event.proposal});}
           else if(event.type==='activity'){await writeChatEvent(response,signal,'activity',libraryActivityEvent(event));}
           else if(event.type==='sources'){const sources=appendSources(event);if(sources&&!sourcesSent){sourcesSent=true;await writeChatEvent(response,signal,'sources',sources);}}
@@ -741,6 +767,14 @@ const server = http.createServer(async (request, response) => {
         response.end();
       } catch (error) {
         let failure = error;
+        if(reviewReceipt) {
+          const cancelled=signal.aborted||cancel.signal.aborted||response.destroyed;
+          reviewReceipt.outcome=cancelled?'cancelled':'failed';
+          reviewReceipt.reason=cancelled?'cancelled':error.code==='CHAT_SAVE_FAILED'?'persistence_failed':reviewReceipt.reason==='provider_error'?'provider_error':'stream_failed';
+          reviewReceipt.finishReason=cancelled?'cancelled':'error';
+          // Hidden provider prose and uncommitted success wording are never saved.
+          if(!assistantMessage)answer='';
+        }
         let sharingStillAllowed = true;
         if (authorizeLibrary) try { authorizeLibrary(); } catch { sharingStillAllowed = false; }
         // Revocation must not flush private source metadata through the recovery signal.
@@ -754,6 +788,7 @@ const server = http.createServer(async (request, response) => {
         try { if(sharingStillAllowed&&sourceEvent&&!sourcesSent){sourcesSent=true;await writeChatEvent(response,AbortSignal.any([cancel.signal,AbortSignal.timeout(2000)]),'sources',sourceEvent);} await writeChatEvent(response, AbortSignal.any([cancel.signal, AbortSignal.timeout(2000)]), 'error', { code, requestId, retryable: true,...(assistantMessage ? {assistantMessageId:assistantMessage.id,conversationId:conversation.id} : {}) }); } catch {}
         response.end();
       } finally {
+        if(reviewReceipt)console.info(JSON.stringify({event:'review_operation',...reviewReceiptSnapshot(reviewReceipt)}));
         clearInterval(permissionGuard);
         chatAbort.abort();
         const active = activeLibraryRequests.get(session.userId);
