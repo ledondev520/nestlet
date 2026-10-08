@@ -48,8 +48,8 @@ test('pre-upgrade schema5 snapshot stays unchanged; drill migrates to6; capabili
   const asset=store.createAsset(f.id,metadata,{caseId:f.record},id=>vault.write(id,bytes));
   store.close();
   const post=join(f.root,'schema6-snapshot');
-  assert.equal((await backupPrivateData({filename:drill.filename,assetsDirectory:drill.assetsDirectory,output:post})).schemaVersion,7);
-  assert.equal(verifyPrivateBackup({input:post}).schemaVersion,7);
+  assert.equal((await backupPrivateData({filename:drill.filename,assetsDirectory:drill.assetsDirectory,output:post})).schemaVersion,8);
+  assert.equal(verifyPrivateBackup({input:post}).schemaVersion,8);
   const recovered=await restorePrivateBackup({input:post,output:join(f.root,'schema6-restored')}),again=openStorage({filename:recovered.filename});
   try {
     assert.equal(again.accountAdministration.administrator(f.id),true);
@@ -70,11 +70,11 @@ test('pre-upgrade schema5 snapshot stays unchanged; drill migrates to6; capabili
 
 test('future8 backup refuses without snapshot/source mutation; restore rejects future manifest before creating destination',async t=>{
   const f=fixture(t),snapshot=join(f.root,'supported-snapshot');await backupPrivateData({...f,output:snapshot});
-  inspect(f.filename,db=>db.exec('PRAGMA user_version=8;'));
+  inspect(f.filename,db=>db.exec('PRAGMA user_version=9;'));
   const before=readFileSync(f.filename),files=readdirSync(f.source).sort();
-  await assert.rejects(backupPrivateData({...f,output:join(f.root,'future-snapshot')}),/schema1–7/);
+  await assert.rejects(backupPrivateData({...f,output:join(f.root,'future-snapshot')}),/schema1–8/);
   assert.deepEqual(readFileSync(f.filename),before);assert.deepEqual(readdirSync(f.source).sort(),files);assert.equal(readdirSync(f.root).includes('future-snapshot'),false);
-  const manifestPath=join(snapshot,'manifest.json'),manifest=JSON.parse(readFileSync(manifestPath,'utf8'));manifest.schemaVersion=8;writeFileSync(manifestPath,JSON.stringify(manifest));
+  const manifestPath=join(snapshot,'manifest.json'),manifest=JSON.parse(readFileSync(manifestPath,'utf8'));manifest.schemaVersion=9;writeFileSync(manifestPath,JSON.stringify(manifest));
   assert.throws(()=>verifyPrivateBackup({input:snapshot}),/manifest/);
   await assert.rejects(restorePrivateBackup({input:snapshot,output:join(f.root,'future-restored')}),/manifest/);
   assert.equal(readdirSync(f.root).includes('future-restored'),false);

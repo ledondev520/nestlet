@@ -20,9 +20,10 @@ function normalizeLoginUsername(value, allowEmpty = false) {
 /** An optional login alias, never a replacement for the immutable owner identity. */
 export const normalizeOperatorUsername = (value = 'owner') => normalizeLoginUsername(value, true);
 
-export function createOperatorAuth({ passwordHash = '', operatorUsername = 'owner', publicOrigin = '', host = '127.0.0.1', findTrialUser = () => null, findTrialUserById = () => null, findUserByEmail = () => null, hasAdministratorCapability = () => false } = {}) {
+export function createOperatorAuth({ passwordHash = '', operatorUsername = 'owner', publicOrigin = '', host = '127.0.0.1', findTrialUser = () => null, findTrialUserById = () => null, findUserByEmail = () => null, hasAdministratorCapability = () => false, sessionStore = new Map() } = {}) {
   const fingerprint = value => createHash('sha256').update(value).digest('hex');
-  const sessions = new Map();
+  const sessions = sessionStore;
+  const transaction = sessions.transaction || (action => action());
   const attempts = [];
   const match = /^scrypt\$([A-Za-z0-9_-]{22})\$([A-Za-z0-9_-]{43})$/u.exec(passwordHash);
   const operatorLogin = normalizeOperatorUsername(operatorUsername);
@@ -40,18 +41,31 @@ export function createOperatorAuth({ passwordHash = '', operatorUsername = 'owne
     const now = Date.now();
     for (const [id, session] of sessions) if (now - session.lastUsed > (session.rememberMe ? ABSOLUTE_MS : IDLE_MS) || now - session.created > ABSOLUTE_MS) sessions.delete(id);
   };
-  const getSession = request => {
+  // The owner credential lives in ENV rather than users.password_hash. Reconcile
+  // every owner session on startup, including cookies never presented during a
+  // credential rotation, so reverting an ENV hash cannot revive them later.
+  transaction(() => {
+    if (!isConfigured()) return;
+    prune();
+    for (const [id, session] of sessions) {
+      if (session.role === 'owner' && session.credentialFingerprint !== fingerprint(passwordHash)) sessions.delete(id);
+    }
+  });
+  const getSession = request => transaction(() => {
     if (!isConfigured()) return null;
     prune();
     const token = (request.headers.cookie || '').split(';').map(part => part.trim()).find(part => part.startsWith(COOKIE + '='))?.slice(COOKIE.length + 1);
     if (!token || !/^[A-Za-z0-9_-]{43}$/u.test(token)) return null;
-    const session = sessions.get(token);
+    const digest = fingerprint(token);
+    const session = sessions.get(digest);
     if (!session) return null;
     const current = session.role === 'owner' ? { role: 'owner', passwordHash } : findTrialUserById(session.userId);
-    if (!current || current.role !== session.role || typeof current.passwordHash !== 'string' || fingerprint(current.passwordHash) !== session.credentialFingerprint) { sessions.delete(token); return null; }
-    session.lastUsed = Date.now();
+    if (!current || current.role !== session.role || typeof current.passwordHash !== 'string' || fingerprint(current.passwordHash) !== session.credentialFingerprint) { sessions.delete(digest); return null; }
+    session.lastUsed = Math.max(session.lastUsed, Date.now());
+    if (sessions.touch) sessions.touch(digest, session.lastUsed);
+    else sessions.set(digest, session);
     return { token, csrfToken: session.csrfToken, userId: session.userId, username: session.username, role: session.role, ...accountPermissions(session, hasAdministratorCapability(session.userId)) };
-  };
+  });
   const csrfValid = (request, session) => {
     const token = request.headers['x-csrf-token'];
     return Boolean(session && typeof token === 'string' && /^[A-Za-z0-9_-]{43}$/u.test(token) &&
@@ -62,16 +76,21 @@ export function createOperatorAuth({ passwordHash = '', operatorUsername = 'owne
     // Never promote, overwrite, or sign in as that ordinary identity.
     if (!isConfigured()) return { error: 'OPERATOR_SETUP_REQUIRED' };
     prune();
-    const ownSessions = [...sessions].filter(([, session]) => session.userId === target.id);
-    while (ownSessions.length >= 5) sessions.delete(ownSessions.shift()[0]);
-    // 100 ordinary accounts plus the owner, five sessions each, remain below this bound.
-    if (sessions.size >= 512) return { error: 'LOGIN_RATE_LIMITED' };
+    // Staging must not evict a previous session before account verification commits.
+    if (sessions.size >= 512 && ![...sessions].some(([, session]) => session.userId === target.id)) return { error: 'LOGIN_RATE_LIMITED' };
     const token = randomBytes(32).toString('base64url');
     const csrfToken = randomBytes(32).toString('base64url');
     const record = { rememberMe, csrfToken, created: now, lastUsed: now, userId: target.id, username: target.username, role: target.role, credentialFingerprint: fingerprint(target.passwordHash) };
     const result = { csrfToken, cookie: cookie(token), userId: target.id, username: target.username, role: target.role, ...accountPermissions({ userId: target.id, role: target.role }, hasAdministratorCapability(target.id)) };
-    if (staged) return { result, commit() { sessions.set(token, record); } };
-    sessions.set(token, record);
+    const commit = () => transaction(() => {
+      prune();
+      const ownSessions = [...sessions].filter(([, session]) => session.userId === target.id);
+      while (ownSessions.length >= 5) sessions.delete(ownSessions.shift()[0]);
+      if (sessions.size >= 512) throw new Error('LOGIN_RATE_LIMITED');
+      sessions.set(fingerprint(token), record);
+    });
+    if (staged) return { result, commit };
+    commit();
     return result;
   };
   return {
@@ -112,13 +131,19 @@ export function createOperatorAuth({ passwordHash = '', operatorUsername = 'owne
       if (!current || current.id === 'owner' || current.role !== 'trial' || current.passwordHash !== target.passwordHash) return { error: 'INVALID_CREDENTIALS' };
       const staged = issueSession(current, Date.now(), false, true);
       if (staged.error) return staged;
-      // Called synchronously only after SQLite COMMIT succeeds. A failed commit
-      // leaves both the prior session and the unconsumed proof untouched.
-      return { result: staged.result, commit() {
+      const activate = () => transaction(() => {
         staged.commit();
-        if (previousSession) sessions.delete(previousSession.token);
-      } };
+        if (previousSession) sessions.delete(fingerprint(previousSession.token));
+      });
+      if (sessions.stageRegistration) {
+        // Durable rows join the account/proof transaction. A failed write or
+        // COMMIT rolls everything back; no cookie is released before success.
+        sessions.stageRegistration(activate);
+        return { result: staged.result, commit() {} };
+      }
+      // In-memory test/embedded callers activate only after account COMMIT.
+      return { result: staged.result, commit: activate };
     },
-    logout(session) { if (session) sessions.delete(session.token); return cookie('', true); },
+    logout(session) { if (session) sessions.delete(fingerprint(session.token)); return cookie('', true); },
   };
 }

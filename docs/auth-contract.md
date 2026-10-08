@@ -15,11 +15,11 @@ No parser/extraction/settings endpoint has an unauthenticated development bypass
 
 ## Session and transport
 
-`POST /api/login` accepts JSON `{email,password,rememberMe?}` or legacy `{password,username?,rememberMe?}`, never both identity fields. Email must be verified; blank/omitted legacy username selects `owner`, while an existing named trial may keep its assigned username. Login requires a matching Origin. Successful authentication returns `{authenticated:true,csrfToken}` and a `nestlet_session` cookie: HttpOnly, SameSite=Strict, host-only, Path=/, Secure for the configured HTTPS deployment. Sessions exist only in server memory, expire after 30 idle minutes or eight absolute hours. Explicit boolean `rememberMe: true` removes the idle cutoff within those same eight absolute hours; omitted or false retains the default; the HTTP API rejects non-Boolean values. Sessions are bounded, with at most five sessions per user and 512 total. Ten sign-in attempts per minute are allowed across this small service; no password or hash is logged.
+`POST /api/login` accepts JSON `{email,password,rememberMe?}` or legacy `{password,username?,rememberMe?}`, never both identity fields. Email must be verified; blank/omitted legacy username selects `owner`, while an existing named trial may keep its assigned username. Login requires a matching Origin. Successful authentication returns `{authenticated:true,csrfToken}` and a `nestlet_session` cookie: HttpOnly, SameSite=Strict, host-only, Path=/, Secure for the configured HTTPS deployment. Schema8 persists sessions with hashed bearer tokens in private SQLite; they expire after 30 idle minutes or eight absolute hours. Explicit boolean `rememberMe: true` removes the idle cutoff within those same eight absolute hours; omitted or false retains the default; the HTTP API rejects non-Boolean values. Sessions are bounded, with at most five sessions per user and 512 total. Ten sign-in attempts per minute are allowed across this small service; no password or hash is logged.
 
 Authenticated state-changing requests include `X-CSRF-Token` and the session cookie. Cross-site fetch metadata and mismatched Origins are rejected. A same-origin browser Origin is additionally mandatory for login and key-settings writes/tests. The application does not trust an upstream authenticated-user header.
 
-`POST /api/logout` accepts `{}` with session and CSRF, revokes that server session and clears the cookie. Restarting the process invalidates every session and any key saved only in memory.
+`POST /api/logout` accepts `{}` with session and CSRF, revokes that server session and clears the cookie. From schema8, routine restart preserves unexpired durable sessions; keys saved only in memory are still lost.
 
 ## Endpoints
 
@@ -60,7 +60,7 @@ Named trial creation/rotation is a private user-run CLI operation: `node scripts
 
 Explicit saves retain the title, source text, field values/evidence/review states, draft type/text and permitted provenance flags. Raw upload binaries, API credentials and unknown payload properties are not stored as case content. Limits are 100 cases per user, 256 KiB canonical case payload, and 50,000 characters each for source/draft text. Updates/deletes require a positive integer `expectedVersion`; a stale version yields `CASE_CONFLICT`/409 instead of overwriting newer data.
 
-Saved data survives restart through the dedicated SQLite volume; sessions and RAM-only provider keys do not. No automatic backup or full audit/history system is implemented. Preserve the data volume during deployment and rollback; never use volume removal/pruning as routine cleanup.
+Saved data and unexpired hashed-token sessions survive restart through the dedicated SQLite volume; RAM-only provider keys do not. No automatic backup or full audit/history system is implemented. Preserve the data volume during deployment and rollback; never use volume removal/pruning as routine cleanup.
 
 Trial AI extraction requests are limited to ten per user/hour and thirty total trial requests/hour in server memory. Restart resets counters. These limits do not establish a hard spending cap, paid subscription or billing guarantee. `TRIAL_LIMIT_REACHED` returns 429. Role/storage errors include `OWNER_REQUIRED`, `CASE_NOT_FOUND`, `CASE_CONFLICT`, `CASE_INVALID`, `CASE_TOO_LARGE` and storage/cap errors emitted by the actual route contract; do not substitute success on failure.
 

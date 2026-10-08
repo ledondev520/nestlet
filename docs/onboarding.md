@@ -16,7 +16,7 @@ The operator personally enters and submits credentials. Do not send passwords, h
 
 ## 3. Owner configures and verifies the model separately
 
-Authenticated HTTPS Settings can accept a DeepSeek key and explicit live-extraction preference. The key is held in server process memory only and is not returned to the browser. A server restart drops browser-saved keys and sessions; a separately configured environment key may load again on startup.
+Authenticated HTTPS Settings can accept a DeepSeek key and explicit live-extraction preference. The key is held in server process memory only and is not returned to the browser. A server restart drops browser-submitted RAM-only keys but preserves unexpired schema8 sessions; a separately configured environment key may load again on startup.
 
 Only `deepseek-flash` is supported. Saving a key means **configured**, not **verified**. The explicit connection check queries the provider’s model list. Success verifies model access, not chat completion, billing availability, extraction quality or privacy suitability. A real consented extraction is a further check. No real-key check or model completion has yet been established in this project’s acceptance.
 

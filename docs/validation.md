@@ -477,3 +477,19 @@ Final candidate local checks: pinned `npm ci --ignore-scripts --offline` succeed
 Combined exact source PR29/30/33/34/36 on main2e1354e in an isolated worktree. All source commits are preserved; only append-only validation text needed conflict resolution. Fresh locked installation, syntax checks and production build passed. Full combined backend **363/363**, frontend **303/303**, simulated-email contracts **54/54**, and real HTTP/DOM artifact invalidation **1/1** passed, zero skipped. Playwright discovery reports **27 scenarios in14 files**. Build retains its preexisting chunk-size advisory.
 
 No live-provider/mail request, production migration, backup/restore, merge or deployment was performed. Docker is absent and local Chromium execution is restricted; exact combined official CI, independent review and release rehearsal remain gates. The [source manifest and schema6→7 plan](reviewed-functional-integration.md) preserve the existing operations route and forbid automatic old-binary restart after candidate start.
+
+## 2026-10-08 — durable login sessions / schema8 candidate
+
+Local isolated candidate based on `05923a88156d8d2d1c497d22c3ef56414452d063`; this is not production-release evidence.
+
+- `npm ci --ignore-scripts`, `npm run check`, `npm run build`: passed
+- `npm test`: 379/379 passed
+- `npm run test:frontend`: 303/303 passed
+- `npm run test:email-contracts`: 54/54 passed, explicitly simulated mail transport
+- `node --test test/artifact-invalidation.integration.test.js`: 1/1 passed using actual HTTP/DOM
+- New durable-session coverage: raw bearer absent from SQLite; original cookie and CSRF usable after actual server restart; signup verification replay rejected; logout/reset and owner-credential rotation remain revoked across restart; all untouched owner cookies are revoked on startup after ENV rotation, even if that ENV credential is later reverted; current administrator permission refreshed; original idle/absolute expiry preserved; five-session eviction atomic; real session-insert and deferred-COMMIT failures roll back signup/account/proof and previous-session replacement; touch/delete errors fail closed; logout through another connection cannot be resurrected
+- Schema8 fixture coverage: genuine populated schema7 additive migration/reopen, original rows/DDL/FKs/sequences/files preserved, late migration rollback, unchanged schema7 snapshot/restore, schema8 snapshot-session preservation and restore-session purge, future9 rejection without writes/sidecars under DELETE and WAL modes
+- Existing container SQLite lifetime and schema1→8 migration smoke scripts also passed locally against private disposable directories; these local executions are not Docker/container acceptance
+- Independent read-only security/correctness review completed. It found an owner-ENV rollback revival edge case, which was fixed with startup-wide reconciliation and a focused regression. Container schema assertions were updated. Final review found no remaining blocking code issues.
+
+No live mail/model/provider calls, deployment, production migration or user credentials were used. Docker is unavailable in this workspace; exact-SHA remote container CI remains a release gate. Initial schema8 migration cannot restore previously RAM-only login sessions; later routine restarts preserve valid sessions. Disaster restore deliberately requires sign-in to prevent session resurrection. See [durable-session release/recovery notes](durable-login-sessions.md).

@@ -4,6 +4,7 @@
 !package-lock.json
 !server.js
 !auth.js
+!auth-session-storage.js
 !account-administration.js
 !account-administration-storage.js
 !email-auth.js

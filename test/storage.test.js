@@ -34,7 +34,7 @@ test('actual SQLite schema, private new directory/file, reserved owner without c
   assert.equal(storage.getUserById('owner').passwordHash, null);
   assert.equal(storage.getUserById('owner').role, 'owner');
   const db = new DatabaseSync(filename);
-  assert.equal(db.prepare('PRAGMA user_version').get().user_version, 7);
+  assert.equal(db.prepare('PRAGMA user_version').get().user_version, 8);
   assert.equal(db.prepare('PRAGMA application_id').get().application_id, 0x4e53544c);
   db.close();
   storage.close(); storage.close();

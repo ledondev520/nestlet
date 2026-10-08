@@ -102,7 +102,7 @@ test('same cookies observe grant/revoke immediately; admin only sees bounded dia
 test('capabilities persist through restart; real password-reset endpoint keeps identity/cases and revokes all existing admin cookies',async t=>{
   const f=await fixture(t),owner=await f.login('owner'),admin=await f.login(f.users.one.email),target=f.users.one.id;
   await f.json(`/api/admin/accounts/${target}/administrator`,{method:'PUT',session:owner,body:{administrator:true,expectedVersion:0}});
-  await f.restart();await f.json('/api/admin/diagnostics',{session:admin},401);
+  await f.restart();await f.json('/api/admin/diagnostics',{session:admin},200);
   const restored=await f.login(f.users.one.email);assert.equal(restored.administrator,true);assert.equal(restored.userId,target);
   const reset=f.withStorage(storage=>{const action=storage.emailAuth.createAction({kind:'reset',email:f.users.one.email,userId:target,credentialFingerprint:digest(passwordHash)});storage.emailAuth.markAccepted(action.tokenHash);return action;});
   const next='synthetic-http-new-password';await f.json('/api/auth/password/reset',{method:'POST',body:{token:reset.token,password:next,passwordConfirmation:next}});

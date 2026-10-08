@@ -56,7 +56,7 @@ The `NESTLET_OPERATOR_PASSWORD_HASH` assignment is inserted or replaced, plus `N
 
 Wrong permissions/ownership, duplicate operator declarations, malformed encoding, multiline environment values, symlinks, hard links, unexpected filenames, unconfirmed input and mismatched passwords fail closed. Changes detected during the pre-write checks also stop setup. Do not run deployment/configuration writers concurrently: a same-owner writer can still race the final recheck and rename; this helper does not provide a shared lock protocol. The helper neither creates a missing runtime file nor changes insecure permissions automatically.
 
-The helper creates no backup containing old secrets. Cancel or Ctrl-C before the final confirmation leaves the target unchanged. The running server reads its operator hash at startup. Recreate the Docker container to load changed environment-file values, or restart a directly hosted process. This invalidates existing sessions and discards API keys saved only in server memory.
+The helper creates no backup containing old secrets. Cancel or Ctrl-C before the final confirmation leaves the target unchanged. The running server reads its operator hash at startup. Recreate the Docker container to load changed environment-file values, or restart a directly hosted process. Changing the operator password invalidates existing owner sessions. From schema8 onward, routine restart with unchanged credentials preserves unexpired login sessions; API keys saved only in server memory are still discarded.
 
 ## Verification boundary
 

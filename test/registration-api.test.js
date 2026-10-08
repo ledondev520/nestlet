@@ -84,6 +84,11 @@ test('unaccepted pending enrollment cannot login; accepted verification is POST-
   const status = await (await site.request('/api/status', { session })).json();
   assert.equal(status.email, email); assert.equal(status.emailVerified, true); assert.equal(status.emailBindingRequired, false); assert.equal(status.passwordRecoveryMethod, 'email');
   assert.equal(status.role, 'trial'); assert.equal((await site.request('/api/settings', { session })).status, 403);
+  await site.restart();
+  const resumed = await (await site.request('/api/status', { session })).json();
+  assert.equal(resumed.authenticated, true); assert.equal(resumed.userId, session.userId); assert.equal(resumed.csrfToken, session.csrfToken);
+  assert.equal((await site.post('/api/cases', { title: 'Synthetic restarted signup', sourceText: '', fields: [], draftType: 'followup', draftText: '' }, { session })).status, 201);
+  assert.equal((await site.post('/api/auth/email/verify', { token: action.token })).status, 400);
   assert.equal(site.output.includes(action.token), false); assert.equal(site.output.includes(email), false);
 });
 
@@ -96,7 +101,10 @@ test('verified email account retains its isolated case and identity across actua
   assert.equal((await site.request('/api/cases/' + saved.id, { session: second })).status, 404);
   assert.equal((await site.post('/api/logout', {}, { session: first })).status, 200);
   assert.equal((await site.request('/api/cases', { session: first })).status, 401);
-  await site.restart(); const reopened = await site.login('first@example.invalid'); assert.equal(reopened.userId, first.userId);
+  await site.restart();
+  assert.equal((await site.request('/api/cases', { session: first })).status, 401);
+  assert.equal((await site.request('/api/cases', { session: second })).status, 200);
+  const reopened = await site.login('first@example.invalid'); assert.equal(reopened.userId, first.userId);
   assert.deepEqual((await (await site.request('/api/cases/' + saved.id, { session: reopened })).json()).case, saved);
 });
 
@@ -111,7 +119,8 @@ test('password recovery atomically changes a verified trial credential, revokes 
   for (const session of [first, second, remembered]) assert.equal((await site.request('/api/cases', { session })).status, 401);
   assert.equal((await site.post('/api/login', { email, password: ordinaryPassword })).status, 401);
   const changed = await site.login(email, newPassword); assert.equal(changed.userId, first.userId);
-  await site.restart(); assert.equal((await site.request('/api/cases', { session: changed })).status, 401); assert.equal((await site.login(email, newPassword)).userId, first.userId);
+  await site.restart(); assert.equal((await site.request('/api/cases', { session: changed })).status, 200);
+  for (const session of [first, second, remembered]) assert.equal((await site.request('/api/cases', { session })).status, 401); assert.equal((await site.login(email, newPassword)).userId, first.userId);
   for (const secret of [ordinaryPassword, newPassword, reset.token]) assert.equal(site.output.includes(secret), false);
 });
 

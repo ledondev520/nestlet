@@ -22,7 +22,7 @@ Preserve these boundaries:
 - Ordinary self-registration assigns its role server-side; no administrator selection, email verification, SSO, or password-reset feature is established
 - Explicit Save persists validated case text, facts/evidence/review state, and draft in the current user's SQLite records; raw upload binaries are not retained
 - Owner and ordinary users each see only their own cases; owner settings privilege does not confer access to other users' case content
-- Versioned updates/deletes reject stale writes with 409 rather than overwriting; saved cases survive restart, sessions and browser-submitted RAM-only provider keys do not
+- Versioned updates/deletes reject stale writes with 409 rather than overwriting; saved cases and unexpired schema8 sessions survive restart; browser-submitted RAM-only provider keys do not
 - A saved key is configured, a model-list check verifies model access, and a successful real extraction is separate evidence; none proves agency acceptance or document correctness
 
 Where a stale brief conflicts with the current integration contract, the integration owner must settle the exact contract before Kimi changes behavior.
