@@ -19,6 +19,7 @@ export async function revealAccountAction(page, name) {
   // control only after the first account-layout decision has committed.
   await expect(page.locator('main')).toBeVisible();
   await expect(page.getByRole('status', { name: /^(Connecting|正在连接)$/u })).toHaveCount(0);
+  await expect.poll(async () => await page.locator('.wb-topbar').isVisible() || await page.locator('main [data-slot="card"]').first().isVisible(), { message: 'Settled authenticated workspace or signed-out account surface' }).toBe(true);
   const action = page.getByRole('button', { name, exact: true });
   if (!await action.first().isVisible()) await page.getByRole('button', { name: /^(Account menu|账户菜单)$/u }).click();
   await expect(action.first()).toBeVisible();

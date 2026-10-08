@@ -5,11 +5,12 @@ import { noHorizontalOverflow } from './support.js';
 // Synthetic API fixtures only. Never submit a real key or contact a provider.
 test.use({ trace: 'off' });
 const owner = { authenticated: true, userId: 'synthetic-model-owner', username: 'owner', role: 'owner', canManageSettings: true, authConfigured: true, csrfToken: 'synthetic-csrf', secureSettings: true, secureLogin: true };
-async function fixture(page, { role = 'owner', failSave = false } = {}) {
+async function fixture(page, { role = 'owner', failSave = false, initialStatusGate = null } = {}) {
   const writes = [];
   let settings = { configured: false, liveEnabled: false, secureSettings: true, keyStorage: 'none' };
   await page.route('**/api/**', async route => {
     const request = route.request(), path = new URL(request.url()).pathname;
+    if (path === '/api/status' && initialStatusGate) await initialStatusGate;
     if (request.method() === 'POST') writes.push({ path, body: request.postDataJSON() });
     let body = path === '/api/status' ? { ...owner, role, canManageSettings: role === 'owner' } : path === '/api/settings' ? settings : { conversations: [], customers: [], cases: [], assets: [] };
     if (path === '/api/settings' && request.method() === 'POST') {
@@ -24,10 +25,18 @@ async function fixture(page, { role = 'owner', failSave = false } = {}) {
 }
 for (const [lang, width] of [['en', 1280], ['zh', 390], ['en', 320]]) test(`key-only popover: keyboard, dismissal, save and layout (${lang}/${width})`, async ({ page }) => {
   await page.setViewportSize({ width, height: 900 });
-  const writes = await fixture(page);
+  let releaseStatus;
+  const delayed = width === 320 && lang === 'en';
+  const gate = delayed ? new Promise(resolve => { releaseStatus = resolve; }) : null;
+  const writes = await fixture(page, { initialStatusGate: gate });
   await page.goto('/');
+  if (delayed) {
+    await expect(page.getByRole('status', { name: '正在连接', exact: true })).toBeVisible();
+    const languageChange = switchLanguage(page, 'en');
+    await expect(page.getByRole('button', { name: /^(Account menu|账户菜单)$/u })).toHaveCount(0);
+    releaseStatus(); await languageChange;
+  } else if (lang === 'en') await switchLanguage(page,'en');
   await expect(page.locator('.wb-topbar')).toBeVisible();
-  if (lang === 'en') await switchLanguage(page,'en');
   if(width<960)expect((await page.locator('.wb-topbar').boundingBox()).height).toBeLessThanOrEqual(64);
   const trigger = page.getByRole('button', { name: lang === 'zh' ? '模型设置' : 'Model settings', exact: true });
   await trigger.hover(); await expect(page.getByRole('tooltip')).toBeVisible();
