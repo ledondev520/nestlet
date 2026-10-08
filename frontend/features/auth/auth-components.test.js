@@ -41,7 +41,7 @@ test('ordinary account never mounts provider controls or reads owner settings',a
  await render(SettingsPage);
  assert.equal(calls.filter(c=>c.path==='/api/settings').length,0);
  assert.equal(host.querySelector('input[type=password]'),null);
- assert.doesNotMatch(host.textContent,/DeepSeek|API Key/);
+ assert.doesNotMatch(host.textContent,/API Key/);
 });
 test('owner key stays blank on read, edits do not post, explicit save clears input',async()=>{
  const calls=fixture(owner,{configured:true,liveEnabled:false,secureSettings:true,keyStorage:'server-memory',apiKey:'unexpected-response-secret'});

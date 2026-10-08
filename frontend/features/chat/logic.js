@@ -36,7 +36,7 @@ export function imageDimensions(bytes, mimeType) {
   if(!width||!height||width>CHAT_BOUNDS.imageSide||height>CHAT_BOUNDS.imageSide)fail('CHAT_IMAGE_INVALID');
   return {width,height};
 }
-export function buildChatTurn({ caseId, conversationId, clientMessageId, text, images = [], lang = 'zh', libraryConsent = false, actionConsent = false, guidanceAgency = 'unknown' }) {
+export function buildChatTurn({ caseId, conversationId, clientMessageId, text, images = [], lang = 'zh', libraryConsent = false, libraryPermissionVersion, actionConsent = true, guidanceAgency = 'unknown' }) {
   if (!AGENCY_OPTIONS.some(option => option.id === guidanceAgency)) fail('CHAT_INVALID');
   if (typeof actionConsent !== 'boolean' || typeof libraryConsent !== 'boolean' || !uuid(caseId) || !uuid(conversationId) || !uuid(clientMessageId) || !['zh', 'en'].includes(lang) || typeof text !== 'string' || /\u0000/u.test(text)) fail('CHAT_INVALID');
   if (text.length > CHAT_BOUNDS.text || !Array.isArray(images) || images.length > CHAT_BOUNDS.images) fail('CHAT_TOO_LARGE');
@@ -45,7 +45,8 @@ export function buildChatTurn({ caseId, conversationId, clientMessageId, text, i
     if (!['image/png', 'image/jpeg'].includes(image.mimeType) || typeof image.data !== 'string' || !image.data || image.data.length > Math.ceil(CHAT_BOUNDS.imageBytes / 3) * 4 || !/^[A-Za-z0-9+/]+={0,2}$/u.test(image.data)) fail('CHAT_IMAGE_INVALID');
     return { mimeType: image.mimeType, data: image.data };
   });
-  return { caseId, conversationId, clientMessageId, locale: lang, consent: true, guidanceAgency, ...(libraryConsent ? {libraryConsent:true} : {}), ...(actionConsent ? {actionConsent:true} : {}),
+  if (libraryConsent && (!Number.isSafeInteger(libraryPermissionVersion) || libraryPermissionVersion < 1)) fail('LIBRARY_CONSENT_REQUIRED');
+  return { caseId, conversationId, clientMessageId, locale: lang, consent: true, guidanceAgency, ...(libraryConsent ? {libraryConsent:true,libraryPermissionVersion} : {}), ...(actionConsent ? {actionConsent:true} : {}),
     messages: [{ role: 'user', content: text, ...(cleanImages.length ? { images: cleanImages } : {}) }] };
 }
 export function normalizeMessages(messages) {
