@@ -43,7 +43,7 @@ function observeAdministration(page) {
 async function ownerControlsAbsent(page) {
   await expect(accountsPanel(page)).toHaveCount(0);
   await expect(page.getByRole('list', { name: 'Account directory', exact: true })).toHaveCount(0);
-  await expect(card(page, 'DeepSeek connection')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Model settings', exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: /^(Grant|Revoke) administrator access:/u })).toHaveCount(0);
 }
 
@@ -94,7 +94,7 @@ test('owner confirms grant/revoke; delegated diagnostics stay bounded and ordina
       expect(target).toMatchObject({ id: ordinary.userId, role: 'trial', administrator: false,
         canGrantAdministrator: true, capabilityVersion: 0 });
       await expect(accountsPanel(page)).toBeVisible();
-      await expect(card(page, 'DeepSeek connection')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Model settings', exact: true })).toBeVisible();
       await expect(accountRow(page, 'owner')).toContainText('Owner access is fixed and cannot be changed here.');
       await expect(accountRow(page, 'owner').getByRole('button')).toHaveCount(0);
       await expect(accountRow(page, LEGACY)).toContainText('Ask this account to bind and verify an email');

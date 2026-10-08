@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Settings } from 'lucide-react';
+import { ModelSettingsPopover } from '@/components/model-settings-popover';
 import { ApplicationShell } from '@/components/application-shell';
 import { FeatureBoundary } from '@/components/feature-boundary';
 import ComponentPreview from '@/components/component-preview';
@@ -182,7 +183,7 @@ export default function App({ initialAuthLink = null }) {
   if (window.location.hash === '#components') return <ComponentPreview />;
   return <ApplicationShell lang={lang} view={view} onNavigate={status.authenticated ? navigate : undefined}
     onLanguageChange={() => setLang(value => value === 'zh' ? 'en' : 'zh')}
-    account={status.authenticated ? <><Button variant="outline" size="sm" onClick={() => navigate('settings')} aria-label={lang === 'zh' ? '账户与设置' : 'Account and settings'}><Settings aria-hidden="true" /></Button>{AccountControls && <AccountControls lang={lang} />}</> : null}>
+    account={status.authenticated ? <><ModelSettingsPopover key={`${status.userId}:${view}`} lang={lang} active={!authLink && !loading && view !== 'settings'} /><Button variant="outline" size="sm" onClick={() => navigate('settings')} aria-label={lang === 'zh' ? '账户与设置' : 'Account and settings'}><Settings aria-hidden="true" /></Button>{AccountControls && <AccountControls lang={lang} />}</> : null}>
     {recovery === 'suspended' && <Alert className="mb-5"><AlertDescription>{lang === 'zh' ? '登录已过期。请在 30 分钟内使用同一账号重新登录，并保持当前页面打开，以恢复未保存的文字。' : 'Your session expired. Keep this page open and sign in with the same account within 30 minutes to recover unsaved text.'}</AlertDescription></Alert>}
     {recovery === 'restored' && <Alert className="mb-5"><AlertDescription>{lang === 'zh' ? '已恢复未保存的文字，请重新添加图片和文件。' : 'Unsaved text restored. Reattach images and files.'}</AlertDescription></Alert>}
     {error && <Alert variant="destructive" className="mb-5"><AlertDescription>{lang === 'zh' ? '连接状态未能刷新，请重试。' : 'Connection status could not be refreshed. Try again.'}<Button variant="outline" size="sm" onClick={() => refresh().catch(() => {})}>{lang === 'zh' ? '重试' : 'Retry'}</Button></AlertDescription></Alert>}
