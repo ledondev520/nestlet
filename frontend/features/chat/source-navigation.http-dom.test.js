@@ -186,7 +186,9 @@ test('actual App source selection keeps unsaved chat/material/document edits on 
   await click(button('Inspect source', host.querySelector('[data-source-id="S2"]')));
   await wait(() => host.querySelector('[data-source-id="S2"] pre'));
   assert.equal(host.querySelector('[data-source-id="S2"] pre').textContent, document.content);
-  assert.equal(host.querySelector('a[href^="https://untrusted"]'), null, 'Model prose never becomes a URL action');
+  const proseLink = host.querySelector('a[href="https://untrusted.invalid"]');
+  assert.equal(proseLink?.getAttribute('rel'), 'noopener noreferrer', 'Markdown web links are isolated external links, never source-navigation actions');
+  assert.equal(proseLink?.getAttribute('target'), '_blank');
   await click(button('Open case documents', host.querySelector('[data-source-id="S2"]')));
   await wait(() => window.location.hash === '#intake');
   assert.equal(input('Case source text').value, 'Unsaved synthetic materials', 'Same-case document continuation finishes pending material first');

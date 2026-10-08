@@ -57,3 +57,23 @@ To validate on an authorized browser after combining the backend: open `/next/`,
 ### Main-branch polish integration
 
 The main-branch chat layout, role-aligned messages, compact composer, explicit Send/Attach controls, Enter versus Shift+Enter/IME behavior, and accessible icon-only reload control are retained. The saved-conversation picker still distinguishes no saved history from the New conversation action. Library permission/activity/source handling remains separate, and source cards never claim persistence before the reply save state is confirmed.
+
+## Assistant Markdown display
+
+`AssistantMarkdown` parses model replies with pinned `react-markdown` and `remark-gfm`.
+This is a presentation layer only: original message strings, source IDs, stored
+content, Copy reply and document handoff stay unchanged. User messages remain
+literal escaped text. Unfinished streamed Markdown is reparsed as text arrives;
+no completion text or fact is invented.
+
+The renderer supports emphasis, lists, headings, blockquotes, fenced/inline code,
+GFM tables and disabled task checkboxes. Wide tables and code scroll within the
+message. Tables have keyboard-focusable, localized scroll regions and column
+headers. Styling uses the existing warm-white/forest semantic tokens.
+
+Raw HTML is skipped, embedded images become descriptions without network loads,
+and executable/relative/protocol-relative URLs are rejected. Explicit HTTP(S)
+and mail links open separately with no opener or referrer. Links in model prose
+are unverified external references, never the authenticated source-navigation
+controls. No raw-HTML plugin, syntax execution, resource fetching or HTML storage
+is introduced.

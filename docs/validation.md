@@ -677,3 +677,31 @@ Based on exact main `f738655ccab834d77d9204ebab25ab1e2a61d8ee`. An isolated synt
 The restore helper now clears every registration, binding and reset action from schema5+ restored copies, including pending and accepted challenges. Source databases/snapshots stay unchanged; account credentials, verified email bindings and email rate limits retain their snapshot values. Existing restored-session and library-grant invalidation remains. Recovery can still restore an older password hash; the operator must assess later credential changes and users must request fresh links. No migration, ordinary login/reset contract, provider call or live restore is part of this change.
 
 Final local locked install, syntax checks, build and whitespace checks passed. Aggregate backend **431/431**, frontend **323/323**, and focused actual SQLite backup/restore/schema checks **28/28** passed, zero failures/skips. New checks cover every action kind/readiness on genuine schema5 and current schema9, real pre-email schema4 compatibility, snapshot/source byte hashes, identity/rate retention, rejection of a consumed token after restore, and fail-closed INCOMPLETE recovery when invalidation itself fails. An initial aggregate run passed427/430 and exposed three historical restore tests that expected email-action preservation; those restore-only expectations now explicitly assert zero actions, while backup and ordinary migration still require preservation of all rows. The final431/431 run includes the additional failure-boundary test. The preexisting frontend bundle-size advisory remains. Independent review found no blocking issue in the bounded restore change; exact final-SHA signoff and official CI remain separate publication/release gates. No local browser run, provider request, production deployment or live restoration is claimed.
+
+## 2026-10-08 — Safe assistant Markdown candidate
+
+- Added assistant-only CommonMark/GFM rendering: emphasis, nested lists, headings,
+  tables, code, blockquotes, links and disabled task checkboxes. User messages
+  remain escaped literal text; copied reply and stored/source-linked content are
+  the original bytes, including CRLF line endings.
+- Pinned `react-markdown` 10.1.0 and `remark-gfm` 4.0.1; lock preserves all prior
+  dependency versions, including PDFKit. Clean `npm ci --ignore-scripts` passed.
+- `npm run check`, `npm run build`, backend `npm test` **432/432** and frontend
+  `npm run test:frontend` **327/327** passed. Focused renderer/chat/source-navigation
+  checks passed **32/32**. Every prefix of an authored partial-table/code/link
+  stream was rendered safely; HTML/scripts, encoded unsafe URLs and tracking
+  images produced no executable/resource elements. These are synthetic DOM tests,
+  not real-provider acceptance.
+- Updated two earlier plain-text assumptions: block paragraphs change DOM text
+  whitespace, and safe external Markdown links are now intentional. Source
+  navigation still uses separate authenticated controls. Full aggregate rerun
+  passed after these explicit expectation changes.
+- Added official Chromium test covering original clipboard bytes, literal user
+  text, absence of image tracking requests, semantic rendering and keyboard table
+  scrolling at 1440/390/320 px. **Browser acceptance is blocked/unrun** here:
+  Chromium aborts before page creation with `socket() failed: Operation not
+  permitted`, including the allowed escalated launch. No screenshots or mobile
+  layout pass are claimed. Run `assistant-markdown.spec.js` in the QA environment.
+- Build retains the existing large-bundle warning. No schema, provider prompt,
+  stored message, source provenance, automatic action or deployment change.
+  Rollback: revert the Markdown integration commit and rebuild the frontend.
