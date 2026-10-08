@@ -312,8 +312,8 @@ export function ChatPage({ lang='zh', caseId=null, initialConversationId=null, c
     finally{controllers.current.delete(load);if(current(scope)){controller.current=null;updatePhase('idle');}}
   }
 
-  const factReplyTarget=useRef(null);
-  const registerFactReply=useCallback(target=>{factReplyTarget.current=target;},[]);
+  const factReplyTarget=useRef(null),[factReplyReady,setFactReplyReady]=useState(false);
+  const registerFactReply=useCallback(target=>{factReplyTarget.current=target;setFactReplyReady(Boolean(target));},[]);
 
   function closePermission(){
     if(permission.busy)return;permissionPending.current=null;setPermissionPrompt(false);setPermissionFailure(null);
@@ -343,8 +343,6 @@ export function ChatPage({ lang='zh', caseId=null, initialConversationId=null, c
     event?.preventDefault();
     if(unavailableExactRef.current||recoveryUnavailable||phaseRef.current!=='idle'||bridgeOperation.current||sourceOperation.current||retentionRef.current||imagePending||permissionGate.current||permissionPending.current&&!permissionSnapshot)return;
     if(!statusRef.current.authenticated){setError(new ChatClientError('AUTH_REQUIRED'));return;}
-    const serviceFailure=serviceAvailabilityError(statusRef.current);
-    if(serviceFailure){setError(new ChatClientError(serviceFailure));return;}
     const targeted=factReplyTarget.current;
     if(targeted&&targeted.scope===`${statusRef.current.userId}:${caseRef.current}:${conversationRef.current}`){
       // Only direct, attachment-free human text is routed to the visible question.
@@ -353,6 +351,8 @@ export function ChatPage({ lang='zh', caseId=null, initialConversationId=null, c
       if(await targeted.submit(original)) { if(inputRef.current===original){inputRef.current='';setInput('');} }
       return;
     }
+    const serviceFailure=serviceAvailabilityError(statusRef.current);
+    if(serviceFailure){setError(new ChatClientError(serviceFailure));return;}
     if(!statusRef.current.liveEnabled){setError(new ChatClientError('LIVE_DISABLED'));return;}
     const text=inputRef.current.trim(), attached=[...imageRef.current];
     if(!text&&!attached.length){setError(new ChatClientError('CHAT_EMPTY'));return;}
@@ -473,6 +473,7 @@ export function ChatPage({ lang='zh', caseId=null, initialConversationId=null, c
 
   if(!status.authenticated)return <Card className="paper-card"><CardContent><p>{words.signIn}</p></CardContent></Card>;
   const serviceFailure=serviceAvailabilityError(status);
+  const hasTargetedReply=factReplyReady&&factReplyTarget.current?.scope===`${status.userId}:${caseRef.current}:${conversationId}`;
   const indexedConversations=conversationIndex?.data||conversations;
   const currentOption=conversationId&&!indexedConversations.some(item=>item.id===conversationId)?conversations.find(item=>item.id===conversationId&&item.caseId===caseRef.current)||{id:conversationId,caseId:caseRef.current,title:recoveryUnavailable?words.recoveredConversation:words.title}:null;
   const listedConversations=currentOption?[currentOption,...indexedConversations]:indexedConversations;
@@ -541,7 +542,7 @@ export function ChatPage({ lang='zh', caseId=null, initialConversationId=null, c
           <div className="chat-composer-actions">
             <Button type="button" variant="ghost" size="sm" disabled={busy||imagePending>0} onClick={()=>fileInput.current?.click()} title={words.attach}><Paperclip aria-hidden="true" />{words.attach}</Button>
             <div className="flex items-center gap-2"><span className="chat-keyboard-hint">{words.keyboardHint}</span>
-            {phase!=='idle'&&phase!=='loading'?<Button type="button" aria-label={words.stop} onClick={stop}><Square aria-hidden="true" />{words.stop}</Button>:<Button type="submit" aria-label={words.send} disabled={busy||Boolean(serviceFailure)||unavailableExactConversation||recoveryUnavailable||imagePending>0||!status.liveEnabled||(!input.trim()&&!images.length)}><ArrowUp aria-hidden="true" />{words.send}</Button>}</div>
+            {phase!=='idle'&&phase!=='loading'?<Button type="button" aria-label={words.stop} onClick={stop}><Square aria-hidden="true" />{words.stop}</Button>:<Button type="submit" aria-label={words.send} disabled={busy||!hasTargetedReply&&(Boolean(serviceFailure)||!status.liveEnabled)||unavailableExactConversation||recoveryUnavailable||imagePending>0||(!input.trim()&&!images.length)}><ArrowUp aria-hidden="true" />{words.send}</Button>}</div>
             <input id={fileId} ref={fileInput} className="sr-only" type="file" accept="image/png,image/jpeg,.pdf,.txt,.csv,.xlsx,.xls" multiple onChange={event=>{receiveFiles(event.target.files);event.target.value='';}}/>
           </div>
           {['saving','streaming','refreshing','checking'].includes(phase)&&<p role="status" className="text-xs text-muted-foreground">{phase==='saving'?words.saving:phase==='streaming'?words.sending:phase==='checking'?words.checkingConnection:words.loading}</p>}
