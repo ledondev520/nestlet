@@ -49,6 +49,10 @@ for (const [lang, width] of [['en', 1280], ['zh', 390], ['en', 320]]) test(`key-
   const field = popover.locator('input');
   await expect(field).toHaveCount(1); await expect(field).toHaveAttribute('type', 'password'); await expect(field).toHaveValue('');
   await expect(popover).not.toContainText(/https?:|endpoint|端点/i);
+  await popover.locator('summary').click();
+  await expect(popover.getByText(lang==='zh'?'保存时自动验证一次，成功后启用 AI；失败不会替换原有 Key。验证会消耗少量模型额度。':'Save checks the key once and enables AI on success. A failed check keeps your previous key. Verification uses a small amount of model quota.',{exact:true})).toBeVisible();
+  await popover.locator('summary').click();
+  await expect(popover.locator('details > div')).toBeHidden();
   await field.fill('synthetic-key-123456'); expect(writes).toEqual([]);
   await field.press('Escape'); await expect(popover).toHaveCount(0); await expect(trigger).toBeFocused();
   await trigger.click(); await expect(field).toHaveValue('');
@@ -62,7 +66,7 @@ for (const [lang, width] of [['en', 1280], ['zh', 390], ['en', 320]]) test(`key-
   await expect(page.locator('.chat-composer button[type="submit"]')).toBeEnabled();
   await expect(page.locator('.chat-input')).toHaveValue('Synthetic question retained during model setup.');
   await expect(page.locator('[data-feature="chat"]')).not.toContainText(lang==='zh'?'请先在设置中连接 DeepSeek。':'Connect DeepSeek in Settings first.');
-  if(width>=960)expect((await popover.boundingBox()).height).toBeLessThanOrEqual(460);
+  if(width>=960)expect((await popover.boundingBox()).height).toBeLessThanOrEqual(300);
   await expect(popover.locator('[data-slot="card"]')).toHaveCount(0);
   await noHorizontalOverflow(page);
   await page.screenshot({ path: `test-results/model-key-${lang}-${width}.png` });

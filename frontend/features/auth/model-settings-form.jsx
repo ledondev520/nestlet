@@ -72,14 +72,18 @@ export function ModelSettingsForm({ lang, session }) {
       {notice && <p role="status" className="flex items-start gap-2 text-sm leading-relaxed"><CheckCircle2 className="mt-0.5 size-4 shrink-0" aria-hidden="true" />{t[notice]}</p>}
       {warning && <p role="status" className="paper-note rounded-r-md p-3 text-sm">{t.refreshFailed}</p>}
       {view && <>
+        {!notice && <p className="text-sm"><span className="font-medium">deepseek-flash</span> · {view.configured?t.configured:t.notConfigured} · {view.liveEnabled?t.enabled:t.paused}</p>}
+        {!view.secureSettings ? <p role="status" className="paper-note rounded-r-md p-4 text-sm leading-relaxed">{t.secureSettingsRequired}</p> : <form noValidate onSubmit={event=>save(event)} className="space-y-3">
+          <div className="space-y-2"><Label htmlFor={`${id}-key`}>{t.keyLabel}</Label><Input id={`${id}-key`} name="deepseek-api-key" type="password" autoComplete="off" autoCapitalize="none" spellCheck={false} value={apiKey} onChange={event=>{setApiKey(event.target.value);setError(null);setNotice('');}} disabled={Boolean(busy)} placeholder={t.keyPlaceholder} aria-invalid={error?.field==='apiKey'} /></div>
+
+          <div className="flex items-center gap-3"><Button type="submit" disabled={Boolean(busy) || !dirty}>{busy==='save' && <LoaderCircle className="animate-spin" aria-hidden="true" />}{busy==='save'?(lang==='zh'?'正在验证并保存…':'Checking and saving…'):(lang==='zh'?'保存':'Save')}</Button><span className="text-xs text-muted-foreground">{lang==='zh'?'验证消耗少量额度':'Check uses model quota'}</span></div>
+        </form>}
+        <details className="text-xs text-muted-foreground"><summary className="cursor-pointer">{lang==='zh'?'详情':'Details'}</summary><div className="mt-2 space-y-2">
         <p className="text-sm"><span className="font-medium">deepseek-flash</span> · {view.configured?t.configured:t.notConfigured} · {view.liveEnabled?t.enabled:t.paused}</p>
         <p className="text-xs text-muted-foreground">{view.verifiedAt ? `${lang==='zh'?'模型调用上次验证':'Model response last checked'} · ${new Date(view.verifiedAt).toLocaleString(language(lang)==='zh'?'zh-CN':'en-US')}` : t.notVerified}</p>
         {view.configured && view.keyStorage==='server-memory' && <p className="text-xs leading-relaxed text-muted-foreground">{t.memoryStorage}</p>}
-        {!view.secureSettings ? <p role="status" className="paper-note rounded-r-md p-4 text-sm leading-relaxed">{t.secureSettingsRequired}</p> : <form noValidate onSubmit={event=>save(event)} className="space-y-3">
-          <div className="space-y-2"><Label htmlFor={`${id}-key`}>{t.keyLabel}</Label><Input id={`${id}-key`} name="deepseek-api-key" type="password" autoComplete="off" autoCapitalize="none" spellCheck={false} value={apiKey} onChange={event=>{setApiKey(event.target.value);setError(null);setNotice('');}} disabled={Boolean(busy)} placeholder={t.keyPlaceholder} aria-invalid={error?.field==='apiKey'} /></div>
           <p className="text-xs text-muted-foreground">{lang==='zh'?'保存时自动验证一次，成功后启用 AI；失败不会替换原有 Key。验证会消耗少量模型额度。':'Save checks the key once and enables AI on success. A failed check keeps your previous key. Verification uses a small amount of model quota.'}</p>
-          <Button type="submit" disabled={Boolean(busy) || !dirty}>{busy==='save' && <LoaderCircle className="animate-spin" aria-hidden="true" />}{busy==='save'?(lang==='zh'?'正在验证并保存…':'Checking and saving…'):(lang==='zh'?'保存':'Save')}</Button>
-        </form>}
+        </div></details>
       </>}
       {!view && !busy && <Button type="button" variant="ghost" size="sm" onClick={load}>{t.refresh}</Button>}
     </div>
