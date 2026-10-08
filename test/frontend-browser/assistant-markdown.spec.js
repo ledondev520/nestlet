@@ -25,6 +25,9 @@ test('assistant Markdown is safe, accessible, mobile-scrollable and copied verba
       }
     });
     await openLinkedCase(page, client.displayName, record.title);
+    // The case remains mounted; API-created fixture history requires the real reload control.
+    await page.getByRole('button', {name:'Reload conversation',exact:true}).click();
+    await expect(page.getByRole('combobox',{name:'Saved conversations',exact:true})).toHaveValue(conversation.id);
     const assistant = page.locator('.chat-message--assistant');
     await expect(assistant.locator('strong').first()).toHaveText('Confirmed');
     await expect(assistant.locator('ol ul li')).toHaveText('Keep provenance');
@@ -68,6 +71,8 @@ test('complex full-length assistant text falls back safely and copies without tr
     app.withDatabase(db=>db.prepare('INSERT INTO messages(id,user_id,conversation_id,sequence,role,content,state,request_id,client_message_id,image_metadata_json,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)')
       .run(randomUUID(),session.userId,conversation.id,1,'assistant',content,'complete',randomUUID(),null,'[]',new Date().toISOString()));
     await openLinkedCase(page,client.displayName,record.title);
+    await page.getByRole('button',{name:'Reload conversation',exact:true}).click();
+    await expect(page.getByRole('combobox',{name:'Saved conversations',exact:true})).toHaveValue(conversation.id);
     const assistant=page.locator('.chat-message--assistant');
     await expect(assistant.locator('[data-markdown-fallback]')).toHaveText(content);
     await context.grantPermissions(['clipboard-read','clipboard-write'],{origin:app.origin});
