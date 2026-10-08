@@ -149,7 +149,7 @@ test('development React: first-use library permission is explicit, versioned, an
   await app.flush();assert.match(app.dom.window.document.body.textContent,/Metadata only; body not read/);assert.match(app.dom.window.document.body.textContent,/Historical version; review again/);
   assert.equal(app.dom.window.document.querySelectorAll('a:not([href="#settings"]),img').length,0);assert.doesNotMatch(app.dom.window.document.body.textContent,/PRIVATE SNIPPET|untrusted.invalid/);
   stored=true;streamController.enqueue(new TextEncoder().encode(frame('done',{requestId,assistantMessageId,conversationId})));streamController.close();await app.flush();await app.flush();
-  const assistant=app.dom.window.document.querySelector('article[aria-label="Assistant"]');assert.equal(assistant.textContent.split(appendix).length-1,1);
+  const assistant=app.dom.window.document.querySelector('article[aria-label="Assistant"]');assert.equal(assistant.textContent.split(appendix.trimStart()).length-1,1);
   await app.setStatus({...status,authenticated:false,userId:null});
   await app.setStatus(status);await app.flush();assert.equal(boxes().length,0);
   assert.equal(app.dom.window.document.querySelector('[aria-label="Sources for this request"]'),null);
@@ -556,4 +556,27 @@ for(const outcome of ['complete','unsaved'])test(`a newer ${outcome} turn cannot
  const cache=app.readDraft();assert.equal(outcome==='complete'?cache.pendingTurn.reply:cache.earlierTurns[0].reply,old.reply);
  await app.setStatus({authenticated:false});await app.setStatus(identity);await app.flush();
  assert.match(app.dom.window.document.body.textContent,/Earlier unconfirmed synthetic answer/);assert.match(app.dom.window.document.body.textContent,/Newer synthetic answer/);assert.equal(app.requests.filter(item=>item.path==='/api/chat').length,1);
+});
+
+test('development React: only assistant Markdown is formatted and Copy preserves exact source bytes', async context => {
+  const caseId=randomUUID(),conversationId=randomUUID();
+  const source='**Bold**\r\n\r\n| Field | Value |\r\n| --- | --- |\r\n| Owner | Unknown |\r\n\r\n```html\r\n<script>no execution</script>\r\n```';
+  const app=await mount({caseId,fetchHandler:async path=>{
+    if(path===`/api/cases/${caseId}`)return response({case:{id:caseId,title:'Synthetic Markdown source'}});
+    if(path===`/api/cases/${caseId}/conversations`)return response({conversations:[{id:conversationId,caseId,title:'Markdown'}]});
+    if(path===`/api/conversations/${conversationId}`)return response({conversation:{id:conversationId,caseId},messages:[
+      {id:randomUUID(),role:'user',content:source,state:'complete'},
+      {id:randomUUID(),role:'assistant',content:source,state:'complete'},
+    ]});
+    return response({},500);
+  }});context.after(app.close);await app.flush();
+  const doc=app.dom.window.document,assistant=doc.querySelector('.chat-message--assistant'),user=doc.querySelector('.chat-message--user');
+  assert.equal(assistant.querySelector('strong').textContent,'Bold');
+  assert.equal(assistant.querySelectorAll('table').length,1);
+  assert.equal(assistant.querySelectorAll('script,img').length,0);
+  assert.equal(user.querySelectorAll('strong,table,script').length,0);
+  assert.equal(user.querySelector('p').textContent,source);
+  let copied;Object.defineProperty(app.dom.window.navigator,'clipboard',{configurable:true,value:{writeText:async value=>{copied=value;}}});
+  await app.click([...assistant.querySelectorAll('button')].find(button=>button.textContent==='Copy reply'));
+  assert.equal(copied,source);
 });

@@ -17,6 +17,7 @@ import { chatCopy, chatErrorText, libraryActivityText } from './copy.js';
 import { caseWriteDefinitelyRejected } from '@/lib/conversation-handoff';
 import { ChatCaseWorkflow } from './case-workflow.jsx';
 import { ChatMessageActions } from './message-actions.jsx';
+import { AssistantMarkdown } from './assistant-markdown.jsx';
 import { ConversationActionReview } from './conversation-actions.jsx';
 import { proposalMatchesScope } from './conversation-actions.js';
 import { ChatOriginalRetention } from './original-retention.jsx';
@@ -494,7 +495,7 @@ export function ChatPage({ lang='zh', caseId=null, initialConversationId=null, c
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2"><span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{message.role==='user'?words.you:words.assistant}</span>{message.role==='assistant'&&message.content&&<Button type="button" variant="ghost" size="xs" onClick={()=>copyMessage(message.content)}>{words.copy}</Button>}</div>
             {!!message.images?.length&&<div className="mb-3 flex flex-wrap gap-2">{message.images.map(image=><img key={image.id} src={image.preview} alt={words.imageOnly} className="h-24 w-24 rounded border object-contain" />)}</div>}
             {!!message.imageMetadata?.length&&<p className="mb-2 text-xs text-muted-foreground">{words.oldImage}</p>}
-            <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{message.content}{message.streaming&&<span aria-hidden="true"> ▍</span>}</p>
+            <>{message.role==='assistant' ? <AssistantMarkdown content={message.content} streaming={message.streaming} lang={lang} /> : <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{message.content}</p>}</>
             {!message.streaming&&message.state!=='complete'&&<Badge variant="outline" className="mt-3 whitespace-normal text-destructive">{words.incomplete}</Badge>}
             {message.localOnly&&!message.streaming&&<p className="mt-2 text-xs text-muted-foreground">{words.localOnly}</p>}
             {onReviewMessage && <ChatMessageActions key={`${status.userId}:${caseRef.current}:${conversationId}:${message.id}`} message={message} api={api} lang={lang} userId={status.userId} caseId={caseRef.current} conversationId={conversationId} disabled={busy} onReviewMessage={onReviewMessage} onOpenDocuments={onOpenDocuments} claimOperation={claimBridgeOperation} releaseOperation={releaseBridgeOperation} />}
