@@ -46,7 +46,7 @@ const auth = createOperatorAuth({ passwordHash: process.env.NESTLET_OPERATOR_PAS
   findTrialUser: username => storage.findUserByUsername(username), findTrialUserById: id => storage.getUserById(id),
   findUserByEmail: email => storage.emailAuth.findByEmail(email),
   hasAdministratorCapability: id => storage.accountAdministration.administrator(id) });
-const emailAuth = createEmailAuth({ storage: storage.emailAuth, delivery: createEmailDelivery(), publicOrigin,
+const emailAuth = createEmailAuth({ establishRegistrationSession: auth.establishRegistrationSession, storage: storage.emailAuth, delivery: createEmailDelivery(), publicOrigin,
   currentCredential: id => id === 'owner' ? process.env.NESTLET_OPERATOR_PASSWORD_HASH : storage.getUserById(id)?.passwordHash });
 const trialAiRequests = [];
 const TRIAL_USER_AI_LIMIT = 10;
@@ -413,7 +413,11 @@ const server = http.createServer(async (request, response) => {
       const ip = request.socket.remoteAddress || 'unknown';
       if (request.url === '/api/register') return json(202, await emailAuth.register(body, ip));
       if (request.url === '/api/auth/email/resend') return json(202, await emailAuth.resend(body, ip));
-      if (request.url === '/api/auth/email/verify') return json(200, emailAuth.verify(body, ip));
+      if (request.url === '/api/auth/email/verify') {
+        const { cookie, ...result } = emailAuth.verify(body, ip, auth.getSession(request));
+        if (cookie) response.setHeader('Set-Cookie', cookie);
+        return json(200, result);
+      }
       if (request.url === '/api/auth/password/forgot') return json(202, await emailAuth.forgot(body, ip));
       if (request.url === '/api/auth/password/reset') return json(200, await emailAuth.reset(body, ip));
       return json(202, await emailAuth.bind(body, session, ip));

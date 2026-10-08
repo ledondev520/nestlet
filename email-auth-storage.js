@@ -103,7 +103,7 @@ export function createEmailAuthStorage({ db, transaction, maxUsers = 100 }) {
     },
     markAccepted(tokenHash, now = Date.now()) { requireDigest(tokenHash); return db.prepare('UPDATE email_actions SET ready=1 WHERE token_hash=? AND expires_at>?').run(tokenHash, now).changes === 1; },
     cancel(tokenHash) { requireDigest(tokenHash); db.prepare('DELETE FROM email_actions WHERE token_hash=?').run(tokenHash); },
-    verify(tokenHash, { now = Date.now(), ownerFingerprint = null } = {}) {
+    verify(tokenHash, { now = Date.now(), ownerFingerprint = null, onRegistration = () => {} } = {}) {
       requireDigest(tokenHash);
       return transaction(() => {
         const current = action(tokenHash);
@@ -121,6 +121,9 @@ export function createEmailAuthStorage({ db, transaction, maxUsers = 100 }) {
         }
         db.prepare('INSERT INTO email_identities VALUES(?,?,?)').run(id, current.email, now);
         db.prepare('DELETE FROM email_actions WHERE token_hash=? OR (email=? AND kind IN (\'register\',\'bind\'))').run(tokenHash, current.email);
+        // Synchronous callback participates in the write transaction: session
+        // refusal rolls back account creation and token consumption together.
+        if (current.kind === 'register') onRegistration(user(id));
         return true;
       });
     },

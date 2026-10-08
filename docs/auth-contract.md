@@ -66,7 +66,7 @@ Trial AI extraction requests are limited to ten per user/hour and thirty total t
 
 ## Email registration, binding and recovery: final QA pending
 
-The former username-only public signup endpoint has been replaced. `POST /api/register` accepts exactly `{email,password,passwordConfirmation}` and returns generic HTTP202 with no cookie or session. Email verification activates a server-assigned ordinary `trial` account. Existing usernames and administrator aliases continue to work; current-password plus email proof can bind a verified email without moving any saved records. A new account is never grandfathered into legacy username enrollment.
+The former username-only public signup endpoint has been replaced. `POST /api/register` accepts exactly `{email,password,passwordConfirmation}` and returns generic HTTP202 with no cookie or session. Email verification activates a server-assigned ordinary `trial` account and issues its normal signed-in session in the confirming browser. One explicit verification POST remains; no repeated password/login step is needed. Binding and reset proofs never issue registration sessions. Existing usernames and administrator aliases continue to work; current-password plus email proof can bind a verified email without moving any saved records. A new account is never grandfathered into legacy username enrollment.
 
 Email canonicalization, one-time trusted-origin fragment links, persistent request limits, verification/resend/reset/bind endpoints, private mail configuration, migration and evidence boundaries are specified in [email authentication](email-auth.md). Passwords remain 6–256 characters without controls; match confirmation. Schema5 leaves the existing users table and owner/trial CHECK unchanged.
 

@@ -15,7 +15,7 @@ async function fixture(t, options = {}) {
   const root = mkdtempSync(join(realpathSync(tmpdir()), 'nestlet-email-service-')); let at = Date.now();
   const storage = openStorage({ filename: join(root, 'nestlet.sqlite') }), messages = [];
   const delivery = { configured: true, status: () => ({ configured: true }), send: async message => { messages.push(message); return { accepted: true }; }, ...options.delivery };
-  const auth = createEmailAuth({ storage: storage.emailAuth, delivery, publicOrigin: options.origin ?? 'https://trusted.example.invalid', currentCredential: id => id === 'owner' ? ownerHash : storage.getUserById(id)?.passwordHash, now: () => at });
+  const auth = createEmailAuth({ storage: storage.emailAuth, delivery, publicOrigin: options.origin ?? 'https://trusted.example.invalid', establishRegistrationSession: (...args) => sessionAuth.establishRegistrationSession(...args), currentCredential: id => id === 'owner' ? ownerHash : storage.getUserById(id)?.passwordHash, now: () => at });
   t.after(async () => { await auth.whenIdle(); storage.close(); rmSync(root, { recursive: true, force: true }); });
   const sessionAuth = createOperatorAuth({ passwordHash: ownerHash, publicOrigin: 'https://trusted.example.invalid', findTrialUser: name => storage.findUserByUsername(name), findTrialUserById: id => storage.getUserById(id), findUserByEmail: email => storage.emailAuth.findByEmail(email) });
   const token = (index = messages.length - 1) => new URLSearchParams(new URL(messages[index].link).hash.slice(1)).get('token');
@@ -37,7 +37,7 @@ test('fake-delivery contract: enrollment remains pending until proof; fragment l
   assert.equal((await f.sessionAuth.login(password, email)).error, 'INVALID_CREDENTIALS');
   const url = new URL(f.messages[0].link); assert.equal(url.origin, 'https://trusted.example.invalid'); assert.equal(url.pathname, '/'); assert.equal(url.search, ''); assert.equal(new URLSearchParams(url.hash.slice(1)).get('auth'), 'verify');
   assert.equal(JSON.stringify(response).includes(f.token()), false);
-  assert.deepEqual(f.auth.verify({ token: f.token() }, 'synthetic-ip'), { verified: true, authenticated: false });
+  const verified = f.auth.verify({ token: f.token() }, 'synthetic-ip'); assert.equal(verified.verified, true); assert.equal(verified.authenticated, true); assert.match(verified.cookie, /HttpOnly; SameSite=Strict.*Secure/); assert.equal(f.sessionAuth.getSession({ headers: { cookie: verified.cookie.split(';')[0] } }).userId, verified.userId);
   const user = await f.sessionAuth.login(password, ' NEW@EXAMPLE.INVALID '); assert.equal(user.role, 'trial'); assert.notEqual(user.userId, 'owner');
   assert.throws(() => f.auth.verify({ token: f.token() }, 'synthetic-ip'), error => error.code === 'EMAIL_TOKEN_INVALID');
 });

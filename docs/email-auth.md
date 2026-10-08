@@ -4,7 +4,7 @@ Implemented contract, 2026-10-07. Runtime/HTTP, service-contract, real-provider 
 
 ## Accounts and migration
 
-New public registrations require email, password and matching confirmation. A pending registration does not create a `users` row or session. After the mail provider accepts the one-time link and the user explicitly verifies it, a normal `trial` identity is created. Only the server assigns the role. Existing usernames, administrator aliases, IDs, customer/case history and credentials remain valid.
+New public registrations require email, password and matching confirmation. A pending registration does not create a `users` row or session. After the mail provider accepts the one-time link and the user explicitly verifies it, a normal `trial` identity is created and this browser receives a fresh normal signed-in session, without repeating password entry. Only the server assigns the role. Existing usernames, administrator aliases, IDs, customer/case history and credentials remain valid.
 
 Schema **5** is additive: `email_identities`, `email_actions`, and `email_rate_buckets`. The existing `users` table and its owner/trial CHECK constraint are unchanged. A verified email is canonicalized by trimming and lowercasing **ASCII only**, is unique, and belongs to one immutable user ID. No provider-specific dot/plus folding occurs. Non-ASCII email addresses are not supported in this release. Email is not inferred from an existing username.
 
@@ -22,7 +22,7 @@ All POST routes require the exact configured Origin. HTTPS is required outside l
 | --- | --- | --- |
 | POST /api/register | email, password, passwordConfirmation | 202 generic request acceptance, no session |
 | POST /api/auth/email/resend | email | 202 generic request acceptance |
-| POST /api/auth/email/verify | token | 200 verified:true, authenticated:false |
+| POST /api/auth/email/verify | token | 200 verified:true; registration: authenticated:true + normal session; binding: authenticated:false |
 | POST /api/login | email,password **or** legacy username,password; optional Boolean rememberMe | 200 authenticated session |
 | POST /api/auth/password/forgot | email | 202 generic request acceptance |
 | POST /api/auth/password/reset | token,password,passwordConfirmation | 200 reset:true, authenticated:false |
@@ -39,9 +39,9 @@ Errors: EMAIL_DELIVERY_UNAVAILABLE (503), EMAIL_AUTH_INVALID (400), EMAIL_TOKEN_
 - Passwords are 6–256 JavaScript string characters, reject control characters, and use the existing scrypt format and work factor
 - Tokens are 32 random bytes, 43 canonical base64url characters. Only SHA-256 hashes are stored. The token's 256-bit entropy requires no shared JWT secret; no Jiesong JWT secret is copied
 - Verification/binding expires after 10 minutes; password-reset links after 30 minutes. Tokens are single-use, purpose-isolated and accepted only after a well-formed DirectMail acceptance receipt
-- Links use only configured PUBLIC_ORIGIN and root fragments: `/#auth=verify&token=...` or `/#auth=reset&token=...`. Request Host/forwarded headers never construct a link. Fragments do not enter HTTP access logs or Referer; the frontend clears them after capture. GET never consumes a token
+- Links use only configured PUBLIC_ORIGIN and root fragments: `/#auth=verify&token=...` or `/#auth=reset&token=...`. Request Host/forwarded headers never construct a link. Fragments do not enter HTTP access logs or Referer; the frontend clears them after capture. GET never consumes a token. One explicit confirmation POST remains to protect against email scanners and unintended sign-in; confirmation signs a new registration into the browser that opened the link, including a different browser/device. The original browser is not remotely signed in. The UI then enters its existing workspace view without another login action; no caller-controlled redirect URL is accepted
 - Resend replaces the previous pending registration token. An expired registration requires starting registration again because its password hash is no longer retained
-- Verification, unique identity creation and reset consumption run in SQLite write transactions. Bind/reset links are tied to a credential fingerprint; password rotation invalidates old links
+- Verification, unique identity creation and reset consumption run in SQLite write transactions. Registration session issuance is a synchronous registration-only callback inside that transaction; a refusal rolls back both the new identity and token consumption. Only the exact newly created trial identity is eligible. Binding (including owner binding), reset, existing-account registration, expired/used/replaced tokens cannot issue a registration session. A successful registration replaces the presented session with fresh random cookie and CSRF values; the old presented session is revoked. No grants or roles are changed. Bind/reset links are tied to a credential fingerprint; password rotation invalidates old links
 - Upstream session behavior is preserved: 30-minute normal idle timeout, opt-in remembered sessions up to eight hours, and an eight-hour absolute cap for both. Sessions remain in memory; restart revokes them
 - Every normal and remembered session checks the effective credential fingerprint; reset invalidates all old sessions. Login rechecks a trial credential after asynchronous scrypt, closing a reset-during-login race
 - No password, raw token, email body or recipient enters logs or operational telemetry. Emails, pending password hashes and token hashes remain private database data. Backups require the same access protection as account data

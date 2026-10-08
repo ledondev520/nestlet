@@ -2,7 +2,7 @@
 import { EmailAuthError, assertFields, normalizeEmail, validPassword, validToken, hashPassword, checkPassword, digest } from './email-auth-domain.js';
 export { EmailAuthError } from './email-auth-domain.js';
 const accepted = () => ({ accepted: true, authenticated: false, next: 'check-email-if-eligible', retryAfter: 60 });
-export function createEmailAuth({ storage, delivery, publicOrigin = '', currentCredential, now = Date.now }) {
+export function createEmailAuth({ storage, delivery, publicOrigin = '', currentCredential, establishRegistrationSession, now = Date.now }) {
   let linkOrigin = '';
   try {
     const origin = new URL(publicOrigin);
@@ -90,12 +90,18 @@ export function createEmailAuth({ storage, delivery, publicOrigin = '', currentC
       await sendAction({ kind: 'bind', email, userId: session.userId, credentialFingerprint: digest(credential) });
       return accepted();
     },
-    verify(body, ip) {
+    verify(body, ip, previousSession = null) {
       assertFields(body, ['token']);
       const tokenHash = claim(body.token, ip);
       const ownerHash = currentCredential('owner');
-      if (!storage.verify(tokenHash, { now: now(), ownerFingerprint: ownerHash ? digest(ownerHash) : null })) throw new EmailAuthError('EMAIL_TOKEN_INVALID');
-      return { verified: true, authenticated: false };
+      let session;
+      if (!storage.verify(tokenHash, { now: now(), ownerFingerprint: ownerHash ? digest(ownerHash) : null,
+        onRegistration(target) {
+          session = establishRegistrationSession?.(target, previousSession);
+          if (!session || session.error) throw new EmailAuthError(session?.error || 'OPERATOR_SETUP_REQUIRED', session?.error === 'LOGIN_RATE_LIMITED' ? 429 : 503);
+        }
+      })) throw new EmailAuthError('EMAIL_TOKEN_INVALID');
+      return session ? { verified: true, authenticated: true, ...session } : { verified: true, authenticated: false };
     },
     async reset(body, ip) {
       assertFields(body, ['token', 'password', 'passwordConfirmation']); passwords(body);

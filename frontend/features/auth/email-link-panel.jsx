@@ -10,7 +10,7 @@ import { useOperation } from './use-operation.js';
 
 /** No effect consumes tokens: scanners and prefetchers cannot activate accounts. */
 export function EmailLinkPanel({ link, lang = 'zh', onClose }) {
-  const { api, status, refresh } = useSession();
+  const { api, status, refresh, verifyEmail } = useSession();
   const t = authCopy(lang), id = useId(), operation = useOperation();
   const formRef = useRef(null);
   const [busy, setBusy] = useState(false), [used, setUsed] = useState(!link.valid);
@@ -33,9 +33,10 @@ export function EmailLinkPanel({ link, lang = 'zh', onClose }) {
     if (!token) { setError({ code: 'EMAIL_TOKEN_INVALID' }); operation.finish(task); return; }
     setBusy(true);
     try {
-      const result = await api.post(reset ? '/api/auth/password/reset' : '/api/auth/email/verify', { token, ...parsed.payload }, { signal: task.controller.signal, telemetry: false });
+      const result = reset ? await api.post('/api/auth/password/reset', { token, ...parsed.payload }, { signal: task.controller.signal, telemetry: false }) : await verifyEmail({ token }, { signal: task.controller.signal });
       if (!operation.current(task)) return;
-      if (result?.[reset ? 'reset' : 'verified'] !== true || result.authenticated !== false) throw { code: 'INVALID_RESPONSE' };
+      if (result?.[reset ? 'reset' : 'verified'] !== true || (reset && result.authenticated !== false)) throw { code: 'INVALID_RESPONSE' };
+      if (!reset && result.authenticated === true) { close(); return; }
       setDone(true);
       // Binding may update the current account; a reset invalidates all old sessions.
       await refresh({ signal: task.controller.signal }).catch(() => {});

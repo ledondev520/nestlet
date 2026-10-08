@@ -102,6 +102,15 @@ export function createOperatorAuth({ passwordHash = '', operatorUsername = 'owne
       if (!current || current.passwordHash !== target.passwordHash) return { error: 'INVALID_CREDENTIALS' };
       return issueSession(target, now, rememberMe === true);
     },
+    establishRegistrationSession(target, previousSession = null) {
+      // Internal-only entrypoint called from the newly-created registration row.
+      // No HTTP caller can supply this identity or use binding/reset as login proof.
+      const current = target?.id && findTrialUserById(target.id);
+      if (!current || current.id === 'owner' || current.role !== 'trial' || current.passwordHash !== target.passwordHash) return { error: 'INVALID_CREDENTIALS' };
+      const result = issueSession(current);
+      if (!result.error && previousSession) sessions.delete(previousSession.token);
+      return result;
+    },
     logout(session) { if (session) sessions.delete(session.token); return cookie('', true); },
   };
 }
