@@ -168,7 +168,7 @@ test('actual App source selection keeps unsaved chat/material/document edits on 
   let confirmations = 0, approve = false; dom.window.confirm = () => { confirmations++; return approve; };
   await render(React.createElement(SessionProvider, null, React.createElement(App)));
   await wait(() => button('Switch interface to English')); await click(button('Switch interface to English'));
-  await wait(() => host.querySelector('.chat-toolbar')?.textContent.includes(first.title) && !button('New conversation').disabled);
+  await wait(() => host.querySelector('.chat-toolbar [data-slot="card-title"]')?.textContent==='Conversation' && !button('New conversation').disabled);
   const nav = label => click(button(label, host.querySelector('nav[aria-label="Workspace navigation"]')));
   await nav('Documents'); await wait(() => host.querySelector(`[data-artifact-id="${document.id}"]`));
   await wait(() => input('English document body')?.value === document.content || !button('Open', host.querySelector(`[data-artifact-id="${document.id}"]`)).disabled);
@@ -195,12 +195,12 @@ test('actual App source selection keeps unsaved chat/material/document edits on 
   const caseReads = owner.calls.filter(call => call.path === `/api/cases/${second.id}`).length;
   await click(button('Open case', host.querySelector('[data-source-id="S1"]'))); await wait(() => host.textContent.includes('Your unsaved work was kept'));
   assert.equal(confirmations, 1); assert.equal(host.querySelector('.chat-input').value, 'Unsent next question');
-  assert.match(host.querySelector('.chat-toolbar').textContent, new RegExp(first.title));
+  assert.equal((await owner.api.get('/api/conversations/'+host.querySelector('.chat-toolbar select').value)).conversation.caseId,first.id);
   assert.ok(owner.calls.filter(call => call.path === `/api/cases/${second.id}`).length > caseReads, 'Fresh API validation precedes navigation');
   await nav('Materials & facts'); assert.equal(input('Case source text').value, 'Unsaved synthetic materials');
   await nav('Documents'); assert.equal(input('English document body').value, 'Unsaved synthetic document edit');
   await nav('Conversation'); approve = true; await click(button('Open case', host.querySelector('[data-source-id="S1"]')));
-  await wait(() => host.querySelector('.chat-toolbar')?.textContent.includes(second.title));
+  await wait(() => host.querySelector('.chat-toolbar [data-slot="card-title"]')?.textContent==='Conversation' && !host.querySelector('.chat-toolbar select').value);
   assert.equal(confirmations, 2); assert.equal(host.querySelector('.chat-input').value, '');
   await nav('Materials & facts'); await wait(() => input('Case name')?.value === second.title); assert.equal(input('Case source text').value, '');
   assert.equal((await owner.api.get(`/api/cases/${first.id}`)).case.sourceText, '', 'Navigation never saves or mutates facts');
@@ -253,7 +253,7 @@ test('empty actual App finds and selects an existing case without provider confi
   await click(button('Find saved records')); await wait(() => button('Choose a customer case'));
   await click(button('Choose a customer case')); await wait(() => button(`Open case: ${record.title} · ${record.id}`));
   await click(button(`Open case: ${record.title} · ${record.id}`));
-  await wait(() => host.querySelector('.chat-toolbar')?.textContent.includes(record.title));
+  await wait(() => owner.calls.slice(callsStart).some(call=>call.path===`/api/cases/${record.id}/conversations`) && !button('New conversation',host.querySelector('.chat-toolbar')).disabled);
   assert.equal(owner.calls.slice(callsStart).some(call => call.method !== 'GET' && ['/api/cases', '/api/chat', '/api/extract'].includes(call.path)), false);
   await click(button('Materials & facts', host.querySelector('nav[aria-label="Workspace navigation"]')));
   await wait(() => input('Case name')?.value === record.title);

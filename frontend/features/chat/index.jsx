@@ -1,3 +1,4 @@
+import { ConversationOpening } from './opening.jsx';
 import { createPortal } from 'react-dom';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -6,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { ArrowUp, Paperclip, Plus, RefreshCw, MessageSquare, Square } from 'lucide-react';
+import { ArrowUp, Paperclip, Plus, RefreshCw, Square } from 'lucide-react';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { useSession } from '@/lib/session';
 import { useSuspendedDraft } from '@/lib/suspended-draft';
@@ -21,13 +22,13 @@ import { ChatOriginalRetention } from './original-retention.jsx';
 import { ChatLookup } from './lookup.jsx';
 import { ChatSourceNavigation } from './source-navigation.jsx';
 import { sourceNavigationCopy } from './source-navigation.js';
-import { LibraryPermissionDialog, permissionCopy, useLibraryPermission } from './library-permission.jsx';
+import { LibraryPermissionDialog, useLibraryPermission } from './library-permission.jsx';
 
 const idValid = value => typeof value === 'string' && /^[0-9a-f-]{36}$/u.test(value);
 const timeoutSignal = (signal, milliseconds=15000) => AbortSignal.any([signal,AbortSignal.timeout(milliseconds)]);
 
 /** Durable conversation UI. Case facts and document/source buffers have separate owners. */
-export function ChatPage({ lang='zh', caseId=null, guidanceAgency='unknown', onCaseChange, onDirtyChange, onImportFiles, onReviewMessage, onOpenMaterials, onOpenDocuments, onOpenSourceCase, active = true, workflowTarget = null, lookupTarget = null }) {
+export function ChatPage({ lang='zh', caseId=null, initialConversationId=null, conversationIndex=null, onOpenConversation, onConversationChange, onHistoryChange, onNewConversation, guidanceAgency='unknown', onCaseChange, onDirtyChange, onImportFiles, onReviewMessage, onOpenMaterials, onOpenDocuments, onOpenSourceCase, active = true, workflowTarget = null, lookupTarget = null }) {
   const { status, api, refresh } = useSession();
   const {restored,saveDraft,clearDraft,cacheStatus}=useSuspendedDraft('chat');
   const words = chatCopy[lang] || chatCopy.zh;
@@ -35,7 +36,6 @@ export function ChatPage({ lang='zh', caseId=null, guidanceAgency='unknown', onC
   const [permissionPrompt,setPermissionPrompt] = useState(false), [permissionFailure,setPermissionFailure] = useState(null);
   const permissionPending = useRef(null), permissionGate = useRef(false), permissionFlow = useRef(0), activeRef = useRef(active);
   activeRef.current=active;
-  const permissionWords = permissionCopy(lang);
   const inputId = useId(), fileId = useId(), threadId = useId();
   const [input,setInput] = useState('');
   const [images,setImages] = useState([]);
@@ -124,6 +124,9 @@ export function ChatPage({ lang='zh', caseId=null, guidanceAgency='unknown', onC
   async function readConversation(id,scope,signal,{preserveLocal=false}={}) {
     const result=await api.get(`/api/conversations/${encodeURIComponent(id)}`,{signal});requireCurrent(scope);
     if (result.conversation?.id!==id || result.conversation.caseId!==scope.caseId) throw new ChatClientError('INVALID_RESPONSE');
+    setTitle(result.conversation.title);
+    setConversations(rows=>rows.map(row=>row.id===id?{...row,title:result.conversation.title}:row));
+    if(preserveLocal)onHistoryChange?.();
     let rows=normalizeMessages(result.messages);
     if (preserveLocal && lastTurn.current) {
       rows=restoredMessages(result.messages,lastTurn.current.user,lastTurn.current.assistant);
@@ -154,9 +157,10 @@ export function ChatPage({ lang='zh', caseId=null, guidanceAgency='unknown', onC
         const [record,result]=await Promise.all([api.get(`/api/cases/${encodeURIComponent(nextCase)}`,{signal:timeoutSignal(load.signal)}),api.get(`/api/cases/${encodeURIComponent(nextCase)}/conversations`,{signal:timeoutSignal(load.signal)})]);
         requireCurrent(scope);
         if (record.case?.id!==nextCase || !Array.isArray(result.conversations) || result.conversations.length>10 || result.conversations.some(item=>!idValid(item.id)||item.caseId!==nextCase)) throw new ChatClientError('INVALID_RESPONSE');
-        setTitle(record.case.title);setConversations(result.conversations);
+        setConversations(result.conversations);
         if (result.conversations.length) {
-          const id=result.conversations.find(item=>item.id===restoreConversation.current)?.id || result.conversations[0].id;restoreConversation.current=null;conversationRef.current=id;scope.conversationId=id;setConversationId(id);
+          if(initialConversationId&&!result.conversations.some(item=>item.id===initialConversationId))throw new ChatClientError('CONVERSATION_NOT_FOUND');
+          const id=initialConversationId || result.conversations.find(item=>item.id===restoreConversation.current)?.id || result.conversations[0].id;restoreConversation.current=null;conversationRef.current=id;scope.conversationId=id;setConversationId(id);
           await readConversation(id,scope,timeoutSignal(load.signal));
         }
       } catch (failure) {if (current(scope) && failure.name!=='AbortError') setError(failure);}
@@ -171,12 +175,14 @@ export function ChatPage({ lang='zh', caseId=null, guidanceAgency='unknown', onC
     if(text)saveDraft({input:text,...(conversationRef.current?{conversationId:conversationRef.current}:{})});else clearDraft();
   },[input,conversationId,status.authenticated,saveDraft,clearDraft]);
 
+  useEffect(()=>{onConversationChange?.(conversationId);},[conversationId,onConversationChange]);
+
   async function chooseConversation(id) {
     if (retentionRef.current || bridgeOperation.current || sourceOperation.current) return;
     if (dirty && !window.confirm(words.resetAsk)) return;
     const currentCase=caseRef.current, priorConversations=conversations, priorTitle=title;
     invalidate(currentCase);setConversations(priorConversations);setTitle(priorTitle);
-    if (!id) return;
+    if (!id) {setTitle('');return;}
     conversationRef.current=id;setConversationId(id);
     const scope=scoped(), load=managedController();controller.current=load;updatePhase('loading');
     try {await readConversation(id,scope,timeoutSignal(load.signal));}
@@ -194,7 +200,7 @@ export function ChatPage({ lang='zh', caseId=null, guidanceAgency='unknown', onC
       requireCurrent(scope);
       if (!idValid(result.case?.id)) throw new ChatClientError('INVALID_RESPONSE');
       adoption.current = { id: result.case.id, previousProp: incomingCase.current };
-      caseRef.current = result.case.id; scope.caseId = result.case.id; setTitle(result.case.title);
+      caseRef.current = result.case.id; scope.caseId = result.case.id;
       caseCreation.current = null;
       onCaseChange?.(result.case.id); requireCurrent(scope);
       return { caseId: result.case.id, userId: scope.userId };
@@ -376,7 +382,8 @@ export function ChatPage({ lang='zh', caseId=null, guidanceAgency='unknown', onC
   const stop=()=>{stopRequested.current=true;controller.current?.abort();};
 
   if(!status.authenticated)return <Card className="paper-card"><CardContent><p>{words.signIn}</p></CardContent></Card>;
-  const workflow = onOpenMaterials && onOpenDocuments ? <ChatCaseWorkflow compact={!!workflowTarget} api={api} lang={lang} caseId={caseId} userId={status.userId} disabled={busy} active={active} refreshKey={`${conversationId}:${messages.length}:${phase === 'idle'}:${actionRevision}`} onSavedTitle={setTitle} onOpenMaterials={onOpenMaterials} onOpenDocuments={onOpenDocuments} /> : null;
+  const listedConversations=conversationIndex?.data||conversations;
+  const workflow = onOpenMaterials && onOpenDocuments ? <ChatCaseWorkflow compact={!!workflowTarget} api={api} lang={lang} caseId={caseId} userId={status.userId} disabled={busy} active={active} refreshKey={`${conversationId}:${messages.length}:${phase === 'idle'}:${actionRevision}`} onOpenMaterials={onOpenMaterials} onOpenDocuments={onOpenDocuments} /> : null;
   const lookup = onOpenSourceCase ? <ChatLookup compact={!!lookupTarget} api={api} userId={status.userId} caseId={caseRef.current} lang={lang} active={active}
       disabled={phase !== 'idle' || bridgeBusy || retentionBusy || imagePending > 0} onOpenSourceCase={onOpenSourceCase} claimOperation={claimSourceOperation} releaseOperation={releaseSourceOperation} /> : null;
   return <section className="chat-workspace" aria-label={words.title} data-feature="chat">
@@ -386,18 +393,18 @@ export function ChatPage({ lang='zh', caseId=null, guidanceAgency='unknown', onC
     <Card className="chat-surface">
       <CardHeader className="chat-toolbar"><CardTitle className="truncate text-base">{title||words.title}</CardTitle>
         <div className="flex flex-wrap items-center gap-3"><Label className="sr-only" htmlFor={`${inputId}-conversation`}>{words.conversation}</Label>
-          <NativeSelect id={`${inputId}-conversation`} value={conversationId||''} onChange={event=>chooseConversation(event.target.value)} disabled={busy||!conversations.length} aria-describedby={!conversations.length&&phase!=='loading'?`${inputId}-conversation-empty`:undefined} className="w-48 max-w-full">
-            <NativeSelectOption value="" disabled>{conversations.length?words.chooseConversation:words.noConversations}</NativeSelectOption>{conversations.map(item=><NativeSelectOption key={item.id} value={item.id}>{item.title}</NativeSelectOption>)}
-          </NativeSelect><Button variant="outline" size="sm" type="button" disabled={busy} onClick={()=>chooseConversation('')}><Plus aria-hidden="true" />{words.newConversation}</Button>
+          <NativeSelect id={`${inputId}-conversation`} value={conversationId||''} onChange={event=>{const row=conversationIndex?.data?.find(item=>item.id===event.target.value);if(row&&onOpenConversation)onOpenConversation(row);else chooseConversation(event.target.value);}} disabled={busy||!listedConversations.length} aria-describedby={!listedConversations.length&&phase!=='loading'?`${inputId}-conversation-empty`:undefined} className="w-48 max-w-full">
+            <NativeSelectOption value="" disabled>{listedConversations.length?words.chooseConversation:words.noConversations}</NativeSelectOption>{listedConversations.map(item=><NativeSelectOption key={item.id} value={item.id}>{item.title}</NativeSelectOption>)}
+          </NativeSelect><Button variant="outline" size="sm" type="button" disabled={busy} onClick={()=>onNewConversation?onNewConversation():chooseConversation('')}><Plus aria-hidden="true" />{words.newConversation}</Button>
           <Button variant="ghost" size="sm" type="button" disabled={busy} onClick={reloadConversation} aria-label={words.reload} title={words.reload}><RefreshCw aria-hidden="true" /></Button>
         </div>
-        {!conversations.length&&phase!=='loading'&&<p id={`${inputId}-conversation-empty`} className="text-xs text-muted-foreground">{words.noConversationsReason}</p>}
+        {!listedConversations.length&&phase!=='loading'&&<p id={`${inputId}-conversation-empty`} className="text-xs text-muted-foreground">{words.noConversationsReason}</p>}
       </CardHeader>
       <CardContent className="chat-body">
         <div className="chat-thread" tabIndex={0} aria-label={lang==='en'?'Conversation history':'对话记录'}>
         {phase==='loading'&&<p role="status" className="text-sm text-muted-foreground">{words.loading}</p>}
         <div id={threadId} className="chat-messages" role="log" aria-label={words.conversation} aria-live="polite" aria-relevant="additions text">
-          {!messages.length&&phase!=='loading'&&<div className="chat-empty"><MessageSquare className="size-9" aria-hidden="true" /><h1>{words.empty}</h1></div>}
+          {!messages.length&&phase!=='loading'&&<ConversationOpening lang={lang} state={conversationIndex} onOpen={onOpenConversation} disabled={busy} onPrompt={text=>{inputRef.current=text;setInput(text);composer.current?.focus();}} />}
           {messages.map(message=><article key={message.id} className={`chat-message chat-message--${message.role}`} aria-label={message.role==='user'?words.you:words.assistant}>
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2"><span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{message.role==='user'?words.you:words.assistant}</span>{message.role==='assistant'&&message.content&&<Button type="button" variant="ghost" size="xs" onClick={()=>copyMessage(message.content)}>{words.copy}</Button>}</div>
             {!!message.images?.length&&<div className="mb-3 flex flex-wrap gap-2">{message.images.map(image=><img key={image.id} src={image.preview} alt={words.imageOnly} className="h-24 w-24 rounded border object-contain" />)}</div>}
@@ -432,7 +439,6 @@ export function ChatPage({ lang='zh', caseId=null, guidanceAgency='unknown', onC
           <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">{input.length>7000&&<span>{input.length.toLocaleString()} / 8,000</span>}{imagePending>0&&<span role="status">{words.decoding}</span>}</div>
           {!!images.length&&<div className="flex flex-wrap gap-3">{images.map(image=><div key={image.id} className="flex items-center gap-2 rounded border p-2"><img src={image.preview} alt={words.imageOnly} className="h-16 w-16 object-contain"/><Button type="button" variant="ghost" size="sm" disabled={busy} onClick={()=>removeImage(image.id)} aria-label={words.remove}>{words.remove}</Button></div>)}</div>}
           <ChatOriginalRetention api={api} userId={status.userId} authenticated={status.authenticated} caseId={caseRef.current} images={images} lang={lang} disabled={phase !== 'idle' || bridgeBusy || sourceBusy || imagePending > 0} ensureCase={ensureCase} onBusyChange={updateRetentionBusy} onOpenMaterials={onOpenMaterials} />
-          <p className="text-xs leading-relaxed text-muted-foreground">{permissionWords.ordinary} <a href="#settings" className="underline">{permissionWords.settings}</a></p>
           </div>
           <div className="chat-composer-actions">
             <Button type="button" variant="ghost" size="sm" disabled={busy||imagePending>0} onClick={()=>fileInput.current?.click()} title={words.attach}><Paperclip aria-hidden="true" />{words.attach}</Button>

@@ -52,7 +52,7 @@ test('development React: a same-workspace saved-case binding keeps the unsent co
   const id=randomUUID();const app=await mount({fetchHandler:async(path)=>path.endsWith('/conversations')?response({conversations:[]}):response({case:{id,title:'Synthetic newly saved case'}})});context.after(app.close);
   await app.type('Do not replace this unsent question');await app.setCase(id);await app.flush();
   assert.equal(app.dom.window.document.querySelector('textarea').value,'Do not replace this unsent question');
-  assert.match(app.dom.window.document.body.textContent,/Synthetic newly saved case/);
+  assert.equal(app.dom.window.document.querySelector('.chat-toolbar [data-slot="card-title"]').textContent,'Conversation');
 });
 
 test('development React: a late prior-case conversation read cannot populate the selected case',async context=>{
@@ -67,7 +67,7 @@ test('development React: a late prior-case conversation read cannot populate the
   }});context.after(app.close);
   await app.flush();await app.setCase(second);await app.flush();
   late.resolve(response({conversation:{id:conversation,caseId:first},messages:[{id:randomUUID(),role:'assistant',content:'OLD PRIVATE TEXT MUST NOT REAPPEAR',state:'complete'}]}));await app.flush();
-  assert.match(app.dom.window.document.body.textContent,/Second synthetic case/);
+  assert.equal(app.dom.window.document.querySelector('.chat-toolbar [data-slot="card-title"]').textContent,'Conversation');
   assert.doesNotMatch(app.dom.window.document.body.textContent,/OLD PRIVATE TEXT MUST NOT REAPPEAR/);
 });
 
@@ -229,7 +229,7 @@ test('development React: new action clears the current view while the picker reo
   const app=await mount({caseId,fetchHandler:async path=>{
     if(path===`/api/cases/${caseId}`)return response({case:{id:caseId,title:'Synthetic saved case'}});
     if(path===`/api/cases/${caseId}/conversations`)return response({conversations:[{id:conversationId,caseId,title:'Saved synthetic thread'}]});
-    if(path===`/api/conversations/${conversationId}`)return response({conversation:{id:conversationId,caseId},messages:[{id:messageId,role:'assistant',content:'Retained synthetic history',state:'complete'}]});
+    if(path===`/api/conversations/${conversationId}`)return response({conversation:{id:conversationId,caseId,title:'Saved synthetic thread'},messages:[{id:messageId,role:'assistant',content:'Retained synthetic history',state:'complete'}]});
     return response({},500);
   }});context.after(app.close);await app.flush();
   assert.match(app.dom.window.document.body.textContent,/Retained synthetic history/);

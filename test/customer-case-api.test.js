@@ -468,3 +468,19 @@ test('final artifacts become visibly stale after case facts change and download 
   const download = await request(`/api/artifacts/${regenerated.id}/download`, { session });
   assert.equal(download.status, 200); assert.equal(await download.text(), regenerated.content);
 });
+
+test('account conversation index crosses own cases only, bounds previews, and keeps exact conversation references', async () => {
+  const a=sessions['trial-a'],b=sessions['trial-b'];
+  const first=await create(a,'Synthetic unified first'),second=await create(a,'Synthetic unified second');
+  const left=await conversation(a,first,'Synthetic first topic'),right=await conversation(a,second,'Synthetic second topic');
+  const foreign=await conversation(b,await create(b,'Synthetic foreign case'),'Synthetic private topic');
+  const index=await json('/api/conversations',{session:a});
+  assert.ok(index.conversations.some(row=>row.id===left.id&&row.caseId===first.id));
+  assert.ok(index.conversations.some(row=>row.id===right.id&&row.caseId===second.id));
+  assert.equal(index.conversations.some(row=>row.id===foreign.id),false);
+  const empty=index.conversations.find(row=>row.id===left.id);
+  assert.equal(empty.lastMessage,null);assert.equal(empty.draftCount,0);
+  assert.equal((await request('/api/conversations')).status,401);
+  await json('/api/conversations?userId='+b.userId,{session:a},400);
+  await json('/api/conversations?limit=10000',{session:a},400);
+});

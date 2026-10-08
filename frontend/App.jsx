@@ -12,7 +12,9 @@ import { useSession } from '@/lib/session';
 import { draftVault } from '@/lib/draft-vault';
 import { captureAuthFragment } from '@/features/auth/auth-route';
 import { DraftWorkspaceProvider } from '@/lib/suspended-draft';
-import { CaseRail } from '@/workbench/case-rail';
+import { ConversationRail } from '@/workbench/conversation-rail';
+import { useScopedRead } from '@/lib/use-scoped-read';
+import { conversationFromHash, conversationHref, readConversationIndex } from '@/lib/conversation-index';
 import { ContextPanel } from '@/workbench/context-panel';
 import { handoffMatches } from '@/lib/conversation-handoff';
 import { DEFAULT_GUIDANCE_AGENCY } from '../public/agency-guidance.js';
@@ -22,14 +24,21 @@ import { DEFAULT_GUIDANCE_AGENCY } from '../public/agency-guidance.js';
 const modules = Object.fromEntries(Object.entries(import.meta.glob('./features/*/index.{js,jsx}', { eager: true })).map(([file, exports]) => [file.split('/')[2], exports]));
 const views = ['chat', 'intake', 'customers', 'documents', 'settings'];
 const viewLabels = { zh: { chat: '对话', intake: '材料与事实', customers: '客户库', documents: '文档', settings: '账户与设置' }, en: { chat: 'Conversation', intake: 'Materials and facts', customers: 'Customers', documents: 'Documents', settings: 'Account and settings' } };
-const currentView = () => views.includes(window.location.hash.slice(1)) ? window.location.hash.slice(1) : 'chat';
+const currentView = () => views.includes(window.location.hash.slice(1).split('?')[0]) ? window.location.hash.slice(1).split('?')[0] : 'chat';
 
 function PageUnavailable({ lang }) {
   return <Alert><AlertDescription>{lang === 'zh' ? '页面加载失败，请刷新重试。' : 'This page could not load. Refresh and try again.'}</AlertDescription></Alert>;
 }
 
 function AccountWorkspace({ lang, view, navigate, shellProps, notices }) {
-  const { status, journey } = useSession();
+  const { status, journey, api, dataRevision } = useSession();
+  const [conversationRevision,setConversationRevision] = useState(0);
+  const refreshConversations = useCallback(()=>setConversationRevision(value=>value+1),[]);
+  const conversationIndex = useScopedRead(api,JSON.stringify([status.userId,dataRevision,conversationRevision]),signal=>readConversationIndex(api,signal));
+  const [requestedConversationId,setRequestedConversationId] = useState(null);
+  const [activeConversationId,setActiveConversationId] = useState(null);
+  const [conversationRouteError,setConversationRouteError] = useState(false);
+  const handledConversationHash = useRef(null);
   const [recoveredWorkspace] = useState(() => draftVault.read({ userId: status.userId, workspaceKey: 'active', feature: 'workspace' }));
   const [workspaceKey, setWorkspaceKey] = useState(() => recoveredWorkspace?.workspaceKey || crypto.randomUUID());
   const [caseId, setCaseId] = useState(() => recoveredWorkspace?.caseId || null);
@@ -60,7 +69,7 @@ function AccountWorkspace({ lang, view, navigate, shellProps, notices }) {
   const markChatDirty = useCallback(value => { dirty.current.chat = value; }, []);
   const markDocumentsDirty = useCallback(value => { dirty.current.documents = value; }, []);
   const markIntakeDirty = useCallback(value => { dirty.current.intake = value; }, []);
-  const openCase = useCallback((nextId, destination = 'chat', fresh = false) => {
+  const openCase = useCallback((nextId, destination = 'chat', fresh = false, preserveRoute = false) => {
     if (fresh || nextId !== caseIdRef.current) {
       if (Object.values(dirty.current).some(Boolean) && !window.confirm(lang === 'zh' ? '切换案例会丢失当前未保存的输入，并停止正在进行的请求。继续？' : 'Switching cases clears unsaved input and stops active requests. Continue?')) return false;
       dirty.current = { chat: false, documents: false, intake: false };
@@ -71,10 +80,36 @@ function AccountWorkspace({ lang, view, navigate, shellProps, notices }) {
       setWorkspaceEpoch(value => value + 1);
       setGuidanceAgency(DEFAULT_GUIDANCE_AGENCY);
       setCaseId(nextId);
+      setRequestedConversationId(null);
+      setActiveConversationId(null);
     }
-    navigate(destination);
+    navigate(destination,{preserveRoute});
     return true;
   }, [lang, navigate, workspaceKey]);
+  const openConversation = useCallback((row,{fromHistory=false}={}) => {
+    if(!row || !conversationIndex.data?.some(item=>item.id===row.id&&item.caseId===row.caseId))return false;
+    const previousHash=conversationHref(activeConversationId||'');
+    if(row.id===activeConversationId){navigate('chat',{preserveRoute:true});return true;}
+    if(!openCase(row.caseId,'chat',true,fromHistory)){
+      if(fromHistory)window.history.replaceState({},'',activeConversationId?previousHash:'#chat');
+      return false;
+    }
+    setRequestedConversationId(row.id);setActiveConversationId(row.id);setConversationRouteError(false);
+    const href=conversationHref(row.id);handledConversationHash.current=href;
+    window.history.replaceState({},'',href);
+    return true;
+  },[conversationIndex.data,activeConversationId,openCase,navigate]);
+  useEffect(()=>{
+    const follow=()=>{
+      const hash=window.location.hash,id=conversationFromHash(hash);
+      if(!id||hash===handledConversationHash.current||conversationIndex.phase!=='ready')return;
+      handledConversationHash.current=hash;
+      const row=conversationIndex.data.find(item=>item.id===id);
+      if(row)openConversation(row,{fromHistory:true});else setConversationRouteError(true);
+    };
+    follow();window.addEventListener('hashchange',follow);window.addEventListener('popstate',follow);
+    return()=>{window.removeEventListener('hashchange',follow);window.removeEventListener('popstate',follow);};
+  },[conversationIndex,openConversation]);
   const bindCurrentCase = useCallback(nextId => {
     // Saving this transient workspace is different from opening another case.
     setCaseId(nextId);
@@ -119,7 +154,7 @@ function AccountWorkspace({ lang, view, navigate, shellProps, notices }) {
     return openCase(request.targetCaseId, request.view);
   }, [openCase, continueDocument]);
   const slots = {
-    chat: [modules.chat?.ChatPage, { caseId, guidanceAgency, workflowTarget, lookupTarget, onCaseChange: bindCurrentCase, onDirtyChange: markChatDirty, onImportFiles: importFiles, onReviewMessage: reviewConversation, onOpenMaterials: openIntake, onOpenDocuments: continueDocument, onOpenSourceCase: openSourceCase, active: view === 'chat' }],
+    chat: [modules.chat?.ChatPage, { caseId, initialConversationId: requestedConversationId, conversationIndex, onOpenConversation: openConversation, onConversationChange: setActiveConversationId, onHistoryChange: refreshConversations, onNewConversation: () => openCase(null, 'chat', true), guidanceAgency, workflowTarget, lookupTarget, onCaseChange: bindCurrentCase, onDirtyChange: markChatDirty, onImportFiles: importFiles, onReviewMessage: reviewConversation, onOpenMaterials: openIntake, onOpenDocuments: continueDocument, onOpenSourceCase: openSourceCase, active: view === 'chat' }],
     intake: [modules.intake?.IntakePage, { caseId, onCaseChange: bindCurrentCase, onDirtyChange: markIntakeDirty, importRequest, onImportHandled: imported, textReviewRequest, onTextReviewHandled: reviewedConversation, onOpenDocuments: openDocuments, active: view === 'intake' }],
     customers: [modules.customers?.CustomersPage, { onOpenCase: openCase, active: view === 'customers' }],
     documents: [modules.documents?.DocumentsPage, { caseId, onDirtyChange: markDocumentsDirty, onOpenIntake: openIntake, active: view === 'documents' }],
@@ -127,10 +162,11 @@ function AccountWorkspace({ lang, view, navigate, shellProps, notices }) {
   };
   return <DraftWorkspaceProvider userId={status.userId} workspaceKey={workspaceKey}>
     <ApplicationShell {...shellProps} inbox navigationKey={`${view}:${caseId}:${workspaceEpoch}`}
-      rail={<><div ref={setLookupTarget} /><CaseRail lang={lang} selectedCaseId={caseId} onSelectCase={nextId => openCase(nextId)} refreshKey={view} /></>}
+      rail={<><div ref={setLookupTarget} /><ConversationRail lang={lang} state={conversationIndex} selectedId={activeConversationId} onOpen={openConversation} onRetry={refreshConversations} /></>}
       context={<><div ref={setWorkflowTarget} /><ContextPanel lang={lang} caseId={caseId} guidanceAgency={guidanceAgency} onAgencyChange={setGuidanceAgency} onOpenMaterials={openIntake} onOpenDocuments={() => continueDocument({ userId: status.userId, caseId })} refreshKey={view} showCaseDetails={view !== 'chat'} showGuidance={['chat','intake','documents'].includes(view)} /></>}
       onNewCase={() => openCase(null, 'chat', true)}>
     {notices}
+    {conversationRouteError&&<Alert variant="destructive"><AlertDescription>{lang==='zh'?'当前账号无法打开这段对话。请从左侧选择自己的对话。':'This conversation is unavailable to this account. Choose a conversation from the list.'}</AlertDescription></Alert>}
     {views.filter(id => visited.has(id) || id === view).map(id => {
     const [Page, props] = slots[id];
     // Explicit case switches remount after the dirty guard. First-save binding
@@ -148,11 +184,11 @@ export default function App({ initialAuthLink = null }) {
   const [lang, setLang] = useState('zh');
   const [view, setView] = useState(currentView);
   const { status, loading, error, recovery, refresh } = useSession();
-  const navigate = useCallback(next => {
+  const navigate = useCallback((next,{preserveRoute=false}={}) => {
     if (!views.includes(next)) return;
     replaceAuthLink(null);
     setView(next);
-    if (window.location.hash !== `#${next}`) window.history.pushState({}, '', `#${next}`);
+    if (!preserveRoute && window.location.hash !== `#${next}`) window.history.pushState({}, '', `#${next}`);
     handledUrl.current = window.location.href;
   }, [replaceAuthLink]);
   useEffect(() => {

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { PanelLeft, PanelRight, X } from 'lucide-react';
-const copy={zh:{openNav:'打开客户与事项列表',closeNav:'关闭列表',openContext:'打开案例上下文',closeContext:'关闭上下文',navigation:'客户与事项',context:'案例上下文',skip:'跳到工作区'},en:{openNav:'Open customers and cases',closeNav:'Close list',openContext:'Open case context',closeContext:'Close context',navigation:'Customers and cases',context:'Case context',skip:'Skip to workspace'}};
+const copy={zh:{openNav:'打开对话列表',closeNav:'关闭列表',openContext:'打开案例上下文',closeContext:'关闭上下文',navigation:'对话记录',context:'案例上下文',skip:'跳到工作区'},en:{openNav:'Open conversations',closeNav:'Close list',openContext:'Open case context',closeContext:'Close context',navigation:'Conversations',context:'Case context',skip:'Skip to workspace'}};
 const query='(max-width: 960px)';
 const externalModal=()=>[...document.querySelectorAll('[role="dialog"][aria-modal="true"],[data-slot="dialog-content"][data-state="open"]')].some(node=>!node.closest('.wb'));
 const selector='a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),summary,[tabindex]:not([tabindex="-1"])';

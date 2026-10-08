@@ -768,6 +768,16 @@ export function openStorage({ filename, reservedUsername = process.env.NESTLET_O
         if (!caseId(recordId) || !lookup.get(id,recordId)) return null;
         return db.prepare('SELECT id,case_id AS caseId,title,created_at AS createdAt,updated_at AS updatedAt FROM conversations WHERE user_id=? AND case_id=? ORDER BY updated_at DESC,id LIMIT ?').all(id,recordId,LIBRARY_LIMITS.conversationsPerCase).map(row => ({ ...row }));
       },
+      listAccountConversations(id) {
+        requireUser(id);
+        // Metadata only: one bounded, account-scoped read, never whole transcripts.
+        return db.prepare(`SELECT c.id,c.case_id AS caseId,c.title,c.created_at AS createdAt,c.updated_at AS updatedAt,
+          (SELECT json_object('role',m.role,'state',m.state,'preview',substr(m.content,1,160)) FROM messages m WHERE m.user_id=c.user_id AND m.conversation_id=c.id ORDER BY m.sequence DESC LIMIT 1) AS lastMessageJson,
+          (SELECT count(*) FROM artifacts a WHERE a.user_id=c.user_id AND a.case_id=c.case_id AND a.source_conversation_id=c.id AND a.status='draft' AND a.version=(SELECT max(v.version) FROM artifacts v WHERE v.user_id=a.user_id AND v.case_id=a.case_id AND v.kind=a.kind)) AS draftCount
+          FROM conversations c WHERE c.user_id=? ORDER BY c.updated_at DESC,c.id LIMIT ?`)
+          .all(id,MAX_CASES_PER_USER*LIBRARY_LIMITS.conversationsPerCase)
+          .map(({lastMessageJson,...row})=>({...row,lastMessage:lastMessageJson?JSON.parse(lastMessageJson):null}));
+      },
       getConversation(id, conversationId) { requireUser(id); const row = caseId(conversationId) && conversationLookup.get(id,conversationId); return row ? { ...row } : null; },
       listMessages(id, conversationId) {
         requireUser(id);

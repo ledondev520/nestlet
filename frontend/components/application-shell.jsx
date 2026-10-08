@@ -14,7 +14,7 @@ export function ApplicationShell({ children, lang = 'zh', onLanguageChange, view
   if (inbox) return <WorkbenchShell navigationKey={navigationKey} lang={lang} contextOpen={contextOpen} onContextOpenChange={setContextOpen}
     brand={<span className="wb-brand"><img src="/logo.svg" alt="" width="24" height="24" /><span>{lang === 'zh' ? '巢小秘' : 'Nestlet'}</span></span>}
     topbarEnd={mobile => <>{model}{mobile ? <InboxAccountMenu key={view} lang={lang} account={account} onLanguageChange={onLanguageChange} /> : <>{account}<LanguageButton lang={lang} onClick={onLanguageChange}/></>}</>}
-    rail={<><button type="button" className="wb-rail-item" onClick={event => { if (onNewCase?.() === false) event.preventDefault(); }}>{lang === 'zh' ? '新事项' : 'New case'}</button>{rail}</>}
+    rail={<><button type="button" className="wb-rail-item" onClick={event => { if (onNewCase?.() === false) event.preventDefault(); }}>{lang === 'zh' ? '新对话' : 'New conversation'}</button>{rail}</>}
     context={context} center={<><nav className="inbox-navigation wb-tabs" aria-label={lang === 'zh' ? '工作区导航' : 'Workspace navigation'}>{navigation[lang].map(([id,label,Icon]) => <button key={id} type="button" className="wb-tab" aria-current={view === id ? 'page' : undefined} onClick={() => onNavigate(id)}><Icon aria-hidden="true" size={18}/>{label}</button>)}</nav>{children}</>} />;
   return <div className="paper-shell">
     <a href="#workspace" className="sr-only focus:not-sr-only focus:block focus:py-2">{lang === 'zh' ? '跳到工作区' : 'Skip to workspace'}</a>

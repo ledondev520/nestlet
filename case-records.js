@@ -21,7 +21,7 @@ function query(url, allowed) {
   if ([...url.searchParams.keys()].some(key => !allowed.includes(key)) || [...new Set(url.searchParams.keys())].some(key => url.searchParams.getAll(key).length !== 1)) fail('CASE_INVALID');
 }
 export function isCaseRecordsPath(path) {
-  return path === '/api/clients' || new RegExp(`^/api/clients/${UUID}(?:/(?:cases|artifacts))?$`).test(path) ||
+  return path === '/api/conversations' || path === '/api/clients' || new RegExp(`^/api/clients/${UUID}(?:/(?:cases|artifacts))?$`).test(path) ||
     new RegExp(`^/api/cases/${UUID}/(?:readiness|document-context|issues|conversations|conversation-actions/prepare|conversation-reviews(?:/[0-9a-f-]{36}(?:/(?:reply|undo))?)?|artifacts(?:/generate)?)$`).test(path) ||
     new RegExp(`^/api/conversations/${UUID}$`).test(path) || new RegExp(`^/api/artifacts/${UUID}(?:/download)?$`).test(path);
 }
@@ -30,6 +30,10 @@ export async function handleCaseRecords({ request, response, url, session, stora
   const userId = session.userId, path = url.pathname, method = request.method;
   const ownCase = id => { const record = storage.getCase(userId,id); if (!record) fail('CASE_NOT_FOUND',404); return record; };
   const ownClient = id => { const record = storage.getClient(userId,id); if (!record) fail('CLIENT_NOT_FOUND',404); return record; };
+  if (path === '/api/conversations' && method === 'GET') {
+    query(url,[]);
+    return json(200,{conversations:storage.listAccountConversations(userId)});
+  }
   if (path === '/api/clients') {
     if (method === 'GET') {
       query(url,['search','limit']);
