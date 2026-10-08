@@ -652,3 +652,20 @@ The test-only correction captures a passive clone of the real native fetch respo
   actual saved download bytes, repeat download, edited draft, unsaved guard and
   stale-final rejection. Official CI, runtime container and deployed app's actual
   download/open remain PENDING. Offline generated PDFs do not satisfy live acceptance.
+
+### Direct PDF integration after PR47
+
+Rebased on merged PR47 `6813b5350f5bed092759fdcaabc86c2c190cf2c0`.
+The pinned legacy-browser helper now installs the exact archived baseline lock
+into its own temporary tree using `npm ci --ignore-scripts --no-audit --no-fund`,
+checks its lock hash before and after installation, and runs that tree's Vite.
+It never substitutes current PDF dependencies into old-client evidence. The
+isolated build retained the original baseline app SHA-256
+`916def12865f2d43e18400633ae582335b12205333daf58e41183537baf4bef0`;
+all three real-HTTP/SQLite legacy fixture sanity modes passed.
+
+Combined local checks/build, backend **432/432** and frontend **323/323** passed.
+Browser discovery lists **57 scenarios**. Full official Chromium and runtime
+container gates remain required on the published exact SHA; no local Chromium
+launch was attempted during this integration. Live PDF download/open remains a
+separate deployment acceptance gate.
