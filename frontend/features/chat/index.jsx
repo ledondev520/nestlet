@@ -541,7 +541,7 @@ export function ChatPage({ lang='zh', caseId=null, initialConversationId=null, c
           </div>
           <div className="chat-composer-actions">
             <Button type="button" variant="ghost" size="sm" disabled={busy||imagePending>0} onClick={()=>fileInput.current?.click()} title={words.attach}><Paperclip aria-hidden="true" />{words.attach}</Button>
-            <div className="flex items-center gap-2"><span className="chat-keyboard-hint">{words.keyboardHint}</span>
+            <div className="flex items-center gap-2"><span className="chat-keyboard-hint whitespace-pre-line">{words.keyboardHint}</span>
             {phase!=='idle'&&phase!=='loading'?<Button type="button" aria-label={words.stop} onClick={stop}><Square aria-hidden="true" />{words.stop}</Button>:<Button type="submit" aria-label={words.send} disabled={busy||!hasTargetedReply&&(Boolean(serviceFailure)||!status.liveEnabled)||unavailableExactConversation||recoveryUnavailable||imagePending>0||(!input.trim()&&!images.length)}><ArrowUp aria-hidden="true" />{words.send}</Button>}</div>
             <input id={fileId} ref={fileInput} className="sr-only" type="file" accept="image/png,image/jpeg,.pdf,.txt,.csv,.xlsx,.xls" multiple onChange={event=>{receiveFiles(event.target.files);event.target.value='';}}/>
           </div>

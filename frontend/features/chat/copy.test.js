@@ -55,5 +55,6 @@ test('short starter labels do not replace the existing full message payload or h
   assert.match(source,/onClick=\{\(\)=>onPrompt\(prompt\)\}/u);
   assert.match(source,/\['整理材料','跟进草稿'\]\[index\]/u);
   const chat=await readFile(new URL('./index.jsx',import.meta.url),'utf8');
+  assert.match(chat,/className="chat-keyboard-hint whitespace-pre-line"/u);
   assert.match(chat,/\['Conversation','Case conversation','案例会话','新对话','New conversation','对话'\]/u);
 });
