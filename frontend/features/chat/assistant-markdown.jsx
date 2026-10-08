@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { withinMarkdownBudget } from './markdown-budget.js';
 import './assistant-markdown.css';
 
 // Display only: never rewrite the stored, copied, or source-linked message.
@@ -41,10 +42,13 @@ export function AssistantMarkdown({ content, streaming = false, lang = 'zh' }) {
     input: ({ checked }) => <input type="checkbox" checked={Boolean(checked)} disabled aria-label={lang === 'en' ? (checked ? 'Completed' : 'Not completed') : (checked ? '已完成' : '未完成')} />,
   }), [lang]);
   return <div className="assistant-markdown">
-    <Markdown remarkPlugins={plugins} allowedElements={elements} skipHtml urlTransform={safeMarkdownUrl}
+    {withinMarkdownBudget(content) ? <Markdown remarkPlugins={plugins} allowedElements={elements} skipHtml urlTransform={safeMarkdownUrl}
       components={localizedComponents}>
       {content}
-    </Markdown>
+    </Markdown> : <>
+      <div className="assistant-markdown-plain" data-markdown-fallback="true">{content}</div>
+      <p className="text-xs text-muted-foreground">{lang === 'en' ? 'Formatting simplified for a long or complex response. Full text is preserved.' : '回复较长或格式较复杂，已简化显示，完整正文仍保留。'}</p>
+    </>}
     {streaming && <span className="assistant-markdown-cursor" aria-hidden="true">▍</span>}
   </div>;
 }

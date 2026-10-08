@@ -35,3 +35,5 @@
 .assistant-markdown .assistant-markdown-align-left { text-align: left; }
 .assistant-markdown .assistant-markdown-align-right { text-align: right; }
 .assistant-markdown .assistant-markdown-align-center { text-align: center; }
+
+.assistant-markdown-plain { white-space: pre-wrap; overflow-wrap: anywhere; }

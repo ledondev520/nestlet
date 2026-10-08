@@ -77,3 +77,10 @@ and mail links open separately with no opener or referrer. Links in model prose
 are unverified external references, never the authenticated source-navigation
 controls. No raw-HTML plugin, syntax execution, resource fetching or HTML storage
 is introduced.
+
+Markdown parsing has a conservative linear preflight budget: at most 16,000
+characters, 2,048 syntax characters, 400 lines and 32 repeated delimiters. Longer
+or more complex replies render as escaped, untruncated plain text with a short
+localized explanation. The same guard applies to every streaming prefix. This
+is a display-only performance boundary; saved/copied/source-linked content is
+unchanged, and normal replies still use semantic Markdown and tables.

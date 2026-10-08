@@ -55,3 +55,28 @@ test('assistant Markdown is safe, accessible, mobile-scrollable and copied verba
     await assertClean();
   } finally { await app.stop(); }
 });
+
+test('complex full-length assistant text falls back safely and copies without truncation', async ({page,context},testInfo) => {
+  const app=await startBrowserFixture({legacyUsers:['synthetic-customer-a']});
+  const content='['.repeat(30000)+']'.repeat(30000);
+  try {
+    const assertClean=await watchBrowser(page);
+    const session=await signInCustomer(page,app);
+    const client=await createCustomer(page,'Synthetic complexity customer');
+    const record=await createLinkedCase(page,client,'Synthetic complexity case');
+    const conversation=await createEmptyConversation(page,app,record,'Synthetic complexity message');
+    app.withDatabase(db=>db.prepare('INSERT INTO messages(id,user_id,conversation_id,sequence,role,content,state,request_id,client_message_id,image_metadata_json,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)')
+      .run(randomUUID(),session.userId,conversation.id,1,'assistant',content,'complete',randomUUID(),null,'[]',new Date().toISOString()));
+    await openLinkedCase(page,client.displayName,record.title);
+    const assistant=page.locator('.chat-message--assistant');
+    await expect(assistant.locator('[data-markdown-fallback]')).toHaveText(content);
+    await context.grantPermissions(['clipboard-read','clipboard-write'],{origin:app.origin});
+    await assistant.getByRole('button',{name:'Copy reply',exact:true}).click();
+    expect(await page.evaluate(()=>navigator.clipboard.readText())).toBe(content);
+    expect((await getJson(page,app,`/api/conversations/${conversation.id}`)).messages[0].content).toBe(content);
+    await page.setViewportSize({width:320,height:900});
+    await noHorizontalOverflow(page);
+    await expect(assistant.locator('script,img,a')).toHaveCount(0);
+    await assertClean();
+  } finally {await app.stop();}
+});

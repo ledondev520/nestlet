@@ -705,3 +705,14 @@ Final local locked install, syntax checks, build and whitespace checks passed. A
 - Build retains the existing large-bundle warning. No schema, provider prompt,
   stored message, source provenance, automatic action or deployment change.
   Rollback: revert the Markdown integration commit and rebuild the frontend.
+
+### Markdown parser complexity correction
+
+Independent review reproduced a 5.5-second synchronous render for an allowed
+60,000-character nested-bracket reply. Added a conservative linear pre-parse
+budget and escaped full-text fallback for long/complex content, including all
+streaming prefixes. No source is truncated, normalized, or rewritten. New
+focused tests cover pathological and maximum-length strings, parser budget
+boundaries, literal HTML safety, full text and streaming cursor retention. A
+browser fixture additionally checks full-length fallback, exact clipboard/
+history contents and 320px layout; official execution remains required.

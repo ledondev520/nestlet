@@ -1,6 +1,8 @@
 // Synthetic SSR/DOM rendering checks, not live-provider acceptance.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { performance } from 'node:perf_hooks';
+import { MARKDOWN_BUDGET, withinMarkdownBudget } from './markdown-budget.js';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { JSDOM } from 'jsdom';
@@ -47,4 +49,33 @@ test('every partial streaming prefix renders safely, including unfinished tables
   }
   assert.equal(render(source).querySelector('.assistant-markdown-cursor'), null);
   assert.equal(source.includes('**Bold**'), true); // renderer receives, never edits, raw source
+});
+
+
+test('untrusted parser complexity is bounded before Markdown parsing, preserving complete literal source', () => {
+  const cases = ['['.repeat(30000)+']'.repeat(30000), '*'.repeat(4000),
+    '[x]'.repeat(1500), 'line\n'.repeat(401), 'ordinary prose '.repeat(4300),
+    '['.repeat(100)+'<img src=https://tracker.invalid onerror=alert(1)>'+']'.repeat(100)];
+  for (const content of cases) {
+    assert.equal(withinMarkdownBudget(content),false);
+    const start=performance.now();
+    const html=renderToStaticMarkup(React.createElement(AssistantMarkdown,{content,streaming:true,lang:'en'}));
+    assert.ok(performance.now()-start<500,'bounded plaintext rendering must not spend seconds parsing Markdown');
+    const doc=new JSDOM(html).window.document;
+    assert.equal(doc.querySelector('[data-markdown-fallback]').textContent,content);
+    assert.equal(doc.querySelectorAll('img,script,a').length,0);
+    assert.ok(doc.querySelector('.assistant-markdown-cursor'));
+  }
+  assert.equal(withinMarkdownBudget('**Reviewed**\n\n| Field | Status |\n| --- | --- |\n| Owner | Unknown |'),true);
+});
+
+test('streaming across length and delimiter limits keeps every character and safely returns to formatted display', () => {
+  const content='['.repeat(30000)+']'.repeat(30000);
+  for(const length of [0,1,32,33,2048,16000,16001,30000,59000,60000]) {
+    const prefix=content.slice(0,length), doc=render(prefix,{streaming:true});
+    const fallback=doc.querySelector('[data-markdown-fallback]');
+    if(length>MARKDOWN_BUDGET.repeatedDelimiter) assert.equal(fallback.textContent,prefix);
+    assert.equal(doc.querySelectorAll('script,img').length,0);
+  }
+  assert.equal(render('**Finished**').querySelector('strong').textContent,'Finished');
 });
