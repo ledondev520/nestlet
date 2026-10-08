@@ -1,6 +1,6 @@
 export const COPY = {
   zh: {
-    remember:'记住账号并保持登录 8 小时', showPassword:'显示密码', hidePassword:'隐藏密码',
+    remember:'记住账号并保持登录 8 小时', showPassword:'显示密码', hidePassword:'隐藏密码', showConfirmation:'显示确认密码', hideConfirmation:'隐藏确认密码',
     account:'账号', signedIn:'已登录', signedInHint:'继续处理自己的客户、案件和文档', ordinary:'普通账号', administrator:'管理员',
     login:'登录', register:'注册', loginTitle:'回到你的工作区', registerTitle:'创建自己的工作区',
     loginHint:'使用邮箱登录；已有账号也可继续使用原用户名', registerHint:'先验证邮箱，再登录自己的客户、案件、对话和文档工作区',
@@ -26,7 +26,7 @@ export const COPY = {
     refreshing:'正在刷新…', refresh:'刷新状态', refreshFailed: "无法刷新状态，请重试。",
   },
   en: {
-    remember:'Remember me for 8 hours', showPassword:'Show password', hidePassword:'Hide password',
+    remember:'Remember me for 8 hours', showPassword:'Show password', hidePassword:'Hide password', showConfirmation:'Show confirmation password', hideConfirmation:'Hide confirmation password',
     account:'Account', signedIn:'Signed in', signedInHint:'Continue with your own customers, cases, and documents', ordinary:'Ordinary account', administrator:'Administrator',
     login:'Sign in', register:'Register', loginTitle:'Return to your workspace', registerTitle:'Create your workspace',
     loginHint:'Sign in with email. Existing accounts can still use their original username', registerHint:'Verify your email, then sign in to your own customers, cases, conversations, and documents',
@@ -53,7 +53,7 @@ export const COPY = {
   },
 };
 Object.assign(COPY.zh, {
-  remember:'保持登录 8 小时', showPassword:'显示密码', hidePassword:'隐藏密码',
+  remember:'保持登录 8 小时', showPassword:'显示密码', hidePassword:'隐藏密码', showConfirmation:'显示确认密码', hideConfirmation:'隐藏确认密码',
   email:'邮箱', emailPlaceholder:'name@example.com', identity:'邮箱或已有用户名', identityPlaceholder:'输入邮箱或已有用户名',
   emailHint:'使用你能收取验证邮件的邮箱；新账号须先验证邮箱', identityHint:'新用户请使用邮箱注册；原有用户名仅用于已有账号登录',
   emailUnavailable:'邮件服务尚未配置或暂不可用，注册、发送验证邮件和邮箱找回暂不能使用。请联系管理员',
@@ -78,7 +78,7 @@ Object.assign(COPY.zh, {
   bootstrapRecovery:'所有者账号的密码由服务器私有配置管理，不支持邮箱重置。需要找回时，请由所有者本人在私有服务器终端完成恢复；不要在聊天中发送密码',
 });
 Object.assign(COPY.en, {
-  remember:'Remember me for 8 hours', showPassword:'Show password', hidePassword:'Hide password',
+  remember:'Remember me for 8 hours', showPassword:'Show password', hidePassword:'Hide password', showConfirmation:'Show confirmation password', hideConfirmation:'Hide confirmation password',
   email:'Email', emailPlaceholder:'name@example.com', identity:'Email or existing username', identityPlaceholder:'Enter email or an existing username',
   emailHint:'Use an inbox you can access. New accounts require email verification', identityHint:'New accounts register with email. Original usernames are for existing-account sign-in only',
   emailUnavailable:'Email delivery is not configured or is unavailable. Registration, verification requests, and email recovery are unavailable. Contact the administrator',
