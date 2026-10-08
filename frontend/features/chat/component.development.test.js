@@ -33,7 +33,7 @@ async function mount({caseId=null,fetchHandler,status=identity,recovery=null,gui
   const button=text=>[...dom.window.document.querySelectorAll('button')].find(node=>node.textContent===text||node.getAttribute('aria-label')===text);
   const click=async element=>{assert.ok(element,'Expected control');await React.act(async()=>{element.click();await tick();});};
   const type=async text=>{const input=dom.window.document.querySelector('textarea');assert.ok(input);await React.act(async()=>{Object.getOwnPropertyDescriptor(dom.window.HTMLTextAreaElement.prototype,'value').set.call(input,text);input.dispatchEvent(new dom.window.Event('input',{bubbles:true}));await tick();});};
-  const close=async()=>{await React.act(async()=>root.unmount());await vite.close();dom.window.close();for(const[key,descriptor]of original){if(descriptor)Object.defineProperty(globalThis,key,descriptor);else delete globalThis[key];}};
+  const close=async()=>{await React.act(async()=>{root.unmount();await tick();});await React.act(async()=>{await tick();});await vite.close();dom.window.close();for(const[key,descriptor]of original){if(descriptor)Object.defineProperty(globalThis,key,descriptor);else delete globalThis[key];}};
   return{dom,requests,flush,setCase,setStatus:async next=>{status=next;await React.act(async()=>{await sessionApi.refresh();await tick();});},button,click,type,close,readDraft:()=>draftVault.read({userId:status.userId,workspaceKey,feature:'chat'})};
 }
 

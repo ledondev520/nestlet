@@ -141,6 +141,7 @@ export function ChatPage({ lang='zh', caseId=null, guidanceAgency='unknown', onC
     initialized.current=true;ownerRef.current=status.userId;
     if(preserveComposition){
       // App remounts true case switches. A null→ID binding here is the same workspace saved by Intake.
+      permissionPending.current=null;setPermissionPrompt(false);setPermissionFailure(null);
       epoch.current++;for(const active of controllers.current)active.abort();controllers.current.clear();controller.current=null;
       caseRef.current=nextCase;adoption.current=null;workflowRef.current=null;lastTurn.current=null;decodeBusy.current=false;setImagePending(0);setActionBatch(null);setLibraryActivity(null);setLibrarySources(null);setError(null);setNotice('');
     } else invalidate(nextCase);
