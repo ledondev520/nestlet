@@ -773,3 +773,5 @@ Local verification on the candidate tree:
 - Local Chromium could not start because the execution sandbox rejects its local socket. The browser assertions therefore were not executed locally; the two HTTP-only browser-suite checks are not a browser pass. Use the official `Nestlet browser acceptance` workflow and its exact-SHA screenshots for desktop/mobile acceptance.
 
 Not established here: live provider completion, real email delivery, production deployment, or durable provider-key storage. The separately authorized persistence work must retain its own verification boundary and current storage-specific wording.
+
+Official first browser run `37861083523` on `913fa658c6445bbe63ae71d2aa7e476fb59a0d55`: 60/62 passed. The two failures matched outdated Chinese substrings for the printed-date caution and successful model-response check. Captured UI output showed the approved new meanings; only those exact test expectations were updated. Full exact-head browser rerun remains required.

@@ -93,7 +93,7 @@ test('official references across chat/materials/documents: bilingual keyboard di
           await expect(firstSource).toHaveAttribute('rel', /noreferrer/u);
           await expect(panel.locator('a[href="https://sfha.org/files/documents/52517ENG.pdf"]')).toBeVisible();
           await expect(panel).toContainText(zh ? "受理版本及本事项是否适用，尚未确认。" : 'Accepted edition and case applicability unconfirmed');
-          await expect(panel).toContainText(zh ? '不得修改该日期' : 'do not change the printed date');
+          await expect(panel).toContainText(zh ? '不得修改表格上的日期。' : 'do not change the printed date');
           await expect(panel).toContainText('2026-10-07');
 
           // Four source links lead to the nested conditions using the real Tab order.

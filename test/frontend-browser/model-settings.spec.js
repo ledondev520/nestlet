@@ -60,7 +60,7 @@ for (const [lang, width] of [['en', 1280], ['zh', 390], ['en', 320]]) test(`key-
   await popover.getByRole('button', { name: lang === 'zh' ? '保存' : 'Save' }).click();
   await expect(field).toHaveValue('');
   expect(writes).toEqual([{ path: '/api/settings', body: { apiKey: 'synthetic-key-123456', enableLive: true } }]);
-  await expect(popover).toContainText(lang === 'zh' ? '模型调用验证通过' : 'Model response verified');
+  await expect(popover).toContainText(lang === 'zh' ? '助手调用检查通过。' : 'Model response verified');
   await expect(popover.getByRole('button', { name: /检查权限|验证模型|Verify model|测试连接|Test connection/ })).toHaveCount(0);
   expect(writes).toHaveLength(1);
   await expect(page.locator('.chat-composer button[type="submit"]')).toBeEnabled();
