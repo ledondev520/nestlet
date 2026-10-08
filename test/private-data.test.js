@@ -15,7 +15,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { randomBytes, randomUUID, scryptSync } from 'node:crypto';
+import { randomBytes, randomUUID, scryptSync, createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { Worker } from 'node:worker_threads';
 import { openStorage } from '../storage.js';
@@ -366,7 +366,7 @@ test('backup waits for a bounded real exclusive writer and verifies its committe
   } finally { store.close(); }
 });
 
-test('current-schema private snapshot preserves verified email binding, pending hash-only actions and rate limits on restore', async t => {
+test('current-schema restore preserves verified email binding and rate limits but invalidates pending actions', async t => {
   const f = await fixture(t), store = openStorage({ filename: f.filename });
   const { createHash } = await import('node:crypto');
   const fingerprint = createHash('sha256').update(store.getUserById(f.user.id).passwordHash).digest('hex');
@@ -382,7 +382,7 @@ test('current-schema private snapshot preserves verified email binding, pending 
   const recovered = openStorage({ filename: restored.filename });
   try {
     assert.equal(recovered.emailAuth.findByEmail(email).id, f.user.id);
-    assert.equal(recovered.emailAuth.getAction(reset.tokenHash).ready, 1);
+    assert.equal(recovered.emailAuth.getAction(reset.tokenHash), null);
     assert.equal(recovered.emailAuth.reserveRequest(email, 'other-synthetic-ip', now + 1), 'suppressed');
     assert.equal(recovered.getCase(f.user.id, f.record.id).sourceText, 'Synthetic source');
     assert.equal(recovered.getUserById('owner').passwordHash, null);
@@ -399,4 +399,137 @@ test('current-schema backups require the private originals directory even when n
   await assert.rejects(backupPrivateData({ filename, assetsDirectory, output }), error => error.code === 'ENOENT');
   assert.equal(readdirSync(root).includes('snapshot'), false);
   assert.equal(readdirSync(root).includes('missing-assets'), false);
+});
+
+const backupDigest = path => createHash('sha256').update(readFileSync(path)).digest('hex');
+const inspectBackupDatabase = (filename, read) => {
+  const db = new DatabaseSync(filename, { readOnly: true });
+  try { return read(db); } finally { db.close(); }
+};
+
+for (const version of [5, 9]) test(`schema${version} restore invalidates every email-action kind/readiness while preserving identities and limits`, async t => {
+  const root = mkdtempSync(join(realpathSync(tmpdir()), 'nestlet-email-recovery-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const source = join(root, 'source'); mkdirSync(source, { mode: 0o700 });
+  const filename = join(source, 'nestlet.sqlite'), assetsDirectory = join(source, 'assets');
+  mkdirSync(assetsDirectory, { mode: 0o700 }); writeFileSync(filename, '', { mode: 0o600 });
+  if (version === 9) openStorage({ filename }).close();
+  const db = new DatabaseSync(filename), now = Date.now(), userId = randomUUID();
+  const salt = randomBytes(16), passwordHash = `scrypt$${salt.toString('base64url')}$${scryptSync('synthetic-recovery-password', salt, 32).toString('base64url')}`;
+  const fingerprint = createHash('sha256').update(passwordHash).digest('hex');
+  try {
+    if (version === 5) {
+      db.exec(readFileSync(new URL('./fixtures/schema5.sql', import.meta.url), 'utf8'));
+      db.prepare('INSERT INTO users VALUES(?,?,?,?,?)').run('owner', 'owner', 'owner', null, new Date(now).toISOString());
+    }
+    db.prepare('INSERT INTO users VALUES(?,?,?,?,?)').run(userId, 'synthetic-recovery-user', 'trial', passwordHash, new Date(now).toISOString());
+    db.prepare('INSERT INTO email_identities VALUES(?,?,?)').run(userId, 'verified-recovery@example.invalid', now);
+    db.prepare('INSERT INTO email_rate_buckets VALUES(?,?,?)').run('f'.repeat(64), 3, now + 3600000);
+    for (const kind of ['register', 'bind', 'reset']) for (const ready of [0, 1]) {
+      db.prepare('INSERT INTO email_actions VALUES(?,?,?,?,?,?,?,?,?)').run(
+        createHash('sha256').update(`${kind}:${ready}`).digest('hex'), kind, `${kind}-${ready}@example.invalid`,
+        kind === 'register' ? null : userId, kind === 'register' ? passwordHash : null,
+        kind === 'register' ? null : fingerprint, ready, now, now + 1800000
+      );
+    }
+  } finally { db.close(); }
+  const retainedTables = ['users', 'email_identities', 'email_rate_buckets'];
+  const before = inspectBackupDatabase(filename, db => Object.fromEntries(retainedTables.map(table => [table, db.prepare(`SELECT * FROM ${table} ORDER BY rowid`).all()])));
+  const sourceDigest = backupDigest(filename), snapshot = join(root, 'snapshot');
+  assert.equal((await backupPrivateData({ filename, assetsDirectory, output: snapshot })).schemaVersion, version);
+  const snapshotDigest = backupDigest(join(snapshot, 'nestlet.sqlite')), manifestDigest = backupDigest(join(snapshot, 'manifest.json'));
+  const restored = await restorePrivateBackup({ input: snapshot, output: join(root, 'restored') });
+  inspectBackupDatabase(restored.filename, db => {
+    assert.equal(db.prepare('PRAGMA user_version').get().user_version, version);
+    assert.equal(db.prepare('SELECT count(*) AS n FROM email_actions').get().n, 0);
+    for (const table of retainedTables) assert.deepEqual(db.prepare(`SELECT * FROM ${table} ORDER BY rowid`).all(), before[table], table);
+    assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
+    assert.equal(db.prepare('PRAGMA integrity_check').get().integrity_check, 'ok');
+  });
+  assert.equal(backupDigest(filename), sourceDigest);
+  assert.equal(backupDigest(join(snapshot, 'nestlet.sqlite')), snapshotDigest);
+  assert.equal(backupDigest(join(snapshot, 'manifest.json')), manifestDigest);
+  for (const path of [filename, join(snapshot, 'nestlet.sqlite')]) assert.equal(inspectBackupDatabase(path, db => db.prepare('SELECT count(*) AS n FROM email_actions').get().n), 6);
+  assert.equal(verifyPrivateBackup({ input: snapshot }).schemaVersion, version);
+});
+
+test('historical schema4 restore has no email tables and remains unchanged and compatible', async t => {
+  const root = mkdtempSync(join(realpathSync(tmpdir()), 'nestlet-schema4-recovery-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const source = join(root, 'source'); mkdirSync(source, { mode: 0o700 });
+  const filename = join(source, 'nestlet.sqlite'), assetsDirectory = join(source, 'assets');
+  mkdirSync(assetsDirectory, { mode: 0o700 }); writeFileSync(filename, '', { mode: 0o600 });
+  const db = new DatabaseSync(filename);
+  try {
+    // The preserved historical fixture contains schema3, then schema4, then email DDL.
+    // Execute only its real pre-email prefix; do not downgrade a current database.
+    const sql = readFileSync(new URL('./fixtures/schema5.sql', import.meta.url), 'utf8');
+    const boundary = sql.indexOf('CREATE TABLE email_identities'); assert.ok(boundary > 0);
+    db.exec(sql.slice(0, boundary));
+    assert.equal(db.prepare('PRAGMA user_version').get().user_version, 4);
+    db.prepare('INSERT INTO users VALUES(?,?,?,?,?)').run('owner', 'owner', 'owner', null, new Date().toISOString());
+  } finally { db.close(); }
+  const sourceDigest = backupDigest(filename), snapshot = join(root, 'snapshot');
+  await backupPrivateData({ filename, assetsDirectory, output: snapshot });
+  const snapshotDigest = backupDigest(join(snapshot, 'nestlet.sqlite'));
+  const restored = await restorePrivateBackup({ input: snapshot, output: join(root, 'restored') });
+  inspectBackupDatabase(restored.filename, db => {
+    assert.equal(db.prepare('PRAGMA user_version').get().user_version, 4);
+    assert.equal(db.prepare("SELECT count(*) AS n FROM sqlite_master WHERE name LIKE 'email_%'").get().n, 0);
+    assert.equal(db.prepare('SELECT count(*) AS n FROM users').get().n, 1);
+    assert.equal(db.prepare('PRAGMA integrity_check').get().integrity_check, 'ok');
+  });
+  assert.equal(backupDigest(filename), sourceDigest);
+  assert.equal(backupDigest(join(snapshot, 'nestlet.sqlite')), snapshotDigest);
+});
+
+test('a reset consumed after backup cannot be replayed from an isolated restored copy', async t => {
+  const f = await fixture(t), store = openStorage({ filename: f.filename });
+  const now = Date.now(), email = 'synthetic-consumed-reset@example.invalid';
+  const oldHash = store.getUserById(f.user.id).passwordHash;
+  const fingerprint = createHash('sha256').update(oldHash).digest('hex');
+  const binding = store.emailAuth.createAction({ kind: 'bind', email, userId: f.user.id, credentialFingerprint: fingerprint, now });
+  store.emailAuth.markAccepted(binding.tokenHash, now); assert.equal(store.emailAuth.verify(binding.tokenHash, { now }), true);
+  const reset = store.emailAuth.createAction({ kind: 'reset', email, userId: f.user.id, credentialFingerprint: fingerprint, now });
+  store.emailAuth.markAccepted(reset.tokenHash, now);
+  const snapshot = join(f.root, 'before-password-reset');
+  await backupPrivateData({ ...f, output: snapshot });
+  const snapshotDigest = backupDigest(join(snapshot, 'nestlet.sqlite'));
+  const salt = randomBytes(16), newHash = `scrypt$${salt.toString('base64url')}$${scryptSync('synthetic-new-password', salt, 32).toString('base64url')}`;
+  try {
+    assert.equal(store.emailAuth.reset(reset.tokenHash, newHash, now + 1000), true);
+    assert.equal(store.emailAuth.reset(reset.tokenHash, oldHash, now + 2000), false);
+  } finally { store.close(); }
+  const liveDigest = backupDigest(f.filename);
+  const restored = await restorePrivateBackup({ input: snapshot, output: join(f.root, 'isolated-drill') });
+  const recovered = openStorage({ filename: restored.filename });
+  try {
+    // Recovery still restores snapshot credentials; later password changes need operator review.
+    assert.equal(recovered.getUserById(f.user.id).passwordHash, oldHash);
+    assert.equal(recovered.emailAuth.getAction(reset.tokenHash), null);
+    assert.equal(recovered.emailAuth.reset(reset.tokenHash, newHash, now + 2000), false);
+    assert.equal(recovered.getUserById(f.user.id).passwordHash, oldHash);
+    assert.equal(recovered.emailAuth.findByEmail(email).id, f.user.id);
+  } finally { recovered.close(); }
+  assert.equal(backupDigest(f.filename), liveDigest);
+  assert.equal(backupDigest(join(snapshot, 'nestlet.sqlite')), snapshotDigest);
+  assert.equal(inspectBackupDatabase(f.filename, db => db.prepare('SELECT password_hash FROM users WHERE id=?').get(f.user.id).password_hash), newHash);
+  assert.equal(verifyPrivateBackup({ input: snapshot }).schemaVersion, 9);
+});
+
+test('failed restored email-action invalidation keeps recovery incomplete and source/snapshot unchanged', async t => {
+  const f = await fixture(t), db = new DatabaseSync(f.filename), now = Date.now();
+  const user = db.prepare('SELECT password_hash FROM users WHERE id=?').get(f.user.id);
+  try {
+    db.prepare('INSERT INTO email_actions VALUES(?,?,?,?,?,?,?,?,?)').run('a'.repeat(64), 'register', 'synthetic-blocked-recovery@example.invalid', null, user.password_hash, null, 1, now, now + 1800000);
+    db.exec("CREATE TRIGGER synthetic_deny_action_delete BEFORE DELETE ON email_actions BEGIN SELECT RAISE(ABORT,'Synthetic recovery failure'); END;");
+  } finally { db.close(); }
+  const sourceDigest = backupDigest(f.filename), snapshot = join(f.root, 'snapshot');
+  await backupPrivateData({ ...f, output: snapshot });
+  const snapshotDigest = backupDigest(join(snapshot, 'nestlet.sqlite')), output = join(f.root, 'failed-restore');
+  await assert.rejects(restorePrivateBackup({ input: snapshot, output }), /Synthetic recovery failure/u);
+  assert.ok(readdirSync(output).includes('INCOMPLETE'));
+  assert.equal(backupDigest(f.filename), sourceDigest);
+  assert.equal(backupDigest(join(snapshot, 'nestlet.sqlite')), snapshotDigest);
+  assert.equal(verifyPrivateBackup({ input: snapshot }).schemaVersion, 9);
 });

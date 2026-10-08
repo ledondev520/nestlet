@@ -346,6 +346,9 @@ export async function restorePrivateBackup({ input, output }) {
     if (JSON.stringify(rows) !== JSON.stringify(checked.manifest.assets))
       fail('Restored asset inventory differs.');
     for (const asset of rows) target.read(asset);
+    // Snapshot-bound links may have been consumed or revoked after backup.
+    // Clear every enrollment/binding/reset capability only in the restored copy.
+    if (checked.schemaVersion >= 5) restored.exec('DELETE FROM email_actions');
     // Never resurrect logged-out or credential-revoked bearer sessions from a backup.
     if (checked.schemaVersion >= 8) restored.exec('DELETE FROM auth_sessions');
     // A historical snapshot must never resurrect a subsequently revoked data-sharing grant.

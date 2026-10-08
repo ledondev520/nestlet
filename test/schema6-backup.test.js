@@ -29,7 +29,7 @@ function fixture(t) {
   t.after(()=>rmSync(root,{recursive:true,force:true}));return {root,source,filename,assetsDirectory,id,record};
 }
 
-test('pre-upgrade schema5 snapshot stays unchanged; drill migrates to6; capability, audit, email identities/actions and originals survive6 backup/restore',async t=>{
+test('pre-upgrade schema5 snapshot stays unchanged; drill migrates to6; capability, audit, email identities and originals survive backup/restore while email actions expire',async t=>{
   const f=fixture(t),originalBytes=readFileSync(f.filename),pre=join(f.root,'schema5-snapshot');
   assert.equal((await backupPrivateData({...f,output:pre})).schemaVersion,5);
   const snapshotBytes=readFileSync(join(pre,'nestlet.sqlite'));
@@ -57,7 +57,7 @@ test('pre-upgrade schema5 snapshot stays unchanged; drill migrates to6; capabili
     assert.equal(again.accountAdministration.listAccounts(owner).accounts.find(row=>row.id===f.id).capabilityVersion,3);
     assert.equal(again.getUserById(f.id).id,f.id);assert.equal(again.getUserById(f.id).passwordHash,passwordHash);assert.equal(again.getUserById('owner').passwordHash,null);
     assert.equal(again.emailAuth.findByEmail('synthetic-backup-admin@example.test').id,f.id);
-    assert.equal(again.emailAuth.getAction('e'.repeat(64)).ready,1);
+    assert.equal(again.emailAuth.getAction('e'.repeat(64)),null);
     assert.equal(again.getCase(f.id,f.record).sourceText,'Synthetic text');
     assert.equal(again.getAsset('owner',asset.id),null);
     assert.deepEqual(openAssetVault({directory:recovered.assetsDirectory}).read(again.getAsset(f.id,asset.id)),bytes);
