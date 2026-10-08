@@ -94,12 +94,14 @@ try {
   await call(b, '/api/settings', {}, 403); await call(owner, '/api/settings');
   await call(a, '/api/logout', { method: 'POST', body: {} });
   await app.restart();
-  await call(b, `/api/cases/${first.id}`, {}, 401);
+  await call(a, `/api/cases/${first.id}`, {}, 401); // Explicit logout stays revoked.
+  await call(b, '/api/cases'); // Untouched ordinary cookie survives restart.
+  await call(b, `/api/cases/${first.id}`, {}, 404); // Its foreign case remains private.
   const reopened = await login(usernames[0]);
   assert.deepEqual((await json(reopened, `/api/cases/${first.id}`)).case, first);
   assert.equal((await json(reopened, `/api/artifacts/${final.id}`)).artifact.content, final.content);
   assert.equal((await json(reopened, `/api/artifacts/${draft.id}`)).artifact.content, draft.content);
   assert.equal((await json(reopened, `/api/clients/${client.id}`)).client.displayName, latestClient.displayName);
   assert.deepEqual(Buffer.from(await (await call(reopened, `/api/assets/${asset.id}/download`)).arrayBuffer()), originalBytes);
-  console.log('PASS: real HTTP/SQLite customer literal search, two linked cases, resolved question, confirmed context, immutable final/edited draft, three empty conversations, stale case/customer 409, owner/ordinary isolation, real server restart, RAM-session invalidation, exact original bytes and fresh login/reopen. Browser, network interruption and provider NOT RUN.');
+  console.log('PASS: real HTTP/SQLite customer literal search, two linked cases, resolved question, confirmed context, immutable final/edited draft, three empty conversations, stale case/customer 409, owner/ordinary isolation, real server restart, durable unexpired sessions and persistent logout, exact original bytes and fresh login/reopen. Browser, network interruption and provider NOT RUN.');
 } finally { await app.stop(); }
