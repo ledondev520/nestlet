@@ -232,6 +232,7 @@ export function ChatPage({ lang='zh', caseId=null, initialConversationId=null, c
   },[conversationId,title,phase,api]);
 
   async function chooseConversation(id) {
+    if(id&&id===conversationRef.current)return;
     if (retentionRef.current || bridgeOperation.current || sourceOperation.current) return;
     if (dirty && !window.confirm(words.resetAsk)) return;
     const currentCase=caseRef.current, priorConversations=conversations, priorTitle=title;
@@ -468,7 +469,9 @@ export function ChatPage({ lang='zh', caseId=null, initialConversationId=null, c
   const stop=()=>{stopRequested.current=true;controller.current?.abort();};
 
   if(!status.authenticated)return <Card className="paper-card"><CardContent><p>{words.signIn}</p></CardContent></Card>;
-  const listedConversations=conversationIndex?.data||conversations;
+  const indexedConversations=conversationIndex?.data||conversations;
+  const currentOption=conversationId&&!indexedConversations.some(item=>item.id===conversationId)?conversations.find(item=>item.id===conversationId&&item.caseId===caseRef.current)||{id:conversationId,caseId:caseRef.current,title:recoveryUnavailable?words.recoveredConversation:words.title}:null;
+  const listedConversations=currentOption?[currentOption,...indexedConversations]:indexedConversations;
   const workflow = onOpenMaterials && onOpenDocuments ? <ChatCaseWorkflow compact={!!workflowTarget} api={api} lang={lang} caseId={caseId} userId={status.userId} disabled={busy} active={active} refreshKey={`${conversationId}:${messages.length}:${phase === 'idle'}:${actionRevision}`} onOpenMaterials={onOpenMaterials} onOpenDocuments={onOpenDocuments} /> : null;
   const lookup = onOpenSourceCase ? <ChatLookup compact={!!lookupTarget} api={api} userId={status.userId} caseId={caseRef.current} lang={lang} active={active}
       disabled={phase !== 'idle' || bridgeBusy || retentionBusy || imagePending > 0} onOpenSourceCase={onOpenSourceCase} claimOperation={claimSourceOperation} releaseOperation={releaseSourceOperation} /> : null;

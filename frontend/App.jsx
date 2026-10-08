@@ -40,6 +40,7 @@ function AccountWorkspace({ lang, view, navigate, shellProps, notices }) {
   const [conversationRouteError,setConversationRouteError] = useState(false);
   const handledConversationHash = useRef(null);
   const [recoveredWorkspace] = useState(() => draftVault.read({ userId: status.userId, workspaceKey: 'active', feature: 'workspace' }));
+  const [recoveredChat]=useState(()=>recoveredWorkspace?.workspaceKey?draftVault.read({userId:status.userId,workspaceKey:recoveredWorkspace.workspaceKey,feature:'chat'}):null);
   const [workspaceKey, setWorkspaceKey] = useState(() => recoveredWorkspace?.workspaceKey || crypto.randomUUID());
   const [caseId, setCaseId] = useState(() => recoveredWorkspace?.caseId || null);
   const [workflowTarget, setWorkflowTarget] = useState(null);
@@ -109,12 +110,15 @@ function AccountWorkspace({ lang, view, navigate, shellProps, notices }) {
       const hash=window.location.hash,id=conversationFromHash(hash);
       if(!id||hash===handledConversationHash.current||conversationIndex.phase!=='ready')return;
       handledConversationHash.current=hash;
+      // A verified same-user recovery is already hydrating its original scope.
+      // An absent/deleted index row must not hide or discard that unconfirmed copy.
+      if(recoveredChat?.pendingTurn&&id===recoveredChat.conversationId&&workspaceKey===recoveredWorkspace?.workspaceKey&&caseIdRef.current===recoveredWorkspace?.caseId){setConversationRouteError(false);return;}
       const row=conversationIndex.data.find(item=>item.id===id);
       if(row)openConversation(row,{fromHistory:true});else setConversationRouteError(true);
     };
     follow();window.addEventListener('hashchange',follow);window.addEventListener('popstate',follow);
     return()=>{window.removeEventListener('hashchange',follow);window.removeEventListener('popstate',follow);};
-  },[conversationIndex,openConversation]);
+  },[conversationIndex,openConversation,recoveredChat,recoveredWorkspace,workspaceKey]);
   const bindCurrentCase = useCallback(nextId => {
     // Saving this transient workspace is different from opening another case.
     setCaseId(nextId);
