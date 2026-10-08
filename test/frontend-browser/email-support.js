@@ -30,7 +30,7 @@ export async function enrollThroughHttp(app, email) {
   const mail = await requestRegistration(app, email);
   const response = await post(app, '/api/auth/email/verify', { token: mail.token });
   expect(response.status).toBe(200);
-  expect(await response.json()).toEqual({ verified: true, authenticated: false });
+  expect(await response.json()).toMatchObject({ verified: true, authenticated: true, role: 'trial' });
   app.endEmailCooldown(email); // Private synthetic cooldown preparation, not elapsed time.
   return mail;
 }

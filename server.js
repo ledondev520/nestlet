@@ -18,6 +18,7 @@ import { ASSET_LIMITS, ASSET_TYPES } from './asset-domain.js';
 import { CaseRecordsError, isCaseRecordsPath, handleCaseRecords } from './case-records.js';
 import { DocumentContextError } from './document-context.js';
 import { createTelemetry, TelemetryError, telemetryId, telemetryPageOptions } from './telemetry.js';
+import { conversationActionContext } from './conversation-action-contract.js';
 import { CHAT_LIMITS, CHAT_IMAGE_TYPES, ChatError, validateChatRequest, conversationHistory, chatProviderMessages, openChatStream, openLibraryChatStream, createConversationToolSession, librarySourceEvent, libraryActivityEvent, LIBRARY_CHAT_ERRORS } from './chat.js';
 import { createLibraryToolSession, LIBRARY_AGENT_LIMITS } from './agent-library-tools.js';
 
@@ -46,7 +47,7 @@ const auth = createOperatorAuth({ passwordHash: process.env.NESTLET_OPERATOR_PAS
   findTrialUser: username => storage.findUserByUsername(username), findTrialUserById: id => storage.getUserById(id),
   findUserByEmail: email => storage.emailAuth.findByEmail(email),
   hasAdministratorCapability: id => storage.accountAdministration.administrator(id) });
-const emailAuth = createEmailAuth({ storage: storage.emailAuth, delivery: createEmailDelivery(), publicOrigin,
+const emailAuth = createEmailAuth({ establishRegistrationSession: auth.establishRegistrationSession, storage: storage.emailAuth, delivery: createEmailDelivery(), publicOrigin,
   currentCredential: id => id === 'owner' ? process.env.NESTLET_OPERATOR_PASSWORD_HASH : storage.getUserById(id)?.passwordHash });
 const trialAiRequests = [];
 const TRIAL_USER_AI_LIMIT = 10;
@@ -413,7 +414,11 @@ const server = http.createServer(async (request, response) => {
       const ip = request.socket.remoteAddress || 'unknown';
       if (request.url === '/api/register') return json(202, await emailAuth.register(body, ip));
       if (request.url === '/api/auth/email/resend') return json(202, await emailAuth.resend(body, ip));
-      if (request.url === '/api/auth/email/verify') return json(200, emailAuth.verify(body, ip));
+      if (request.url === '/api/auth/email/verify') {
+        const { cookie, ...result } = emailAuth.verify(body, ip, auth.getSession(request));
+        if (cookie) response.setHeader('Set-Cookie', cookie);
+        return json(200, result);
+      }
       if (request.url === '/api/auth/password/forgot') return json(202, await emailAuth.forgot(body, ip));
       if (request.url === '/api/auth/password/reset') return json(200, await emailAuth.reset(body, ip));
       return json(202, await emailAuth.bind(body, session, ip));
@@ -673,7 +678,7 @@ const server = http.createServer(async (request, response) => {
           if (!userMessage) throw new ChatError('CONVERSATION_NOT_FOUND',404);
         }
         if (input.actionConsent) {
-          input.actionContext = {caseId:record.id,expectedVersion:record.version,conversationId:conversation.id,messages:[...history.filter(message=>message.state==='complete').slice(-10),userMessage].map(message=>({id:message.id,role:message.role}))};
+          input.actionContext = conversationActionContext(storage,session.userId,record,conversation.id);
           library = createConversationToolSession({storage,userId:session.userId,record,conversationId:conversation.id,library,signal});
         }
         const stream = library?await openLibraryChatStream({apiKey,input,record,signal,library,requestId}):await openChatStream({ apiKey, input, record, signal });

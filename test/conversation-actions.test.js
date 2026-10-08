@@ -8,7 +8,7 @@ import {randomUUID} from 'node:crypto';
 import {spawn} from 'node:child_process';
 import {FIELDS} from '../public/core.js';
 import {openStorage} from '../storage.js';
-import {loadConversationAction,validateConversationAction} from '../conversation-action-contract.js';
+import {loadConversationAction,validateConversationAction,conversationActionContext,conversationActionTools} from '../conversation-action-contract.js';
 import {createConversationToolSession,validateChatRequest} from '../chat.js';
 const base={title:'Synthetic case',sourceText:'',fields:[],draftType:'followup',draftText:''};
 function fixture(t){
@@ -158,4 +158,82 @@ test('last round reserves error room for later calls within the same batch',t=>{
   const big=store.appendMessage('owner',conversation.id,{role:'assistant',state:'complete',content:'x'.repeat(22500)});
   const result=session.executeRound([call('near-limit',action,{...args,sourceMessageId:big.id}),call('after','unknown',{})]);
   assert.equal(result.messages.length,2);assert.ok(session.getStats().resultChars<=24000);assert.equal(JSON.parse(result.messages[1].content).ok,false);
+});
+
+
+test('source catalogue maps older eligible answers, persisted draft versions and bounded previews without cross-scope leakage',t=>{
+  const {store,record,conversation,message,request}=fixture(t);
+  const artifact=store.createConversationAnswerDraft('owner',record.id,request);
+  const edited=store.createArtifact('owner',record.id,{kind:'followup',title:artifact.title,status:'draft',content:'Edited synthetic English draft.',sourceMessageId:message.id,expectedCaseVersion:record.version});
+  const user=store.appendMessage('owner',conversation.id,{role:'user',state:'complete',content:'Prepare the earlier complete English letter.'});
+  const bilingual=store.appendMessage('owner',conversation.id,{role:'assistant',state:'complete',content:'以下是信件。Dear recipient, synthetic draft.'});
+  const interrupted=store.appendMessage('owner',conversation.id,{role:'assistant',state:'interrupted',content:'Partial English letter'});
+  for(let i=0;i<12;i++)store.appendMessage('owner',conversation.id,{role:'user',state:'complete',content:'Later synthetic request '+i});
+  const context=conversationActionContext(store,'owner',record,conversation.id);
+  const source=context.messages.find(row=>row.id===message.id);
+  assert.equal(source.answerDraftEligible,true);assert.equal(source.contentPreview,message.content);
+  assert.deepEqual(source.savedArtifacts.map(row=>row.version).sort(),[1,2]);
+  assert.ok(source.savedArtifacts.some(row=>row.id===artifact.id));assert.ok(source.savedArtifacts.some(row=>row.id===edited.id));
+  assert.equal(context.sourceCatalogueIncomplete,true);
+  assert.ok(!context.messages.some(row=>row.id===interrupted.id));
+  const tools=conversationActionTools(context),draft=tools.find(tool=>tool.function.name==='prepare_answer_draft');
+  assert.deepEqual(draft.function.parameters.properties.sourceMessageId.enum,[message.id]);
+  assert.deepEqual(draft.function.parameters.properties.sourceConversationId.enum,[conversation.id]);
+  assert.ok(!draft.function.parameters.properties.sourceMessageId.enum.includes(user.id));
+  assert.ok(!draft.function.parameters.properties.sourceMessageId.enum.includes(bilingual.id));
+  assert.ok(context.messages.length<=20);
+  assert.equal(source.savedArtifacts[0].isStale,false);
+  const updated=store.updateCase('owner',record.id,{...base,title:'Updated synthetic facts'},record.version);
+  const stale=conversationActionContext(store,'owner',updated,conversation.id).messages.find(row=>row.id===message.id);
+  assert.ok(stale.savedArtifacts.every(row=>row.isStale && row.sourceCaseVersion===record.version));
+  const other=store.createCase('owner',{...base,title:'Other'});
+  assert.throws(()=>conversationActionContext(store,'owner',other,conversation.id),code('CONVERSATION_ACTION_SOURCE_NOT_FOUND'));
+  assert.throws(()=>conversationActionContext(store,'different-owner',record,conversation.id));
+});
+
+test('wrong user source returns recoverable eligible IDs and never substitutes or writes; retry retains exact provenance',t=>{
+  const {store,record,conversation,message,request}=fixture(t);
+  const user=store.appendMessage('owner',conversation.id,{role:'user',state:'complete',content:'Make a draft of the earlier letter.'});
+  const bilingual=store.appendMessage('owner',conversation.id,{role:'assistant',state:'complete',content:'中文 prefaced English letter.'});
+  const session=createConversationToolSession({storage:store,userId:'owner',record,conversationId:conversation.id});
+  const {action,...args}=request;
+  const call=(id,sourceMessageId)=>({id,type:'function',function:{name:action,arguments:JSON.stringify({...args,sourceMessageId})}});
+  const bad=session.executeRound([call('bad',user.id)]),error=JSON.parse(bad.messages[0].content);
+  assert.equal(error.ok,false);assert.deepEqual(error.error.eligibleSourceMessageIds,[message.id]);assert.deepEqual(bad.proposals,[]);
+  assert.equal(store.listArtifacts('owner',record.id).length,0);
+  const mixed=session.executeRound([call('bilingual',bilingual.id)]);
+  assert.equal(JSON.parse(mixed.messages[0].content).error.code,'DOCUMENT_ENGLISH_REQUIRED');
+  const retried=session.executeRound([call('retry',message.id)]);
+  assert.equal(retried.proposals[0].sourceMessageId,message.id);assert.match(retried.proposals[0].content,new RegExp(message.content));
+  assert.equal(store.listArtifacts('owner',record.id).length,0);
+});
+
+test('no complete English assistant answer means no answer draft tool, not a made-up source',t=>{
+  const {store,record}=fixture(t),conversation=store.createConversation('owner',record.id,{});
+  store.appendMessage('owner',conversation.id,{role:'user',state:'complete',content:'Create an English draft.'});
+  store.appendMessage('owner',conversation.id,{role:'assistant',state:'interrupted',content:'Dear recipient,'});
+  const context=conversationActionContext(store,'owner',record,conversation.id);
+  assert.deepEqual(conversationActionTools(context).map(tool=>tool.function.name),['prepare_case_suggestion']);
+});
+
+test('provider receives grounded source mapping and truthful, English-only draft instructions',async t=>{
+  const {openLibraryChatStream}=await import('../chat.js');
+  const {store,record,conversation,message,request}=fixture(t);
+  store.createConversationAnswerDraft('owner',record.id,request);
+  const user=store.appendMessage('owner',conversation.id,{role:'user',state:'complete',content:'Prepare the previous English letter.'});
+  const library=createConversationToolSession({storage:store,userId:'owner',record,conversationId:conversation.id});
+  const input={actionConsent:true,locale:'zh',messages:[{role:'user',content:user.content}],actionContext:conversationActionContext(store,'owner',record,conversation.id)};
+  let called=0;
+  const fetchImpl=async(_url,options)=>{
+    called++;const body=JSON.parse(options.body),system=body.messages[0].content;
+    assert.match(system,/entire response English/);assert.match(system,/Never ask the end user to supply internal message IDs/);
+    assert.match(system,/preview exists only after a prepare tool returns ok:true/);
+    assert.match(system,/savedArtifacts/);assert.match(system,new RegExp(message.content));
+    const draft=body.tools.find(tool=>tool.function.name==='prepare_answer_draft');
+    assert.deepEqual(draft.function.parameters.properties.sourceMessageId.enum,[message.id]);
+    return new Response('data: '+JSON.stringify({choices:[{delta:{content:'Please review the saved draft.'}}]})+'\n\ndata: '+JSON.stringify({choices:[{delta:{},finish_reason:'stop'}]})+'\n\ndata: [DONE]\n\n',{headers:{'Content-Type':'text/event-stream'}});
+  };
+  const events=[];for await(const event of await openLibraryChatStream({apiKey:'synthetic-only',input,record,library,requestId:randomUUID(),fetchImpl}))events.push(event);
+  assert.equal(called,1);assert.equal(events.filter(event=>event.type==='proposal').length,0);
+  assert.equal(store.listArtifacts('owner',record.id).length,1);
 });

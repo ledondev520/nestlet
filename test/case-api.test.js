@@ -6,7 +6,6 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomBytes, scryptSync } from 'node:crypto';
 import { spawn } from 'node:child_process';
-import net from 'node:net';
 import { openStorage } from '../storage.js';
 import { extract } from '../public/core.js';
 
@@ -17,30 +16,52 @@ let directory, filename, server, identities, sessions;
 const source = 'Property: 128 Example Lane\nOwner: Example LLC\nPHA: Not confirmed\nCase reference: ACCEPTANCE-1\nProposed rent: $2,100';
 const payload = title => ({ title, sourceText: source, fields: extract(source), draftType: 'followup', draftText: '', extractionMode: 'manual', namesVerified: false });
 
-async function start() {
-  const reservation = net.createServer();
-  await new Promise(resolve => reservation.listen(0, '127.0.0.1', resolve));
-  const port = reservation.address().port;
-  await new Promise(resolve => reservation.close(resolve));
-  const child = spawn(process.execPath, ['server.js'], {
+async function start(database = filename) {
+  const child = spawn(process.execPath, ['--import', './test/helpers/ephemeral-server-bootstrap.mjs', 'server.js'], {
     cwd: new URL('../', import.meta.url),
-    env: { ...process.env, HOST: '127.0.0.1', PORT: String(port), PUBLIC_ORIGIN: 'https://nestlet-cases-acceptance.invalid',
-      NESTLET_DB_PATH: filename, NESTLET_OPERATOR_PASSWORD_HASH: ownerHash, DEEPSEEK_API_KEY: '', ENABLE_LIVE_AI: 'false', DEEPSEEK_MODEL: 'deepseek-flash' },
-    stdio: ['ignore', 'pipe', 'pipe'],
+    env: { ...process.env, HOST: '127.0.0.1', PORT: '0', PUBLIC_ORIGIN: 'https://nestlet-cases-acceptance.invalid',
+      NESTLET_DB_PATH: database, NESTLET_OPERATOR_PASSWORD_HASH: ownerHash, DEEPSEEK_API_KEY: '', ENABLE_LIVE_AI: 'false', DEEPSEEK_MODEL: 'deepseek-flash' },
+    stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
   });
-  const result = { child, url: `http://127.0.0.1:${port}`, origin: 'https://nestlet-cases-acceptance.invalid', output: '' };
+  const result = { child, url: null, origin: 'https://nestlet-cases-acceptance.invalid', output: '' };
   child.stdout.on('data', data => result.output += data);
   child.stderr.on('data', data => result.output += data);
-  await new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => reject(new Error(`Server did not start: ${result.output}`)), 5000);
-    child.once('exit', code => { clearTimeout(timeout); reject(new Error(`Server exited ${code}: ${result.output}`)); });
-    const ready = data => { if (data.toString().includes('Nestlet available')) { clearTimeout(timeout); child.stdout.off('data', ready); resolve(); } };
-    child.stdout.on('data', ready);
-  });
-  return result;
+  try {
+    await new Promise((resolve, reject) => {
+      const cleanup = () => {
+        clearTimeout(timeout);
+        child.off('error', failed);
+        child.off('exit', exited);
+        child.off('message', ready);
+      };
+      const failed = error => { cleanup(); reject(error); };
+      const exited = (code, signal) => failed(new Error(`Server exited ${code ?? signal}: ${result.output}`));
+      const ready = message => {
+        if (message?.type !== 'nestlet-test-listening') return;
+        const address = message.address;
+        if (address?.address !== '127.0.0.1' || !Number.isInteger(address.port) || address.port <= 0) {
+          return failed(new Error('Invalid server listening address'));
+        }
+        result.url = `http://127.0.0.1:${address.port}`;
+        cleanup();
+        resolve();
+      };
+      const timeout = setTimeout(() => failed(new Error(`Server did not start: ${result.output}`)), 5000);
+      child.once('error', failed);
+      child.once('exit', exited);
+      child.on('message', ready);
+    });
+    return result;
+  } catch (error) {
+    await stop(result);
+    throw error;
+  }
 }
-async function stop() {
-  if (server?.child.exitCode === null) await new Promise(resolve => { server.child.once('exit', resolve); server.child.kill('SIGTERM'); });
+async function stop(instance = server) {
+  const child = instance?.child;
+  if (child?.pid && child.exitCode === null && child.signalCode === null) {
+    await new Promise(resolve => { child.once('exit', resolve); child.kill('SIGTERM'); });
+  }
 }
 const request = (path, { method = 'GET', body, session, headers = {} } = {}) => fetch(server.url + path, {
   method, headers: { Origin: server.origin, ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
@@ -291,4 +312,25 @@ test('a real trial account is capped at 100 cases and recovers capacity after de
   await create(session, 'Replacement after deletion');
   response = await request('/api/cases', { session });
   assert.equal((await response.json()).cases.length, 100);
+});
+
+test('concurrent fixture starts keep distinct kernel-assigned ports through repeated restarts', async () => {
+  // Separate actual SQLite databases; no provider or HTTP mocks.
+  for (let round = 0; round < 3; round++) {
+    const attempts = await Promise.allSettled(Array.from({ length: 4 }, (_, index) =>
+      start(join(directory, `parallel-${index}.sqlite`))));
+    const instances = attempts.filter(attempt => attempt.status === 'fulfilled').map(attempt => attempt.value);
+    try {
+      const failed = attempts.find(attempt => attempt.status === 'rejected');
+      if (failed) throw failed.reason;
+      assert.equal(new Set([server.url, ...instances.map(instance => instance.url)]).size, 5);
+      for (const instance of instances) {
+        const response = await fetch(instance.url + '/api/status');
+        assert.equal(response.status, 200);
+        assert.equal((await response.json()).authenticated, false);
+      }
+    } finally {
+      await Promise.all(instances.map(instance => stop(instance)));
+    }
+  }
 });

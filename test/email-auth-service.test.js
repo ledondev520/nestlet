@@ -1,6 +1,8 @@
 // Service contract tests with explicitly fake delivery. Real SQLite/scrypt are used;
 // none of these tests is real provider, mailbox, or browser acceptance.
 import { test } from 'node:test';
+import { DatabaseSync } from 'node:sqlite';
+import { createEmailAuthStorage, EMAIL_SCHEMA_SQL } from '../email-auth-storage.js';
 import assert from 'node:assert/strict';
 import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -15,7 +17,7 @@ async function fixture(t, options = {}) {
   const root = mkdtempSync(join(realpathSync(tmpdir()), 'nestlet-email-service-')); let at = Date.now();
   const storage = openStorage({ filename: join(root, 'nestlet.sqlite') }), messages = [];
   const delivery = { configured: true, status: () => ({ configured: true }), send: async message => { messages.push(message); return { accepted: true }; }, ...options.delivery };
-  const auth = createEmailAuth({ storage: storage.emailAuth, delivery, publicOrigin: options.origin ?? 'https://trusted.example.invalid', currentCredential: id => id === 'owner' ? ownerHash : storage.getUserById(id)?.passwordHash, now: () => at });
+  const auth = createEmailAuth({ storage: storage.emailAuth, delivery, publicOrigin: options.origin ?? 'https://trusted.example.invalid', establishRegistrationSession: (...args) => sessionAuth.establishRegistrationSession(...args), currentCredential: id => id === 'owner' ? ownerHash : storage.getUserById(id)?.passwordHash, now: () => at });
   t.after(async () => { await auth.whenIdle(); storage.close(); rmSync(root, { recursive: true, force: true }); });
   const sessionAuth = createOperatorAuth({ passwordHash: ownerHash, publicOrigin: 'https://trusted.example.invalid', findTrialUser: name => storage.findUserByUsername(name), findTrialUserById: id => storage.getUserById(id), findUserByEmail: email => storage.emailAuth.findByEmail(email) });
   const token = (index = messages.length - 1) => new URLSearchParams(new URL(messages[index].link).hash.slice(1)).get('token');
@@ -37,7 +39,7 @@ test('fake-delivery contract: enrollment remains pending until proof; fragment l
   assert.equal((await f.sessionAuth.login(password, email)).error, 'INVALID_CREDENTIALS');
   const url = new URL(f.messages[0].link); assert.equal(url.origin, 'https://trusted.example.invalid'); assert.equal(url.pathname, '/'); assert.equal(url.search, ''); assert.equal(new URLSearchParams(url.hash.slice(1)).get('auth'), 'verify');
   assert.equal(JSON.stringify(response).includes(f.token()), false);
-  assert.deepEqual(f.auth.verify({ token: f.token() }, 'synthetic-ip'), { verified: true, authenticated: false });
+  const verified = f.auth.verify({ token: f.token() }, 'synthetic-ip'); assert.equal(verified.verified, true); assert.equal(verified.authenticated, true); assert.match(verified.cookie, /HttpOnly; SameSite=Strict.*Secure/); assert.equal(f.sessionAuth.getSession({ headers: { cookie: verified.cookie.split(';')[0] } }).userId, verified.userId);
   const user = await f.sessionAuth.login(password, ' NEW@EXAMPLE.INVALID '); assert.equal(user.role, 'trial'); assert.notEqual(user.userId, 'owner');
   assert.throws(() => f.auth.verify({ token: f.token() }, 'synthetic-ip'), error => error.code === 'EMAIL_TOKEN_INVALID');
 });
@@ -128,4 +130,33 @@ test('fake-delivery contract: email-only resend recovers an unconfirmed registra
   assert.deepEqual(await f.auth.resend({ email: 'retry@example.invalid' }, 'ip'), accepted); await f.auth.whenIdle();
   assert.notEqual(f.token(), failedToken); assert.throws(() => f.auth.verify({ token: failedToken }, 'ip'), e => e.code === 'EMAIL_TOKEN_INVALID');
   assert.equal(f.auth.verify({ token: f.token() }, 'ip').verified, true);
+});
+
+
+test('COMMIT failure after session preparation preserves prior session and leaves no active registration session', async t => {
+  const db = new DatabaseSync(':memory:'); t.after(() => db.close());
+  db.exec("CREATE TABLE users(id TEXT PRIMARY KEY, username TEXT, role TEXT, password_hash TEXT, created_at TEXT);" + EMAIL_SCHEMA_SQL);
+  db.prepare("INSERT INTO users VALUES('owner','owner','owner',NULL,'fixture')").run();
+  let failCommit = false;
+  const storage = createEmailAuthStorage({ db, transaction(action) {
+    db.exec('BEGIN IMMEDIATE');
+    try { const result = action(); if (failCommit) throw new Error('Synthetic COMMIT failure'); db.exec('COMMIT'); return result; }
+    catch (error) { db.exec('ROLLBACK'); throw error; }
+  } });
+  const sessionAuth = createOperatorAuth({ passwordHash: ownerHash, publicOrigin: 'https://trusted.example.invalid',
+    findTrialUserById: id => db.prepare('SELECT id,username,role,password_hash AS passwordHash FROM users WHERE id=?').get(id) });
+  const old = await sessionAuth.login(ownerPassword), oldRequest = { headers: { cookie: old.cookie.split(';')[0] } };
+  const previous = sessionAuth.getSession(oldRequest);
+  const action = storage.createAction({ kind: 'register', email: 'commit-failure@example.invalid', passwordHash: await hashPassword(password) });
+  storage.markAccepted(action.tokenHash);
+  let prepared;
+  const service = createEmailAuth({ storage: { ...storage, verify(...args) { failCommit = true; return storage.verify(...args); } },
+    delivery: { configured: true }, publicOrigin: 'https://trusted.example.invalid', currentCredential: () => ownerHash,
+    establishRegistrationSession(...args) { prepared = sessionAuth.establishRegistrationSession(...args); return prepared; }
+  });
+  assert.throws(() => service.verify({ token: action.token }, 'synthetic-ip', previous), /COMMIT failure/);
+  assert.equal(storage.findByEmail('commit-failure@example.invalid'), null);
+  assert.equal(storage.getAction(action.tokenHash).ready, 1);
+  assert.equal(sessionAuth.getSession(oldRequest).userId, 'owner');
+  assert.equal(sessionAuth.getSession({ headers: { cookie: prepared.result.cookie.split(';')[0] } }), null);
 });

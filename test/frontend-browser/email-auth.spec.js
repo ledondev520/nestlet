@@ -6,7 +6,7 @@ import { startBrowserFixture } from '../helpers/browser-fixture.mjs';
 // navigation/POST traces. Screenshots are taken only after fragment scrub/field clear.
 test.use({ trace: 'off' });
 
-test('required email registration → explicit verification → six-character login; generic responses and single use', async ({ page, emailApp }, testInfo) => {
+test('required email registration → explicit verification → signed-in workspace without another login; generic responses and single use', async ({ page, emailApp }, testInfo) => {
   test.setTimeout(120000); // Includes the real 60-second UI resend cooldown.
   const app = emailApp, email = 'synthetic-enrollment@example.invalid';
   const clean = await watchBrowser(page), privateState = await watchEmailLeaks(page);
@@ -65,11 +65,11 @@ test('required email registration → explicit verification → six-character lo
   const verified = page.waitForResponse(response => new URL(response.url()).pathname === '/api/auth/email/verify');
   await page.getByRole('button', { name: 'Confirm email verification', exact: true }).press('Enter');
   expect((await verified).status()).toBe(200);
-  await expect(page.getByText('Email verified. New accounts can now sign in; existing accounts can refresh their account status', { exact: true })).toBeVisible();
+  await expect(page.getByRole('navigation', { name: 'Workspace navigation' })).toBeVisible();
+  await expect(page.getByLabel('Password', { exact: true })).toHaveCount(0);
   expect(claims).toHaveLength(1);
-  expect((await (await page.request.get(app.origin + '/api/status')).json()).authenticated).toBe(false);
-  await screenshot(page, testInfo, 'simulated-mail-verification-confirmed-mobile');
-  await signIn(page, app, email);
+  expect((await (await page.request.get(app.origin + '/api/status')).json()).authenticated).toBe(true);
+  await screenshot(page, testInfo, 'simulated-mail-verification-signed-in-mobile');
   const status = await (await page.request.get(app.origin + '/api/status')).json();
   expect(status).toMatchObject({ authenticated: true, role: 'trial', email, emailVerified: true, canManageSettings: false });
   await logout(page);
@@ -217,4 +217,38 @@ test('missing delivery fails closed while privately seeded legacy accounts retai
     expect(status).toMatchObject({ authenticated: true, username: 'synthetic-legacy-login', emailVerified: false, emailBindingRequired: true });
     await logout(page);
   } finally { await app.stop(); }
+});
+
+test('a verification link opened in a separate browser context signs in only that context, once', async ({ page, browser, emailApp }) => {
+  const app = emailApp, email = 'synthetic-cross-browser@example.invalid';
+  const mail = await requestRegistration(app, email);
+  await visit(page, app);
+  const otherContext = await browser.newContext();
+  try {
+    const other = await otherContext.newPage(), claims = [], logins = [];
+    other.on('request', request => {
+      const path = new URL(request.url()).pathname;
+      if (path === '/api/auth/email/verify' && request.method() === 'POST') claims.push(true);
+      if (path === '/api/login') logins.push(true);
+    });
+    await openLink(other, mail);
+    expect(claims).toHaveLength(0);
+    expect((await (await other.request.get(app.origin + '/api/status')).json()).authenticated).toBe(false);
+    await other.getByRole('button', { name: 'Confirm email verification', exact: true }).dblclick();
+    await expect(other.getByRole('navigation', { name: 'Workspace navigation' })).toBeVisible();
+    expect(claims).toHaveLength(1); expect(logins).toHaveLength(0);
+    const verified = await (await other.request.get(app.origin + '/api/status')).json();
+    expect(verified).toMatchObject({ authenticated: true, email, role: 'trial', administrator: false });
+    const cookies = await otherContext.cookies(app.origin), session = cookies.find(cookie => cookie.name === 'nestlet_session');
+    expect(session.httpOnly).toBe(true); expect(session.sameSite).toBe('Strict');
+    expect((await (await page.request.get(app.origin + '/api/status')).json()).authenticated).toBe(false);
+    await other.reload(); await english(other);
+    await expect(other.getByRole('navigation', { name: 'Workspace navigation' })).toBeVisible();
+    await expect(other.getByLabel('Password', { exact: true })).toHaveCount(0);
+    expect(new URL(other.url()).hash.includes('token=')).toBe(false);
+    await openLink(page, mail);
+    await page.getByRole('button', { name: 'Confirm email verification', exact: true }).click();
+    await expect(page.getByRole('alert')).toBeVisible();
+    expect((await (await page.request.get(app.origin + '/api/status')).json()).authenticated).toBe(false);
+  } finally { await otherContext.close(); }
 });

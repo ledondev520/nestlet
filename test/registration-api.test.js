@@ -68,16 +68,19 @@ test('mandatory-email registration refuses username-only input and honestly repo
   site.withStorage(storage => { assert.equal(storage.emailAuth.findByEmail('synthetic@example.invalid'), null); assert.equal(storage.getUserById('owner').passwordHash, null); });
 });
 
-test('unaccepted pending enrollment cannot login; accepted verification is POST-only, single-use and returns no session', async t => {
+test('unaccepted pending enrollment cannot login; accepted verification is POST-only, single-use and returns a fresh ordinary session', async t => {
   const site = await app(t), email = 'pending@example.invalid'; const action = site.pending(email, { accepted: false });
   assert.equal((await site.post('/api/login', { email, password: ordinaryPassword })).status, 401);
   assert.equal((await site.post('/api/auth/email/verify', { token: action.token })).status, 400);
   site.withStorage(storage => storage.emailAuth.markAccepted(action.tokenHash));
   const get = await site.request('/api/auth/email/verify?token=' + action.token); assert.equal(get.status, 404);
   let response = await site.post('/api/auth/email/verify', { token: action.token }); assert.equal(response.status, 200);
-  assert.deepEqual(await response.json(), { verified: true, authenticated: false }); assert.equal(response.headers.get('set-cookie'), null);
+  const verified = await response.json(); assert.equal(verified.authenticated, true); assert.equal(verified.verified, true); assert.equal(verified.role, 'trial');
+  assert.match(response.headers.get('set-cookie'), /HttpOnly; SameSite=Strict.*Secure/);
+  assert.equal(Object.hasOwn(verified, 'cookie'), false);
+  const session = { ...verified, cookie: response.headers.get('set-cookie').split(';')[0] };
   response = await site.post('/api/auth/email/verify', { token: action.token }); assert.equal(response.status, 400); assert.equal((await response.json()).code, 'EMAIL_TOKEN_INVALID');
-  const session = await site.login(' PENDING@EXAMPLE.INVALID ');
+  assert.equal(response.headers.get('set-cookie'), null);
   const status = await (await site.request('/api/status', { session })).json();
   assert.equal(status.email, email); assert.equal(status.emailVerified, true); assert.equal(status.emailBindingRequired, false); assert.equal(status.passwordRecoveryMethod, 'email');
   assert.equal(status.role, 'trial'); assert.equal((await site.request('/api/settings', { session })).status, 403);
@@ -146,4 +149,46 @@ for (const length of [6, 7, 8, 9, 10, 11, 256]) test(`verified ordinary email lo
   const site = await app(t), password = 'A1' + 'x'.repeat(length - 2), email = `length-${length}@example.invalid`;
   const action = site.pending(email, { password }); assert.equal((await site.post('/api/auth/email/verify', { token: action.token })).status, 200);
   assert.equal((await site.login(email, password)).role, 'trial');
+});
+
+test('registration continuation rotates a presented session and rejects invalid, expired, cross-origin and raced claims without cookies', async t => {
+  const site = await app(t), previous = await site.login('owner', ownerPassword);
+  const action = site.pending('continuation@example.invalid');
+  for (const headers of [{ Origin: '' }, { Origin: 'https://other.invalid' }, { 'Sec-Fetch-Site': 'cross-site' }]) {
+    const denied = await site.post('/api/auth/email/verify', { token: action.token }, { headers });
+    assert.equal(denied.status, 403); assert.equal(denied.headers.get('set-cookie'), null);
+  }
+  for (const body of [{ token: action.token, role: 'owner' }, { token: action.token, userId: 'owner' }, { token: 'invalid' }]) {
+    const denied = await site.post('/api/auth/email/verify', body); assert.equal(denied.status, 400); assert.equal(denied.headers.get('set-cookie'), null);
+  }
+  const responses = await Promise.all([0, 1].map(() => site.post('/api/auth/email/verify', { token: action.token }, { session: previous })));
+  assert.deepEqual(responses.map(response => response.status).sort(), [200, 400]);
+  const response = responses.find(response => response.status === 200), data = await response.json();
+  const session = { ...data, cookie: response.headers.get('set-cookie').split(';')[0] };
+  assert.notEqual(session.cookie, previous.cookie); assert.notEqual(data.csrfToken, previous.csrfToken);
+  assert.equal(data.role, 'trial'); assert.equal(data.administrator, false);
+  assert.equal((await site.request('/api/cases', { session: previous })).status, 401);
+  assert.equal((await site.request('/api/cases', { session })).status, 200);
+  assert.equal((await site.request('/api/settings', { session })).status, 403);
+  assert.equal(responses.find(response => response.status === 400).headers.get('set-cookie'), null);
+  const expired = site.pending('expired-continuation@example.invalid', { now: Date.now() - 601_000 });
+  const denied = await site.post('/api/auth/email/verify', { token: expired.token });
+  assert.equal(denied.status, 400); assert.equal(denied.headers.get('set-cookie'), null);
+  assert.equal(site.withStorage(storage => storage.emailAuth.findByEmail('expired-continuation@example.invalid')), null);
+});
+
+test('binding including owner proof and reset proof never create a sign-in session', async t => {
+  const site = await app(t);
+  const legacy = site.withStorage(storage => storage.createTrialUser({ username: 'bind-no-login', passwordHash: makeHash(ordinaryPassword) }));
+  for (const [userId, email] of [[legacy.id, 'bind-no-login@example.invalid'], ['owner', 'owner-no-login@example.invalid']]) {
+    const action = site.pending(email, { kind: 'bind', userId });
+    const response = await site.post('/api/auth/email/verify', { token: action.token });
+    assert.equal(response.status, 200); assert.deepEqual(await response.json(), { verified: true, authenticated: false });
+    assert.equal(response.headers.get('set-cookie'), null);
+  }
+  const reset = site.pending('bind-no-login@example.invalid', { kind: 'reset', userId: legacy.id });
+  const wrongPurpose = await site.post('/api/auth/email/verify', { token: reset.token });
+  assert.equal(wrongPurpose.status, 400); assert.equal(wrongPurpose.headers.get('set-cookie'), null);
+  const response = await site.post('/api/auth/password/reset', { token: reset.token, password: ordinaryPassword, passwordConfirmation: ordinaryPassword });
+  assert.equal(response.status, 200); assert.equal((await response.json()).authenticated, false); assert.equal(response.headers.get('set-cookie'), null);
 });

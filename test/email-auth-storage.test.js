@@ -370,3 +370,17 @@ test('ordinary account capacity is reserved atomically at verification; pending 
   assert.equal(storage.emailAuth.findByEmail('last-b@example.invalid'), null);
   assert.equal(storage.emailAuth.createAction({ kind: 'register', email: 'over-cap@example.invalid', passwordHash, now: NOW }), null);
 });
+
+test('registration session refusal rolls back both new identity and token consumption', t => {
+  const { storage } = fixture(t);
+  const action = accepted(storage, { kind: 'register', email: 'session-refusal@example.invalid', passwordHash });
+  let target;
+  assert.throws(() => storage.emailAuth.verify(action.tokenHash, { now: NOW, onRegistration(user) { target = user; throw new Error('Synthetic session capacity refusal'); } }), /capacity refusal/);
+  assert.equal(target.role, 'trial'); assert.notEqual(target.id, 'owner');
+  assert.equal(storage.getUserById(target.id), null); assert.equal(storage.emailAuth.findByEmail('session-refusal@example.invalid'), null);
+  assert.equal(storage.emailAuth.getAction(action.tokenHash).ready, 1);
+  let calls = 0;
+  assert.equal(storage.emailAuth.verify(action.tokenHash, { now: NOW, onRegistration() { calls++; } }), true);
+  assert.equal(storage.emailAuth.verify(action.tokenHash, { now: NOW, onRegistration() { calls++; } }), false);
+  assert.equal(calls, 1);
+});

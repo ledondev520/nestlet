@@ -57,7 +57,7 @@ test('owner confirms grant/revoke; delegated diagnostics stay bounded and ordina
     const mail = await requestRegistration(app, EMAIL);
     const verified = await post(app, '/api/auth/email/verify', { token: mail.token });
     expect(verified.status).toBe(200);
-    expect(await verified.json()).toEqual({ verified: true, authenticated: false });
+    expect(await verified.json()).toMatchObject({ verified: true, authenticated: true, role: 'trial' });
 
     await signInCustomer(page, app, 'owner');
     const ownerClient = await createCustomer(page, 'Synthetic owner-only customer');

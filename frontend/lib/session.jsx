@@ -78,6 +78,16 @@ export function SessionProvider({ children }) {
     await refresh().catch(() => {});
     return result;
   }, [api, refresh, update]);
+  const verifyEmail = useCallback(async (proof, options) => {
+    const current = ++generation.current;
+    const result = await api.post('/api/auth/email/verify', proof, { ...options, telemetry: false });
+    if (result?.verified !== true || typeof result.authenticated !== 'boolean' ||
+      (result.authenticated && (!result.userId || result.role !== 'trial' || !result.csrfToken))) throw { code: 'INVALID_RESPONSE' };
+    if (current !== generation.current || options?.signal?.aborted) return result;
+    if (result.authenticated) update({ ...emptySession, ...result });
+    await refresh({ signal: options?.signal }).catch(() => {});
+    return result;
+  }, [api, refresh, update]);
   const login = useCallback((credentials, options) => authenticate('/api/login', credentials, options), [authenticate]);
   // Registration only requests verification. A 202 never creates a browser session.
   const register = useCallback((credentials, options) => api.post('/api/register', credentials, options), [api]);
@@ -93,7 +103,7 @@ export function SessionProvider({ children }) {
     await refresh().catch(() => {});
   }, [api, refresh, update, journey]);
 
-  const value = useMemo(() => ({ status, loading, error, recovery, api, journey, refresh, login, register, logout }), [status, loading, error, recovery, api, journey, refresh, login, register, logout]);
+  const value = useMemo(() => ({ status, loading, error, recovery, api, journey, refresh, login, register, verifyEmail, logout }), [status, loading, error, recovery, api, journey, refresh, login, register, verifyEmail, logout]);
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }
 

@@ -15,7 +15,7 @@ import { digest } from '../../../email-auth-domain.js';
 import { captureAuthFragment } from './auth-route.js';
 const makeHash = password => { const salt = randomBytes(16); return `scrypt$${salt.toString('base64url')}$${scryptSync(password, salt, 32).toString('base64url')}`; };
 
-test('actual HTTP email verification, native login and password reset preserve identity and revoke the old session', async context => {
+test('actual HTTP email verification signs in directly and password reset preserve identity and revoke the old session', async context => {
   const directory = await mkdtemp(join(await realpath(tmpdir()), 'nestlet-email-dom-http-'));
   const filename = join(directory, 'account.sqlite'), initial = openStorage({ filename }); initial.close();
   const reservation = net.createServer(); await new Promise(resolve => reservation.listen(0, '127.0.0.1', resolve));
@@ -65,19 +65,30 @@ test('actual HTTP email verification, native login and password reset preserve i
   function capture(action, mode) { window.history.replaceState(null, '', `/#auth=${mode}&token=${action.token}`); return captureAuthFragment(window); }
   const email = 'synthetic-ui@example.invalid', password = 'synthetic-original-password', nextPassword = 'synthetic-replacement-password';
   const registration = withStorage(storage => { const action = storage.emailAuth.createAction({ kind: 'register', email, passwordHash: makeHash(password) }); storage.emailAuth.markAccepted(action.tokenHash); return action; });
-  await render(EmailLinkPanel, { link: capture(registration, 'verify') });
+  let continued = false;
+  await render(EmailLinkPanel, { link: capture(registration, 'verify'), onClose: () => { continued = true; } });
   await settle(() => [...host.querySelectorAll('button')].some(button => button.textContent === 'Confirm email verification' && !button.disabled));
   assert.equal(window.location.hash, ''); assert.equal(requests.filter(request => request.path === '/api/auth/email/verify').length, 0);
-  await submit(() => host.textContent.includes('Email verified.'));
-  assert.equal(cookie, '');
-  await render(AuthPanel); assert.match(host.textContent, /Email delivery is not configured/);
-  input('username', email); input('password', password); await submit(() => host.textContent.includes('Signed in'));
+  await submit(() => continued);
+  assert.match(cookie, /^nestlet_session=/);
+  assert.equal(requests.filter(request => request.path === '/api/login').length, 0);
+  await render(AuthPanel); assert.match(host.textContent, /Signed in/);
   const verified = await (await http('/api/status')).json(), oldCookie = cookie;
   assert.equal(verified.email, email); assert.equal(verified.emailVerified, true); assert.equal(verified.passwordRecoveryMethod, 'email');
   const reset = withStorage(storage => { const action = storage.emailAuth.createAction({ kind: 'reset', email, userId: verified.userId, credentialFingerprint: digest(storage.getUserById(verified.userId).passwordHash) }); storage.emailAuth.markAccepted(action.tokenHash); return action; });
   await render(EmailLinkPanel, { link: capture(reset, 'reset') });
   await settle(() => host.querySelector('[name=password]')?.readOnly === false);
-  input('password', nextPassword); input('passwordConfirmation', nextPassword); await submit(() => host.textContent.includes('Password reset.'));
+  input('password', nextPassword); input('passwordConfirmation', nextPassword);
+  for (const name of ['password', 'passwordConfirmation']) {
+    const field = host.querySelector(`[name=${name}]`);
+    const toggle = [...host.querySelectorAll('button')].find(button => button.getAttribute('aria-controls') === field.id);
+    const before = requests.length;
+    await React.act(async () => toggle.click());
+    assert.equal(field.type, 'text'); assert.equal(field.value, nextPassword);
+    assert.equal(requests.length, before, 'visibility never sends credentials over HTTP');
+    await React.act(async () => toggle.click()); assert.equal(field.type, 'password');
+  }
+  await submit(() => host.textContent.includes('Password reset.'));
   assert.equal((await originalFetch(base + '/api/cases', { headers: { Origin: origin, Cookie: oldCookie } })).status, 401);
   await render(AuthPanel); input('username', email); input('password', nextPassword); await submit(() => host.textContent.includes('Signed in'));
   const changed = await (await http('/api/status')).json(); assert.equal(changed.userId, verified.userId);

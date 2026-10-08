@@ -1,6 +1,6 @@
 export const COPY = {
   zh: {
-    remember:'记住账号并保持登录 8 小时', showPassword:'显示密码', hidePassword:'隐藏密码',
+    remember:'记住账号并保持登录 8 小时', showPassword:'显示密码', hidePassword:'隐藏密码', showConfirmation:'显示确认密码', hideConfirmation:'隐藏确认密码',
     account:'账号', signedIn:'已登录', signedInHint:'继续处理自己的客户、案件和文档', ordinary:'普通账号', administrator:'管理员',
     login:'登录', register:'注册', loginTitle:'回到你的工作区', registerTitle:'创建自己的工作区',
     loginHint:'使用邮箱登录；已有账号也可继续使用原用户名', registerHint:'先验证邮箱，再登录自己的客户、案件、对话和文档工作区',
@@ -26,7 +26,7 @@ export const COPY = {
     refreshing:'正在刷新…', refresh:'刷新状态', refreshFailed: "无法刷新状态，请重试。",
   },
   en: {
-    remember:'Remember me for 8 hours', showPassword:'Show password', hidePassword:'Hide password',
+    remember:'Remember me for 8 hours', showPassword:'Show password', hidePassword:'Hide password', showConfirmation:'Show confirmation password', hideConfirmation:'Hide confirmation password',
     account:'Account', signedIn:'Signed in', signedInHint:'Continue with your own customers, cases, and documents', ordinary:'Ordinary account', administrator:'Administrator',
     login:'Sign in', register:'Register', loginTitle:'Return to your workspace', registerTitle:'Create your workspace',
     loginHint:'Sign in with email. Existing accounts can still use their original username', registerHint:'Verify your email, then sign in to your own customers, cases, conversations, and documents',
@@ -53,7 +53,7 @@ export const COPY = {
   },
 };
 Object.assign(COPY.zh, {
-  remember:'保持登录 8 小时', showPassword:'显示密码', hidePassword:'隐藏密码',
+  remember:'保持登录 8 小时', showPassword:'显示密码', hidePassword:'隐藏密码', showConfirmation:'显示确认密码', hideConfirmation:'隐藏确认密码',
   email:'邮箱', emailPlaceholder:'name@example.com', identity:'邮箱或已有用户名', identityPlaceholder:'输入邮箱或已有用户名',
   emailHint:'使用你能收取验证邮件的邮箱；新账号须先验证邮箱', identityHint:'新用户请使用邮箱注册；原有用户名仅用于已有账号登录',
   emailUnavailable:'邮件服务尚未配置或暂不可用，注册、发送验证邮件和邮箱找回暂不能使用。请联系管理员',
@@ -63,8 +63,8 @@ Object.assign(COPY.zh, {
   resend:'重新发送验证邮件', resendBusy:'正在请求验证邮件…', cooldown:'秒后可重新请求',
   forgot:'忘记密码？', forgotTitle:'找回密码', forgotHint:'输入账号已验证的邮箱。原用户名账号须先登录并绑定邮箱，才可使用邮箱找回',
   requestReset:'请求重置链接', requestBusy:'正在提交…', backToLogin:'返回登录', changeEmail:'修改邮箱',
-  verifyTitle:'验证你的邮箱', verifyHint:'请确认要验证此邮箱。打开此页面不会自动使用链接；点击下方按钮才会提交验证',
-  verify:'确认验证邮箱', verifyBusy:'正在验证…', verified:'邮箱验证成功。新账号现在可以登录；已有账号可刷新账户状态',
+  verifyTitle:'验证你的邮箱', verifyHint:'确认后，新注册账号将直接登录当前浏览器；绑定已有账号的邮箱只会更新验证状态。打开页面不会使用链接',
+  verify:'确认验证邮箱', verifyBusy:'正在验证…', verified:'邮箱验证成功，账户邮箱状态已更新',
   resetTitle:'设置新密码', resetHint:'提交后将更改密码，并使原有登录失效。请使用新密码重新登录',
   reset:'确认重置密码', resetBusy:'正在重置…', resetDone:'密码已重置，请重新登录',
   linkUnavailable:'此链接已失效、已使用或已从当前页面清除。请重新打开邮件中的链接；如仍无效，请申请新链接',
@@ -78,7 +78,7 @@ Object.assign(COPY.zh, {
   bootstrapRecovery:'所有者账号的密码由服务器私有配置管理，不支持邮箱重置。需要找回时，请由所有者本人在私有服务器终端完成恢复；不要在聊天中发送密码',
 });
 Object.assign(COPY.en, {
-  remember:'Remember me for 8 hours', showPassword:'Show password', hidePassword:'Hide password',
+  remember:'Remember me for 8 hours', showPassword:'Show password', hidePassword:'Hide password', showConfirmation:'Show confirmation password', hideConfirmation:'Hide confirmation password',
   email:'Email', emailPlaceholder:'name@example.com', identity:'Email or existing username', identityPlaceholder:'Enter email or an existing username',
   emailHint:'Use an inbox you can access. New accounts require email verification', identityHint:'New accounts register with email. Original usernames are for existing-account sign-in only',
   emailUnavailable:'Email delivery is not configured or is unavailable. Registration, verification requests, and email recovery are unavailable. Contact the administrator',
@@ -88,8 +88,8 @@ Object.assign(COPY.en, {
   resend:'Resend verification email', resendBusy:'Requesting verification…', cooldown:'seconds until another request',
   forgot:'Forgot password?', forgotTitle:'Recover your password', forgotHint:'Enter your account’s verified email. Existing username accounts must sign in and bind an email before email recovery is available',
   requestReset:'Request reset link', requestBusy:'Submitting…', backToLogin:'Return to sign in', changeEmail:'Change email',
-  verifyTitle:'Verify your email', verifyHint:'Confirm that you want to verify this email. Opening this page does not use the link. Only the button below submits verification',
-  verify:'Confirm email verification', verifyBusy:'Verifying…', verified:'Email verified. New accounts can now sign in; existing accounts can refresh their account status',
+  verifyTitle:'Verify your email', verifyHint:'Confirming a new registration signs you into this browser. Binding an existing account only updates its email verification. Opening this page does not use the link',
+  verify:'Confirm email verification', verifyBusy:'Verifying…', verified:'Email verified. Account email status updated',
   resetTitle:'Set a new password', resetHint:'Submitting changes your password and invalidates previous sign-ins. Sign in again with the new password',
   reset:'Confirm password reset', resetBusy:'Resetting…', resetDone:'Password reset. Sign in again',
   linkUnavailable:'This link expired, was used, or was cleared from this page. Reopen the email link. If it still fails, request a new link',
