@@ -151,7 +151,7 @@ test('owner confirms grant/revoke; delegated diagnostics stay bounded and ordina
       expect(await getJson(delegated, app, '/api/status')).toMatchObject({ userId: ordinary.userId, role: 'trial',
         administrator: true, canViewDiagnostics: true, canManageAccounts: false, canManageSettings: false });
       const loaded = responseFor(delegated, '/api/admin/diagnostics', 'GET');
-      await delegated.getByRole('button', { name: 'Refresh status', exact: true }).press('Enter');
+      await card(delegated, 'Email and account recovery').getByRole('button', { name: 'Refresh status', exact: true }).press('Enter');
       const result = await loaded;
       expect(result.status()).toBe(200);
       const diagnostics = await result.json();
@@ -198,7 +198,7 @@ test('owner confirms grant/revoke; delegated diagnostics stay bounded and ordina
       expect((await denied).status()).toBe(403);
       await expect(diagnosticsPanel(delegated).getByRole('alert')).toHaveText('Operational status could not be loaded. Refresh manually to try again.');
       await expect(diagnosticsPanel(delegated)).not.toContainText('deepseek-flash');
-      await delegated.getByRole('button', { name: 'Refresh status', exact: true }).press('Enter');
+      await card(delegated, 'Email and account recovery').getByRole('button', { name: 'Refresh status', exact: true }).press('Enter');
       await expect(diagnosticsPanel(delegated)).toHaveCount(0);
       await ownerControlsAbsent(delegated);
       expect(await getJson(delegated, app, '/api/status')).toMatchObject({ userId: ordinary.userId, role: 'trial', administrator: false, canViewDiagnostics: false });

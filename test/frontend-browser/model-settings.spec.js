@@ -62,6 +62,8 @@ for (const [lang, width] of [['en', 1280], ['zh', 390], ['en', 320]]) test(`key-
   await expect(page.locator('.chat-composer button[type="submit"]')).toBeEnabled();
   await expect(page.locator('.chat-input')).toHaveValue('Synthetic question retained during model setup.');
   await expect(page.locator('[data-feature="chat"]')).not.toContainText(lang==='zh'?'请先在设置中连接 DeepSeek。':'Connect DeepSeek in Settings first.');
+  if(width>=960)expect((await popover.boundingBox()).height).toBeLessThanOrEqual(460);
+  await expect(popover.locator('[data-slot="card"]')).toHaveCount(0);
   await noHorizontalOverflow(page);
   await page.screenshot({ path: `test-results/model-key-${lang}-${width}.png` });
   await field.fill('synthetic-unsaved-key');
