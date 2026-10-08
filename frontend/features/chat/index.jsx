@@ -277,7 +277,7 @@ export function ChatPage({ lang='zh', caseId=null, guidanceAgency='unknown', onC
   }
   async function send(event,permissionSnapshot){
     event?.preventDefault();
-    if(phaseRef.current!=='idle'||bridgeOperation.current||sourceOperation.current||retentionRef.current||imagePending||permissionGate.current)return;
+    if(phaseRef.current!=='idle'||bridgeOperation.current||sourceOperation.current||retentionRef.current||imagePending||permissionGate.current||permissionPending.current&&!permissionSnapshot)return;
     if(!statusRef.current.authenticated){setError(new ChatClientError('AUTH_REQUIRED'));return;}
     const targeted=factReplyTarget.current;
     if(targeted&&targeted.scope===`${statusRef.current.userId}:${caseRef.current}:${conversationRef.current}`){
