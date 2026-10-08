@@ -43,7 +43,8 @@ test('chat lookup is read-only, requires an exact case choice, and protects unsa
   await navigate(page, 'Conversation');
   await lookup.getByLabel('Customer name or case title', { exact: true }).fill('Synthetic matching');
   await lookup.getByRole('button', { name: 'Find saved records', exact: true }).click();
-  const first = lookup.locator(`[data-source-id]`).filter({ hasText: records[0].id });
+  expect(records[0].displayId).toMatch(/^SX[0-9]{8}$/u);
+  const first = lookup.locator(`[data-source-id]`).filter({ hasText: records[0].displayId });
   await expect(first.getByRole('button', { name: 'Open case', exact: true })).toBeVisible();
   page.once('dialog', dialog => dialog.dismiss());
   await first.getByRole('button', { name: 'Open case', exact: true }).click();

@@ -91,7 +91,7 @@ const test = base.extend({
       expect((await login).status()).toBe(200);
       await expect(page.getByRole('navigation', { name: 'Workspace navigation' })).toBeVisible();
       expect(await getJson(page, app, '/api/status')).toMatchObject({ authenticated: true, username: 'owner', liveEnabled: true });
-      await openSavedCase(page, app.record.title);
+      await openSavedCase(page, app.record.title, {legacy:true});
       const chat = page.locator('[data-feature="chat"]');
       const cards = chat.getByTestId('conversation-action-review');
       const settled = async () => {
@@ -141,7 +141,7 @@ const test = base.extend({
         // transient review component. Restoration is from the current HTTP API.
         await page.reload();
         await english(page);
-        await openSavedCase(page, app.record.title);
+        await openSavedCase(page, app.record.title, {legacy:true});
         await settled();
         await expect(cards).toHaveCount(0);
         const history = await getJson(page, app, `/api/conversations/${app.conversation.id}`);
