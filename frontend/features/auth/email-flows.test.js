@@ -37,7 +37,7 @@ async function render(Component, props = {}) {
   host = document.createElement('div'); document.body.append(host); root = createRoot(host);
   await React.act(async () => root.render(React.createElement(SessionProvider, null, React.createElement(Component, { lang: 'en', ...props }))));
 }
-async function click(text) { const button = [...host.querySelectorAll('button')].find(node => node.textContent === text); assert.ok(button, text); await React.act(async () => button.dispatchEvent(new window.MouseEvent('click', { bubbles: true }))); }
+async function click(text) { const button = [...host.querySelectorAll('button')].find(node => node.textContent === text || node.getAttribute('aria-label') === text); assert.ok(button, text); await React.act(async () => button.dispatchEvent(new window.MouseEvent('click', { bubbles: true }))); }
 async function input(name, value) { const node = host.querySelector(`[name="${name}"]`); assert.ok(node, name); await React.act(async () => { Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(node, value); node.dispatchEvent(new window.Event('input', { bubbles: true })); }); }
 async function submit() { await React.act(async () => host.querySelector('form').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }))); }
 const posts = calls => calls.filter(call => call.method === 'POST');
@@ -186,4 +186,50 @@ test('same-URL Back traversal discards a captured token even between adjacent sc
   assert.equal(window.location.hash, ''); assert.match(host.textContent, /确认验证邮箱/);
   await React.act(async () => window.dispatchEvent(new window.PopStateEvent('popstate')));
   assert.doesNotMatch(host.textContent, /确认验证邮箱/); assert.equal(initialAuthLink.takeToken(), ''); assert.equal(posts(calls).length, 0);
+});
+
+for (const lang of ['en', 'zh']) test(`registration eye controls independently reveal native values without submission (${lang})`, async () => {
+  const calls = fixture(); await render(AuthPanel, { lang });
+  await click(lang === 'en' ? 'Register' : '注册');
+  await input('email', 'visibility@example.invalid');
+  await input('password', 'Synthetic26'); await input('passwordConfirmation', 'Synthetic27');
+  const password = host.querySelector('[name=password]'), confirmation = host.querySelector('[name=passwordConfirmation]');
+  const toggleFor = field => [...host.querySelectorAll('button')].find(button => button.getAttribute('aria-controls') === field.id);
+  for (const field of [password, confirmation]) {
+    const other = field === password ? confirmation : password, toggle = toggleFor(field), value = field.value;
+    assert.equal(field.type, 'password'); assert.equal(toggle.type, 'button');
+    assert.equal(toggle.textContent, ''); assert.ok(toggle.querySelector('svg.lucide-eye'));
+    assert.equal(toggle.getAttribute('aria-pressed'), 'false');
+    assert.match(toggle.className, /size-11/); assert.match(field.className, /pr-12/);
+    toggle.focus();
+    await React.act(async () => toggle.click());
+    assert.equal(field.type, 'text'); assert.equal(other.type, 'password'); assert.equal(field.value, value);
+    assert.equal(document.activeElement, toggle); assert.equal(toggle.getAttribute('aria-pressed'), 'true');
+    assert.ok(toggle.querySelector('svg.lucide-eye-off'));
+    assert.match(toggle.getAttribute('aria-label'), lang === 'en' ? /Hide/ : /隐藏/);
+    await React.act(async () => toggle.click());
+    assert.equal(field.type, 'password'); assert.equal(field.value, value);
+    assert.equal(posts(calls).length, 0);
+  }
+  await click(lang === 'en' ? 'Show password' : '显示密码');
+  await click(lang === 'en' ? 'Sign in' : '登录');
+  assert.equal(host.querySelector('[name=password]').type, 'password');
+  assert.equal(host.querySelector('[name=password]').value, '');
+  assert.equal(host.querySelector('[name=passwordConfirmation]'), null);
+  assert.equal(window.localStorage.length, 0); assert.equal(window.sessionStorage.length, 0);
+});
+
+test('password eye controls are disabled while an authentication request is pending', async () => {
+  fixture(); let finish;
+  const fetchFixture = globalThis.fetch;
+  globalThis.fetch = async (...args) => {
+    if (args[0] === '/api/login') await new Promise(resolve => { finish = resolve; });
+    return fetchFixture(...args);
+  };
+  await render(AuthPanel); await input('username', 'synthetic-user'); await input('password', 'Synthetic26');
+  await React.act(async () => host.querySelector('form').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true })));
+  const field = host.querySelector('[name=password]'), toggle = host.querySelector('button[aria-controls]');
+  assert.equal(field.type, 'password'); assert.equal(field.value, ''); assert.equal(field.readOnly, true);
+  assert.equal(toggle.disabled, true); await React.act(async () => toggle.click()); assert.equal(field.type, 'password');
+  await React.act(async () => finish());
 });

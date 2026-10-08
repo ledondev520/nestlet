@@ -77,7 +77,17 @@ test('actual HTTP email verification, native login and password reset preserve i
   const reset = withStorage(storage => { const action = storage.emailAuth.createAction({ kind: 'reset', email, userId: verified.userId, credentialFingerprint: digest(storage.getUserById(verified.userId).passwordHash) }); storage.emailAuth.markAccepted(action.tokenHash); return action; });
   await render(EmailLinkPanel, { link: capture(reset, 'reset') });
   await settle(() => host.querySelector('[name=password]')?.readOnly === false);
-  input('password', nextPassword); input('passwordConfirmation', nextPassword); await submit(() => host.textContent.includes('Password reset.'));
+  input('password', nextPassword); input('passwordConfirmation', nextPassword);
+  for (const name of ['password', 'passwordConfirmation']) {
+    const field = host.querySelector(`[name=${name}]`);
+    const toggle = [...host.querySelectorAll('button')].find(button => button.getAttribute('aria-controls') === field.id);
+    const before = requests.length;
+    await React.act(async () => toggle.click());
+    assert.equal(field.type, 'text'); assert.equal(field.value, nextPassword);
+    assert.equal(requests.length, before, 'visibility never sends credentials over HTTP');
+    await React.act(async () => toggle.click()); assert.equal(field.type, 'password');
+  }
+  await submit(() => host.textContent.includes('Password reset.'));
   assert.equal((await originalFetch(base + '/api/cases', { headers: { Origin: origin, Cookie: oldCookie } })).status, 401);
   await render(AuthPanel); input('username', email); input('password', nextPassword); await submit(() => host.textContent.includes('Signed in'));
   const changed = await (await http('/api/status')).json(); assert.equal(changed.userId, verified.userId);
