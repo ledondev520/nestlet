@@ -51,7 +51,7 @@ test('desktop proposal preview waits for completed synthetic SSE; cancel is read
      }}),{headers:{'Content-Type':'text/event-stream'}});
     }
     const response=await originalFetch(input,options);
-    if(path==='/api/status'&&response.ok){const status=await response.json();return new Response(JSON.stringify({...status,liveEnabled:status.authenticated===true}),{status:response.status,headers:response.headers});}
+    if(path==='/api/status'&&response.ok){const status=await response.json();return new Response(JSON.stringify({...status,liveEnabled:status.authenticated===true,libraryRetrievalEnabled:false}),{status:response.status,headers:response.headers});}
     return response;
    };
   });
@@ -59,12 +59,12 @@ test('desktop proposal preview waits for completed synthetic SSE; cancel is read
   const client=await createCustomer(page,'Synthetic proposal customer');record=await createLinkedCase(page,client,'Synthetic desktop proposal case');
   const chat=page.locator('[data-feature="chat"]'),cards=chat.getByTestId('conversation-action-review');
   const apply=()=>cards.getByRole('button',{name:'Apply as unreviewed suggestions',exact:true});
-  const consent=chat.getByRole('checkbox',{name:'Prepare reviewable case updates or English drafts for this message',exact:true});
+  await expect(chat.getByRole('checkbox')).toHaveCount(0);
   const writes=[];
   page.on('request',request=>{const path=new URL(request.url()).pathname;if(request.method()==='PATCH'&&path===`/api/cases/${record.id}/document-context`||request.method()==='POST'&&path===`/api/cases/${record.id}/artifacts`)writes.push(path);});
   const send=async text=>{
-   await chat.locator('.chat-input').fill(text);await consent.check();await chat.getByRole('button',{name:'Send',exact:true}).click();
-   await expect(cards).toBeVisible();await expect(consent).not.toBeChecked();await expect(apply()).toBeDisabled();
+   await chat.locator('.chat-input').fill(text);await chat.getByRole('button',{name:'Send',exact:true}).click();
+   await expect(cards).toBeVisible();await expect(apply()).toBeDisabled();
    await expect(cards).toContainText('Wait for the complete saved answer');
   };
   const finish=async()=>{await page.evaluate(()=>window.__completeSyntheticChat());await expect(chat.getByRole('button',{name:'New conversation',exact:true})).toBeEnabled();};
@@ -86,6 +86,7 @@ test('desktop proposal preview waits for completed synthetic SSE; cancel is read
   const changed=await apiWrite(page,app,`/api/cases/${record.id}`,'PUT',{...newCasePayload(saved.title),clientId:saved.clientId,fields:saved.fields.map(field=>field.key==='property'?{...field,confirmed:false,conflict:true}:field),expectedVersion:saved.version});
   expect(changed.status()).toBe(200);const conflicted=(await changed.json()).case;
   await send('Prepare another suggestion while conflicting evidence remains.');await finish();
+  await expect(page.getByTestId('chat-case-workflow').locator('[data-readiness-reason="conflict"]')).toBeVisible();
   await expect(cards).toContainText('Conflicting evidence needs review');await expect(apply()).toBeDisabled();
   await expect(cards).not.toContainText('Wait for the complete saved answer');expect(writes).toHaveLength(1);
   await noHorizontalOverflow(page);await screenshot(page,testInfo,'desktop-proposal-conflict-blocked');

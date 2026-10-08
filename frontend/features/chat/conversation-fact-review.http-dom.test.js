@@ -84,14 +84,14 @@ test('ordinary chat composer answers exactly one visible question without anothe
     done=async()=>{await gate;const assistantId=savedMessage(s.conversation.id,'assistant','Review the property suggestion before applying.',{requestId});emit('done',{requestId,assistantMessageId:assistantId,conversationId:mode==='wrong-thread'?randomUUID():s.conversation.id});controller.close();};void done();
    }}),{headers:{'Content-Type':'text/event-stream'}});
   }
-  const response=await owner.transport(path,options);if(path==='/api/status')return new Response(JSON.stringify({...await response.json(),liveEnabled:true}),{headers:{'Content-Type':'application/json'}});return response;
+  const response=await owner.transport(path,options);if(path==='/api/status')return new Response(JSON.stringify({...await response.json(),liveEnabled:true,libraryRetrievalEnabled:false}),{headers:{'Content-Type':'application/json'}});return response;
  });
  await render(React.createElement(SessionProvider,null,React.createElement(ChatPage,{caseId:s.record.id,lang:'en'})));
  await wait(()=>button('Send')&&!button('New conversation').disabled);
  await fill(host.querySelector('.chat-input'),'Prepare a property suggestion');
- const label=[...host.querySelectorAll('label')].find(node=>node.textContent==='Prepare reviewable case updates or English drafts for this message');await click(document.getElementById(label.htmlFor));
+ assert.equal(host.querySelector('[role="checkbox"]'),null);
  const before=writes().length;await click(button('Send'));await wait(()=>button('Apply as unreviewed suggestions'));
- assert.equal(button('Apply as unreviewed suggestions').disabled,true);assert.equal(writes().length,before);assert.equal(document.getElementById(label.htmlFor).getAttribute('data-state'),'unchecked');
+ assert.equal(button('Apply as unreviewed suggestions').disabled,true);assert.equal(writes().length,before);
  await React.act(async()=>release());await wait(()=>!button('Apply as unreviewed suggestions').disabled);
  await fill(host.querySelector('.chat-input'),'confirm');await click(button('Send'));await wait(()=>host.textContent.includes('Saved as reviewed'));
  assert.equal(host.querySelector('.chat-input').value,'');assert.equal(chatCount,1);assert.equal((await owner.api.get(`/api/cases/${s.record.id}`)).case.fields.find(row=>row.key==='property').confirmed,true);

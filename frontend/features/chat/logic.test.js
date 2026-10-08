@@ -13,7 +13,7 @@ test('chat starts with a genuinely empty saved case and never injects source fac
 });
 test('persistent payload contains one new user turn, fixed consent and IDs, not browser history or previews',()=>{
   const identity=ids();const payload=buildChatTurn({...identity,text:'A new question',lang:'en',images:[{mimeType:'image/png',data:'YWJjZA==',preview:'blob:local',id:'local'}]});
-  assert.deepEqual(payload,{...identity,locale:'en',consent:true,guidanceAgency:'unknown',messages:[{role:'user',content:'A new question',images:[{mimeType:'image/png',data:'YWJjZA=='}]}]});
+  assert.deepEqual(payload,{...identity,locale:'en',consent:true,actionConsent:true,guidanceAgency:'unknown',messages:[{role:'user',content:'A new question',images:[{mimeType:'image/png',data:'YWJjZA=='}]}]});
   assert.throws(()=>buildChatTurn({...identity,conversationId:null,text:'Question'}),{code:'CHAT_INVALID'});
   assert.throws(()=>buildChatTurn({...identity,text:''}),{code:'CHAT_EMPTY'});
   assert.throws(()=>buildChatTurn({...identity,text:'x'.repeat(8001)}),{code:'CHAT_TOO_LARGE'});

@@ -1,3 +1,4 @@
+import { accountSettings, switchLanguage } from './support.js';
 import { test as base, expect } from '@playwright/test';
 import { startBrowserFixture } from '../helpers/browser-fixture.mjs';
 import { requestRegistration, post, signIn } from './email-support.js';
@@ -43,7 +44,7 @@ function observeAdministration(page) {
 async function ownerControlsAbsent(page) {
   await expect(accountsPanel(page)).toHaveCount(0);
   await expect(page.getByRole('list', { name: 'Account directory', exact: true })).toHaveCount(0);
-  await expect(card(page, 'DeepSeek connection')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Model settings', exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: /^(Grant|Revoke) administrator access:/u })).toHaveCount(0);
 }
 
@@ -70,7 +71,7 @@ test('owner confirms grant/revoke; delegated diagnostics stay bounded and ordina
     const ownCase = await createLinkedCase(delegated, ownClient, 'Synthetic delegated case');
 
     await test.step('Ordinary settings mount no privileged modules or privileged requests', async () => {
-      await settingsButton(delegated).press('Enter');
+      await accountSettings(delegated,true);
       await expect(delegated).toHaveURL(/#settings$/u);
       await ownerControlsAbsent(delegated);
       await expect(diagnosticsPanel(delegated)).toHaveCount(0);
@@ -85,7 +86,7 @@ test('owner confirms grant/revoke; delegated diagnostics stay bounded and ordina
     const writes = () => ownerRequests.filter(request => request.method === 'PUT');
     await test.step('Owner directory is reachable; owner and unverified legacy rows are immutable', async () => {
       const loaded = responseFor(page, '/api/admin/accounts', 'GET');
-      await settingsButton(page).press('Enter');
+      await accountSettings(page,true);
       const result = await loaded;
       expect(result.status()).toBe(200);
       const { accounts } = await result.json();
@@ -94,7 +95,7 @@ test('owner confirms grant/revoke; delegated diagnostics stay bounded and ordina
       expect(target).toMatchObject({ id: ordinary.userId, role: 'trial', administrator: false,
         canGrantAdministrator: true, capabilityVersion: 0 });
       await expect(accountsPanel(page)).toBeVisible();
-      await expect(card(page, 'DeepSeek connection')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Model settings', exact: true })).toBeVisible();
       await expect(accountRow(page, 'owner')).toContainText('Owner access is fixed and cannot be changed here.');
       await expect(accountRow(page, 'owner').getByRole('button')).toHaveCount(0);
       await expect(accountRow(page, LEGACY)).toContainText('Ask this account to bind and verify an email');
@@ -121,7 +122,7 @@ test('owner confirms grant/revoke; delegated diagnostics stay bounded and ordina
       await navigate(page, 'Conversation');
       await expect(accountsPanel(page)).toHaveCount(0);
       const reread = responseFor(page, '/api/admin/accounts', 'GET');
-      await settingsButton(page).press('Enter');
+      await accountSettings(page,true);
       expect((await reread).status()).toBe(200);
       await expect(grant).toBeEnabled();
       await expect(confirmation(page)).toHaveCount(0);
@@ -170,7 +171,7 @@ test('owner confirms grant/revoke; delegated diagnostics stay bounded and ordina
       expect((await getJson(delegated, app, `/api/cases/${ownCase.id}`)).case.id).toBe(ownCase.id);
       await noHorizontalOverflow(delegated);
       await screenshot(delegated, testInfo, 'delegated-diagnostics-320-en');
-      await delegated.getByRole('button', { name: '切换界面为中文', exact: true }).press('Enter');
+      await switchLanguage(delegated,'zh',true);
       await expect(card(delegated, '有限运行状态')).toBeVisible();
       await noHorizontalOverflow(delegated);
       await screenshot(delegated, testInfo, 'delegated-diagnostics-320-zh');
@@ -214,7 +215,7 @@ test('owner confirms grant/revoke; delegated diagnostics stay bounded and ordina
       await logout(page);
       const before = ownerRequests.length;
       await signIn(page, app, LEGACY);
-      await settingsButton(page).press('Enter');
+      await accountSettings(page,true);
       await ownerControlsAbsent(page);
       await expect(diagnosticsPanel(page)).toHaveCount(0);
       await expect(page.locator('body')).not.toContainText(EMAIL);

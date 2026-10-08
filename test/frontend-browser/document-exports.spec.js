@@ -12,7 +12,7 @@ test('desktop document review gates, repeated exports and literal print renderin
   expect(rejected.status()).toBe(409);
   expect((await getJson(page,app,`/api/cases/${record.id}/artifacts`)).artifacts).toEqual([]);
   await navigate(page,'Conversation');
-  await page.locator('[data-feature="chat"]').getByRole('button',{name:'Finish and preview English document',exact:true}).click();
+  await page.getByTestId('chat-case-workflow').getByRole('button',{name:'Finish and preview English document',exact:true}).click();
   const documents=page.getByTestId('documents-page');
   await expect(documents.getByText('No saved document versions yet.',{exact:true})).toBeVisible();
   for(const [key,value] of Object.entries({property:'128 Example Lane Unit B',owner:'Synthetic Property LLC',pha:'Synthetic Housing Office',caseReference:'SYN-BROWSER-104',rent:'$2100',recipientName:'Synthetic recipient',recipientContact:'recipient@example.invalid',senderName:'Synthetic operator',senderContact:'operator@example.invalid'})) {

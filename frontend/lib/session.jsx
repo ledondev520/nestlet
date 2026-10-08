@@ -12,6 +12,7 @@ export function SessionProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [recovery, setRecovery] = useState(null);
+  const [dataRevision, setDataRevision] = useState(0);
   const statusRef = useRef(emptySession);
   const journey = useMemo(() => createJourneyTelemetry({ getSession: () => statusRef.current }), []);
   const generation = useRef(0);
@@ -38,6 +39,7 @@ export function SessionProvider({ children }) {
   const api = useMemo(() => createApiClient({
     getCsrfToken: () => statusRef.current.csrfToken || '',
     onUnauthorized: expire,
+    onMutation: ({ path }) => { if (/^\/api\/(cases|clients|assets|artifacts|conversations)(?:\/|$|\?)/u.test(path)) setDataRevision(value => value + 1); },
     getJourney: () => journey
   }), [expire, journey]);
 
@@ -103,7 +105,7 @@ export function SessionProvider({ children }) {
     await refresh().catch(() => {});
   }, [api, refresh, update, journey]);
 
-  const value = useMemo(() => ({ status, loading, error, recovery, api, journey, refresh, login, register, verifyEmail, logout }), [status, loading, error, recovery, api, journey, refresh, login, register, verifyEmail, logout]);
+  const value = useMemo(() => ({ status, loading, error, recovery, dataRevision, api, journey, refresh, login, register, verifyEmail, logout }), [status, loading, error, recovery, dataRevision, api, journey, refresh, login, register, verifyEmail, logout]);
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }
 

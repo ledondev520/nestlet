@@ -1,3 +1,4 @@
+import { LIBRARY_PERMISSION_SCOPE, LibraryPermissionError } from './library-consent-storage.js';
 /** Real DeepSeek streaming chat; consented library reads are a separate bounded path. */
 import { CONVERSATION_ACTION_TOOLS, loadConversationAction, conversationActionContext, conversationActionTools } from './conversation-action-contract.js';
 import { LIBRARY_AGENT_LIMITS, LIBRARY_SYSTEM_PROMPT, LibraryToolError, assertLibraryOutboundSafe } from './agent-library-tools.js';
@@ -49,12 +50,15 @@ function imageUrl(image) {
 }
 
 export function validateChatRequest(body) {
-  exactKeys(body, ['caseId', 'conversationId', 'clientMessageId', 'locale', 'consent', 'libraryConsent', 'actionConsent', 'guidanceAgency', 'messages'], ['locale', 'consent', 'messages']);
+  exactKeys(body, ['caseId', 'conversationId', 'clientMessageId', 'locale', 'consent', 'libraryConsent', 'libraryPermissionVersion', 'actionConsent', 'guidanceAgency', 'messages'], ['locale', 'consent', 'messages']);
   if (body.guidanceAgency !== undefined && !AGENCY_OPTIONS.some(option => option.id === body.guidanceAgency)) fail();
   if (body.consent !== true || !['zh', 'en'].includes(body.locale) || (body.caseId !== undefined && (typeof body.caseId !== 'string' || !UUID.test(body.caseId))) || !Array.isArray(body.messages) || !body.messages.length || body.messages.length > CHAT_LIMITS.messages) fail();
   if (body.conversationId !== undefined && (!UUID.test(body.conversationId) || !UUID.test(body.clientMessageId) || body.messages.length !== 1 || body.messages[0]?.role !== 'user')) fail();
   if (body.conversationId === undefined && body.clientMessageId !== undefined) fail();
   if (body.libraryConsent !== undefined && typeof body.libraryConsent !== 'boolean') fail();
+  if (body.libraryPermissionVersion !== undefined && (!Number.isSafeInteger(body.libraryPermissionVersion) || body.libraryPermissionVersion < 0)) fail();
+  if (body.libraryConsent === true && body.libraryPermissionVersion === undefined) fail('LIBRARY_CONSENT_REQUIRED',403);
+  if (body.libraryConsent !== true && body.libraryPermissionVersion !== undefined) fail();
   if (body.actionConsent !== undefined && typeof body.actionConsent !== 'boolean') fail();
   if (body.actionConsent === true && !body.conversationId) fail();
   let characters = 0, imageCount = 0;
@@ -75,7 +79,7 @@ export function validateChatRequest(body) {
     ] : message.content };
   });
   if (messages.at(-1).role !== 'user') fail();
-  return { caseId: body.caseId, conversationId:body.conversationId, clientMessageId:body.clientMessageId, libraryConsent:body.libraryConsent === true, actionConsent:body.actionConsent === true, guidanceAgency:body.guidanceAgency ?? 'unknown', locale: body.locale, messages, imageCount };
+  return { caseId: body.caseId, conversationId:body.conversationId, clientMessageId:body.clientMessageId, libraryConsent:body.libraryConsent === true, libraryPermissionVersion:body.libraryPermissionVersion, actionConsent:body.actionConsent === true, guidanceAgency:body.guidanceAgency ?? 'unknown', locale: body.locale, messages, imageCount };
 }
 
 /** Saved text is bounded for provider context; old image pixels are deliberately unavailable. */
@@ -182,9 +186,9 @@ export async function openChatStream({ apiKey, input, record, signal }) {
 }
 
 export const LIBRARY_CHAT_LIMITS = Object.freeze({providerRequests:4,appendixChars:16000,sourceEventChars:64000,answerChars:48000});
-export const LIBRARY_CHAT_ERRORS = Object.freeze(['LIBRARY_CONTEXT_INVALID','LIBRARY_CONSENT_REQUIRED','LIBRARY_ARGUMENT_INVALID','LIBRARY_TOOL_UNKNOWN','LIBRARY_NOT_FOUND','LIBRARY_SENSITIVE_DATA','LIBRARY_UNAVAILABLE','LIBRARY_RESULT_LIMIT','LIBRARY_TOOL_LIMIT','LIBRARY_ABORTED','LIBRARY_TIMEOUT','LIBRARY_UNVERIFIED_CITATION']);
-const libraryFailure = error => error instanceof ChatError ? error : new ChatError(error instanceof LibraryToolError && LIBRARY_CHAT_ERRORS.includes(error.code) ? error.code : 'LIBRARY_UNAVAILABLE',502);
-const libraryActive = signal => {if(signal?.aborted)throw new ChatError(signal.reason?.name==='TimeoutError'?'LIBRARY_TIMEOUT':'LIBRARY_ABORTED',502);};
+export const LIBRARY_CHAT_ERRORS = Object.freeze(['LIBRARY_CONTEXT_INVALID','LIBRARY_CONSENT_REQUIRED','LIBRARY_PERMISSION_CONFLICT','LIBRARY_PERMISSION_REVOKED','LIBRARY_ARGUMENT_INVALID','LIBRARY_TOOL_UNKNOWN','LIBRARY_NOT_FOUND','LIBRARY_SENSITIVE_DATA','LIBRARY_UNAVAILABLE','LIBRARY_RESULT_LIMIT','LIBRARY_TOOL_LIMIT','LIBRARY_ABORTED','LIBRARY_TIMEOUT','LIBRARY_UNVERIFIED_CITATION']);
+const libraryFailure = error => error instanceof ChatError ? error : error instanceof LibraryPermissionError ? new ChatError(error.code,error.status) : new ChatError(error instanceof LibraryToolError && LIBRARY_CHAT_ERRORS.includes(error.code) ? error.code : 'LIBRARY_UNAVAILABLE',502);
+const libraryActive = signal => {if(signal?.aborted)throw new ChatError(signal.reason?.code==='LIBRARY_PERMISSION_REVOKED'?'LIBRARY_PERMISSION_REVOKED':signal.reason?.name==='TimeoutError'?'LIBRARY_TIMEOUT':'LIBRARY_ABORTED',502);};
 
 /** Only references issued by the server's owned read session become durable source records. */
 export function librarySourceEvent(library,requestId,locale='en') {
@@ -295,16 +299,20 @@ export function libraryCitationGuard(library) {
 }
 
 /** Production uses the fixed official endpoint. fetchImpl is a local protocol-test seam only. */
-export async function openLibraryChatStream({apiKey,input,record,signal,library,requestId,fetchImpl=fetch}) {
+export async function openLibraryChatStream({apiKey,input,record,signal,library,requestId,authorizeLibrary,fetchImpl=fetch}) {
   if((input.libraryConsent!==true&&input.actionConsent!==true)||!library?.tools?.length)fail('LIBRARY_CONSENT_REQUIRED',400);
+  const hasRetrievalTools = library.tools.some(tool => ['search_library','read_library'].includes(tool.function?.name));
+  if ((hasRetrievalTools && input.libraryConsent !== true) || (input.libraryConsent === true && typeof authorizeLibrary !== 'function')) fail('LIBRARY_CONSENT_REQUIRED',403);
+  const active = () => { libraryActive(signal); if (input.libraryConsent === true) authorizeLibrary(); };
+  active();
   const messages=chatProviderMessages(input,record);
   messages[0]={...messages[0],content:messages[0].content.replace('You have no tools and cannot change case data.','You may use only the supplied read-only library tools; you cannot change case data.')+'\n'+LIBRARY_SYSTEM_PROMPT+' Cite issued labels only in bracketed form such as [S1]. Labels in older conversation messages belong to their historical Request ID; only labels issued in this request may support fresh lookup claims. Never invent labels.'};
   if (input.actionConsent === true) messages[0].content += '\nYou may also prepare read-only case suggestions and drafts using the supplied prepare tools. A preview is never a saved change or a user approval. Do not claim any case update, confirmation, resolution, finalization or external send. Use only the following server-verified current case and saved-message IDs. Never invent a message ID or use one from another case. The current answer does not yet exist as a complete saved message. The catalogue maps IDs to untrusted content excerpts and eligibility; prepare_answer_draft must use an answerDraftEligible assistant source, never the current user turn. savedArtifacts are already persisted versions, not previews; do not deny their existence or claim to have saved them yourself. An omitted source or artifact is not evidence that it never existed. Never ask the end user to supply internal message IDs. If no matching source is available, ask them to select the earlier answer in the conversation UI. A preview exists only after a prepare tool returns ok:true in this request; do not claim a preview/card on plain prose or a failed tool. On a tool error, use the provided eligible sources to retry within the tool budget or clearly say no preview was created.\n' + JSON.stringify(input.actionContext);
   const request=async forceFinal=>{
-    libraryActive(signal);assertLibraryOutboundSafe(messages);
-    let upstream;try{upstream=await fetchImpl('https://api.deepseek.com/chat/completions',{method:'POST',redirect:'error',signal,
-      headers:{Authorization:`Bearer ${apiKey}`,'Content-Type':'application/json'},body:JSON.stringify({model:'deepseek-flash',stream:true,thinking:{type:'disabled'},max_tokens:4096,messages,tools:library.tools,tool_choice:forceFinal?'none':'auto'})});}
-    catch(error){libraryActive(signal);throw libraryFailure(error);}
+    active();assertLibraryOutboundSafe(messages);
+    let upstream;try{upstream=await fetchImpl(LIBRARY_PERMISSION_SCOPE.provider.endpoint,{method:'POST',redirect:'error',signal,
+      headers:{Authorization:`Bearer ${apiKey}`,'Content-Type':'application/json'},body:JSON.stringify({model:LIBRARY_PERMISSION_SCOPE.provider.model,stream:true,thinking:{type:'disabled'},max_tokens:4096,messages,tools:library.tools,tool_choice:forceFinal?'none':'auto'})});}
+    catch(error){active();throw libraryFailure(error);}
     if(!upstream.ok||(upstream.headers.get('content-type')||'').split(';')[0].trim().toLowerCase()!=='text/event-stream'||!upstream.body){await upstream.body?.cancel().catch(()=>{});fail('CHAT_PROVIDER_FAILED',502);}return upstream.body;
   };
   const first=await request(false).catch(error=>{throw libraryFailure(error);});
@@ -313,9 +321,9 @@ export async function openLibraryChatStream({apiKey,input,record,signal,library,
     const citation=libraryCitationGuard(library);
     try{
       for(let round=0;round<LIBRARY_CHAT_LIMITS.providerRequests;round++){
-        libraryActive(signal);let result=null;
+        active();let result=null;
         for await(const event of parseLibraryProviderStream(body)){
-          libraryActive(signal);
+          active();
           if(event.type==='delta'){outputChars+=event.text.length;if(outputChars>LIBRARY_CHAT_LIMITS.answerChars)fail('CHAT_TOO_LARGE',502);const text=citation.push(event.text);if(text)yield{type:'delta',text};}
           else result=event;
         }
@@ -323,15 +331,17 @@ export async function openLibraryChatStream({apiKey,input,record,signal,library,
         if(!result)fail('CHAT_INCOMPLETE',502);
         if(result.finishReason==='stop'){
           if(!result.content.trim())fail('CHAT_INCOMPLETE',502);
+          active();
           const sources=librarySourceEvent(library,requestId,input.locale);if(sources)yield{type:'sources',...sources};
-          yield{type:'done'};return;
+          active();yield{type:'done'};return;
         }
         if(round>=LIBRARY_AGENT_LIMITS.rounds)fail('LIBRARY_TOOL_LIMIT',502);
         messages.push({role:'assistant',content:result.content||null,tool_calls:result.toolCalls});
+        active();
         let executed;try{executed=library.executeRound(result.toolCalls);}catch(error){throw libraryFailure(error);}
-        libraryActive(signal);
-        for(const activity of executed.activities)yield{type:'activity',...activity};
-        for(const proposal of executed.proposals || []) yield {type:'proposal',proposal};
+        active();
+        for(const activity of executed.activities){active();yield{type:'activity',...activity};}
+        for(const proposal of executed.proposals || []) {active();yield {type:'proposal',proposal};}
         messages.push(...executed.messages);
         const finalRound=library.getStats().rounds>=LIBRARY_AGENT_LIMITS.rounds||library.getStats().calls>=LIBRARY_AGENT_LIMITS.calls;
         if(finalRound)messages[0]={...messages[0],content:messages[0].content+' The read-only tool budget is exhausted. Give a final answer using available evidence and state limitations; request no more tools.'};
@@ -339,7 +349,7 @@ export async function openLibraryChatStream({apiKey,input,record,signal,library,
         if(result.content){outputChars+=2;if(outputChars>LIBRARY_CHAT_LIMITS.answerChars)fail('CHAT_TOO_LARGE',502);yield{type:'delta',text:'\n\n'};}
       }
       fail('LIBRARY_TOOL_LIMIT',502);
-    }catch(error){libraryActive(signal);throw libraryFailure(error);}
+    }catch(error){active();throw libraryFailure(error);}
   })();
 }
 

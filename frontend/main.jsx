@@ -5,6 +5,9 @@ import { captureAuthFragment } from './features/auth/auth-route.js';
 import { SessionProvider } from './lib/session.jsx';
 import { setNonce } from 'get-nonce';
 import './styles.css';
+import './workbench/tokens.css';
+import './workbench/workbench.css';
+import './inbox-integration.css';
 
 // Capture and remove email-link secrets before React effects or network requests.
 const initialAuthLink = captureAuthFragment(window);

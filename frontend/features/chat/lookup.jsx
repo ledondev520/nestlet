@@ -1,3 +1,4 @@
+import { Search } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,7 +8,7 @@ import { normalizeLibrarySources } from './retrieval.js';
 import { sourceNavigationCopy, sourceNavigationError } from './source-navigation.js';
 
 /** Explicit, read-only lookup. A search never sends a model turn or creates a case. */
-export function ChatLookup({ api, userId, caseId, lang, active, disabled, onOpenSourceCase, claimOperation, releaseOperation }) {
+export function ChatLookup({ api, userId, caseId, lang, active, disabled, onOpenSourceCase, claimOperation, releaseOperation, compact = false }) {
   const en = lang === 'en', id = useId();
   const [query, setQuery] = useState(''), [sources, setSources] = useState(null), [pending, setPending] = useState(false), [notice, setNotice] = useState('');
   const operation = useRef(null), context = useRef(null);
@@ -47,8 +48,8 @@ export function ChatLookup({ api, userId, caseId, lang, active, disabled, onOpen
       <Label htmlFor={id}>{en ? 'Customer name or case title' : '客户名称或案例标题'}</Label>
       <div className="flex gap-2"><Input id={id} type="search" maxLength={120} value={query} disabled={disabled || pending || !active}
         onChange={event => { setQuery(event.target.value); setSources(null); setNotice(''); }} />
-        <Button type="submit" variant="outline" disabled={disabled || pending || !active || !query.trim()}>{en ? 'Find saved records' : '查找已保存记录'}</Button></div>
-      <p className="text-xs text-muted-foreground">{en ? 'Read-only lookup, without AI or creating a case. Choose a matching record below. Up to 24 customers and 24 cases are shown; refine the name if needed.' : '只查询已保存记录，不调用 AI，也不新建案例。请在下方明确选择匹配记录。最多显示 24 位客户和 24 个案例，可缩小名称范围重试。'}</p>
+        <Button type="submit" variant="outline" aria-label={en ? 'Find saved records' : '查找已保存记录'} disabled={disabled || pending || !active || !query.trim()}>{compact ? <><Search aria-hidden="true" size={16}/>{en ? 'Search' : '查找'}</> : (en ? 'Find saved records' : '查找已保存记录')}</Button></div>
+      {compact ? <details className="text-xs text-muted-foreground"><summary className="cursor-pointer">{en ? 'Read-only · No AI' : '只读查询 · 不调用 AI'}</summary>      <p className="text-xs text-muted-foreground">{en ? 'Read-only lookup, without AI or creating a case. Choose a matching record below. Up to 24 customers and 24 cases are shown; refine the name if needed.' : '只查询已保存记录，不调用 AI，也不新建案例。请在下方明确选择匹配记录。最多显示 24 位客户和 24 个案例，可缩小名称范围重试。'}</p></details> :       <p className="text-xs text-muted-foreground">{en ? 'Read-only lookup, without AI or creating a case. Choose a matching record below. Up to 24 customers and 24 cases are shown; refine the name if needed.' : '只查询已保存记录，不调用 AI，也不新建案例。请在下方明确选择匹配记录。最多显示 24 位客户和 24 个案例，可缩小名称范围重试。'}</p>}
     </form>
     {pending && <div role="status">{en ? 'Searching saved records…' : '正在查找已保存记录…'} <Button type="button" variant="ghost" onClick={cancel}>{en ? 'Cancel lookup' : '取消查找'}</Button></div>}
     {notice && <p role="status" className="text-sm">{notice}</p>}

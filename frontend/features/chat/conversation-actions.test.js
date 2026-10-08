@@ -10,9 +10,10 @@ export function fixtureProposal() {
 }
 const frame=(name,value)=>`event: ${name}\ndata: ${JSON.stringify(value)}\n\n`;
 const collect=async(text)=>{const stream=new ReadableStream({start(c){c.enqueue(new TextEncoder().encode(text));c.close();}}),rows=[];for await(const packet of readChatEvents(stream))rows.push(packet);return rows;};
-test('action consent is explicit, per message, and requires saved scoped IDs',()=>{
+test('read-only proposals default on and still require saved scoped IDs',()=>{
  const turn={caseId:randomUUID(),conversationId:randomUUID(),clientMessageId:randomUUID(),text:'Prepare a reviewable change'};
- assert.equal('actionConsent' in buildChatTurn(turn),false);
+ assert.equal(buildChatTurn(turn).actionConsent,true);
+ assert.equal('actionConsent' in buildChatTurn({...turn,actionConsent:false}),false);
  assert.equal(buildChatTurn({...turn,actionConsent:true}).actionConsent,true);
  for(const value of [null,'true',1,{}])assert.throws(()=>buildChatTurn({...turn,actionConsent:value}),{code:'CHAT_INVALID'});
  assert.throws(()=>buildChatTurn({...turn,actionConsent:true,conversationId:null}),{code:'CHAT_INVALID'});

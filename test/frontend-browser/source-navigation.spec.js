@@ -20,7 +20,7 @@ test('chat lookup is read-only, requires an exact case choice, and protects unsa
     if (path.startsWith('/api/') && !path.startsWith('/api/workflows') && request.method() !== 'GET') mutations.push(request.url());
   });
   const chat = page.locator('[data-feature="chat"]');
-  const lookup = chat.getByRole('region', { name: 'Find a saved customer or case', exact: true });
+  const lookup = page.locator('.wb-rail').getByRole('region', { name: 'Find a saved customer or case', exact: true });
   await lookup.getByLabel('Customer name or case title', { exact: true }).fill('Synthetic lookup');
   await lookup.getByRole('button', { name: 'Find saved records', exact: true }).click();
   await expect(lookup.getByRole('button', { name: 'Choose a customer case', exact: true })).toBeVisible();

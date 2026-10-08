@@ -22,7 +22,7 @@ test('chat case bridge preserves the composer, saves a chosen original, and cont
   await expect(retain).toContainText('Original saved to this case’s Materials');
   await expect(chat.locator('.chat-input')).toHaveValue('Unsent synthetic question preserved across this workflow');
   const downloaded=await page.request.get(app.origin+`/api/assets/${asset.id}/download`);expect(downloaded.status()).toBe(200);expect(Buffer.compare(await downloaded.body(),bytes)).toBe(0);
-  await chat.getByRole('button',{name:'Review facts and materials',exact:true}).click();
+  await page.getByTestId('chat-case-workflow').getByRole('button',{name:'Review facts and materials',exact:true}).click();
   await expect(page).toHaveURL(/#intake$/u);
   await expect(page.getByLabel('Case source text',{exact:true})).toHaveValue('');
   await page.getByLabel('Case name',{exact:true}).fill('Synthetic chat bridge browser case');
@@ -30,13 +30,13 @@ test('chat case bridge preserves the composer, saves a chosen original, and cont
   await page.getByRole('button',{name:'Organize explicit labels',exact:true}).click();
   for(const check of await page.getByRole('checkbox',{name:'I reviewed this fact or its unknown status',exact:true}).all())await check.check();
   await navigate(page,'Conversation');
-  await chat.getByRole('button',{name:'Finish and preview English document',exact:true}).click();
+  await page.getByTestId('chat-case-workflow').getByRole('button',{name:'Finish and preview English document',exact:true}).click();
   await expect(page).toHaveURL(/#intake$/u); // Pending material is finished first.
   await expect(page.getByLabel('Case source text',{exact:true})).toHaveValue(SOURCE);
   const saved=responseFor(page,`/api/cases/${record.id}`,'PUT');await page.getByRole('button',{name:'Save case',exact:true}).click();expect((await saved).status()).toBe(200);
   await navigate(page,'Conversation');
   await expect(page.getByTestId('chat-case-workflow')).toContainText('Already confirmed in this case');
-  await chat.getByRole('button',{name:'Finish and preview English document',exact:true}).click();
+  await page.getByTestId('chat-case-workflow').getByRole('button',{name:'Finish and preview English document',exact:true}).click();
   await expect(page).toHaveURL(/#documents$/u);
   const documents=page.getByTestId('documents-page');
   await expect(documents.locator('#document-answer-property')).toHaveCount(0);
@@ -47,12 +47,13 @@ test('chat case bridge preserves the composer, saves a chosen original, and cont
   await expect(documents.getByLabel('English document body',{exact:true})).toHaveValue(artifact.content);
   await documents.getByLabel('English document body',{exact:true}).fill(artifact.content+'\nPending human edit to keep.');
   await navigate(page,'Conversation');await expect(chat.locator('.chat-input')).toHaveValue('Unsent synthetic question preserved across this workflow');
-  await chat.getByRole('button',{name:'Finish and preview English document',exact:true}).click();
+  await page.getByTestId('chat-case-workflow').getByRole('button',{name:'Finish and preview English document',exact:true}).click();
   await expect(documents.getByLabel('English document body',{exact:true})).toHaveValue(artifact.content+'\nPending human edit to keep.');
   expect((await getJson(page,app,`/api/cases/${record.id}/artifacts`)).artifacts).toHaveLength(1);
   expect((await getJson(page,app,`/api/assets?caseId=${record.id}&limit=100`)).assets).toHaveLength(1);
   await page.setViewportSize({width:390,height:844});await navigate(page,'Conversation');
-  await expect(chat.getByRole('button',{name:'Review facts and materials',exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Open case context',exact:true}).click();
+  await expect(page.getByTestId('chat-case-workflow').getByRole('button',{name:'Review facts and materials',exact:true})).toBeVisible();
   await screenshot(page,testInfo,'chat-case-bridge-mobile390');
   await assertClean();
 });

@@ -54,6 +54,7 @@ test('official references across chat/materials/documents: bilingual keyboard di
           if (view === 'materials') await expect(page.getByLabel(zh ? '案例名称' : 'Case name', { exact: true })).toHaveValue(record.title);
           if (view === 'documents') await expect(page.getByLabel(zh ? '文书类型' : 'Document type', { exact: true })).toBeEnabled();
 
+          if (width < 960) await page.getByRole('button', { name: zh ? '打开案例上下文' : 'Open case context', exact: true }).click();
           await expect(panel).toBeVisible();
           await expect(panel).toHaveJSProperty('open', false);
           await expect(summary).toContainText(zh ? '官方资料参考' : 'Official source references');
@@ -119,6 +120,7 @@ test('official references across chat/materials/documents: bilingual keyboard di
           await noHorizontalOverflow(page);
           expect((await getJson(page, app, `/api/cases/${record.id}`)).case).toEqual(original);
           expect(await getJson(page, app, readinessPath)).toEqual(readiness);
+          if (width < 960) await page.keyboard.press('Escape');
           expect(mutations, 'Reference-only interactions must not write case/customer/document/material/conversation data').toEqual([]);
         });
       }

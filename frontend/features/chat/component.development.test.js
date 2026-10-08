@@ -8,15 +8,15 @@ const identity={userId:randomUUID(),authenticated:true,role:'trial',csrfToken:'p
 const response=(body,status=200,headers={})=>new Response(JSON.stringify(body),{status,headers:{'Content-Type':'application/json',...headers}});
 const deferred=()=>{let resolve;const promise=new Promise(done=>resolve=done);return{promise,resolve};};
 const tick=()=>new Promise(resolve=>setTimeout(resolve,0));
-async function mount({caseId=null,fetchHandler,status=identity,recovery=null,guidanceAgency='unknown'}={}){
+async function mount({caseId=null,fetchHandler,status=identity,recovery=null,guidanceAgency='unknown',permissionDecision='allow',permissionHandler}={}){
   const dom=new JSDOM('<!doctype html><div id="root"></div>',{url:'http://localhost/next/',pretendToBeVisual:true});
   const original=new Map(); const set=(key,value)=>{original.set(key,Object.getOwnPropertyDescriptor(globalThis,key));Object.defineProperty(globalThis,key,{configurable:true,writable:true,value});};
-  for(const key of ['window','document','navigator','HTMLElement','Element','Node','MutationObserver','Event','MouseEvent'])set(key,dom.window[key]);
+  for(const key of ['window','document','navigator','HTMLElement','Element','Node','MutationObserver','Event','CustomEvent','MouseEvent','NodeFilter','HTMLInputElement'])set(key,dom.window[key]);
   set('getComputedStyle',dom.window.getComputedStyle.bind(dom.window));set('IS_REACT_ACT_ENVIRONMENT',true);
   set('ResizeObserver',class{observe(){}unobserve(){}disconnect(){}});
   dom.window.confirm=()=>true;dom.window.HTMLElement.prototype.scrollIntoView=function(){};
-  const requests=[];
-  set('fetch',async(path,options={})=>{requests.push({path,options});if(path==='/api/status')return response(status);return fetchHandler(path,options);});
+  const requests=[];let permissionFixture={decision:permissionDecision,version:permissionDecision==='unset'?0:1,provider:{id:'deepseek',endpoint:'https://api.deepseek.com/chat/completions',model:'deepseek-flash'},policyVersion:'library-retrieval-v1',category:'saved-library-excerpts',updatedAt:null};
+  set('fetch',async(path,options={})=>{requests.push({path,options});if(path==='/api/status')return response(status);if(path==='/api/library-permission'){if(permissionHandler)return permissionHandler(options);if(options.method==='PUT'){const body=JSON.parse(options.body);assert.equal(body.expectedVersion,permissionFixture.version);permissionFixture={...permissionFixture,decision:body.decision,version:permissionFixture.version+1};}return response(permissionFixture);}return fetchHandler(path,options);});
   const vite=await createServer({server:{middlewareMode:true,hmr:false,ws:false,watch:null},logLevel:'error'});
   const React=await import('react');const {createRoot}=await import('react-dom/client');
   const {SessionProvider,useSession}=await vite.ssrLoadModule('/lib/session.jsx');const {ChatPage}=await vite.ssrLoadModule('/features/chat/index.jsx');
@@ -33,7 +33,7 @@ async function mount({caseId=null,fetchHandler,status=identity,recovery=null,gui
   const button=text=>[...dom.window.document.querySelectorAll('button')].find(node=>node.textContent===text||node.getAttribute('aria-label')===text);
   const click=async element=>{assert.ok(element,'Expected control');await React.act(async()=>{element.click();await tick();});};
   const type=async text=>{const input=dom.window.document.querySelector('textarea');assert.ok(input);await React.act(async()=>{Object.getOwnPropertyDescriptor(dom.window.HTMLTextAreaElement.prototype,'value').set.call(input,text);input.dispatchEvent(new dom.window.Event('input',{bubbles:true}));await tick();});};
-  const close=async()=>{await React.act(async()=>root.unmount());await vite.close();dom.window.close();for(const[key,descriptor]of original){if(descriptor)Object.defineProperty(globalThis,key,descriptor);else delete globalThis[key];}};
+  const close=async()=>{await React.act(async()=>{root.unmount();await tick();});await React.act(async()=>{await tick();});await vite.close();dom.window.close();for(const[key,descriptor]of original){if(descriptor)Object.defineProperty(globalThis,key,descriptor);else delete globalThis[key];}};
   return{dom,requests,flush,setCase,setStatus:async next=>{status=next;await React.act(async()=>{await sessionApi.refresh();await tick();});},button,click,type,close,readDraft:()=>draftVault.read({userId:status.userId,workspaceKey,feature:'chat'})};
 }
 
@@ -115,18 +115,18 @@ test('development React: verified same-user recovery restores only text and keep
   assert.equal(app.dom.window.document.querySelector('textarea').value,'Unsent synthetic question recovered');
   assert.match(app.dom.window.document.body.textContent,/Reattach images/);
   assert.equal(app.dom.window.document.querySelectorAll('img').length,0);
-  assert.equal(app.dom.window.document.querySelector('[role="checkbox"]').getAttribute('data-state'),'unchecked');
+  assert.equal(app.dom.window.document.querySelector('[role="checkbox"]'),null);
   await app.type('A revised question that is still unsent');
   assert.deepEqual(app.readDraft(),{input:'A revised question that is still unsent'});
 });
 
 
-test('development React: library opt-in is off by default, explicit for one send, and never recovered or cached',async context=>{
+test('development React: first-use library permission is explicit, versioned, and never stored in recovered drafts',async context=>{
   const caseId=randomUUID(),conversationId=randomUUID(),userMessageId=randomUUID(),assistantMessageId=randomUUID(),requestId=randomUUID();
   const status={...identity,libraryRetrievalEnabled:true};let streamController,clientMessageId,stored=false;
   const appendix='\n\nSources\n[S1] Synthetic saved draft; metadata only.';
   const frame=(name,value)=>`event: ${name}\ndata: ${JSON.stringify(value)}\n\n`;
-  const app=await mount({caseId,status,recovery:{input:'Find synthetic saved work'},fetchHandler:async(path,options)=>{
+  const app=await mount({caseId,status,permissionDecision:'unset',recovery:{input:'Find synthetic saved work'},fetchHandler:async(path,options)=>{
     if(path===`/api/cases/${caseId}`)return response({case:{id:caseId,title:'Synthetic retrieval case'}});
     if(path===`/api/cases/${caseId}/conversations`)return response({conversations:[{id:conversationId,caseId,title:'Synthetic thread'}]});
     if(path===`/api/conversations/${conversationId}`)return response({conversation:{id:conversationId,caseId},messages:stored?[{id:userMessageId,clientMessageId,requestId,role:'user',content:'Find synthetic saved work',state:'complete'},{id:assistantMessageId,requestId,role:'assistant',content:'Synthetic response [S1]'+appendix,state:'complete'}]:[]});
@@ -134,29 +134,30 @@ test('development React: library opt-in is off by default, explicit for one send
     return response({},500);
   }});context.after(app.close);await app.flush();
   const boxes=()=>app.dom.window.document.querySelectorAll('[role="checkbox"]');
-  assert.equal(boxes()[0].getAttribute('data-state'),'unchecked');
-  await app.type('Find synthetic saved work');await app.click(boxes()[0]);
+  assert.equal(boxes().length,0);
+  await app.type('Find synthetic saved work');
   assert.equal('libraryConsent' in app.readDraft(),false);
   await app.click(app.button('Send'));
+  assert.equal(app.requests.some(item=>item.path==='/api/chat'),false);
+  await app.click(app.button('Allow saved-library search'));
   const request=app.requests.find(item=>item.path==='/api/chat');assert.equal(JSON.parse(request.options.body).libraryConsent,true);
-  assert.equal(boxes()[0].getAttribute('data-state'),'unchecked');
+  assert.equal(boxes().length,0);
   streamController.enqueue(new TextEncoder().encode(frame('activity',{phase:'searching',state:'completed',count:1,message:'PRIVATE TOOL PROSE',reasoning:'RAW REASONING'})));
   await app.flush();assert.match(app.dom.window.document.body.textContent,/Saved-record search finished/);assert.doesNotMatch(app.dom.window.document.body.textContent,/PRIVATE TOOL PROSE|RAW REASONING/);
   const refs={requestId,items:[{sourceId:'S1',kind:'artifact',id:randomUUID(),version:1,title:'<img src=x onerror=alert(1)>',titleTruncated:false,retrievalState:'metadata',status:'draft',isStale:true,url:'https://untrusted.invalid',snippet:'PRIVATE SNIPPET'}],appendix};
   streamController.enqueue(new TextEncoder().encode(frame('delta',{text:'Synthetic response [S1]'})+frame('sources',refs)));
   await app.flush();assert.match(app.dom.window.document.body.textContent,/Metadata only; body not read/);assert.match(app.dom.window.document.body.textContent,/Historical version; review again/);
-  assert.equal(app.dom.window.document.querySelectorAll('a,img').length,0);assert.doesNotMatch(app.dom.window.document.body.textContent,/PRIVATE SNIPPET|untrusted.invalid/);
+  assert.equal(app.dom.window.document.querySelectorAll('a:not([href="#settings"]),img').length,0);assert.doesNotMatch(app.dom.window.document.body.textContent,/PRIVATE SNIPPET|untrusted.invalid/);
   stored=true;streamController.enqueue(new TextEncoder().encode(frame('done',{requestId,assistantMessageId,conversationId})));streamController.close();await app.flush();await app.flush();
   const assistant=app.dom.window.document.querySelector('article[aria-label="Assistant"]');assert.equal(assistant.textContent.split(appendix).length-1,1);
-  await app.click(boxes()[0]);await app.setStatus({...status,authenticated:false,userId:null});
-  await app.setStatus(status);await app.flush();assert.equal(boxes()[0].getAttribute('data-state'),'unchecked');
+  await app.setStatus({...status,authenticated:false,userId:null});
+  await app.setStatus(status);await app.flush();assert.equal(boxes().length,0);
   assert.equal(app.dom.window.document.querySelector('[aria-label="Sources for this request"]'),null);
 });
 
 test('development React: legacy capability absence disables retrieval while ordinary chat remains usable',async context=>{
   const app=await mount({fetchHandler:async()=>response({code:'CASE_CONFLICT'},409)});context.after(app.close);
-  const boxes=app.dom.window.document.querySelectorAll('[role="checkbox"]');assert.equal(boxes[0].disabled,true);
-  assert.match(app.dom.window.document.body.textContent,/does not support library retrieval/);
+  assert.equal(app.dom.window.document.querySelectorAll('[role="checkbox"]').length,0);
   await app.type('Ordinary synthetic question');assert.equal(app.button('Send').disabled,false);
 });
 
@@ -195,19 +196,18 @@ test('development React: delayed retrieval from a former case/account cannot add
       pending.resolve(new Response(frame('activity',{phase:'reading',state:'completed',count:1})+frame('sources',{requestId:id,items:[{sourceId:'S1',kind:'case',id:first,version:1,title:'OLD SOURCE MUST NOT APPEAR',titleTruncated:false,retrievalState:'read'}],appendix:'OLD APPENDIX MUST NOT APPEAR'})+frame('done',{requestId:id,assistantMessageId:randomUUID()}),{headers:{'Content-Type':'text/event-stream','X-Library-Retrieval':'enabled'}}));
       await app.flush();await app.flush();
       assert.doesNotMatch(app.dom.window.document.body.textContent,/OLD SOURCE MUST NOT APPEAR|OLD APPENDIX MUST NOT APPEAR/);
-      assert.equal(app.dom.window.document.querySelectorAll('[role="checkbox"]')[0].getAttribute('data-state'),'unchecked');
+      assert.equal(app.dom.window.document.querySelectorAll('[role="checkbox"]').length,0);
       assert.equal(app.requests.filter(item=>item.path==='/api/chat').length,1);
     }finally{await app.close();}
   }
 });
 
-test('development React: a capability change blocks selected retrieval before any paid request or case creation',async context=>{
+test('development React: a capability change leaves ordinary chat available without library retrieval',async context=>{
   const status={...identity,libraryRetrievalEnabled:true};
   const app=await mount({status,fetchHandler:async()=>response({},500)});context.after(app.close);
   await app.type('Find synthetic work');for(const box of app.dom.window.document.querySelectorAll('[role="checkbox"]'))await app.click(box);
   await app.setStatus({...status,libraryRetrievalEnabled:false});await app.click(app.button('Send'));
-  assert.match(app.dom.window.document.body.textContent,/does not support library retrieval/);
-  assert.equal(app.requests.some(item=>item.options.method==='POST'),false);
+  assert.equal(app.requests.some(item=>item.path==='/api/library-permission'||item.path==='/api/chat'),false);
   assert.equal(app.dom.window.document.querySelector('textarea').value,'Find synthetic work');
 });
 
@@ -293,4 +293,56 @@ test('development React: malformed 201 case-create response stays uncertain and 
   await app.click(app.button('Send'));await app.flush();
   assert.equal(app.requests.filter(item=>item.path==='/api/cases'&&item.options.method==='POST').length,1);
   assert.equal(app.dom.window.document.querySelector('.chat-input').value,'Synthetic input retained after a truncated success');
+});
+
+test('development React: first-use cancel retains input without grants, cases or provider requests',async context=>{
+  const app=await mount({status:{...identity,libraryRetrievalEnabled:true},permissionDecision:'unset',fetchHandler:async()=>response({},500)});context.after(app.close);
+  await app.type('Synthetic unsent question');await app.click(app.button('Send'));
+  assert.ok(app.dom.window.document.querySelector('[role="dialog"]'));
+  assert.match(app.dom.window.document.body.textContent,/DeepSeek/);
+  await app.click(app.button('Cancel'));
+  assert.equal(app.dom.window.document.querySelector('[role="dialog"]'),null);
+  assert.equal(app.dom.window.document.querySelector('textarea').value,'Synthetic unsent question');
+  assert.equal(app.requests.some(item=>item.options.method==='PUT'||item.options.method==='POST'),false);
+});
+
+test('development React: declining library is remembered without blocking ordinary sends or repeating the prompt',async context=>{
+  const app=await mount({status:{...identity,libraryRetrievalEnabled:true},permissionDecision:'unset',fetchHandler:async()=>response({code:'CASE_CONFLICT'},409)});context.after(app.close);
+  await app.type('Synthetic ordinary question');await app.click(app.button('Send'));await app.click(app.button('Continue without library'));await app.flush();
+  assert.equal(app.requests.filter(item=>item.path==='/api/library-permission'&&item.options.method==='PUT').length,1);
+  assert.equal(JSON.parse(app.requests.find(item=>item.options.method==='PUT').options.body).decision,'deny');
+  assert.equal(app.requests.filter(item=>item.path==='/api/cases'&&item.options.method==='POST').length,1);
+  await app.click(app.button('Send'));await app.flush();
+  assert.equal(app.dom.window.document.querySelector('[role="dialog"]'),null);
+  assert.equal(app.requests.filter(item=>item.path==='/api/library-permission'&&item.options.method==='PUT').length,1);
+  assert.equal(app.requests.filter(item=>item.path==='/api/cases'&&item.options.method==='POST').length,2);
+});
+
+test('development React: account change dismisses first-use prompt and cannot grant for a replacement identity',async context=>{
+  const status={...identity,libraryRetrievalEnabled:true};
+  const app=await mount({status,permissionDecision:'unset',fetchHandler:async()=>response({},500)});context.after(app.close);
+  await app.type('Synthetic private old-account input');await app.click(app.button('Send'));
+  assert.ok(app.dom.window.document.querySelector('[role="dialog"]'));
+  await app.setStatus({...status,userId:randomUUID(),csrfToken:'public-other-account-token'});
+  assert.equal(app.dom.window.document.querySelector('[role="dialog"]'),null);
+  assert.equal(app.requests.some(item=>item.options.method==='PUT'),false);
+  assert.equal(app.dom.window.document.querySelector('textarea').value,'');
+});
+
+test('development React: unavailable permission fails closed and only an explicit ordinary-only action continues',async context=>{
+ const app=await mount({status:{...identity,libraryRetrievalEnabled:true},permissionHandler:async()=>response({code:'UNAVAILABLE'},503),fetchHandler:async()=>response({code:'CASE_CONFLICT'},409)});context.after(app.close);
+ await app.type('Synthetic offline-policy question');await app.click(app.button('Send'));
+ assert.ok(app.dom.window.document.querySelector('[role="dialog"]'));
+ assert.equal(app.button('Allow saved-library search').disabled,true);
+ assert.equal(app.requests.some(item=>item.options.method==='POST'||item.options.method==='PUT'),false);
+ await app.click(app.button('Send without library this time'));await app.flush();
+ assert.equal(app.requests.filter(item=>item.path==='/api/cases'&&item.options.method==='POST').length,1);
+ assert.equal(app.requests.some(item=>item.options.method==='PUT'),false);
+});
+
+test('development React: changed provider endpoint cannot be approved under a DeepSeek disclosure',async context=>{
+ const app=await mount({status:{...identity,libraryRetrievalEnabled:true},permissionHandler:async()=>response({decision:'unset',version:0,provider:{id:'deepseek',model:'deepseek-flash',endpoint:'https://different.example.invalid/chat/completions'},policyVersion:'library-retrieval-v1',category:'saved-library-excerpts',updatedAt:null}),fetchHandler:async()=>response({},500)});context.after(app.close);
+ await app.type('Synthetic new-destination question');await app.click(app.button('Send'));
+ assert.equal(app.button('Allow saved-library search').disabled,true);
+ assert.equal(app.requests.some(item=>item.options.method==='POST'||item.options.method==='PUT'),false);
 });

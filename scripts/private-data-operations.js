@@ -19,7 +19,7 @@ import { createHash } from 'node:crypto';
 import { preparePrivateDirectory, openAssetVault } from '../private-assets.js';
 import { assetId, ASSET_LIMITS } from '../asset-domain.js';
 const APPLICATION_ID = 0x4e53544c;
-const SUPPORTED_SCHEMAS = [1, 2, 3, 4, 5, 6, 7, 8];
+const SUPPORTED_SCHEMAS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 const schemaVersion = (db) => db.prepare('PRAGMA user_version').get().user_version;
 const fail = (message) => {
   throw new Error(message);
@@ -128,7 +128,7 @@ function openDatabase(filename, { readOnly = true } = {}) {
     if (readSync(fd, header, 0, header.length, 0) === 100 &&
         header.subarray(0,16).equals(Buffer.from('SQLite format 3\0')) &&
         header.readUInt32BE(60) > Math.max(...SUPPORTED_SCHEMAS))
-      fail('Only a recognized Nestlet schema1–8 database is supported.');
+      fail('Only a recognized Nestlet schema1–9 database is supported.');
   } finally { closeSync(fd); }
   const db = new DatabaseSync(filename, {
     readOnly,
@@ -145,7 +145,7 @@ function openDatabase(filename, { readOnly = true } = {}) {
       db.prepare('PRAGMA application_id').get().application_id !== APPLICATION_ID ||
       !SUPPORTED_SCHEMAS.includes(schemaVersion(db))
     )
-      fail('Only a recognized Nestlet schema1–8 database is supported.');
+      fail('Only a recognized Nestlet schema1–9 database is supported.');
     if (
       db.prepare('PRAGMA integrity_check').get().integrity_check !== 'ok' ||
       db.prepare('PRAGMA foreign_key_check').all().length
@@ -348,6 +348,8 @@ export async function restorePrivateBackup({ input, output }) {
     for (const asset of rows) target.read(asset);
     // Never resurrect logged-out or credential-revoked bearer sessions from a backup.
     if (checked.schemaVersion >= 8) restored.exec('DELETE FROM auth_sessions');
+    // A historical snapshot must never resurrect a subsequently revoked data-sharing grant.
+    if (checked.schemaVersion >= 9) restored.exec('DELETE FROM library_permissions');
   } finally {
     restored.close();
   }

@@ -76,12 +76,14 @@ test('chat bridges a persisted conversation into append-only review and the real
   const click=async node=>{assert.ok(node,'Expected button');assert.equal(node.disabled,false,node.textContent);await React.act(async()=>node.click());await flush();};
   const fill=async(node,value)=>{assert.ok(node,'Expected input');await React.act(async()=>{const proto=node.tagName==='TEXTAREA'?dom.window.HTMLTextAreaElement.prototype:dom.window.HTMLInputElement.prototype;Object.getOwnPropertyDescriptor(proto,'value').set.call(node,value);node.dispatchEvent(new dom.window.Event('input',{bubbles:true}));});await flush();};
   const labeled=label=>{const item=[...document.querySelectorAll('label')].find(node=>visible(node)&&node.textContent===label);return item&&document.getElementById(item.htmlFor);};
-  const nav=async label=>click(button(label,document.querySelector('nav')));
+  const nav=async label=>click(button(label,document.querySelector('nav[aria-label="Workspace navigation"]')));
   const checkRead=async path=>{let result;await React.act(async()=>{result=await read(path);});return result;};
   await React.act(async()=>root.render(React.createElement(SessionProvider,null,React.createElement(App))));
   await wait(()=>button('Switch interface to English'),'App loaded');await click(button('Switch interface to English'));
   await wait(()=>document.querySelector('[data-testid="chat-case-workflow"]')?.textContent.includes('sender contact'),'Readiness loaded');
   const workflow=document.querySelector('[data-testid="chat-case-workflow"]');
+  const questions=[...workflow.querySelectorAll('details')].find(node=>node.querySelector('summary')?.textContent.startsWith('Full questions'));
+  assert.ok(questions,'Compact sidebar retains full missing questions behind a disclosure');assert.equal(questions.open,false);assert.match(questions.textContent,/sender contact/);
   assert.match(workflow.textContent,/128 Synthetic Lane/);assert.doesNotMatch(workflow.textContent,/Please provide the property/);assert.match(workflow.textContent,/sender contact/);
   await wait(()=>document.querySelectorAll('[data-testid="chat-message-actions"]').length===5,'Persisted actions loaded');
   const assistant=()=>[...document.querySelectorAll('article[aria-label="Assistant"]')].find(item=>item.textContent.includes(answer.content));

@@ -1,3 +1,4 @@
+import { accountSettings, switchLanguage } from './support.js';
 import { test, expect } from '@playwright/test';
 import { ENTRY_PATH, legacyLogin, navigate, saveCase, openSavedCase, watchBrowser, noHorizontalOverflow, screenshot } from './support.js';
 
@@ -28,7 +29,7 @@ for (const language of ['zh', 'en']) {
     await openSavedCase(page, title);
 
     const zh = language === 'zh';
-    if (zh) await page.getByRole('button', { name: '切换界面为中文', exact: true }).click();
+    if (zh) await switchLanguage(page,'zh');
     const navName = zh ? '工作区导航' : 'Workspace navigation';
     const labels = zh ? ['对话', '材料与事实', '客户库', '文档'] : ['Conversation', 'Materials & facts', 'Customers', 'Documents'];
     for (const width of [320, 390]) {

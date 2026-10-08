@@ -22,7 +22,9 @@ test('saved same-case rename refreshes the chat toolbar on return without reload
   set('getComputedStyle',dom.window.getComputedStyle.bind(dom.window));set('IS_REACT_ACT_ENVIRONMENT',true);set('ResizeObserver',class{observe(){}unobserve(){}disconnect(){}});
   dom.window.confirm=()=>true;dom.window.HTMLElement.prototype.scrollIntoView=function(){};
   const requests=[];
-  set('fetch',async(path,options={})=>{const response=await realFetch(app.origin+path,{...options,headers:{...options.headers,Origin:app.origin,Cookie:cookie}});requests.push({path,method:options.method||'GET',status:response.status});return response;});
+  let releaseInitialStatus, holdInitialStatus=true;
+  const initialStatusGate=new Promise(resolve=>{releaseInitialStatus=resolve;});
+  set('fetch',async(path,options={})=>{const response=await realFetch(app.origin+path,{...options,headers:{...options.headers,Origin:app.origin,Cookie:cookie}});requests.push({path,method:options.method||'GET',status:response.status});if(path==='/api/status'&&holdInitialStatus){holdInitialStatus=false;await initialStatusGate;}return response;});
   const React=await import('react'),{createRoot}=await import('react-dom/client');
   const vite=await createServer({server:{middlewareMode:true,hmr:false,ws:false,watch:null},logLevel:'error'});
   const {SessionProvider}=await vite.ssrLoadModule('/lib/session.jsx'),{default:App}=await vite.ssrLoadModule('/App.jsx');
@@ -34,10 +36,12 @@ test('saved same-case rename refreshes the chat toolbar on return without reload
   const click=async node=>{assert.ok(node,'Expected button');assert.equal(node.disabled,false);await React.act(async()=>node.click());await flush();};
   const change=async(node,value)=>{assert.ok(node,'Expected input');await React.act(async()=>{const proto=node.tagName==='TEXTAREA'?dom.window.HTMLTextAreaElement.prototype:node.tagName==='SELECT'?dom.window.HTMLSelectElement.prototype:dom.window.HTMLInputElement.prototype;Object.getOwnPropertyDescriptor(proto,'value').set.call(node,value);node.dispatchEvent(new dom.window.Event(node.tagName==='SELECT'?'change':'input',{bubbles:true}));});await flush();};
   const input=label=>{const node=[...document.querySelectorAll('label')].find(node=>!node.closest('[hidden]')&&node.textContent===label);return node&&document.getElementById(node.htmlFor);};
-  const nav=label=>click(button(label,document.querySelector('nav')));
+  const nav=async label=>{await wait(()=>{const scope=document.querySelector('nav[aria-label="Workspace navigation"]');return scope&&button(label,scope);},'Authenticated navigation ready');await click(button(label,document.querySelector('nav[aria-label="Workspace navigation"]')));};
   const title=()=>document.querySelector('.chat-toolbar [data-slot="card-title"]')?.textContent;
   await React.act(async()=>root.render(React.createElement(SessionProvider,null,React.createElement(App))));
   await wait(()=>button('Switch interface to English'),'App loaded');await click(button('Switch interface to English'));
+  assert.equal(document.querySelector('nav[aria-label="Workspace navigation"]'),null,'Language is usable while authentication is still loading');
+  releaseInitialStatus();
   await nav('Customers');await wait(()=>button('Open saved case: '+record.title),'Saved case listed');await click(button('Open saved case: '+record.title));
   await wait(()=>title()===record.title&&!button('New conversation').disabled,'Original chat title loaded');
   await change(document.querySelector('.chat-toolbar select'),first.id);await wait(()=>!button('New conversation').disabled,'Selected conversation loaded');

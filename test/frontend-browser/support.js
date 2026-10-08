@@ -14,11 +14,27 @@ export const SOURCE = [
 export const ORIGINAL_NAME = 'synthetic-standalone-original.txt';
 export const ORIGINAL_BYTES = Buffer.from('Synthetic standalone original\r\nNot linked to any customer or case.\r\nLiteral text: <img src=x onerror=alert(1)>\r\n', 'utf8');
 
-export async function english(page) {
-  if (await page.locator('html').getAttribute('lang') !== 'en') {
-    await page.getByRole('button', { name: 'Switch interface to English', exact: true }).click();
-  }
-  await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+export async function revealAccountAction(page, name) {
+  // The loading header is replaced by the authenticated mobile menu. Choose a
+  // control only after the first account-layout decision has committed.
+  await expect(page.locator('main')).toBeVisible();
+  await expect(page.getByRole('status', { name: /^(Connecting|正在连接)$/u })).toHaveCount(0);
+  await expect.poll(async () => await page.locator('.wb-topbar').isVisible() || await page.locator('main [data-slot="card"]').first().isVisible(), { message: 'Settled authenticated workspace or signed-out account surface' }).toBe(true);
+  const action = page.getByRole('button', { name, exact: true });
+  if (!await action.first().isVisible()) await page.getByRole('button', { name: /^(Account menu|账户菜单)$/u }).click();
+  await expect(action.first()).toBeVisible();
+  return action.first();
+}
+export async function switchLanguage(page, lang, keyboard = false) {
+  if ((await page.locator('html').getAttribute('lang')) === (lang === 'en' ? 'en' : 'zh-CN')) return;
+  const action = await revealAccountAction(page, lang === 'en' ? 'Switch interface to English' : '切换界面为中文');
+  if (keyboard) await action.press('Enter'); else await action.click();
+  await expect(page.locator('html')).toHaveAttribute('lang', lang === 'en' ? 'en' : 'zh-CN');
+}
+export async function english(page) { await switchLanguage(page, 'en'); }
+export async function accountSettings(page, keyboard = false) {
+  const action = await revealAccountAction(page, (await page.locator('html').getAttribute('lang')) === 'en' ? 'Account and settings' : '账户与设置');
+  if (keyboard) await action.press('Enter'); else await action.click();
 }
 
 // Existing synthetic users were seeded privately by the fixture. This helper
@@ -41,7 +57,7 @@ export async function login(page, username) {
 }
 
 export async function navigate(page, name) {
-  await page.getByRole('navigation', { name: 'Workspace navigation' }).getByRole('button', { name, exact: true }).click();
+  await page.getByRole('navigation', { name: /^(Workspace navigation|工作区导航)$/u }).getByRole('button', { name, exact: true }).click();
 }
 
 export async function reload(page) {
@@ -52,8 +68,9 @@ export async function reload(page) {
 }
 
 export async function logout(page, { cancel = false } = {}) {
+  const control = await revealAccountAction(page, 'Sign out');
   const dialog = page.waitForEvent('dialog');
-  const click = page.getByRole('button', { name: 'Sign out', exact: true }).click();
+  const click = control.click();
   const confirmation = await dialog;
   expect(confirmation.type()).toBe('confirm');
   expect(confirmation.message()).toContain('Sign out of this account?');
@@ -147,8 +164,8 @@ export async function noHorizontalOverflow(page) {
   expect(measurement.clipped, 'Visible controls must fit inside the viewport').toEqual([]);
 }
 
-export async function screenshot(page, testInfo, name) {
+export async function screenshot(page, testInfo, name, fullPage = true) {
   const path = testInfo.outputPath(`synthetic-${name}.png`);
-  await page.screenshot({ path, fullPage: true, animations: 'disabled' });
+  await page.screenshot({ path, fullPage, animations: 'disabled' });
   await testInfo.attach(`Synthetic fixture: ${name}`, { path, contentType: 'image/png' });
 }
