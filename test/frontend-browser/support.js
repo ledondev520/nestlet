@@ -15,6 +15,10 @@ export const ORIGINAL_NAME = 'synthetic-standalone-original.txt';
 export const ORIGINAL_BYTES = Buffer.from('Synthetic standalone original\r\nNot linked to any customer or case.\r\nLiteral text: <img src=x onerror=alert(1)>\r\n', 'utf8');
 
 export async function revealAccountAction(page, name) {
+  // The loading header is replaced by the authenticated mobile menu. Choose a
+  // control only after the first account-layout decision has committed.
+  await expect(page.locator('main')).toBeVisible();
+  await expect(page.getByRole('status', { name: /^(Connecting|正在连接)$/u })).toHaveCount(0);
   const action = page.getByRole('button', { name, exact: true });
   if (!await action.first().isVisible()) await page.getByRole('button', { name: /^(Account menu|账户菜单)$/u }).click();
   await expect(action.first()).toBeVisible();
