@@ -38,7 +38,7 @@ Before candidate start, failure may resume only the verified predecessor after c
 
 Never lower user_version, delete new schema objects, prune/remove volumes, overwrite live data, or restore automatically. An explicit older snapshot cutover can lose later case/review writes and revive passwords, one-time email actions or grants; assess those security effects and recovery point first. Restore database and originals together to a separate verified location, using the exact compatible image. Same-server copies do not establish off-host disaster recovery.
 
-Service recreation invalidates process-local sessions and RAM-only provider settings; privately configured server settings remain the existing operations responsibility. Users may need to sign in again after deployment. Verification auto-login reduces the registration flow's extra login; it does not make sessions durable across restart. Do not infer proof replay or credential reset from a lost response.
+For the schema7 release described here, service recreation invalidates process-local sessions and RAM-only provider settings. The subsequent [schema8 candidate](durable-login-sessions.md) makes unexpired sessions durable across routine restart; its first migration cannot recover old RAM sessions. RAM-only provider settings remain restart-sensitive and privately configured server settings remain the existing operations responsibility. Do not infer proof replay or credential reset from a lost response.
 
 ## Local combined evidence
 

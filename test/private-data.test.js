@@ -220,7 +220,7 @@ test('pre-upgrade schema3 backup remains schema3 and leaves source unchanged thr
     migrated.close();
   }
   check = new DatabaseSync(restored.filename, { readOnly: true });
-  assert.equal(check.prepare('PRAGMA user_version').get().user_version, 7);
+  assert.equal(check.prepare('PRAGMA user_version').get().user_version, 8);
   check.close();
   assert.deepEqual(readFileSync(filename), before);
   assert.equal(verifyPrivateBackup({ input: output }).schemaVersion, 3);
@@ -377,7 +377,7 @@ test('current-schema private snapshot preserves verified email binding, pending 
   store.emailAuth.markAccepted(reset.tokenHash, now); assert.equal(store.emailAuth.reserveRequest(email, 'synthetic-ip', now), 'allowed');
   store.close();
   const output = join(f.root, 'email-snapshot');
-  const backed = await backupPrivateData({ ...f, output }); assert.equal(backed.schemaVersion, 7);
+  const backed = await backupPrivateData({ ...f, output }); assert.equal(backed.schemaVersion, 8);
   const restored = await restorePrivateBackup({ input: output, output: join(f.root, 'email-restored') });
   const recovered = openStorage({ filename: restored.filename });
   try {

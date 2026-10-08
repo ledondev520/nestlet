@@ -246,7 +246,7 @@ test('case payload validation rejects malformed, oversized, credential-bearing, 
   assert.deepEqual(after, baseline);
 });
 
-test('actual SQLite cases and named identities survive a server reopen while old sessions do not', async () => {
+test('actual SQLite cases and named identities survive a server reopen and unexpired sessions do too', async () => {
   const records = {};
   for (const name of ['owner', 'trial-a']) records[name] = await create(sessions[name], `Durable ${name} case`);
   const oldSessions = sessions;
@@ -255,7 +255,7 @@ test('actual SQLite cases and named identities survive a server reopen while old
   server = await start();
   for (const name of ['owner', 'trial-a', 'trial-b']) {
     const response = await request('/api/cases', { session: oldSessions[name] });
-    assert.equal(response.status, 401);
+    assert.equal(response.status, 200);
   }
   sessions = {};
   for (const name of ['owner', 'trial-a', 'trial-b']) sessions[name] = await login(name);

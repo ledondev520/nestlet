@@ -128,7 +128,7 @@ test('historical schema4→current is additive and preserves every users/data ro
     }
   } finally { storage.close(); }
   inspect(f.filename, db => {
-    assert.equal(db.prepare('PRAGMA user_version').get().user_version, 7);
+    assert.equal(db.prepare('PRAGMA user_version').get().user_version, 8);
     assert.equal(db.prepare('PRAGMA application_id').get().application_id, 0x4e53544c);
     assertPreserved(db, f.before);
     for (const table of ['email_identities', 'email_actions', 'email_rate_buckets'])
@@ -178,15 +178,15 @@ test('failure late in schema5 migration rolls back all email DDL and leaves sche
   });
 });
 
-test('future schema8 fails closed without changing persistent database bytes, schema or journal mode', t => {
+test('future schema9 fails closed without changing persistent database bytes, schema or journal mode', t => {
   const f = fixture(t);
-  inspect(f.filename, db => { db.exec('PRAGMA journal_mode=WAL; PRAGMA user_version=8;'); });
+  inspect(f.filename, db => { db.exec('PRAGMA journal_mode=WAL; PRAGMA user_version=9;'); });
   const bytes = readFileSync(f.filename), files = readdirSync(f.directory).sort();
   assert.throws(() => openStorage({ filename: f.filename }), error => error.code === 'STORAGE_VERSION_UNSUPPORTED');
   assert.deepEqual(readFileSync(f.filename), bytes);
   assert.deepEqual(readdirSync(f.directory).sort(), files);
   inspect(f.filename, db => {
-    assert.equal(db.prepare('PRAGMA user_version').get().user_version, 8);
+    assert.equal(db.prepare('PRAGMA user_version').get().user_version, 9);
     assert.equal(db.prepare('PRAGMA journal_mode').get().journal_mode, 'wal');
     assertPreserved(db, f.before);
     assert.deepEqual(schema(db), f.before.schema);

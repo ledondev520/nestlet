@@ -41,6 +41,7 @@ test('integrated settings expose owner-only versioned account controls and deleg
   await React.act(async()=>root.render(React.createElement(SessionProvider,null,React.createElement(Harness))));
   await wait(()=>button('Switch interface to English'),'App mounted');await click(button('Switch interface to English'));
   assert.equal(requests.some(row=>row.path==='/api/admin/accounts'),false,'Conversation does not read the directory');
+  await wait(()=>button('Account and settings'),'Authenticated workspace ready');
   await click(button('Account and settings'));await wait(()=>button('Grant administrator access: '+ordinary.username),'Owner directory mounted');
   assert.equal(document.querySelector('[data-testid="account-access"]').textContent,'Owner');
   assert.ok(button('Refresh operational status'));assert.equal(button('Grant administrator access: owner'),undefined);assert.equal(button('Grant administrator access: synthetic-admin-legacy'),undefined);

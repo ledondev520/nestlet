@@ -43,7 +43,7 @@ const publicDirectory = fileURLToPath(root);
 if (assetDirectory === publicDirectory.slice(0,-1) || assetDirectory.startsWith(publicDirectory)) throw new Error('Private assets must be outside the public directory.');
 const assetVault = openAssetVault({directory:assetDirectory});
 const telemetry = createTelemetry(storage);
-const auth = createOperatorAuth({ passwordHash: process.env.NESTLET_OPERATOR_PASSWORD_HASH, operatorUsername: process.env.NESTLET_OPERATOR_USERNAME, publicOrigin, host: process.env.HOST,
+const auth = createOperatorAuth({ sessionStore: storage.authSessions, passwordHash: process.env.NESTLET_OPERATOR_PASSWORD_HASH, operatorUsername: process.env.NESTLET_OPERATOR_USERNAME, publicOrigin, host: process.env.HOST,
   findTrialUser: username => storage.findUserByUsername(username), findTrialUserById: id => storage.getUserById(id),
   findUserByEmail: email => storage.emailAuth.findByEmail(email),
   hasAdministratorCapability: id => storage.accountAdministration.administrator(id) });

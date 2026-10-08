@@ -46,7 +46,7 @@ jobs:
             echo "Product entry: $NESTLET_BROWSER_ENTRY_PATH"
             echo 'This job uses built frontend assets, real HTTP, real SQLite, and synthetic disposable accounts/files.'
             echo 'Read the test result for pass/fail. A component-only pass does not establish the product journeys.'
-            echo 'The customer-case scenario tests an isolated Node restart with the same SQLite/assets and fresh sign-in; check individual test results.'
+            echo 'The customer-case scenario tests an isolated Node restart with the same SQLite/assets and an unchanged valid login session; check individual test results.'
             echo 'Live DeepSeek extraction/chat/vision, genuine email delivery, production host/container restart or restore, and production deployment are NOT RUN by this job.'
           } >> "$GITHUB_STEP_SUMMARY"
       - name: Retain synthetic browser report and failure evidence

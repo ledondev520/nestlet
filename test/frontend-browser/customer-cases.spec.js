@@ -93,15 +93,17 @@ test('customer → two cases → resolved question and document versions → rea
   second = await saveLinkedMaterial(page, second, secondSource);
   const secondConversation = await createEmptyConversation(page, app, second, 'Synthetic second-case discussion');
 
-  await test.step('Restart the real server on the same SQLite/assets and require a fresh sign-in', async () => {
+  await test.step('Restart the real server on the same SQLite/assets without a repeated sign-in', async () => {
     const priorPid = app.child.pid;
+    const before = await getJson(page, app, '/api/status');
     await app.restart();
     expect(app.child.pid).not.toBe(priorPid);
-    expect((await page.request.get(app.origin + `/api/cases/${first.id}`)).status()).toBe(401);
+    expect((await page.request.get(app.origin + `/api/cases/${first.id}`)).status()).toBe(200);
+    const resumed = await getJson(page, app, '/api/status');
+    expect(resumed).toMatchObject({ authenticated: true, userId: before.userId, csrfToken: before.csrfToken });
     await reload(page);
-    await expect(page.getByLabel('Password', { exact: true })).toBeVisible();
-    await expect(page.locator('body')).not.toContainText(first.title);
-    await signInCustomer(page, app);
+    await expect(page.getByRole('navigation', { name: 'Workspace navigation' })).toBeVisible();
+    await expect(page.getByLabel('Password', { exact: true })).not.toBeVisible();
   });
 
   await test.step('Reopen both cases without mixing sources, original bytes, facts, questions or artifact versions', async () => {

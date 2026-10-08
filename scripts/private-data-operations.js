@@ -19,7 +19,7 @@ import { createHash } from 'node:crypto';
 import { preparePrivateDirectory, openAssetVault } from '../private-assets.js';
 import { assetId, ASSET_LIMITS } from '../asset-domain.js';
 const APPLICATION_ID = 0x4e53544c;
-const SUPPORTED_SCHEMAS = [1, 2, 3, 4, 5, 6, 7];
+const SUPPORTED_SCHEMAS = [1, 2, 3, 4, 5, 6, 7, 8];
 const schemaVersion = (db) => db.prepare('PRAGMA user_version').get().user_version;
 const fail = (message) => {
   throw new Error(message);
@@ -118,11 +118,20 @@ function complete(output) {
     closeSync(parent);
   }
 }
-function openDatabase(filename) {
+function openDatabase(filename, { readOnly = true } = {}) {
   const fd = privateDescriptor(filename);
-  closeSync(fd);
+  try {
+    // Reject a checkpointed future schema before SQLite can create WAL reader
+    // sidecars. This is a refusal preflight only; SQLite remains authoritative
+    // below because a live WAL may contain a newer header/schema.
+    const header = Buffer.alloc(100);
+    if (readSync(fd, header, 0, header.length, 0) === 100 &&
+        header.subarray(0,16).equals(Buffer.from('SQLite format 3\0')) &&
+        header.readUInt32BE(60) > Math.max(...SUPPORTED_SCHEMAS))
+      fail('Only a recognized Nestlet schema1–8 database is supported.');
+  } finally { closeSync(fd); }
   const db = new DatabaseSync(filename, {
-    readOnly: true,
+    readOnly,
     allowExtension: false,
     enableForeignKeyConstraints: true,
     // Bound native lock contention, including the asynchronous backup's first
@@ -136,7 +145,7 @@ function openDatabase(filename) {
       db.prepare('PRAGMA application_id').get().application_id !== APPLICATION_ID ||
       !SUPPORTED_SCHEMAS.includes(schemaVersion(db))
     )
-      fail('Only a recognized Nestlet schema1–7 database is supported.');
+      fail('Only a recognized Nestlet schema1–8 database is supported.');
     if (
       db.prepare('PRAGMA integrity_check').get().integrity_check !== 'ok' ||
       db.prepare('PRAGMA foreign_key_check').all().length
@@ -329,7 +338,7 @@ export async function restorePrivateBackup({ input, output }) {
   const original = openAssetVault({ directory: join(input, 'assets') }),
     target = openAssetVault({ directory: join(output, 'assets') });
   for (const asset of checked.manifest.assets) target.write(asset.id, original.read(asset));
-  const restored = openDatabase(filename);
+  const restored = openDatabase(filename, { readOnly: false });
   try {
     if (schemaVersion(restored) !== checked.schemaVersion)
       fail('Restored schema differs from its snapshot.');
@@ -337,6 +346,8 @@ export async function restorePrivateBackup({ input, output }) {
     if (JSON.stringify(rows) !== JSON.stringify(checked.manifest.assets))
       fail('Restored asset inventory differs.');
     for (const asset of rows) target.read(asset);
+    // Never resurrect logged-out or credential-revoked bearer sessions from a backup.
+    if (checked.schemaVersion >= 8) restored.exec('DELETE FROM auth_sessions');
   } finally {
     restored.close();
   }
