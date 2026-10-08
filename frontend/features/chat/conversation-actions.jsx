@@ -40,7 +40,7 @@ export function ConversationActionReview({proposal,userId,caseId,conversationId,
   return <section data-testid="conversation-action-review" className="space-y-3 rounded border p-3" aria-label={en?'Review proposed action':'核对建议操作'}>
     <h2 className="text-sm font-semibold">{suggestion?(en?'Suggested case updates':'案例更新建议'):(en?'English draft preview':'英文草稿预览')}</h2>
     <p className="text-xs text-muted-foreground">{en?'Unreviewed suggestion. You can answer below to review facts, or keep them as unreviewed suggestions. No message or form is sent.':'待核实建议。可直接回答来核对事实，也可保留为待核实建议。不会发送消息或提交表格。'}</p>
-    <p className="break-all text-xs text-muted-foreground">{en?'Saved source message':'已存来源消息'}: {proposal.sourceMessageId} · {en?'Case version':'案例版本'} {proposal.expectedVersion}</p>
+    <p className="break-all text-xs text-muted-foreground">{en?'Saved source message':'已存来源消息'}: {proposal.sourceDisplayId||(en?'Saved message':'已保存消息')} · {en?'Case version':'案例版本'} {proposal.expectedVersion}</p>
     {suggestion?<ul className="space-y-2 text-sm">{proposal.preview.map(row=><li key={`${row.group}:${row.key}`}>
       <strong>{labels[row.key]?.[en?0:1]||row.key}</strong>
       <p className="whitespace-pre-wrap break-words">{en?'Current':'当前'}: {row.before||(en?'Not provided':'未提供')}</p>

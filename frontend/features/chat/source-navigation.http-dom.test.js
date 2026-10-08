@@ -73,9 +73,9 @@ test('real HTTP source reads require exact envelope membership/version and accou
   const sources = envelope([source('client', client)]), opened = [];
   await mountSources({ sources, onOpenSourceCase: value => { opened.push(value); return true; } });
   assert.equal(opened.length, 0); await click(button('Choose a customer case'));
-  await wait(() => host.textContent.includes(a.id) && host.textContent.includes(b.id));
+  await wait(() => host.textContent.includes(a.displayId) && host.textContent.includes(b.displayId));
   assert.equal(opened.length, 0, 'Inspection must not adopt the first matching case');
-  await click(button(`Open case: ${b.title} · ${b.id}`)); await wait(() => opened.length === 1);
+  await click(button(`Open case: ${b.title} · ${b.displayId}`)); await wait(() => opened.length === 1);
   assert.equal(opened[0].targetCaseId, b.id); assert.equal(opened[0].caseId, null);
   assert.throws(() => sourceFromEnvelope(sources, 'S2'));
   const before = owner.calls.length;
@@ -223,8 +223,8 @@ test('read-only lookup handles exact customer/case results, empty search and can
   await wait(() => host.querySelectorAll('[data-source-id]').length === 2);
   assert.equal(opened.length, 0);
   await click(button('Choose a customer case'));
-  await wait(() => button(`Open case: ${record.title} · ${record.id}`));
-  await click(button(`Open case: ${record.title} · ${record.id}`));
+  await wait(() => button(`Open case: ${record.title} · ${record.displayId}`));
+  await click(button(`Open case: ${record.title} · ${record.displayId}`));
   await wait(() => opened.length === 1); assert.equal(opened[0].targetCaseId, record.id);
   await fill(input('Customer name or case title'), 'No such synthetic lookup');
   await click(button('Find saved records')); await wait(() => host.textContent.includes('No matching saved'));
@@ -253,8 +253,8 @@ test('empty actual App finds and selects an existing case without provider confi
   const callsStart = owner.calls.length;
   await fill(input('Customer name or case title'), 'Synthetic App lookup');
   await click(button('Find saved records')); await wait(() => button('Choose a customer case'));
-  await click(button('Choose a customer case')); await wait(() => button(`Open case: ${record.title} · ${record.id}`));
-  await click(button(`Open case: ${record.title} · ${record.id}`));
+  await click(button('Choose a customer case')); await wait(() => button(`Open case: ${record.title} · ${record.displayId}`));
+  await click(button(`Open case: ${record.title} · ${record.displayId}`));
   await wait(() => owner.calls.slice(callsStart).some(call=>call.path===`/api/cases/${record.id}/conversations`) && !button('New conversation',host.querySelector('.chat-toolbar')).disabled);
   assert.equal(owner.calls.slice(callsStart).some(call => call.method !== 'GET' && ['/api/cases', '/api/chat', '/api/extract'].includes(call.path)), false);
   await click(button('Materials & facts', host.querySelector('nav[aria-label="Workspace navigation"]')));

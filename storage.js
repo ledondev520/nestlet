@@ -1,3 +1,6 @@
+import { acquireServiceRecoveryFence, preflightServiceRecoveryFence, verifyServiceRecoveryFence, applyServiceRecoveryFence, consumeServiceRecoveryFence } from './service-recovery.js';
+import { SERVICE_SCHEMA_SQL, createServiceEntitlementStorage } from './service-entitlement-storage.js';
+import { RECORD_IDS_SCHEMA_SQL, attachRecordDisplayIds } from './record-display-ids.js';
 import { LIBRARY_CONSENT_SCHEMA_SQL, createLibraryConsentStorage } from './library-consent-storage.js';
 import { AUTH_SESSION_SCHEMA_SQL, createAuthSessionStorage } from './auth-session-storage.js';
 import { createSynchronousTransaction } from './synchronous-transaction.js';
@@ -15,7 +18,7 @@ import { validateDocumentContext, validateFinalArtifact } from './document-conte
 import { ASSET_LIMITS, ASSET_TYPES, assetFilename, assetAssociation, assetKeys, assetId, normalizeAssetSearch, assetFail } from './asset-domain.js';
 import { TELEMETRY_LIMITS, CLIENT_EVENTS, SERVER_EVENTS, validateStoredTelemetryEvent, telemetryId } from './telemetry.js';
 
-const SCHEMA_VERSION = 9;
+const SCHEMA_VERSION = 10;
 const APPLICATION_ID = 0x4e53544c; // NSTL, distinct from unrelated SQLite files.
 export const MAX_CASE_BYTES = 256 * 1024;
 export const MAX_SOURCE_CHARS = 50_000;
@@ -233,8 +236,13 @@ function prepareFile(filename) {
 export function openStorage({ filename, reservedUsername = process.env.NESTLET_OPERATOR_USERNAME || 'owner' } = {}) {
   const reservedAlias = typeof reservedUsername === 'string' && /^[\x00-\x7f]*$/u.test(reservedUsername) ? reservedUsername.trim().toLowerCase() : null;
   const path = prepareFile(filename);
-  const db = new DatabaseSync(path, { enableForeignKeyConstraints: true, enableDoubleQuotedStringLiterals: false,
-    allowExtension: false, timeout: 5000 });
+  const recovery = acquireServiceRecoveryFence(path), recoveryFence = recovery.fence;
+  let db;
+  try {
+    preflightServiceRecoveryFence(path,recoveryFence);
+    db = new DatabaseSync(path, { enableForeignKeyConstraints: true, enableDoubleQuotedStringLiterals: false,
+      allowExtension: false, timeout: 5000 });
+  } catch (error) { recovery.release(); throw error; }
   let closed = false;
   const transaction = createSynchronousTransaction(db);
   try {
@@ -249,11 +257,12 @@ export function openStorage({ filename, reservedUsername = process.env.NESTLET_O
       return currentVersion;
     };
     // Identity is checked before any persistent PRAGMA or migration, including for unrelated private files.
-    transaction(validateSchemaIdentity);
+    transaction(() => { validateSchemaIdentity(); verifyServiceRecoveryFence(db,path,recoveryFence); });
     db.exec('PRAGMA journal_mode = DELETE; PRAGMA synchronous = FULL; PRAGMA trusted_schema = OFF; PRAGMA secure_delete = ON;');
     transaction(() => {
       // Recheck under the write lock, so simultaneous initial server/CLI opens cannot race a migration.
       const currentVersion = validateSchemaIdentity();
+      verifyServiceRecoveryFence(db,path,recoveryFence);
       if (currentVersion === 0) {
         db.exec(`CREATE TABLE users (
           id TEXT PRIMARY KEY NOT NULL,
@@ -459,8 +468,12 @@ export function openStorage({ filename, reservedUsername = process.env.NESTLET_O
       if (currentVersion < 7) db.exec(REVIEW_SCHEMA_SQL);
       if (currentVersion < 8) db.exec(AUTH_SESSION_SCHEMA_SQL);
       if (currentVersion < 9) db.exec(LIBRARY_CONSENT_SCHEMA_SQL);
+      if (currentVersion < 10) { db.exec(SERVICE_SCHEMA_SQL); db.exec(RECORD_IDS_SCHEMA_SQL); db.exec('PRAGMA user_version=10'); }
       db.prepare("INSERT INTO users(id, username, role, password_hash, created_at) VALUES('owner', 'owner', 'owner', NULL, ?) ON CONFLICT(id) DO NOTHING").run(new Date().toISOString());
+      applyServiceRecoveryFence(db,recoveryFence);
     });
+    consumeServiceRecoveryFence(path,recoveryFence);
+    recovery.release();
     const userLookup = db.prepare('SELECT id, username, role, password_hash AS passwordHash, created_at AS createdAt FROM users WHERE id = ?');
     const nameLookup = db.prepare('SELECT id, username, role, password_hash AS passwordHash, created_at AS createdAt FROM users WHERE username = ?');
     const lookup = db.prepare('SELECT id, title, client_id AS clientId, payload_json AS payloadJson, version, created_at AS createdAt, updated_at AS updatedAt FROM cases WHERE user_id = ? AND id = ?');
@@ -610,6 +623,7 @@ export function openStorage({ filename, reservedUsername = process.env.NESTLET_O
     };
     try { telemetryTransaction(() => pruneTelemetry()); } catch { /* Optional maintenance cannot disable business storage. */ }
     const api = {
+      serviceEntitlements: createServiceEntitlementStorage({db,transaction,requireUser}),
       authSessions: createAuthSessionStorage({db,transaction}),
       libraryPermissions: createLibraryConsentStorage({db,transaction,requireUser}),
       emailAuth: createEmailAuthStorage({ db, transaction, maxUsers: MAX_TRIAL_USERS }),
@@ -832,6 +846,8 @@ export function openStorage({ filename, reservedUsername = process.env.NESTLET_O
           if (!record) return null;
           const conversation = conversationLookup.get(id,request.sourceConversationId);
           const message = fullMessage(db.prepare(`SELECT ${messageColumns} FROM messages WHERE user_id=? AND id=?`).get(id,request.sourceMessageId));
+          if(conversation)conversation.displayId=api.recordDisplayId(id,'conversation',conversation.id);
+          if(message)message.displayId=api.recordDisplayId(id,'message',message.id);
           const proposal = prepareConversationAction(request,{record,conversation,message});
           // Re-read and deduplicate inside the same transaction as insertArtifact.
           return insertArtifact(id,recordId,artifactPayload({kind:proposal.kind,title:proposal.title,status:'draft',content:proposal.content,sourceConversationId:conversation.id,sourceMessageId:message.id,expectedCaseVersion:record.version},{generationMethod:'user-edited'}));
@@ -926,7 +942,8 @@ export function openStorage({ filename, reservedUsername = process.env.NESTLET_O
       },
       close() { if (!closed) { db.close(); closed = true; } },
     };
+    attachRecordDisplayIds(api,db,requireUser);
     api.conversationReviews = createConversationReviewStorage({db,transaction,api});
     return api;
-  } catch (error) { db.close(); throw error; }
+  } catch (error) { db.close(); recovery.release(); throw error; }
 }

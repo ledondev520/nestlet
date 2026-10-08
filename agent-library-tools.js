@@ -43,6 +43,7 @@ export const LIBRARY_SYSTEM_PROMPT = `When library tools are supplied, the user 
 function metadata(kind, row) {
   const title = clean(kind === 'client' ? row.displayName : kind === 'asset' ? row.originalFilename : row.title);
   const result = { kind, id: row.id, title: title.slice(0, 160), titleTruncated: title.length > 160 || row.titleTruncated === true, version: row.version };
+  if (typeof row.displayId === 'string' && /^(KF|SX|CL|WS)\d{8}$/u.test(row.displayId)) result.displayId=row.displayId;
   for (const key of ['caseId', 'clientId', 'createdAt', 'updatedAt', 'sourceCaseVersion', 'currentCaseVersion', 'isStale', 'needsRegeneration']) {
     if (row[key] !== undefined) result[key] = row[key];
   }

@@ -206,6 +206,7 @@ export function librarySourceEvent(library,requestId,locale='en') {
     if(!/^S(?:[1-9]|[1-3][0-9]|4[0-8])$/u.test(source.sourceId)||seen.has(source.sourceId)||!['client','case','asset','artifact'].includes(source.kind)||!UUID.test(source.id)||!Number.isSafeInteger(source.version)||source.version<1||!['metadata','read','unavailable'].includes(source.retrievalState))fail('LIBRARY_UNAVAILABLE',502);
     seen.add(source.sourceId);
     const item={sourceId:source.sourceId,kind:source.kind,id:source.id,version:source.version,title:lineText(source.title,160),titleTruncated:source.titleTruncated===true,retrievalState:source.retrievalState};
+    if(typeof source.displayId==='string'&&/^(KF|SX|CL|WS)\d{8}$/u.test(source.displayId))item.displayId=source.displayId;
     for(const key of ['caseId','clientId'])if(source[key]!=null){if(!UUID.test(source[key]))fail('LIBRARY_UNAVAILABLE',502);item[key]=source[key];}
     for(const key of ['createdAt','updatedAt'])if(typeof source[key]==='string'&&/^\d{4}-\d{2}-\d{2}T[0-9:.]+Z$/u.test(source[key])&&Number.isFinite(Date.parse(source[key])))item[key]=source[key].slice(0,30);
     for(const key of ['sourceCaseVersion','currentCaseVersion'])if(source[key]!=null){if(!Number.isSafeInteger(source[key])||source[key]<1)fail('LIBRARY_UNAVAILABLE',502);item[key]=source[key];}
@@ -224,7 +225,7 @@ export function librarySourceEvent(library,requestId,locale='en') {
   const lines=items.map(item=>{
     const date=(item.updatedAt||item.createdAt||'').slice(0,10);
     const ranges=item.excerpts?.map(window=>`${window.offset}:${window.endOffset}/${window.textLength}`).join(',');
-    return `[${item.sourceId}] ${item.kind}:${item.id} v${item.version}; ${item.retrievalState}${item.status?`; ${item.status}`:''}${item.isStale?'; stale=true':''}${item.needsRegeneration?'; regenerate=true':''}${item.sourceCaseVersion?`; source-case-v${item.sourceCaseVersion}`:''}${item.currentCaseVersion?`; current-case-v${item.currentCaseVersion}`:''}${item.truncated?'; partial=true':''}${date?`; ${date}`:''}${ranges?`; sanitized-chars ${ranges}`:''}; ${lineText(item.title,64)}${item.title.length>64||item.titleTruncated?'… [title shortened]':''}`;
+    return `[${item.sourceId}] ${item.kind}:${item.displayId||item.sourceId} v${item.version}; ${item.retrievalState}${item.status?`; ${item.status}`:''}${item.isStale?'; stale=true':''}${item.needsRegeneration?'; regenerate=true':''}${item.sourceCaseVersion?`; source-case-v${item.sourceCaseVersion}`:''}${item.currentCaseVersion?`; current-case-v${item.currentCaseVersion}`:''}${item.truncated?'; partial=true':''}${date?`; ${date}`:''}${ranges?`; sanitized-chars ${ranges}`:''}; ${lineText(item.title,64)}${item.title.length>64||item.titleTruncated?'… [title shortened]':''}`;
   });
   const appendix=`\n\n---\n${heading}\nRequest: ${requestId}\n${lines.join('\n')}`;
   const result={requestId,items,appendix};

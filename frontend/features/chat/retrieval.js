@@ -27,6 +27,7 @@ export function normalizeLibrarySources(value) {
     seen.add(item.sourceId);
     const result = { sourceId:item.sourceId, kind:item.kind, id:item.id, version:item.version, title:item.title,
       titleTruncated:item.titleTruncated, retrievalState:item.retrievalState };
+    if(item.displayId!==undefined){if(typeof item.displayId!=='string'||!/^(KF|SX|CL|WS)\d{8}$/u.test(item.displayId))invalid();result.displayId=item.displayId;}
     for (const key of ['caseId','clientId']) if (item[key] !== undefined && item[key] !== null) {
       if (!uuid(item[key])) invalid(); result[key] = item[key];
     }

@@ -10,6 +10,7 @@ export function normalizeConversationProposal(packet) {
   if (!uuid(packet?.requestId) || !plain(p) || !plain(r) || !uuid(p.caseId) || !uuid(p.sourceConversationId) || !uuid(p.sourceMessageId) || !Number.isSafeInteger(p.expectedVersion) || p.expectedVersion < 1 || p.requiresExplicitApply !== true || !['prepare_case_suggestion','prepare_answer_draft'].includes(p.action)) fail();
   const request = {action:p.action,expectedVersion:p.expectedVersion,sourceConversationId:p.sourceConversationId,sourceMessageId:p.sourceMessageId};
   for (const key of Object.keys(request)) if (r[key] !== request[key]) fail();
+  const display={};for(const [key,prefix]of [['sourceDisplayId','XX'],['conversationDisplayId','DH']])if(p[key]!==undefined){if(typeof p[key]!=='string'||!new RegExp('^'+prefix+'\\d{8}$','u').test(p[key]))fail();display[key]=p[key];}
   let preview;
   if (p.action === 'prepare_case_suggestion') {
     if (p.confirm !== false || !Array.isArray(p.preview) || p.preview.length < 1 || p.preview.length > 17) fail();
@@ -37,7 +38,7 @@ export function normalizeConversationProposal(packet) {
   const method=p.action==='prepare_case_suggestion'?'PATCH':'POST';
   const path=`/api/cases/${p.caseId}/${method==='PATCH'?'document-context':'artifacts'}`;
   if(p.apply?.method!==method||p.apply.path!==path||!plain(p.apply.body)||!same(p.apply.body.conversationAction,r))fail();
-  return {requestId:packet.requestId,proposal:{action:p.action,caseId:p.caseId,expectedVersion:p.expectedVersion,sourceConversationId:p.sourceConversationId,sourceMessageId:p.sourceMessageId,requiresExplicitApply:true,request,conflicts:[...p.conflicts],...(preview?{preview}:{kind:p.kind,status:'draft',title:p.title,content:p.content}),apply:{method,path,body:{conversationAction:request}}}};
+  return {requestId:packet.requestId,proposal:{...display,action:p.action,caseId:p.caseId,expectedVersion:p.expectedVersion,sourceConversationId:p.sourceConversationId,sourceMessageId:p.sourceMessageId,requiresExplicitApply:true,request,conflicts:[...p.conflicts],...(preview?{preview}:{kind:p.kind,status:'draft',title:p.title,content:p.content}),apply:{method,path,body:{conversationAction:request}}}};
 }
 export function proposalMatchesScope(proposal,{caseId,conversationId}) {
   return proposal.caseId===caseId && proposal.sourceConversationId===conversationId;

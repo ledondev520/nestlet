@@ -220,7 +220,7 @@ test('pre-upgrade schema3 backup remains schema3 and leaves source unchanged thr
     migrated.close();
   }
   check = new DatabaseSync(restored.filename, { readOnly: true });
-  assert.equal(check.prepare('PRAGMA user_version').get().user_version, 9);
+  assert.equal(check.prepare('PRAGMA user_version').get().user_version, 10);
   check.close();
   assert.deepEqual(readFileSync(filename), before);
   assert.equal(verifyPrivateBackup({ input: output }).schemaVersion, 3);
@@ -311,7 +311,7 @@ test('live committed WAL snapshots become standalone backups without changing so
     } finally { check.close(); }
   }
   assert.deepEqual(readdirSync(output).sort(), ['assets', 'manifest.json', 'nestlet.sqlite']);
-  assert.deepEqual(readdirSync(join(root, 'restored')).sort(), ['assets', 'nestlet.sqlite']);
+  assert.deepEqual(readdirSync(join(root, 'restored')).sort(), ['assets', 'nestlet.sqlite', 'nestlet.sqlite.service-reconfirm.json']);
   // Later source writes remain independent; the recovery point stays immutable.
   writer.prepare('UPDATE cases SET version=8 WHERE id=?').run(caseId);
   assert.equal(verifyPrivateBackup({ input: output }).schemaVersion, 3);
@@ -377,7 +377,7 @@ test('current-schema restore preserves verified email binding and rate limits bu
   store.emailAuth.markAccepted(reset.tokenHash, now); assert.equal(store.emailAuth.reserveRequest(email, 'synthetic-ip', now), 'allowed');
   store.close();
   const output = join(f.root, 'email-snapshot');
-  const backed = await backupPrivateData({ ...f, output }); assert.equal(backed.schemaVersion, 9);
+  const backed = await backupPrivateData({ ...f, output }); assert.equal(backed.schemaVersion, 10);
   const restored = await restorePrivateBackup({ input: output, output: join(f.root, 'email-restored') });
   const recovered = openStorage({ filename: restored.filename });
   try {
@@ -407,13 +407,13 @@ const inspectBackupDatabase = (filename, read) => {
   try { return read(db); } finally { db.close(); }
 };
 
-for (const version of [5, 9]) test(`schema${version} restore invalidates every email-action kind/readiness while preserving identities and limits`, async t => {
+for (const version of [5, 10]) test(`schema${version} restore invalidates every email-action kind/readiness while preserving identities and limits`, async t => {
   const root = mkdtempSync(join(realpathSync(tmpdir()), 'nestlet-email-recovery-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const source = join(root, 'source'); mkdirSync(source, { mode: 0o700 });
   const filename = join(source, 'nestlet.sqlite'), assetsDirectory = join(source, 'assets');
   mkdirSync(assetsDirectory, { mode: 0o700 }); writeFileSync(filename, '', { mode: 0o600 });
-  if (version === 9) openStorage({ filename }).close();
+  if (version === 10) openStorage({ filename }).close();
   const db = new DatabaseSync(filename), now = Date.now(), userId = randomUUID();
   const salt = randomBytes(16), passwordHash = `scrypt$${salt.toString('base64url')}$${scryptSync('synthetic-recovery-password', salt, 32).toString('base64url')}`;
   const fingerprint = createHash('sha256').update(passwordHash).digest('hex');
@@ -514,7 +514,7 @@ test('a reset consumed after backup cannot be replayed from an isolated restored
   assert.equal(backupDigest(f.filename), liveDigest);
   assert.equal(backupDigest(join(snapshot, 'nestlet.sqlite')), snapshotDigest);
   assert.equal(inspectBackupDatabase(f.filename, db => db.prepare('SELECT password_hash FROM users WHERE id=?').get(f.user.id).password_hash), newHash);
-  assert.equal(verifyPrivateBackup({ input: snapshot }).schemaVersion, 9);
+  assert.equal(verifyPrivateBackup({ input: snapshot }).schemaVersion, 10);
 });
 
 test('failed restored email-action invalidation keeps recovery incomplete and source/snapshot unchanged', async t => {
@@ -531,5 +531,5 @@ test('failed restored email-action invalidation keeps recovery incomplete and so
   assert.ok(readdirSync(output).includes('INCOMPLETE'));
   assert.equal(backupDigest(f.filename), sourceDigest);
   assert.equal(backupDigest(join(snapshot, 'nestlet.sqlite')), snapshotDigest);
-  assert.equal(verifyPrivateBackup({ input: snapshot }).schemaVersion, 9);
+  assert.equal(verifyPrivateBackup({ input: snapshot }).schemaVersion, 10);
 });

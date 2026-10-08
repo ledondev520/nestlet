@@ -15,7 +15,7 @@ export function ChatMessageActions({ message, api, userId, caseId, conversationI
     return () => { mounted.current = false; operation.current?.controller.abort(); if (operation.current) callbacks.current.releaseOperation?.(operation.current.lock); };
   }, []);
   if (!reviewableMessage(message) || !caseId || !conversationId) return null;
-  const title = `Conversation draft · ${message.id.slice(0, 8)}`;
+  const title = message.displayId ? `Conversation draft · ${message.displayId}` : 'Conversation draft';
   async function save(checkOnly = false) {
     if (operation.current || disabled) return;
     const lock = claimOperation?.(); if (claimOperation && !lock) return;

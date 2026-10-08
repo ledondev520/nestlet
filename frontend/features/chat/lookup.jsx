@@ -36,7 +36,7 @@ export function ChatLookup({ api, userId, caseId, lang, active, disabled, onOpen
       const rows = [...clients.clients.map(record => ({ kind: 'client', record })), ...cases.cases.filter(record => typeof record.title === 'string' && record.title.toLocaleLowerCase().includes(match)).slice(0, 24).map(record => ({ kind: 'case', record }))];
       if (!rows.length) { setNotice(en ? 'No matching saved customers or cases.' : '未找到匹配的已保存客户或案例。'); return; }
       const result = normalizeLibrarySources({ requestId: crypto.randomUUID(), appendix: '', items: rows.map(({ kind, record }, index) => ({
-        sourceId: `S${index + 1}`, kind, id: record.id, version: record.version, title: kind === 'client' ? record.displayName : record.title,
+        sourceId: `S${index + 1}`, kind, id: record.id, ...(record.displayId?{displayId:record.displayId}:{}), version: record.version, title: kind === 'client' ? record.displayName : record.title,
         titleTruncated: false, retrievalState: 'metadata', ...(record.clientId ? { clientId: record.clientId } : {})
       })) });
       setSources(result);
