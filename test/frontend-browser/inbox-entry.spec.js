@@ -14,7 +14,7 @@ for (const {width,lang} of [1280,390,320].flatMap(width=>['en','zh'].map(lang=>(
  if(width<960)await toggle.click();
  await rail.getByRole('button',{name:'Synthetic Inbox A',exact:true}).click();
  const composer=page.locator('.chat-input');await composer.fill('Keep this unsent draft');
- await navigate(page,lang==='zh'?'材料与事实':'Materials & facts');await navigate(page,lang==='zh'?'对话':'Conversation');await expect(composer).toHaveValue('Keep this unsent draft');
+ await navigate(page,lang==='zh'?'材料与事实':'Materials & facts');const materialsUrl=page.url();await page.locator('.inbox-skip').focus();await page.keyboard.press('Enter');await expect(page).toHaveURL(materialsUrl);await expect(page.locator('main')).toBeFocused();await navigate(page,lang==='zh'?'对话':'Conversation');await expect(composer).toHaveValue('Keep this unsent draft');
  if(width<960)await toggle.click();
  page.once('dialog',dialog=>dialog.dismiss());await rail.getByRole('button',{name:'Synthetic Inbox B',exact:true}).click();
  await expect(composer).toHaveValue('Keep this unsent draft');

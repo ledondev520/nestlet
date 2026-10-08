@@ -29,3 +29,18 @@
 .inbox-skip { position: absolute; z-index: 60; inset-inline-start: 8px; inset-block-start: -100px; }
 .inbox-skip:focus { inset-block-start: 8px; background: var(--sheet); padding: 12px; }
 .wb-context dd { margin-block-end: 10px; }
+/* Keep all navigation controls visible; horizontal clipping is not a layout fix. */
+.wb-tabs.inbox-navigation { flex-wrap: wrap; overflow: visible; }
+.inbox-navigation .wb-tab { min-inline-size: 0; white-space: normal; }
+.wb-context [data-slot="native-select-wrapper"] { inline-size: 100%; max-inline-size: 100%; min-inline-size: 0; }
+.wb-context select { inline-size: 100%; max-inline-size: 100%; min-inline-size: 0; }
+.wb-context [data-slot="button"] { white-space: normal; block-size: auto; min-block-size: 44px; text-align: center; }
+.wb-rail [data-chat-lookup-slot] form > .flex { flex-direction: column; align-items: stretch; }
+@media(max-width:960px) {
+ .wb-tabs.inbox-navigation { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); }
+ .inbox-navigation .wb-tab { justify-content: center; }
+}
+.wb-context [data-chat-workflow-slot] [data-slot="card-header"] { padding: 14px 14px 6px; }
+.wb-context [data-chat-workflow-slot] [data-slot="card-content"] { padding: 8px 14px 14px; }
+.wb-context [data-slot="button"] { max-inline-size: 100%; }
+.wb-rail [data-chat-lookup-slot] form > .flex > button { align-self: flex-end; }

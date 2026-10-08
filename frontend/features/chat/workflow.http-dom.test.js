@@ -82,6 +82,8 @@ test('chat bridges a persisted conversation into append-only review and the real
   await wait(()=>button('Switch interface to English'),'App loaded');await click(button('Switch interface to English'));
   await wait(()=>document.querySelector('[data-testid="chat-case-workflow"]')?.textContent.includes('sender contact'),'Readiness loaded');
   const workflow=document.querySelector('[data-testid="chat-case-workflow"]');
+  const questions=[...workflow.querySelectorAll('details')].find(node=>node.querySelector('summary')?.textContent.startsWith('Full questions'));
+  assert.ok(questions,'Compact sidebar retains full missing questions behind a disclosure');assert.equal(questions.open,false);assert.match(questions.textContent,/sender contact/);
   assert.match(workflow.textContent,/128 Synthetic Lane/);assert.doesNotMatch(workflow.textContent,/Please provide the property/);assert.match(workflow.textContent,/sender contact/);
   await wait(()=>document.querySelectorAll('[data-testid="chat-message-actions"]').length===5,'Persisted actions loaded');
   const assistant=()=>[...document.querySelectorAll('article[aria-label="Assistant"]')].find(item=>item.textContent.includes(answer.content));

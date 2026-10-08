@@ -56,7 +56,7 @@ export function useLibraryPermission({api,userId,authenticated}) {
 export function LibraryPermissionDialog({lang,open,busy,error,onChoose,onClose,onWithoutLibrary,onRetry,ready=true}) {
   const t=permissionCopy(lang);
   return <Dialog open={open} onOpenChange={value=>{if(!value)onClose();}}>
-    <DialogContent className="max-h-[85dvh] overflow-y-auto" showCloseButton={false} onEscapeKeyDown={event=>{if(busy)event.preventDefault();}} onPointerDownOutside={event=>{if(busy)event.preventDefault();}}>
+    <DialogContent aria-modal="true" className="max-h-[85dvh] overflow-y-auto" showCloseButton={false} onEscapeKeyDown={event=>{if(busy)event.preventDefault();}} onPointerDownOutside={event=>{if(busy)event.preventDefault();}}>
       <DialogHeader><DialogTitle>{t.title}</DialogTitle><DialogDescription>{t.detail}</DialogDescription></DialogHeader>
       <p className="text-sm text-muted-foreground">{t.ordinary}</p>
       <p className="text-sm text-muted-foreground">{t.boundary}</p>

@@ -41,7 +41,7 @@ export async function login(page, username) {
 }
 
 export async function navigate(page, name) {
-  await page.getByRole('navigation', { name: 'Workspace navigation' }).getByRole('button', { name, exact: true }).click();
+  await page.getByRole('navigation', { name: /^(Workspace navigation|工作区导航)$/u }).getByRole('button', { name, exact: true }).click();
 }
 
 export async function reload(page) {

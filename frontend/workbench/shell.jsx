@@ -2,7 +2,7 @@ import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from
 import { PanelLeft, PanelRight, X } from 'lucide-react';
 const copy={zh:{openNav:'打开客户与事项列表',closeNav:'关闭列表',openContext:'打开案例上下文',closeContext:'关闭上下文',navigation:'客户与事项',context:'案例上下文',skip:'跳到工作区'},en:{openNav:'Open customers and cases',closeNav:'Close list',openContext:'Open case context',closeContext:'Close context',navigation:'Customers and cases',context:'Case context',skip:'Skip to workspace'}};
 const query='(max-width: 960px)';
-const externalModal=()=>[...document.querySelectorAll('[role="dialog"][aria-modal="true"]')].some(node=>!node.closest('.wb'));
+const externalModal=()=>[...document.querySelectorAll('[role="dialog"][aria-modal="true"],[data-slot="dialog-content"][data-state="open"]')].some(node=>!node.closest('.wb'));
 const selector='a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),summary,[tabindex]:not([tabindex="-1"])';
 /** Stable desktop/sidebar hosts retain their React portals and feature state.
  * One modal drawer at a time on mobile; no business-state decisions live here. */
@@ -30,12 +30,12 @@ export function WorkbenchShell({lang='zh',brand,topbarEnd,rail,center,context,co
  },[modal,close]);
  useEffect(()=>{
   if(!modal)return;const reconcile=()=>{if(externalModal())close();};
-  const observer=new MutationObserver(reconcile);observer.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['role','aria-modal']});reconcile();return()=>observer.disconnect();
+  const observer=new MutationObserver(reconcile);observer.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['role','aria-modal','data-state']});reconcile();return()=>observer.disconnect();
  },[modal,close]);
  const railHidden=mobile&&modal!=='rail',contextHidden=mobile?modal!=='context':!contextOpen;
  const dialogProps=name=>mobile?{role:'dialog','aria-modal':modal===name?'true':undefined}:{};
  return <div className="wb">
-  <a href="#workspace" className="inbox-skip" inert={!!modal}>{t.skip}</a>
+  <a href="#workspace" className="inbox-skip" inert={!!modal} onClick={event=>{event.preventDefault();mainRef.current?.focus();}}>{t.skip}</a>
   <header className="wb-topbar" inert={!!modal}>
    {mobile&&<button ref={railToggle} type="button" className="wb-icon-button" aria-label={t.openNav} aria-controls={`${id}-rail`} aria-expanded={modal==='rail'} onClick={()=>setDrawer('rail')}><PanelLeft aria-hidden="true" size={20}/></button>}
    {brand}<div className="wb-spacer">{topbarEnd}</div>

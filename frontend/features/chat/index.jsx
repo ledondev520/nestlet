@@ -376,8 +376,8 @@ export function ChatPage({ lang='zh', caseId=null, guidanceAgency='unknown', onC
   const stop=()=>{stopRequested.current=true;controller.current?.abort();};
 
   if(!status.authenticated)return <Card className="paper-card"><CardContent><p>{words.signIn}</p></CardContent></Card>;
-  const workflow = onOpenMaterials && onOpenDocuments ? <ChatCaseWorkflow api={api} lang={lang} caseId={caseId} userId={status.userId} disabled={busy} active={active} refreshKey={`${conversationId}:${messages.length}:${phase === 'idle'}:${actionRevision}`} onSavedTitle={setTitle} onOpenMaterials={onOpenMaterials} onOpenDocuments={onOpenDocuments} /> : null;
-  const lookup = onOpenSourceCase ? <ChatLookup api={api} userId={status.userId} caseId={caseRef.current} lang={lang} active={active}
+  const workflow = onOpenMaterials && onOpenDocuments ? <ChatCaseWorkflow compact={!!workflowTarget} api={api} lang={lang} caseId={caseId} userId={status.userId} disabled={busy} active={active} refreshKey={`${conversationId}:${messages.length}:${phase === 'idle'}:${actionRevision}`} onSavedTitle={setTitle} onOpenMaterials={onOpenMaterials} onOpenDocuments={onOpenDocuments} /> : null;
+  const lookup = onOpenSourceCase ? <ChatLookup compact={!!lookupTarget} api={api} userId={status.userId} caseId={caseRef.current} lang={lang} active={active}
       disabled={phase !== 'idle' || bridgeBusy || retentionBusy || imagePending > 0} onOpenSourceCase={onOpenSourceCase} claimOperation={claimSourceOperation} releaseOperation={releaseSourceOperation} /> : null;
   return <section className="chat-workspace" aria-label={words.title} data-feature="chat">
     <LibraryPermissionDialog lang={lang} open={permissionPrompt&&active} ready={Boolean(permissionPending.current?.snapshot)} onRetry={refreshPermission} busy={permission.busy} error={permissionFailure} onChoose={choosePermission} onClose={closePermission} onWithoutLibrary={sendWithoutLibrary} />
