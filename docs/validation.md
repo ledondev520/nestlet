@@ -497,3 +497,43 @@ No live mail/model/provider calls, deployment, production migration or user cred
 ### Schema8 draft PR CI follow-up
 
 The first PR38 run passed container CI but exposed two test-contract gaps before backend/browser completion: customer browser fixtures still required the old restart-logout behavior, and the integrated Settings DOM test clicked before authenticated navigation was ready on the CI runner. The follow-up retains logged-out-cookie rejection and foreign-account isolation, explicitly requires unchanged user/CSRF and authenticated browser navigation after restart, and waits for actual authenticated Settings readiness. All three real-HTTP browser fixture checks pass locally. Local Chromium launch was blocked by the cloud sandbox's process-singleton socket restriction before a page could execute; no bypass was attempted. Real-browser acceptance remains the official CI gate.
+
+## 2026-10-08 — remembered library permission / schema9 backend candidate
+
+Candidate backend based on `7354803`, in an isolated worktree. All grants/accounts/material below are disposable synthetic fixtures. No actual customer authorization, live model request, production migration, push, merge, or deployment was performed for this entry.
+
+- `npm ci --ignore-scripts`: passed, pinned dependencies installed
+- `npm run check`: passed after final session/revocation changes
+- `npm run build`: passed, existing bundle-size warning remains
+- `npm test`: **396/396 passed** after the final backend changes and built frontend assets. The initial pre-build run had 390/391 pass with only the expected missing-build entrypoint 503; this was corrected by the normal build, not by weakening the test
+- Real local HTTP/session/SQLite with authored provider SSE: exact-origin/CSRF/session requirements; strict input/scope/version validation; no provider calls from legacy checkbox-only, absent, denied, stale or foreign-account grants; persisted decline; atomic racing choices; read-only action-wrapper non-bypass
+- Stream checks: same-account revoke stops an active request while another account completes; revoke after a tool read blocks a later provider request; cross-tab logout and credential rotation stop active/silent streams; read-then-revoke/logout emits no late sources, proposals, private title, or done event
+- Session regression: non-touching in-flight validation neither rewrites last-used time nor prolongs idle expiry; previous durable-session tests continue to pass
+- Schema9 storage: owner/account isolation, reopen persistence, provider id/endpoint/model/policy/category invalidation, monotonic revoke/regrant revision protection, failed-write rollback, account-delete cascade
+- Genuine populated schema8 fixture → schema9: all previous rows/DDL/FKs/sequences/session records/original bytes retained; new permission table empty; schema9 migration conflict rolls back; backup is non-mutating; restore resets sessions and all permission decisions only in the restored copy; untouched schema8 snapshot remains a valid rollback source; future schema10 refused
+
+Browser acceptance, exact-SHA CI/container acceptance, independent review closure, old-binary downgrade refusal rehearsal and any release remain separate gates. See [library permission contract and recovery](library-permission.md). Provider fixtures are not live DeepSeek acceptance.
+
+### Schema9 packaging follow-up
+
+The consent module is now explicitly present in both Docker runtime COPY and the deny-by-default build context. Docker-input tests passed 2/2, including a real runtime-module subset import that opens schema9 and confirms owner consent is unset. The existing container SQLite lifetime write/read and genuine schema1→9 migration smoke scripts also passed when executed locally in a fresh private disposable directory; schema9 table presence, empty permission records, original data, private modes and reopen are checked. All three modified smoke scripts pass syntax checking. Docker itself is unavailable here, so these are local input/SQLite checks, not an image build or container acceptance. The runtime container smoke now explicitly checks the consent module and fail-closed GET/PUT permission routes.
+
+## 2026-10-08 — Chat permission simplification / schema9 candidate
+
+Code candidate `7759f282c472145f372d4670c1bc0a21eabc1e38` (based on schema8 main `7354803`). The composer contains neither per-message checkbox. Read-only proposals default on; explicit apply/review gates remain. Saved-library retrieval requires an explicit, revocable account/provider/policy/category grant and exact grant revision. Existing accounts remain unset. Account settings exposes opt-in/revocation; ordinary chat remains usable after decline.
+
+Observed local evidence:
+
+- `npm ci --ignore-scripts`, `npm run check`, and `npm run build`: passed. Vite reports the existing bundle-size advisory.
+- `npm run test:frontend`: 309/309 passed, including actual React/DOM first-use allow/decline/cancel, input retention, account change, provider mismatch, policy API failure and permission-version payload checks. These are DOM-emulator/protocol tests, not real-browser acceptance.
+- `npm test`: 396/396 passed, including real loopback HTTP/SQLite account/provider isolation, strict same-origin/CSRF writes, stale grants, policy/version invalidation, revoke during tool/provider waits, exact originating-session checks, cross-tab logout and credential invalidation, and suppression of late sources/proposals after revoke. Provider responses in these tests are explicit synthetic doubles; no live model call or real-account grant occurred.
+- Runtime COPY input tests pass with `library-consent-storage.js` included. Local SQLite lifetime and schema1→9 migration smoke pass, and container-smoke script syntax passes. Docker is unavailable locally; actual image/container acceptance remains the official CI gate.
+- A disposable old-binary rehearsal using immutable `7354803:storage.js` rejected schema9 in DELETE and WAL modes without changing bytes/files/modes. An untouched schema8 snapshot created before migration restored and reopened with that old storage, preserving a synthetic case and schema8. This is local synthetic recovery evidence, not production backup/restore.
+
+Actual local Chromium could not launch: sandbox IPC rejected its socket before any page interaction, including an approved retry. No browser flow or screenshot is claimed from those attempts. The official GitHub Chromium workflow is the required remaining browser gate. Three added viewport tests (1280, 390 and 320 px) cover first-use notice, Escape/cancel, decline, remembered allow, revocation and no composer checkboxes using real browser/HTTP/SQLite with synthetic accounts and a controlled unavailable-provider response. The existing proposal and conversational review browser journeys were updated to use default read-only proposals.
+
+Independent boundary review was requested against the combined candidate; report its final result and exact CI SHA separately. This entry does not authorize or claim deployment, production schema migration, real-provider acceptance, or automatic application of model suggestions. See [permission contract](library-permission.md) and [UI flow](chat-permission-flow.md).
+
+### Official CI follow-up, 2026-10-08
+
+At exact head `7759f282c472145f372d4670c1bc0a21eabc1e38`, official Node checks and Docker/container smoke passed. [Chromium run 37726953144](https://github.com/ledondev520/nestlet/actions/runs/37726953144) completed with 29/30 passing, including all three new library-permission viewport journeys and the action/fact-review journeys. The sole failure was an obsolete file-format test expecting the removed library checkbox to exist. Its assertion now requires zero composer checkboxes, unchanged server permission `{decision:'unset',version:0}`, and no provider requests; the rest of the actual parsing and input-preservation journey is retained. The corrected exact-head Chromium rerun remains required; this is not an all-green browser claim.

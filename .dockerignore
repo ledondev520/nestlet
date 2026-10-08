@@ -11,6 +11,7 @@
 !email-auth-domain.js
 !email-auth-storage.js
 !email-delivery.js
+!library-consent-storage.js
 !storage.js
 !telemetry.js
 !chat.js

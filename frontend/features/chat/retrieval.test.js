@@ -14,7 +14,7 @@ test('retrieval consent is optional, boolean-only and snapshotted explicitly; or
   const turn={caseId:randomUUID(),conversationId:randomUUID(),clientMessageId:randomUUID(),text:'Find my saved synthetic record'};
   assert.equal('libraryConsent' in buildChatTurn(turn),false);
   assert.equal('libraryConsent' in buildChatTurn({...turn,libraryConsent:false}),false);
-  assert.equal(buildChatTurn({...turn,libraryConsent:true}).libraryConsent,true);
+  assert.equal(buildChatTurn({...turn,libraryConsent:true,libraryPermissionVersion:1}).libraryConsent,true);
   for(const value of ['true',1,null,{}])assert.throws(()=>buildChatTurn({...turn,libraryConsent:value}),{code:'CHAT_INVALID'});
 });
 test('activity permits only fixed enums and bounded counts, strips prose/arguments/reasoning, and localizes all codes',()=>{
@@ -41,4 +41,10 @@ test('SSE exposes one source appendix before matching completion and counts it i
   await assert.rejects(()=>collect(frame('sources',refs)+frame('sources',refs)+frame('done',done)),{code:'CHAT_STREAM_FAILED'});
   await assert.rejects(()=>collect(frame('sources',refs)+frame('done',{...done,requestId:randomUUID()})),{code:'CHAT_STREAM_FAILED'});
   await assert.rejects(()=>collect(frame('delta',{text:'x'.repeat(64000)})+frame('sources',refs)+frame('done',done)),{code:'CHAT_TOO_LARGE'});
+});
+test('library grant snapshot requires a positive revision and is never attached to ordinary chat',()=>{
+ const turn={caseId:randomUUID(),conversationId:randomUUID(),clientMessageId:randomUUID(),text:'Synthetic saved record'};
+ for(const version of [undefined,0,-1,1.5,'1',null])assert.throws(()=>buildChatTurn({...turn,libraryConsent:true,libraryPermissionVersion:version}),{code:'LIBRARY_CONSENT_REQUIRED'});
+ assert.equal(buildChatTurn({...turn,libraryConsent:true,libraryPermissionVersion:3}).libraryPermissionVersion,3);
+ assert.equal('libraryPermissionVersion' in buildChatTurn({...turn,libraryConsent:false,libraryPermissionVersion:3}),false);
 });

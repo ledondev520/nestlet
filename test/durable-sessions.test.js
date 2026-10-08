@@ -121,3 +121,15 @@ test('touch/delete failures fail closed; cross-connection logout cannot be reviv
     assert.equal(f.reopen().getSession(request(issued)),null);
   } finally {independent.close();}
 });
+
+test('in-flight session checks do not touch last-used time or prolong ordinary idle expiry',async t=>{
+ let now=Date.now();t.mock.method(Date,'now',()=>now);
+ const f=fixture(t),auth=f.auth(),issued=await auth.login(password,'synthetic-user');
+ const before=inspect(f.filename,db=>db.prepare('SELECT last_used FROM auth_sessions').get().last_used);
+ now+=29*60*1000;
+ assert.equal(auth.getSession(request(issued),{touch:false}).userId,f.user.id);
+ assert.equal(inspect(f.filename,db=>db.prepare('SELECT last_used FROM auth_sessions').get().last_used),before);
+ now+=60*1000+1;
+ assert.equal(auth.getSession(request(issued),{touch:false}),null);
+ assert.equal(f.storage.authSessions.size,0);
+});

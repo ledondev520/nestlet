@@ -177,7 +177,8 @@ test('actual App source selection keeps unsaved chat/material/document edits on 
   await fill(input('English document body'), 'Unsaved synthetic document edit');
   await nav('Materials & facts'); await wait(() => input('Case source text')); await fill(input('Case source text'), 'Unsaved synthetic materials');
   await nav('Conversation'); await fill(host.querySelector('.chat-input'), 'Find the other synthetic case');
-  await click(host.querySelector('[role="checkbox"]'));
+  const permission=await owner.api.get('/api/library-permission');
+  await owner.api.put('/api/library-permission',{decision:'allow',expectedVersion:permission.version,provider:permission.provider,policyVersion:permission.policyVersion,category:permission.category});
   streamGate = gate(); await click(button('Send')); await wait(() => streamGate.reached && host.querySelector('[data-source-id="S1"]'));
   assert.equal(button('Open case', host.querySelector('[data-source-id="S1"]')).disabled, true, 'Navigation is disabled until the stream finishes');
   await React.act(async () => streamGate.resolve()); await wait(() => !button('Open case', host.querySelector('[data-source-id="S1"]')).disabled);
