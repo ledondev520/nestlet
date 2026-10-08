@@ -506,3 +506,22 @@ The first PR38 run passed container CI but exposed two test-contract gaps before
 - Final checks passed after review corrections: pinned `npm ci`, `npm run check`, `npm run build`, 304 frontend tests and 379 backend tests; browser discovery finds 31 tests including the four new settings cases. Independent review found and corrected duplicate stale settings surfaces and collision handling for the settings-page hover hint.
 - Local Playwright could not launch Chromium: environment policy rejected its singleton socket before any UI assertions ran, including the approved escalation attempt. These four browser cases are **unverified locally**, not passed; the existing official browser CI and final integrated browser review remain gates. No real API keys, provider traffic, production configuration, schema migration or deployment were performed.
 - Rollback: revert this UI commit; there are no database or server-contract changes.
+## 2026-10-08 — remembered library permission / schema9 backend candidate
+
+Candidate backend based on `7354803`, in an isolated worktree. All grants/accounts/material below are disposable synthetic fixtures. No actual customer authorization, live model request, production migration, push, merge, or deployment was performed for this entry.
+
+- `npm ci --ignore-scripts`: passed, pinned dependencies installed
+- `npm run check`: passed after final session/revocation changes
+- `npm run build`: passed, existing bundle-size warning remains
+- `npm test`: **396/396 passed** after the final backend changes and built frontend assets. The initial pre-build run had 390/391 pass with only the expected missing-build entrypoint 503; this was corrected by the normal build, not by weakening the test
+- Real local HTTP/session/SQLite with authored provider SSE: exact-origin/CSRF/session requirements; strict input/scope/version validation; no provider calls from legacy checkbox-only, absent, denied, stale or foreign-account grants; persisted decline; atomic racing choices; read-only action-wrapper non-bypass
+- Stream checks: same-account revoke stops an active request while another account completes; revoke after a tool read blocks a later provider request; cross-tab logout and credential rotation stop active/silent streams; read-then-revoke/logout emits no late sources, proposals, private title, or done event
+- Session regression: non-touching in-flight validation neither rewrites last-used time nor prolongs idle expiry; previous durable-session tests continue to pass
+- Schema9 storage: owner/account isolation, reopen persistence, provider id/endpoint/model/policy/category invalidation, monotonic revoke/regrant revision protection, failed-write rollback, account-delete cascade
+- Genuine populated schema8 fixture → schema9: all previous rows/DDL/FKs/sequences/session records/original bytes retained; new permission table empty; schema9 migration conflict rolls back; backup is non-mutating; restore resets sessions and all permission decisions only in the restored copy; untouched schema8 snapshot remains a valid rollback source; future schema10 refused
+
+Browser acceptance, exact-SHA CI/container acceptance, independent review closure, old-binary downgrade refusal rehearsal and any release remain separate gates. See [library permission contract and recovery](library-permission.md). Provider fixtures are not live DeepSeek acceptance.
+
+### Schema9 packaging follow-up
+
+The consent module is now explicitly present in both Docker runtime COPY and the deny-by-default build context. Docker-input tests passed 2/2, including a real runtime-module subset import that opens schema9 and confirms owner consent is unset. The existing container SQLite lifetime write/read and genuine schema1→9 migration smoke scripts also passed when executed locally in a fresh private disposable directory; schema9 table presence, empty permission records, original data, private modes and reopen are checked. All three modified smoke scripts pass syntax checking. Docker itself is unavailable here, so these are local input/SQLite checks, not an image build or container acceptance. The runtime container smoke now explicitly checks the consent module and fail-closed GET/PUT permission routes.

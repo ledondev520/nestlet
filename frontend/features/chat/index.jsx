@@ -4,7 +4,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { ArrowUp, Paperclip, Plus, RefreshCw, MessageSquare, Square } from 'lucide-react';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
@@ -21,6 +20,7 @@ import { ChatOriginalRetention } from './original-retention.jsx';
 import { ChatLookup } from './lookup.jsx';
 import { ChatSourceNavigation } from './source-navigation.jsx';
 import { sourceNavigationCopy } from './source-navigation.js';
+import { LibraryPermissionDialog, permissionCopy, useLibraryPermission } from './library-permission.jsx';
 
 const idValid = value => typeof value === 'string' && /^[0-9a-f-]{36}$/u.test(value);
 const timeoutSignal = (signal, milliseconds=15000) => AbortSignal.any([signal,AbortSignal.timeout(milliseconds)]);
@@ -30,7 +30,12 @@ export function ChatPage({ lang='zh', caseId=null, guidanceAgency='unknown', onC
   const { status, api, refresh } = useSession();
   const {restored,saveDraft,clearDraft,cacheStatus}=useSuspendedDraft('chat');
   const words = chatCopy[lang] || chatCopy.zh;
-  const inputId = useId(), fileId = useId(), libraryConsentId = useId(), actionConsentId = useId(), threadId = useId();
+  const permission = useLibraryPermission({api,userId:status.userId,authenticated:status.authenticated});
+  const [permissionPrompt,setPermissionPrompt] = useState(false), [permissionFailure,setPermissionFailure] = useState(null);
+  const permissionPending = useRef(null), permissionGate = useRef(false), permissionFlow = useRef(0), activeRef = useRef(active);
+  activeRef.current=active;
+  const permissionWords = permissionCopy(lang);
+  const inputId = useId(), fileId = useId(), threadId = useId();
   const [input,setInput] = useState('');
   const [images,setImages] = useState([]);
   const [messages,setMessages] = useState([]);
@@ -39,10 +44,8 @@ export function ChatPage({ lang='zh', caseId=null, guidanceAgency='unknown', onC
   const [title,setTitle] = useState('');
   const [phase,setPhase] = useState('idle');
   const [imagePending,setImagePending] = useState(0);
-  const [actionConsent,setActionConsent] = useState(false);
   const [actionBatch,setActionBatch] = useState(null);
   const [actionRevision,setActionRevision] = useState(0);
-  const [libraryConsent,setLibraryConsent] = useState(false);
   const [libraryActivity,setLibraryActivity] = useState(null);
   const [librarySources,setLibrarySources] = useState(null);
   const [error,setError] = useState(null);
@@ -65,7 +68,7 @@ export function ChatPage({ lang='zh', caseId=null, guidanceAgency='unknown', onC
   const stopRequested = useRef(false), workflowRef = useRef(null), lastTurn = useRef(null), phaseRef = useRef('idle');
   const fileInput = useRef(null), composer = useRef(null), endOfThread = useRef(null);
   statusRef.current = status; incomingCase.current = caseId; inputRef.current=input;
-  const busy = phase !== 'idle' || bridgeBusy || retentionBusy || sourceBusy;
+  const busy = phase !== 'idle' || bridgeBusy || retentionBusy || sourceBusy || permission.busy || permissionPrompt;
   const dirty = Boolean(input || images.length || imagePending || bridgeBusy || retentionBusy || ['saving','streaming','refreshing'].includes(phase));
   const scoped = () => ({epoch:epoch.current,userId:statusRef.current.userId,caseId:caseRef.current,conversationId:conversationRef.current});
   const current = scope => mounted.current && scope.epoch === epoch.current && statusRef.current.authenticated && scope.userId === statusRef.current.userId && scope.caseId === caseRef.current && scope.conversationId === conversationRef.current &&
@@ -90,19 +93,21 @@ export function ChatPage({ lang='zh', caseId=null, guidanceAgency='unknown', onC
 
   const invalidate = useCallback((nextCaseId, render=true) => {
     epoch.current++;
+    permissionPending.current=null;permissionGate.current=false;if(render&&mounted.current){setPermissionPrompt(false);setPermissionFailure(null);}
     sourceOperation.current = null; if (render && mounted.current) setSourceBusy(false);
     bridgeOperation.current = null; retentionRef.current = false; caseCreation.current = null; if (render && mounted.current) { setBridgeBusy(false); setRetentionBusy(false); }
     for (const active of controllers.current) active.abort(); controllers.current.clear(); controller.current=null;
     for (const preview of previewUrls.current) URL.revokeObjectURL(preview); previewUrls.current.clear();
     caseRef.current=nextCaseId; conversationRef.current=null; adoption.current=null; stopRequested.current=false;
     workflowRef.current=null; lastTurn.current=null; pendingSendText.current=''; decodeBusy.current=false; imageRef.current=[]; messageRef.current=[]; inputRef.current=''; phaseRef.current='idle';
-    if (render && mounted.current) {setInput('');setImages([]);setMessages([]);setConversationId(null);setConversations([]);setTitle('');setPhase('idle');setImagePending(0);setActionConsent(false);setActionBatch(null);setLibraryConsent(false);setLibraryActivity(null);setLibrarySources(null);setError(null);setNotice('');setDragging(false);}
+    if (render && mounted.current) {setInput('');setImages([]);setMessages([]);setConversationId(null);setConversations([]);setTitle('');setPhase('idle');setImagePending(0);setActionBatch(null);setLibraryActivity(null);setLibrarySources(null);setError(null);setNotice('');setDragging(false);}
   },[]);
 
   useEffect(() => {
     mounted.current=true;
     return () => {mounted.current=false; invalidate(null,false);};
   },[invalidate]);
+  useEffect(()=>{permissionFlow.current++;if(!active){permissionPending.current=null;setPermissionPrompt(false);setPermissionFailure(null);}},[active]);
   useEffect(() => {onDirtyChange?.(dirty); return () => onDirtyChange?.(false);},[dirty,onDirtyChange]);
   useEffect(() => {
     if (!dirty) return;
@@ -136,8 +141,9 @@ export function ChatPage({ lang='zh', caseId=null, guidanceAgency='unknown', onC
     initialized.current=true;ownerRef.current=status.userId;
     if(preserveComposition){
       // App remounts true case switches. A null→ID binding here is the same workspace saved by Intake.
+      permissionPending.current=null;setPermissionPrompt(false);setPermissionFailure(null);
       epoch.current++;for(const active of controllers.current)active.abort();controllers.current.clear();controller.current=null;
-      caseRef.current=nextCase;adoption.current=null;workflowRef.current=null;lastTurn.current=null;decodeBusy.current=false;setImagePending(0);setActionConsent(false);setActionBatch(null);setLibraryConsent(false);setLibraryActivity(null);setLibrarySources(null);setError(null);setNotice('');
+      caseRef.current=nextCase;adoption.current=null;workflowRef.current=null;lastTurn.current=null;decodeBusy.current=false;setImagePending(0);setActionBatch(null);setLibraryActivity(null);setLibrarySources(null);setError(null);setNotice('');
     } else invalidate(nextCase);
     restoreComposer();
     if (!nextCase) return;
@@ -246,9 +252,33 @@ export function ChatPage({ lang='zh', caseId=null, guidanceAgency='unknown', onC
   const factReplyTarget=useRef(null);
   const registerFactReply=useCallback(target=>{factReplyTarget.current=target;},[]);
 
-  async function send(event){
+  function closePermission(){
+    if(permission.busy)return;permissionPending.current=null;setPermissionPrompt(false);setPermissionFailure(null);
+  }
+  async function refreshPermission(){
+    const pending=permissionPending.current;if(!pending||permission.busy)return;
+    try{const next=await permission.load();if(permissionPending.current===pending&&current(pending.scope)){pending.snapshot=next;setPermissionFailure(null);}}catch(failure){if(permissionPending.current===pending&&current(pending.scope))setPermissionFailure(failure);}
+  }
+  async function choosePermission(decision){
+    const pending=permissionPending.current;if(!pending||permission.busy||!current(pending.scope))return;
+    try{
+      const next=await permission.choose(decision,pending.snapshot);
+      if(permissionPending.current!==pending||!current(pending.scope))return;
+      permissionPending.current=null;setPermissionPrompt(false);setPermissionFailure(null);
+      await send(null,next);
+    }catch(failure){
+      if(permissionPending.current!==pending||!current(pending.scope))return;
+      setPermissionFailure(failure);
+      if(failure.code==='LIBRARY_PERMISSION_CONFLICT')try{pending.snapshot=await permission.load();}catch{}
+    }
+  }
+  function sendWithoutLibrary(){
+    const pending=permissionPending.current;if(!pending||permission.busy||!current(pending.scope))return;
+    permissionPending.current=null;setPermissionPrompt(false);setPermissionFailure(null);void send(null,{decision:'deny'});
+  }
+  async function send(event,permissionSnapshot){
     event?.preventDefault();
-    if(phaseRef.current!=='idle'||bridgeOperation.current||sourceOperation.current||retentionRef.current||imagePending)return;
+    if(phaseRef.current!=='idle'||bridgeOperation.current||sourceOperation.current||retentionRef.current||imagePending||permissionGate.current||permissionPending.current&&!permissionSnapshot)return;
     if(!statusRef.current.authenticated){setError(new ChatClientError('AUTH_REQUIRED'));return;}
     const targeted=factReplyTarget.current;
     if(targeted&&targeted.scope===`${statusRef.current.userId}:${caseRef.current}:${conversationRef.current}`){
@@ -259,12 +289,26 @@ export function ChatPage({ lang='zh', caseId=null, guidanceAgency='unknown', onC
       return;
     }
     if(!statusRef.current.liveEnabled){setError(new ChatClientError('LIVE_DISABLED'));return;}
-    const retrievalRequested=libraryConsent===true, actionsRequested=actionConsent===true;
-    if(retrievalRequested && statusRef.current.libraryRetrievalEnabled!==true){setLibraryConsent(false);setError(new ChatClientError('LIBRARY_UNAVAILABLE'));return;}
     const text=inputRef.current.trim(), attached=[...imageRef.current];
     if(!text&&!attached.length){setError(new ChatClientError('CHAT_EMPTY'));return;}
     if(text.length>CHAT_BOUNDS.text){setError(new ChatClientError('CHAT_TOO_LARGE'));return;}
-    setActionConsent(false);setActionBatch(null);setLibraryConsent(false);setLibraryActivity(null);setLibrarySources(null);
+    if(statusRef.current.libraryRetrievalEnabled===true&&!permissionSnapshot){
+      const initialScope=scoped(), flow=permissionFlow.current;permissionGate.current=true;
+      try{
+        permissionSnapshot=await permission.load();requireCurrent(initialScope);
+        if(!activeRef.current||flow!==permissionFlow.current)return;
+        if(permissionSnapshot.decision==='unset'){
+          permissionPending.current={scope:initialScope,snapshot:permissionSnapshot};setPermissionFailure(null);setPermissionPrompt(true);return;
+        }
+      }catch(failure){
+        if(current(initialScope)&&activeRef.current&&flow===permissionFlow.current){
+          permissionPending.current={scope:initialScope,snapshot:null};setPermissionFailure(failure);setPermissionPrompt(true);
+        }
+        return;
+      }finally{permissionGate.current=false;}
+    }
+    const retrievalRequested=statusRef.current.libraryRetrievalEnabled===true&&permissionSnapshot?.decision==='allow', actionsRequested=true;
+    setActionBatch(null);setLibraryActivity(null);setLibrarySources(null);
     const scope=scoped(), active=managedController();controller.current=active;stopRequested.current=false;
     const proposals=[];
     let user=null,assistant=null,completed=false;updatePhase('saving');setError(null);setNotice('');
@@ -278,7 +322,7 @@ export function ChatPage({ lang='zh', caseId=null, guidanceAgency='unknown', onC
         conversationRef.current=result.conversation.id;scope.conversationId=result.conversation.id;setConversationId(result.conversation.id);setConversations(rows=>[result.conversation,...rows]);
       }
       const clientMessageId=crypto.randomUUID();
-      const payload=buildChatTurn({caseId:scope.caseId,conversationId:scope.conversationId,clientMessageId,text,images:attached,lang,libraryConsent:retrievalRequested,actionConsent:actionsRequested,guidanceAgency});
+      const payload=buildChatTurn({caseId:scope.caseId,conversationId:scope.conversationId,clientMessageId,text,images:attached,lang,libraryConsent:retrievalRequested,libraryPermissionVersion:retrievalRequested?permissionSnapshot.version:undefined,actionConsent:actionsRequested,guidanceAgency});
       user={id:crypto.randomUUID(),clientMessageId,role:'user',content:text,images:attached,state:'complete',localOnly:true};
       assistant={id:crypto.randomUUID(),role:'assistant',content:'',state:'interrupted',streaming:true,localOnly:true};
       lastTurn.current={user,assistant};pendingSendText.current=text;saveDraft({input:text,conversationId:scope.conversationId});updateMessages([...messageRef.current,user,assistant]);updateImages([]);setInput('');inputRef.current='';updatePhase('streaming');
@@ -332,6 +376,7 @@ export function ChatPage({ lang='zh', caseId=null, guidanceAgency='unknown', onC
 
   if(!status.authenticated)return <Card className="paper-card"><CardContent><p>{words.signIn}</p></CardContent></Card>;
   return <section className="chat-workspace" aria-label={words.title} data-feature="chat">
+    <LibraryPermissionDialog lang={lang} open={permissionPrompt&&active} ready={Boolean(permissionPending.current?.snapshot)} onRetry={refreshPermission} busy={permission.busy} error={permissionFailure} onChoose={choosePermission} onClose={closePermission} onWithoutLibrary={sendWithoutLibrary} />
     {onOpenMaterials && onOpenDocuments && <ChatCaseWorkflow api={api} lang={lang} caseId={caseId} userId={status.userId} disabled={busy} active={active} refreshKey={`${conversationId}:${messages.length}:${phase === 'idle'}:${actionRevision}`} onSavedTitle={setTitle} onOpenMaterials={onOpenMaterials} onOpenDocuments={onOpenDocuments} />}
     {onOpenSourceCase && <ChatLookup api={api} userId={status.userId} caseId={caseRef.current} lang={lang} active={active}
       disabled={phase !== 'idle' || bridgeBusy || retentionBusy || imagePending > 0} onOpenSourceCase={onOpenSourceCase} claimOperation={claimSourceOperation} releaseOperation={releaseSourceOperation} />}
@@ -381,15 +426,7 @@ export function ChatPage({ lang='zh', caseId=null, guidanceAgency='unknown', onC
           <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">{input.length>7000&&<span>{input.length.toLocaleString()} / 8,000</span>}{imagePending>0&&<span role="status">{words.decoding}</span>}</div>
           {!!images.length&&<div className="flex flex-wrap gap-3">{images.map(image=><div key={image.id} className="flex items-center gap-2 rounded border p-2"><img src={image.preview} alt={words.imageOnly} className="h-16 w-16 object-contain"/><Button type="button" variant="ghost" size="sm" disabled={busy} onClick={()=>removeImage(image.id)} aria-label={words.remove}>{words.remove}</Button></div>)}</div>}
           <ChatOriginalRetention api={api} userId={status.userId} authenticated={status.authenticated} caseId={caseRef.current} images={images} lang={lang} disabled={phase !== 'idle' || bridgeBusy || sourceBusy || imagePending > 0} ensureCase={ensureCase} onBusyChange={updateRetentionBusy} onOpenMaterials={onOpenMaterials} />
-          <div className="space-y-2 rounded border p-3">
-            <div className="flex items-start gap-2"><Checkbox id={libraryConsentId} checked={libraryConsent} disabled={busy||status.libraryRetrievalEnabled!==true} onCheckedChange={value=>setLibraryConsent(value===true)}/><Label htmlFor={libraryConsentId} className="text-xs leading-relaxed">{words.libraryConsent}</Label></div>
-            <p className="text-xs leading-relaxed text-muted-foreground">{words.libraryBoundary}</p>
-            {status.libraryRetrievalEnabled!==true&&<p className="text-xs text-muted-foreground">{words.libraryUnavailable}</p>}
-          </div>
-          <div className="space-y-2 rounded border p-3">
-            <div className="flex items-start gap-2"><Checkbox id={actionConsentId} checked={actionConsent} disabled={busy} onCheckedChange={value=>setActionConsent(value===true)}/><Label htmlFor={actionConsentId} className="text-xs leading-relaxed">{lang==='en'?'Prepare reviewable case updates or English drafts for this message':'为本条消息准备可核对的案例更新或英文草稿'}</Label></div>
-            <p className="text-xs text-muted-foreground">{lang==='en'?'Read-only previews from this saved conversation. Nothing is applied until you review and explicitly apply a proposal. This permission resets after each message.':'仅从本次已存对话生成只读预览。核对后点击应用才会保存建议，每条消息均需重新选择。'}</p>
-          </div>
+          <p className="text-xs leading-relaxed text-muted-foreground">{permissionWords.ordinary} <a href="#settings" className="underline">{permissionWords.settings}</a></p>
           <div className="chat-composer-actions">
             <Button type="button" variant="ghost" size="sm" disabled={busy||imagePending>0} onClick={()=>fileInput.current?.click()} title={words.attach}><Paperclip aria-hidden="true" />{words.attach}</Button>
             <div className="flex items-center gap-2"><span className="chat-keyboard-hint">{words.keyboardHint}</span>

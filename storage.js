@@ -1,3 +1,4 @@
+import { LIBRARY_CONSENT_SCHEMA_SQL, createLibraryConsentStorage } from './library-consent-storage.js';
 import { AUTH_SESSION_SCHEMA_SQL, createAuthSessionStorage } from './auth-session-storage.js';
 import { createSynchronousTransaction } from './synchronous-transaction.js';
 /** Server-local, owner-scoped SQLite storage. Input text is untrusted; private asset bytes are stored separately; no provider keys are saved. */
@@ -14,7 +15,7 @@ import { validateDocumentContext, validateFinalArtifact } from './document-conte
 import { ASSET_LIMITS, ASSET_TYPES, assetFilename, assetAssociation, assetKeys, assetId, normalizeAssetSearch, assetFail } from './asset-domain.js';
 import { TELEMETRY_LIMITS, CLIENT_EVENTS, SERVER_EVENTS, validateStoredTelemetryEvent, telemetryId } from './telemetry.js';
 
-const SCHEMA_VERSION = 8;
+const SCHEMA_VERSION = 9;
 const APPLICATION_ID = 0x4e53544c; // NSTL, distinct from unrelated SQLite files.
 export const MAX_CASE_BYTES = 256 * 1024;
 export const MAX_SOURCE_CHARS = 50_000;
@@ -457,6 +458,7 @@ export function openStorage({ filename, reservedUsername = process.env.NESTLET_O
       if (currentVersion < 6) db.exec(ACCOUNT_ADMINISTRATION_SCHEMA_SQL);
       if (currentVersion < 7) db.exec(REVIEW_SCHEMA_SQL);
       if (currentVersion < 8) db.exec(AUTH_SESSION_SCHEMA_SQL);
+      if (currentVersion < 9) db.exec(LIBRARY_CONSENT_SCHEMA_SQL);
       db.prepare("INSERT INTO users(id, username, role, password_hash, created_at) VALUES('owner', 'owner', 'owner', NULL, ?) ON CONFLICT(id) DO NOTHING").run(new Date().toISOString());
     });
     const userLookup = db.prepare('SELECT id, username, role, password_hash AS passwordHash, created_at AS createdAt FROM users WHERE id = ?');
@@ -609,6 +611,7 @@ export function openStorage({ filename, reservedUsername = process.env.NESTLET_O
     try { telemetryTransaction(() => pruneTelemetry()); } catch { /* Optional maintenance cannot disable business storage. */ }
     const api = {
       authSessions: createAuthSessionStorage({db,transaction}),
+      libraryPermissions: createLibraryConsentStorage({db,transaction,requireUser}),
       emailAuth: createEmailAuthStorage({ db, transaction, maxUsers: MAX_TRIAL_USERS }),
       accountAdministration: createAccountAdministrationStorage({ db, transaction }),
       assetUsage(id) { requireUser(id);return assetUsage(id); },

@@ -29,9 +29,9 @@ test('real HTTP: ordinary chat payload stays compatible and unsupported or uncon
   const thread=await (await request(`/api/cases/${record.case.id}/conversations`,{title:'Synthetic capability thread'})).json();assert.ok(thread.conversation.id);
   const args={caseId:record.case.id,conversationId:thread.conversation.id,clientMessageId:randomUUID(),text:'Explain an administrative next step.',lang:'en'};
   const ordinary=await request('/api/chat',buildChatTurn(args));assert.equal(ordinary.status,503);assert.equal((await ordinary.json()).code,'LIVE_DISABLED');
-  const retrieval=await request('/api/chat',buildChatTurn({...args,clientMessageId:randomUUID(),libraryConsent:true}));
+  const retrieval=await request('/api/chat',buildChatTurn({...args,clientMessageId:randomUUID(),libraryConsent:true,libraryPermissionVersion:1}));
   assert.equal(retrieval.ok,false);const error=await retrieval.json();
-  assert.equal(retrieval.status,503);assert.equal(error.code,'LIVE_DISABLED');
-  assert.equal(retrieval.headers.get('x-library-retrieval'),'enabled');
+  assert.equal(retrieval.status,403);assert.equal(error.code,'LIBRARY_CONSENT_REQUIRED');
+  assert.equal(retrieval.headers.get('x-library-retrieval'),null);
   const saved=await (await request(`/api/conversations/${thread.conversation.id}`)).json();assert.deepEqual(saved.messages,[]);
 });
