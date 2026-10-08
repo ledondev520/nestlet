@@ -25,7 +25,7 @@ test('unified history opens the exact conversation across cases and guards unsav
   const requests=[];
   let releaseInitialStatus, holdInitialStatus=true;
   const initialStatusGate=new Promise(resolve=>{releaseInitialStatus=resolve;});
-  set('fetch',async(path,options={})=>{const response=await realFetch(app.origin+path,{...options,headers:{...options.headers,Origin:app.origin,Cookie:cookie}});requests.push({path,method:options.method||'GET',status:response.status});if(path==='/api/status'&&holdInitialStatus){holdInitialStatus=false;await initialStatusGate;}return response;});
+  set('fetch',async(path,options={})=>{const response=await realFetch(app.origin+path,{...options,headers:{...options.headers,Origin:app.origin,Cookie:cookie}});requests.push({path,method:options.method||'GET',status:response.status});if(path==='/api/status'&&holdInitialStatus){holdInitialStatus=false;await initialStatusGate;}if(path==='/api/status')return new Response(JSON.stringify({...await response.json(),liveEnabled:true}),{status:response.status,headers:{'Content-Type':'application/json'}});return response;});
   const React=await import('react'),{createRoot}=await import('react-dom/client');
   const vite=await createServer({server:{middlewareMode:true,hmr:false,ws:false,watch:null},logLevel:'error'});
   const {SessionProvider}=await vite.ssrLoadModule('/lib/session.jsx'),{default:App}=await vite.ssrLoadModule('/App.jsx');
@@ -63,6 +63,8 @@ test('unified history opens the exact conversation across cases and guards unsav
   await wait(()=>title()===first.title,'Exact conversation hash navigation works');
   assert.equal(requests.some(item=>item.path==='/api/chat'),false);
   await change(document.querySelector('.chat-input'),'Draft survives settings');
+  await nav('Documents');await clickLink(link(first.id));
+  assert.equal(window.location.hash,`#chat?conversation=${first.id}`,'Active-row return repairs the canonical route');
   const previousHash=window.location.hash;await click(button('Account and settings'));
   assert.equal(button('Account and settings').getAttribute('aria-current'),'page');
   await click(button('Back to workspace'));assert.equal(window.location.hash,previousHash);
@@ -70,4 +72,19 @@ test('unified history opens the exact conversation across cases and guards unsav
   assert.equal(document.querySelector('[data-feature="chat"]').getAttribute('data-conversation-id'),first.id);
   assert.ok(document.querySelector('.wb-topbar nav[aria-label="Workspace navigation"]'));
   assert.equal(document.querySelector('.wb-center nav[aria-label="Workspace navigation"]'),null);
+  app.withDatabase(db=>db.prepare('DELETE FROM conversations WHERE id=?').run(second.id));
+  await clickLink(link(second.id));
+  await wait(()=>document.body.textContent.includes('This conversation could not be loaded.'),'Stale exact target is visibly unavailable');
+  assert.equal(document.querySelector('[data-feature="chat"]').getAttribute('data-conversation-id'),second.id);
+  await change(document.querySelector('.chat-input'),'Must not create a replacement thread');
+  assert.equal(button('Send').disabled,true);
+  await React.act(async()=>{document.querySelector('.chat-composer').dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));document.querySelector('.chat-input').dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true}));});
+  await flush();assert.equal(requests.some(item=>item.method==='POST'),false,'Unavailable exact targets cannot silently create or send');
+  await React.act(async()=>{window.location.hash='#chat?conversation=11111111-1111-4111-8111-111111111111';});
+  await wait(()=>document.body.textContent.includes('This conversation is unavailable to this account.'),'Unknown link is rejected');
+  assert.equal(document.querySelector('.wb-center > section[aria-label="Conversation"]').hidden,true,'Unknown route hides the unrelated active composer');
+  await click(button('New conversation'));
+  assert.equal(document.body.textContent.includes('This conversation is unavailable to this account.'),false,'Explicit New clears obsolete route errors');
+  assert.equal(document.querySelector('[data-feature="chat"]').hasAttribute('data-conversation-id'),false);
+
 });

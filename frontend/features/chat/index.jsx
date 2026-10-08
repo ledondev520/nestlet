@@ -43,6 +43,9 @@ export function ChatPage({ lang='zh', caseId=null, initialConversationId=null, c
   const [conversations,setConversations] = useState([]);
   const [conversationId,setConversationId] = useState(null);
   const [title,setTitle] = useState('');
+  const [unavailableExactConversation,setUnavailableExactConversation] = useState(false);
+  const unavailableExactRef=useRef(false);
+  const markExactUnavailable=value=>{unavailableExactRef.current=value;setUnavailableExactConversation(value);};
   const [phase,setPhase] = useState('idle');
   const [imagePending,setImagePending] = useState(0);
   const [actionBatch,setActionBatch] = useState(null);
@@ -99,6 +102,7 @@ export function ChatPage({ lang='zh', caseId=null, initialConversationId=null, c
     bridgeOperation.current = null; retentionRef.current = false; caseCreation.current = null; if (render && mounted.current) { setBridgeBusy(false); setRetentionBusy(false); }
     for (const active of controllers.current) active.abort(); controllers.current.clear(); controller.current=null;
     for (const preview of previewUrls.current) URL.revokeObjectURL(preview); previewUrls.current.clear();
+    unavailableExactRef.current=false;if(render&&mounted.current)setUnavailableExactConversation(false);
     caseRef.current=nextCaseId; conversationRef.current=null; adoption.current=null; stopRequested.current=false;
     workflowRef.current=null; lastTurn.current=null; pendingSendText.current=''; decodeBusy.current=false; imageRef.current=[]; messageRef.current=[]; inputRef.current=''; phaseRef.current='idle';
     if (render && mounted.current) {setInput('');setImages([]);setMessages([]);setConversationId(null);setConversations([]);setTitle('');setPhase('idle');setImagePending(0);setActionBatch(null);setLibraryActivity(null);setLibrarySources(null);setError(null);setNotice('');setDragging(false);}
@@ -133,7 +137,7 @@ export function ChatPage({ lang='zh', caseId=null, initialConversationId=null, c
       if (!rows) {if(pendingSendText.current){setInput(pendingSendText.current);inputRef.current=pendingSendText.current;}setNotice('refreshFailed');return false;}
     }
     if(preserveLocal&&lastTurn.current&&rows.some(message=>message.clientMessageId===lastTurn.current.user?.clientMessageId)){pendingSendText.current='';if(!inputRef.current)clearDraft();}
-    revokeMessages();updateMessages(rows);return true;
+    revokeMessages();updateMessages(rows);markExactUnavailable(false);return true;
   }
 
   useEffect(() => {
@@ -151,6 +155,7 @@ export function ChatPage({ lang='zh', caseId=null, initialConversationId=null, c
     } else invalidate(nextCase);
     restoreComposer();
     if (!nextCase) return;
+    if(initialConversationId){conversationRef.current=initialConversationId;setConversationId(initialConversationId);markExactUnavailable(true);}
     const scope=scoped(), load=managedController();updatePhase('loading');
     (async()=>{
       try {
@@ -158,8 +163,8 @@ export function ChatPage({ lang='zh', caseId=null, initialConversationId=null, c
         requireCurrent(scope);
         if (record.case?.id!==nextCase || !Array.isArray(result.conversations) || result.conversations.length>10 || result.conversations.some(item=>!idValid(item.id)||item.caseId!==nextCase)) throw new ChatClientError('INVALID_RESPONSE');
         setConversations(result.conversations);
+        if(initialConversationId&&!result.conversations.some(item=>item.id===initialConversationId))throw new ChatClientError('CONVERSATION_NOT_FOUND');
         if (result.conversations.length) {
-          if(initialConversationId&&!result.conversations.some(item=>item.id===initialConversationId))throw new ChatClientError('CONVERSATION_NOT_FOUND');
           const id=initialConversationId || result.conversations.find(item=>item.id===restoreConversation.current)?.id || result.conversations[0].id;restoreConversation.current=null;conversationRef.current=id;scope.conversationId=id;setConversationId(id);
           await readConversation(id,scope,timeoutSignal(load.signal));
         }
@@ -257,7 +262,7 @@ export function ChatPage({ lang='zh', caseId=null, initialConversationId=null, c
   function removeImage(id){if (retentionRef.current || bridgeOperation.current || sourceOperation.current || phaseRef.current !== 'idle') return;const removed=imageRef.current.find(image=>image.id===id);if(removed)revoke(removed.preview);updateImages(imageRef.current.filter(image=>image.id!==id));}
   function receiveFiles(files){
     if(!statusRef.current.authenticated){setError(new ChatClientError('AUTH_REQUIRED'));return;}
-    if(phaseRef.current!=='idle'||bridgeOperation.current||sourceOperation.current||retentionRef.current){setError(new ChatClientError('CHAT_CONVERSATION_BUSY'));return;}
+    if(unavailableExactRef.current||phaseRef.current!=='idle'||bridgeOperation.current||sourceOperation.current||retentionRef.current){setError(new ChatClientError('CHAT_CONVERSATION_BUSY'));return;}
     const all=Array.from(files||[]), accepted=all.filter(file=>['image/png','image/jpeg'].includes(file.type));
     const documents=all.filter(file=>!accepted.includes(file)&&/\.(pdf|txt|csv|xlsx|xls)$/iu.test(file.name));
     if(all.length!==accepted.length+documents.length)setNotice('unsupportedFile');
@@ -303,7 +308,7 @@ export function ChatPage({ lang='zh', caseId=null, initialConversationId=null, c
   }
   async function send(event,permissionSnapshot){
     event?.preventDefault();
-    if(phaseRef.current!=='idle'||bridgeOperation.current||sourceOperation.current||retentionRef.current||imagePending||permissionGate.current||permissionPending.current&&!permissionSnapshot)return;
+    if(unavailableExactRef.current||phaseRef.current!=='idle'||bridgeOperation.current||sourceOperation.current||retentionRef.current||imagePending||permissionGate.current||permissionPending.current&&!permissionSnapshot)return;
     if(!statusRef.current.authenticated){setError(new ChatClientError('AUTH_REQUIRED'));return;}
     const targeted=factReplyTarget.current;
     if(targeted&&targeted.scope===`${statusRef.current.userId}:${caseRef.current}:${conversationRef.current}`){
@@ -443,6 +448,7 @@ export function ChatPage({ lang='zh', caseId=null, initialConversationId=null, c
           disabled={phase !== 'idle' || bridgeBusy || retentionBusy || imagePending > 0} onOpenSourceCase={onOpenSourceCase} claimOperation={claimSourceOperation} releaseOperation={releaseSourceOperation} />}
         {!librarySources && messages.some(message => message.role === 'assistant') && <p className="text-xs text-muted-foreground">{(sourceNavigationCopy[lang] || sourceNavigationCopy.zh).history}</p>}
         {error&&<Alert variant="destructive"><AlertDescription>{chatErrorText(error,lang)}</AlertDescription></Alert>}
+        {unavailableExactConversation&&phase==='idle'&&<p role="status" className="text-sm text-muted-foreground">{lang==='en'?'This conversation could not be loaded. Reload it or start a new conversation to continue.':'这段对话暂时无法读取。请重新读取，或开始新对话。'}</p>}
         {cacheStatus==='unavailable'&&<p role="status" className="text-sm text-destructive">{words.cacheUnavailable}</p>}
         {notice&&<p role="status" className="paper-note rounded px-3 py-2 text-sm">{words[notice]}</p>}
         {(error||notice==='stopped')&&messages.some(message=>message.role==='user')&&<Button variant="outline" type="button" disabled={busy} onClick={retry}>{words.retry}</Button>}
@@ -461,7 +467,7 @@ export function ChatPage({ lang='zh', caseId=null, initialConversationId=null, c
           <div className="chat-composer-actions">
             <Button type="button" variant="ghost" size="sm" disabled={busy||imagePending>0} onClick={()=>fileInput.current?.click()} title={words.attach}><Paperclip aria-hidden="true" />{words.attach}</Button>
             <div className="flex items-center gap-2"><span className="chat-keyboard-hint">{words.keyboardHint}</span>
-            {phase!=='idle'&&phase!=='loading'?<Button type="button" aria-label={words.stop} onClick={stop}><Square aria-hidden="true" />{words.stop}</Button>:<Button type="submit" aria-label={words.send} disabled={busy||imagePending>0||!status.liveEnabled||(!input.trim()&&!images.length)}><ArrowUp aria-hidden="true" />{words.send}</Button>}</div>
+            {phase!=='idle'&&phase!=='loading'?<Button type="button" aria-label={words.stop} onClick={stop}><Square aria-hidden="true" />{words.stop}</Button>:<Button type="submit" aria-label={words.send} disabled={busy||unavailableExactConversation||imagePending>0||!status.liveEnabled||(!input.trim()&&!images.length)}><ArrowUp aria-hidden="true" />{words.send}</Button>}</div>
             <input id={fileId} ref={fileInput} className="sr-only" type="file" accept="image/png,image/jpeg,.pdf,.txt,.csv,.xlsx,.xls" multiple onChange={event=>{receiveFiles(event.target.files);event.target.value='';}}/>
           </div>
           {['saving','streaming','refreshing'].includes(phase)&&<p role="status" className="text-xs text-muted-foreground">{phase==='saving'?words.saving:phase==='streaming'?words.sending:words.loading}</p>}

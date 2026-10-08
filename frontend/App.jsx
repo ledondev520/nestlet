@@ -62,6 +62,7 @@ function AccountWorkspace({ lang, view, navigate, shellProps, notices }) {
       journey.visit(view);
     } catch { /* Observability must not block navigation or private workspace cleanup. */ }
   }, [journey, workspaceKey, caseId, view]);
+  useEffect(()=>{if(view!=='chat')setConversationRouteError(false);},[view]);
   useEffect(() => { setVisited(previous => previous.has(view) ? previous : new Set([...previous, view])); }, [view]);
   useEffect(() => {
     draftVault.write({ userId: status.userId, workspaceKey: 'active', feature: 'workspace' }, { caseId, view, workspaceKey });
@@ -83,13 +84,17 @@ function AccountWorkspace({ lang, view, navigate, shellProps, notices }) {
       setRequestedConversationId(null);
       setActiveConversationId(null);
     }
+    setConversationRouteError(false);
     navigate(destination,{preserveRoute});
     return true;
   }, [lang, navigate, workspaceKey]);
   const openConversation = useCallback((row,{fromHistory=false}={}) => {
     if(!row || !conversationIndex.data?.some(item=>item.id===row.id&&item.caseId===row.caseId))return false;
     const previousHash=conversationHref(activeConversationId||'');
-    if(row.id===activeConversationId){navigate('chat',{preserveRoute:true});return true;}
+    if(row.id===activeConversationId){
+      const href=conversationHref(row.id);handledConversationHash.current=href;setConversationRouteError(false);
+      navigate('chat',{preserveRoute:true});if(window.location.hash!==href)window.history.pushState({},'',href);return true;
+    }
     if(!openCase(row.caseId,'chat',true,fromHistory)){
       if(fromHistory)window.history.replaceState({},'',activeConversationId?previousHash:'#chat');
       return false;
@@ -154,7 +159,7 @@ function AccountWorkspace({ lang, view, navigate, shellProps, notices }) {
     return openCase(request.targetCaseId, request.view);
   }, [openCase, continueDocument]);
   const slots = {
-    chat: [modules.chat?.ChatPage, { caseId, initialConversationId: requestedConversationId, conversationIndex, onOpenConversation: openConversation, onConversationChange: setActiveConversationId, onHistoryChange: refreshConversations, onNewConversation: () => openCase(null, 'chat', true), guidanceAgency, workflowTarget, lookupTarget, onCaseChange: bindCurrentCase, onDirtyChange: markChatDirty, onImportFiles: importFiles, onReviewMessage: reviewConversation, onOpenMaterials: openIntake, onOpenDocuments: continueDocument, onOpenSourceCase: openSourceCase, active: view === 'chat' }],
+    chat: [modules.chat?.ChatPage, { caseId, initialConversationId: requestedConversationId, conversationIndex, onOpenConversation: openConversation, onConversationChange: setActiveConversationId, onHistoryChange: refreshConversations, onNewConversation: () => openCase(null, 'chat', true), guidanceAgency, workflowTarget, lookupTarget, onCaseChange: bindCurrentCase, onDirtyChange: markChatDirty, onImportFiles: importFiles, onReviewMessage: reviewConversation, onOpenMaterials: openIntake, onOpenDocuments: continueDocument, onOpenSourceCase: openSourceCase, active: view === 'chat' && !conversationRouteError }],
     intake: [modules.intake?.IntakePage, { caseId, onCaseChange: bindCurrentCase, onDirtyChange: markIntakeDirty, importRequest, onImportHandled: imported, textReviewRequest, onTextReviewHandled: reviewedConversation, onOpenDocuments: openDocuments, active: view === 'intake' }],
     customers: [modules.customers?.CustomersPage, { onOpenCase: openCase, active: view === 'customers' }],
     documents: [modules.documents?.DocumentsPage, { caseId, onDirtyChange: markDocumentsDirty, onOpenIntake: openIntake, active: view === 'documents' }],
@@ -172,7 +177,7 @@ function AccountWorkspace({ lang, view, navigate, shellProps, notices }) {
     // Explicit case switches remount after the dirty guard. First-save binding
     // keeps the current chat composer mounted, including prepared image previews.
     const key = ['chat', 'intake', 'documents'].includes(id) ? `${id}:${workspaceEpoch}` : id;
-    return <section key={key} hidden={view !== id} aria-label={viewLabels[lang][id]}><FeatureBoundary lang={lang}>{id==='settings'&&<Button variant="ghost" className="mb-4" onClick={shellProps.onCloseSettings}>{lang==='zh'?'返回工作区':'Back to workspace'}</Button>}{Page ? <Page lang={lang} {...props} /> : <PageUnavailable lang={lang} />}</FeatureBoundary></section>;
+    return <section key={key} hidden={view !== id || conversationRouteError && id==='chat'} aria-label={viewLabels[lang][id]}><FeatureBoundary lang={lang}>{id==='settings'&&<Button variant="ghost" className="mb-4" onClick={shellProps.onCloseSettings}>{lang==='zh'?'返回工作区':'Back to workspace'}</Button>}{Page ? <Page lang={lang} {...props} /> : <PageUnavailable lang={lang} />}</FeatureBoundary></section>;
   })}</ApplicationShell></DraftWorkspaceProvider>;
 }
 
