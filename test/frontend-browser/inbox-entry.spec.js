@@ -36,6 +36,15 @@ for (const {width,lang} of [1280,390,320].flatMap(width=>['en','zh'].map(lang=>(
  const send=page.locator('.chat-composer-actions button[type="submit"]');await expect(send).toBeEnabled();
  const assertComposer=async()=>{for(const target of [composer,send]){const box=await target.boundingBox();expect(box).not.toBeNull();expect(box.y).toBeGreaterThanOrEqual(0);expect(box.y+box.height).toBeLessThanOrEqual(page.viewportSize().height+1);}expect(await page.evaluate(()=>window.scrollY)).toBe(0);};
  await assertComposer();await expect(page.locator('.wb-center nav[aria-label="Workspace navigation"],.wb-center nav[aria-label="工作区导航"]')).toHaveCount(0);if(width<960)expect((await page.locator('.wb-topbar').boundingBox()).height).toBeLessThanOrEqual(64);
+ // Open the authoritative material editor from this exact conversation's context,
+ // save there, and return without promoting chat text or replacing the thread.
+ if(width<960)await page.getByRole('button',{name:lang==='zh'?'打开案例上下文':'Open case context',exact:true}).click();
+ await page.locator('[data-testid="chat-case-workflow"]').getByRole('button',{name:lang==='zh'?'核对事实与材料':'Review facts and materials',exact:true}).click();
+ const canonicalSource=page.getByLabel(lang==='zh'?'案例原文':'Case source text',{exact:true});
+ await expect(canonicalSource).toHaveValue('');await canonicalSource.fill('Synthetic material edit from the exact saved conversation.');
+ const savedCase=page.waitForResponse(response=>new URL(response.url()).pathname===`/api/cases/${selectedRecord.id}`&&response.request().method()==='PUT');
+ await page.getByRole('button',{name:lang==='zh'?'保存案例':'Save case',exact:true}).click();expect((await savedCase).status()).toBe(200);
+ await navigate(page,lang==='zh'?'对话':'Conversation');await expect(page.locator('[data-feature="chat"]')).toHaveAttribute('data-conversation-id',conversation.id);await expect(composer).toHaveValue('Synthetic next message ready to review');
  const returnUrl=page.url(),scrollBeforeSettings=await thread.evaluate(node=>node.scrollTop);
  await accountSettings(page);await expect(page.locator('section[aria-label="'+(lang==='zh'?'账户与设置':'Account and settings')+'"]:not([hidden])')).toBeVisible();
  if(width>=960){await expect(page.locator('[data-account-settings]')).toHaveAttribute('aria-current','page');const topbar=page.locator('.wb-topbar');const language=await topbar.getByRole('button',{name:lang==='zh'?'Switch interface to English':'切换界面为中文',exact:true}).boundingBox();const logout=await topbar.getByRole('button',{name:lang==='zh'?'退出':'Sign out',exact:true}).boundingBox();expect(language.x).toBeLessThan(logout.x);}
