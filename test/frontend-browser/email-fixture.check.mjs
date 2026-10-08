@@ -35,7 +35,7 @@ try {
   const replacement = await app.mailFor(email, 'verify', 1); tokens.push(replacement.token);
   assert.equal((await call('/api/auth/email/verify', { token: first.token })).status, 400);
   const verified = await call('/api/auth/email/verify', { token: replacement.token });
-  assert.equal(verified.status, 200); assert.deepEqual(await verified.json(), { verified: true, authenticated: false });
+  assert.equal(verified.status, 200); assert.equal((await verified.json()).authenticated, true);
   assert.equal((await call('/api/auth/email/verify', { token: replacement.token })).status, 400);
   const login = await call('/api/login', { email, password }); assert.equal(login.status, 200);
   const cookie = login.headers.get('set-cookie').split(';')[0];

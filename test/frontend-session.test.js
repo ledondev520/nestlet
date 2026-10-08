@@ -175,3 +175,31 @@ test('email registration202 never changes identity, capability state, or authent
   assert.equal(calls.filter(call => call.path === '/api/status').length, 1);
   assert.equal(window.localStorage.length, 0); assert.equal(window.sessionStorage.length, 0);
 });
+
+test('registration verification installs the issued session without login and survives a failed capability refresh', async context => {
+  let verified = false; const requests = [];
+  const app = await setup(async (path, options) => {
+    requests.push({ path, options });
+    if (path === '/api/status') { if (verified) throw new Error('Synthetic status outage'); return response(signedOut); }
+    if (path === '/api/auth/email/verify') { verified = true; return response({ verified: true, authenticated: true, userId: 'new-registration', role: 'trial', csrfToken: 'new-csrf' }); }
+    return response({ ok: true });
+  });
+  context.after(app.close);
+  await act(async () => app.session.verifyEmail({ token: 'synthetic-one-time-proof' }));
+  assert.equal(app.session.status.userId, 'new-registration'); assert.equal(app.session.status.authenticated, true);
+  assert.equal(requests.some(request => request.path === '/api/login'), false);
+  await app.session.api.post('/api/clients', { displayName: 'Synthetic New Account' });
+  assert.equal(requests.at(-1).options.headers['X-CSRF-Token'], 'new-csrf');
+  assert.equal(window.localStorage.length, 0); assert.equal(window.sessionStorage.length, 0);
+});
+
+test('abandoning registration verification cannot install a late session response', async context => {
+  let finish;
+  const app = await setup(async path => path === '/api/status' ? response(signedOut) : new Promise(resolve => { finish = resolve; }));
+  context.after(app.close);
+  const controller = new AbortController(); let request;
+  await act(async () => { request = app.session.verifyEmail({ token: 'synthetic-proof' }, { signal: controller.signal }).catch(error => error); });
+  controller.abort();
+  await act(async () => { finish(response({ verified: true, authenticated: true, userId: 'abandoned', role: 'trial', csrfToken: 'new-csrf' })); assert.equal((await request).name, 'AbortError'); });
+  assert.equal(app.session.status.authenticated, false);
+});
