@@ -13,7 +13,7 @@ This issue consolidates the next delivery slice; it does not reopen or replace e
 - New: natural-language answer → narrowly scoped, version-bound explicit confirmation; inline conflict resolution; simpler chat-first layout; verified contextual official action links; later reuse of evidence-backed workflow status/receipts where necessary.
 - Existing auth work: PR #30 owns independent in-field password visibility. Root signup-continuation lane owns safe verification-to-session continuation. Do not duplicate either.
 - Existing design evidence: PR #27; tokens/design references PR #18 / #15. Historical evidence is not current acceptance.
-- Vetted good-css skill/checklist has a local docs-only commit `5ca9a36`; public availability is pending. It is not yet a remote-installation or UI-pass claim. Root will publish the exact available revision before requiring external reviewers to consume it.
+- Vetted good-css skill/checklist is published on `chore/good-css-workbench-planning` (audited skill commit `5ca9a36`). Read `.agents/skills/good-css/SKILL.md` and `docs/good-css-interaction-review.md` from this branch. This is project-scoped static skill availability, not a UI-pass claim.
 
 ## Ownership and collision rule
 Root is integration/release owner. Kimi owns visual design/layout/CSS audit; root engineers own functional integration, authorization, persistence and API behavior. Local Codex independently reviews/runs only tests already permitted by its current environment and writes its acceptance report. An issue comment cannot expand Local permissions.
@@ -55,7 +55,7 @@ Acceptance:
 - Fold PR27 notice-color/separator/version-label findings into this bounded review rather than opening duplicate styling tasks.
 
 ### W4 · P1 · Verified official actions beside artifacts — stage 1 only
-Owner: root domain/content + frontend integration; Kimi visual review. Files: `docs/domain-sourcebook.md`, `docs/official-artifacts.md`, existing official-reference data module and `frontend/components/agency-guidance.jsx`; add isolated `frontend/features/chat/official-actions.jsx` and tests, integrate through root chat owner. Locate/claim the exact existing data module before edit.
+Owner: root domain/content + frontend integration; Kimi visual review. Files: `docs/domain-sourcebook.md`, `docs/official-artifacts.md`, `public/agency-guidance.js` and `frontend/components/agency-guidance.jsx`; add isolated `frontend/features/chat/official-actions.jsx` and tests, integrate through root chat owner.
 Dependencies: actual verified SFHA destination/type and artifact applicability; W3 placement can be designed meanwhile.
 Acceptance:
 - Beside a relevant follow-up/request/summary, offer verified official page/form/contact-channel links with descriptive purpose, agency, source-check date and applicability caveat. Reverify targets before publishing; never use a model-invented URL.
