@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import http from 'node:http';
 import { spawn } from 'node:child_process';
 import { randomBytes, randomUUID, scryptSync } from 'node:crypto';
-import { mkdtempSync, realpathSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, realpathSync, writeFileSync, rmSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 const password='synthetic-model-check-password',salt=randomBytes(16);
@@ -86,4 +86,17 @@ test('the per-conversation active-turn lock prevents duplicate first-turn provid
  const concurrent=await send();assert.equal(concurrent.status,409);assert.equal((await concurrent.json()).code,'CHAT_CONVERSATION_BUSY');
  f.release();assert.match(await(await first).text(),/event: done/);await waitFor(()=>f.calls.some(x=>x.body.max_tokens===80));
  assert.equal(f.calls.filter(x=>x.body.stream).length,1);assert.equal(f.calls.filter(x=>x.body.max_tokens===80).length,1);
+});
+
+test('an image-only first turn generates its optional title from the persisted answer without sending the image again',async t=>{
+ const f=await fixture(t);assert.equal((await f.request('/api/settings',{apiKey:'synthetic-working-key',enableLive:true})).status,200);
+ const record=(await(await f.request('/api/cases',{title:'Synthetic image case',sourceText:'',fields:[],draftType:'followup',draftText:''})).json()).case;
+ const conversation=(await(await f.request(`/api/cases/${record.id}/conversations`,{title:'New conversation'})).json()).conversation;
+ const data=readFileSync(new URL('./local-acceptance-evidence/initial.png',import.meta.url)).toString('base64');
+ const response=await f.request('/api/chat',{conversationId:conversation.id,clientMessageId:randomUUID(),locale:'en',consent:true,messages:[{role:'user',content:'',images:[{mimeType:'image/png',data}]}]});
+ assert.equal(response.status,200);assert.match(await response.text(),/event: done/);
+ await waitFor(()=>f.calls.some(call=>call.body.max_tokens===80));
+ const titles=f.calls.filter(call=>call.body.max_tokens===80);assert.equal(titles.length,1);assert.equal(titles[0].body.messages[1].content,'Synthetic administrative answer.');
+ assert.equal(JSON.stringify(titles[0].body).includes(data),false);
+ assert.equal(f.calls.filter(call=>call.body.stream).length,1);
 });

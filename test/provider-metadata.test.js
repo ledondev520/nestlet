@@ -1,7 +1,7 @@
 // Authored provider responses only. This is not live-provider acceptance.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { validateModelKey, generateConversationTitle } from '../provider-metadata.js';
+import { validateModelKey, generateConversationTitle, conversationTitleTopic } from '../provider-metadata.js';
 const result = (content, more = {}) => Response.json({ model: 'deepseek-flash', choices: [{ finish_reason: 'stop', message: { content }, ...more }] });
 test('key validation makes exactly one bounded Flash inference with no user data', async () => {
   let calls=0;
@@ -33,4 +33,11 @@ test('legacy fixture classifies only the bounded post-persistence title and reje
   assert.doesNotThrow(()=>assertLegacyTitleRequest(body,context));
   for(const change of [{primaryCount:0},{primaryCount:2},{titleCount:1},{completedAssistant:false},{mode:'save-failure'}])assert.throws(()=>assertLegacyTitleRequest(body,{...context,...change}));
   for(const change of [{stream:true},{max_tokens:81},{model:'other'},{tools:[]},{messages:[body.messages[0],{role:'user',content:'Unexpected case or library data'}]}])assert.throws(()=>assertLegacyTitleRequest({...body,...change},context));
+});
+
+test('image-first title topics use only a bounded saved answer and absent topics can skip allowance',()=>{
+ assert.equal(conversationTitleTopic({userText:' User topic ',assistantText:'Ignored saved reply',hasImages:true}),'User topic');
+ assert.equal(conversationTitleTopic({userText:' ',assistantText:' Saved image explanation ',hasImages:true}),'Saved image explanation');
+ assert.equal(conversationTitleTopic({userText:'',assistantText:'x'.repeat(2000),hasImages:true}).length,1200);
+ for(const input of [{userText:'',assistantText:'not an image response'},{userText:'',assistantText:' ',hasImages:true},{hasImages:true}])assert.equal(conversationTitleTopic(input),'');
 });

@@ -25,6 +25,13 @@ export async function validateModelKey(options) {
   if (answer !== 'OK') throw new Error('PROVIDER_CHECK_FAILED');
   return { check: 'chat-completion', chatCompletionTested: true, verifiedAt: new Date().toISOString() };
 }
+/** Resolve a useful bounded topic before consuming optional title allowance.
+ * Image-first conversations reuse the already saved answer, never raw images. */
+export function conversationTitleTopic({userText,assistantText,hasImages=false}) {
+  const text=typeof userText==='string'?userText.trim():'';
+  if(text)return text.slice(0,1200);
+  return hasImages&&typeof assistantText==='string'?assistantText.trim().slice(0,1200):'';
+}
 export async function generateConversationTitle({ userText, locale, ...options }) {
   if (typeof userText !== 'string' || !userText.trim()) return null;
   const title = await completion({ ...options, maxTokens: 80, messages: [

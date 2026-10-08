@@ -1,4 +1,4 @@
-import { validateModelKey, generateConversationTitle } from './provider-metadata.js';
+import { validateModelKey, generateConversationTitle, conversationTitleTopic } from './provider-metadata.js';
 import { newReviewReceipt, reviewReceiptSnapshot } from './review-operation.js';
 import { LibraryPermissionError } from './library-consent-storage.js';
 import http from 'node:http';
@@ -718,6 +718,8 @@ const server = http.createServer(async (request, response) => {
       const saveGeneratedTitle = async () => {
         if (!enabled || titleAttempted || activeTitleRequests >= 2 || signal.aborted || !conversation || !assistantMessage || !answer.trim() ||
             history.some(message => message.role === 'assistant' && message.state === 'complete' && message.content.trim())) return;
+        const titleTopic=conversationTitleTopic({userText:body.messages[0].content,assistantText:assistantMessage.state==='complete'?assistantMessage.content:'',hasImages:Boolean(userMessage?.imageMetadata?.length)});
+        if(!titleTopic)return;
         titleAttempted = true;
         activeTitleRequests++;
         try {
@@ -725,7 +727,7 @@ const server = http.createServer(async (request, response) => {
           if (!titleSession || titleSession.token !== session.token) return;
           authorizeLibrary?.();
           consumeTrialAiAllowance(session, randomUUID());
-          const title = await generateConversationTitle({ apiKey, userText: body.messages[0].content, locale: input.locale,
+          const title = await generateConversationTitle({ apiKey, userText: titleTopic, locale: input.locale,
             signal: AbortSignal.timeout(4000) });
           if (title) storage.setGeneratedConversationTitle(session.userId, conversation.id, title, conversation.title, assistantMessage.id);
         } catch { /* Optional metadata must never turn a saved assistant answer into failure. */ }
