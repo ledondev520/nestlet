@@ -21,3 +21,9 @@ export async function readInboxContext(api, caseId, lang, signal) {
   if(artifacts.some(row=>typeof row.id!=='string'||row.caseId!==caseId)||assets.some(row=>typeof row.id!=='string'||row.caseId!==caseId)) invalid();
   return {record,readiness,artifacts,assets};
 }
+
+/** Preserve the reason a concise readiness item is blocked, not only its label. */
+export function readinessReasonLabel(reason, lang = 'zh') {
+ const labels = {missing:['Missing','待补充'],unconfirmed:['Needs confirmation','待核对'],conflict:['Conflict','有冲突'],english_review:['English review','需核对英文']};
+ return Object.hasOwn(labels, reason) ? labels[reason][lang === 'en' ? 0 : 1] : null;
+}

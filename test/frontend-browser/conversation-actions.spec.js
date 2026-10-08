@@ -86,6 +86,7 @@ test('desktop proposal preview waits for completed synthetic SSE; cancel is read
   const changed=await apiWrite(page,app,`/api/cases/${record.id}`,'PUT',{...newCasePayload(saved.title),clientId:saved.clientId,fields:saved.fields.map(field=>field.key==='property'?{...field,confirmed:false,conflict:true}:field),expectedVersion:saved.version});
   expect(changed.status()).toBe(200);const conflicted=(await changed.json()).case;
   await send('Prepare another suggestion while conflicting evidence remains.');await finish();
+  await expect(page.getByTestId('chat-case-workflow').locator('[data-readiness-reason="conflict"]')).toBeVisible();
   await expect(cards).toContainText('Conflicting evidence needs review');await expect(apply()).toBeDisabled();
   await expect(cards).not.toContainText('Wait for the complete saved answer');expect(writes).toHaveLength(1);
   await noHorizontalOverflow(page);await screenshot(page,testInfo,'desktop-proposal-conflict-blocked');
