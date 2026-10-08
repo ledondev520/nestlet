@@ -8,7 +8,7 @@ const identity={userId:randomUUID(),authenticated:true,role:'trial',csrfToken:'p
 const response=(body,status=200,headers={})=>new Response(JSON.stringify(body),{status,headers:{'Content-Type':'application/json',...headers}});
 const deferred=()=>{let resolve;const promise=new Promise(done=>resolve=done);return{promise,resolve};};
 const tick=()=>new Promise(resolve=>setTimeout(resolve,0));
-async function mount({caseId=null,fetchHandler,status=identity,recovery=null,guidanceAgency='unknown',permissionDecision='allow',permissionHandler}={}){
+async function mount({caseId=null,fetchHandler,status=identity,recovery=null,guidanceAgency='unknown',permissionDecision='allow',permissionHandler,statusHandler}={}){
   const dom=new JSDOM('<!doctype html><div id="root"></div>',{url:'http://localhost/next/',pretendToBeVisual:true});
   const original=new Map(); const set=(key,value)=>{original.set(key,Object.getOwnPropertyDescriptor(globalThis,key));Object.defineProperty(globalThis,key,{configurable:true,writable:true,value});};
   for(const key of ['window','document','navigator','HTMLElement','Element','Node','MutationObserver','Event','CustomEvent','MouseEvent','NodeFilter','HTMLInputElement'])set(key,dom.window[key]);
@@ -16,7 +16,7 @@ async function mount({caseId=null,fetchHandler,status=identity,recovery=null,gui
   set('ResizeObserver',class{observe(){}unobserve(){}disconnect(){}});
   dom.window.confirm=()=>true;dom.window.HTMLElement.prototype.scrollIntoView=function(){};
   const requests=[];let permissionFixture={decision:permissionDecision,version:permissionDecision==='unset'?0:1,provider:{id:'deepseek',endpoint:'https://api.deepseek.com/chat/completions',model:'deepseek-flash'},policyVersion:'library-retrieval-v1',category:'saved-library-excerpts',updatedAt:null};
-  set('fetch',async(path,options={})=>{requests.push({path,options});if(path==='/api/status')return response(status);if(path==='/api/library-permission'){if(permissionHandler)return permissionHandler(options);if(options.method==='PUT'){const body=JSON.parse(options.body);assert.equal(body.expectedVersion,permissionFixture.version);permissionFixture={...permissionFixture,decision:body.decision,version:permissionFixture.version+1};}return response(permissionFixture);}return fetchHandler(path,options);});
+  set('fetch',async(path,options={})=>{requests.push({path,options});if(path==='/api/status')return statusHandler?statusHandler(options):response(status);if(path==='/api/library-permission'){if(permissionHandler)return permissionHandler(options);if(options.method==='PUT'){const body=JSON.parse(options.body);assert.equal(body.expectedVersion,permissionFixture.version);permissionFixture={...permissionFixture,decision:body.decision,version:permissionFixture.version+1};}return response(permissionFixture);}return fetchHandler(path,options);});
   const vite=await createServer({server:{middlewareMode:true,hmr:false,ws:false,watch:null},logLevel:'error'});
   const React=await import('react');const {createRoot}=await import('react-dom/client');
   const {SessionProvider,useSession}=await vite.ssrLoadModule('/lib/session.jsx');const {ChatPage}=await vite.ssrLoadModule('/features/chat/index.jsx');
@@ -24,8 +24,8 @@ async function mount({caseId=null,fetchHandler,status=identity,recovery=null,gui
   const {draftVault}=await vite.ssrLoadModule('/lib/draft-vault.js');const workspaceKey=randomUUID();
   if(recovery){draftVault.verifyUser(status.userId);assert.equal(draftVault.write({userId:status.userId,workspaceKey,feature:'chat'},recovery),true);draftVault.suspend(status.userId);}
   const root=createRoot(dom.window.document.getElementById('root'));
-  let selected=caseId,sessionApi;
-  function Workspace(){const session=useSession();sessionApi=session;return session.status.authenticated?React.createElement(DraftWorkspaceProvider,{userId:session.status.userId,workspaceKey},React.createElement(ChatPage,{lang:'en',caseId:selected,guidanceAgency,onCaseChange:id=>{selected=id;root.render(render());}})):null;}
+  let selected=caseId,sessionApi,dirty=false;const markDirty=value=>{dirty=value;};
+  function Workspace(){const session=useSession();sessionApi=session;return session.status.authenticated?React.createElement(DraftWorkspaceProvider,{userId:session.status.userId,workspaceKey},React.createElement(ChatPage,{lang:'en',caseId:selected,guidanceAgency,onDirtyChange:markDirty,onCaseChange:id=>{selected=id;root.render(render());}})):null;}
   const render=()=>React.createElement(SessionProvider,null,React.createElement(Workspace));
   await React.act(async()=>{root.render(render());await tick();});
   const flush=async()=>{await React.act(async()=>{await tick();});};
@@ -34,7 +34,7 @@ async function mount({caseId=null,fetchHandler,status=identity,recovery=null,gui
   const click=async element=>{assert.ok(element,'Expected control');await React.act(async()=>{element.click();await tick();});};
   const type=async text=>{const input=dom.window.document.querySelector('textarea');assert.ok(input);await React.act(async()=>{Object.getOwnPropertyDescriptor(dom.window.HTMLTextAreaElement.prototype,'value').set.call(input,text);input.dispatchEvent(new dom.window.Event('input',{bubbles:true}));await tick();});};
   const close=async()=>{await React.act(async()=>{root.unmount();await tick();});await React.act(async()=>{await tick();});await vite.close();dom.window.close();for(const[key,descriptor]of original){if(descriptor)Object.defineProperty(globalThis,key,descriptor);else delete globalThis[key];}};
-  return{dom,requests,flush,setCase,setStatus:async next=>{status=next;await React.act(async()=>{await sessionApi.refresh();await tick();});},button,click,type,close,readDraft:()=>draftVault.read({userId:status.userId,workspaceKey,feature:'chat'})};
+  return{dom,requests,flush,isDirty:()=>dirty,setCase,setStatus:async next=>{status=next;await React.act(async()=>{await sessionApi.refresh();await tick();});},button,click,type,close,readDraft:()=>draftVault.read({userId:status.userId,workspaceKey,feature:'chat'})};
 }
 
 test('development React: failed case creation retains composer and cannot fall back to transient chat',async context=>{
@@ -345,4 +345,215 @@ test('development React: changed provider endpoint cannot be approved under a De
  await app.type('Synthetic new-destination question');await app.click(app.button('Send'));
  assert.equal(app.button('Allow saved-library search').disabled,true);
  assert.equal(app.requests.some(item=>item.options.method==='POST'||item.options.method==='PUT'),false);
+});
+
+
+test('expired tab CSRF is refreshed without another login or an automatic chat retry',async context=>{
+ const caseId=randomUUID(),conversationId=randomUUID();let statusReads=0,chatCalls=0;
+ const current={...identity,csrfToken:'synthetic-current-session-csrf'};
+ const app=await mount({caseId,statusHandler:()=>response(++statusReads===1?identity:current),fetchHandler:async(path,options)=>{
+  if(path===`/api/cases/${caseId}`)return response({case:{id:caseId,title:'Synthetic existing case'}});
+  if(path===`/api/cases/${caseId}/conversations`)return response({conversations:[{id:conversationId,caseId,title:'Synthetic saved conversation'}]});
+  if(path===`/api/conversations/${conversationId}`)return response({conversation:{id:conversationId,caseId},messages:[]});
+  if(path==='/api/chat'){chatCalls++;assert.equal(options.headers['X-CSRF-Token'],chatCalls===1?identity.csrfToken:current.csrfToken);return response({code:chatCalls===1?'CSRF_REJECTED':'LIVE_DISABLED'},chatCalls===1?403:503);}
+  return response({},500);
+ }});context.after(app.close);
+ await app.flush();await app.type('Continue this synthetic existing conversation');await app.click(app.button('Send'));await app.flush();await app.flush();
+ assert.equal(chatCalls,1,'Session recovery must never replay a model POST');
+ assert.equal(statusReads,2,'A stale CSRF rejection must check the actual current session once');
+ assert.equal(app.dom.window.document.querySelector('textarea').value,'Continue this synthetic existing conversation');
+ assert.equal(app.button('Send').disabled,false);
+ assert.match(app.dom.window.document.body.textContent,/Connection refreshed/);
+ assert.doesNotMatch(app.dom.window.document.body.textContent,/Sign in again|The reply was interrupted/);
+ assert.equal(app.requests.some(item=>item.path==='/api/login'),false);
+ await app.click(app.button('Send'));await app.flush();
+ assert.equal(chatCalls,2,'Only a second explicit send starts another POST, using the refreshed token');
+});
+
+test('a received unsaved reply survives verified same-user reauthentication without replaying the turn',async context=>{
+ const caseId=randomUUID(),conversationId=randomUUID(),userId=randomUUID(),requestId=randomUUID();let sent=false,expire=true,clientMessageId;
+ const frame=(name,value)=>`event: ${name}\ndata: ${JSON.stringify(value)}\n\n`;
+ const app=await mount({caseId,fetchHandler:async(path,options)=>{
+  if(path===`/api/cases/${caseId}`)return response({case:{id:caseId,title:'Synthetic resume case'}});
+  if(path===`/api/cases/${caseId}/conversations`)return response({conversations:[{id:conversationId,caseId,title:'Synthetic resume thread'}]});
+  if(path===`/api/conversations/${conversationId}`){
+   if(sent&&expire){expire=false;return response({code:'AUTH_REQUIRED'},401);}
+   return response({conversation:{id:conversationId,caseId},messages:sent?[{id:userId,clientMessageId,requestId,role:'user',content:'Keep this synthetic question',state:'complete'}]:[]});
+  }
+  if(path==='/api/chat'){sent=true;clientMessageId=JSON.parse(options.body).clientMessageId;return new Response(frame('conversation',{conversationId,userMessageId:userId})+frame('delta',{text:'Unsaved synthetic answer worth keeping.'})+frame('error',{code:'CHAT_SAVE_FAILED',requestId}),{headers:{'Content-Type':'text/event-stream','X-Request-Id':requestId}});}
+  return response({},500);
+ }});context.after(app.close);
+ await app.flush();await app.type('Keep this synthetic question');await app.click(app.button('Send'));await app.flush();
+ assert.equal(app.dom.window.document.querySelector('textarea'),null,'An actual unauthorized history read shows sign-in, not an extended session');
+ await app.setStatus(identity);await app.flush();await app.flush();
+ assert.match(app.dom.window.document.body.textContent,/Unsaved synthetic answer worth keeping/);
+ assert.match(app.dom.window.document.body.textContent,/Not confirmed saved|not yet confirmed saved|Save not confirmed/i);
+ assert.equal(app.requests.filter(item=>item.path==='/api/chat').length,1,'Reauthentication must never repeat provider work');
+});
+
+for(const mode of ['refresh-fails','different-user','expired','origin-rejected'])test(`connection recovery ${mode} keeps its authority boundary and never replays chat`,async context=>{
+ const caseId=randomUUID(),conversationId=randomUUID();let statusReads=0,chatCalls=0;
+ const app=await mount({caseId,statusHandler:()=>{
+  statusReads++;if(statusReads===1)return response(identity);
+  if(mode==='refresh-fails')throw new Error('Synthetic offline status');
+  if(mode==='expired')return response({authenticated:false});
+  return response({...identity,userId:randomUUID(),csrfToken:'synthetic-other-session'});
+ },fetchHandler:async(path,options)=>{
+  if(path===`/api/cases/${caseId}`)return response({case:{id:caseId,title:'Synthetic existing case'}});
+  if(path===`/api/cases/${caseId}/conversations`)return response({conversations:[{id:conversationId,caseId,title:'Synthetic saved conversation'}]});
+  if(path===`/api/conversations/${conversationId}`)return response({conversation:{id:conversationId,caseId},messages:[]});
+  if(path==='/api/chat'){chatCalls++;return response({code:mode==='origin-rejected'?'ORIGIN_REJECTED':'CSRF_REJECTED'},403);}
+  return response({},500);
+ }});context.after(app.close);
+ await app.flush();await app.type('Private synthetic old-account question');await app.click(app.button('Send'));await app.flush();await app.flush();
+ assert.equal(chatCalls,1);assert.equal(statusReads,mode==='origin-rejected'?1:2);
+ if(mode==='refresh-fails'){
+  assert.equal(app.dom.window.document.querySelector('textarea').value,'Private synthetic old-account question');
+  assert.match(app.dom.window.document.body.textContent,/Could not check the connection/);assert.ok(app.button('Check connection'));
+ }else if(mode==='origin-rejected'){
+  assert.match(app.dom.window.document.body.textContent,/connection security check failed/);assert.doesNotMatch(app.dom.window.document.body.textContent,/Sign in again/i);
+ }else assert.doesNotMatch(app.dom.window.document.body.textContent,/Private synthetic old-account question/);
+});
+
+test('missing model capability can be checked in the current conversation without discarding text or sending a message',async context=>{
+ let reads=0;
+ const app=await mount({statusHandler:()=>response(++reads===1?{...identity,liveEnabled:false}:identity),fetchHandler:async()=>response({},500)});context.after(app.close);
+ await app.type('Keep the newer draft while checking this connection');assert.equal(app.button('Send').disabled,true);
+ await app.click(app.button('Check connection'));await app.flush();
+ assert.equal(app.dom.window.document.querySelector('textarea').value,'Keep the newer draft while checking this connection');assert.equal(app.button('Send').disabled,false);
+ assert.equal(app.requests.some(item=>item.path==='/api/chat'),false);
+});
+
+test('a completed server reply clears a stale save warning after read-only reconciliation',async context=>{
+ const caseId=randomUUID(),conversationId=randomUUID(),userId=randomUUID(),assistantId=randomUUID(),requestId=randomUUID();let sent=false,clientMessageId;
+ const frame=(name,value)=>`event: ${name}\ndata: ${JSON.stringify(value)}\n\n`;
+ const app=await mount({caseId,fetchHandler:async(path,options)=>{
+  if(path===`/api/cases/${caseId}`)return response({case:{id:caseId,title:'Synthetic confirmed-save case'}});
+  if(path===`/api/cases/${caseId}/conversations`)return response({conversations:[{id:conversationId,caseId,title:'Synthetic confirmed-save thread'}]});
+  if(path===`/api/conversations/${conversationId}`)return response({conversation:{id:conversationId,caseId},messages:sent?[{id:userId,clientMessageId,requestId,role:'user',content:'Synthetic saved question',state:'complete'},{id:assistantId,requestId,role:'assistant',content:'Authoritatively saved synthetic answer.',state:'complete'}]:[]});
+  if(path==='/api/chat'){sent=true;clientMessageId=JSON.parse(options.body).clientMessageId;return new Response(frame('conversation',{conversationId,userMessageId:userId})+frame('delta',{text:'Authoritatively saved synthetic answer.'})+frame('error',{code:'CHAT_SAVE_FAILED',requestId}),{headers:{'Content-Type':'text/event-stream','X-Request-Id':requestId}});}
+  return response({},500);
+ }});context.after(app.close);
+ await app.flush();await app.type('Synthetic saved question');await app.click(app.button('Send'));await app.flush();await app.flush();
+ assert.match(app.dom.window.document.body.textContent,/Authoritatively saved synthetic answer/);
+ assert.doesNotMatch(app.dom.window.document.body.textContent,/Could not confirm the saved reply/);
+ assert.equal(app.requests.filter(item=>item.path==='/api/chat').length,1);
+ assert.equal(app.readDraft(),null,'Confirmed saved content no longer remains in the unconfirmed recovery cache');
+});
+
+for(const listed of ['different-conversation','empty-list'])test(`a recovered reply stays on its original unavailable conversation with ${listed}`,async context=>{
+ const caseId=randomUUID(),originalId=randomUUID(),otherId=randomUUID(),gate=deferred();let originalReads=0;
+ const pendingTurn={userMessageId:randomUUID(),clientMessageId:randomUUID(),question:'Original synthetic sent question',assistantMessageId:randomUUID(),reply:'Original unconfirmed synthetic reply',requestId:randomUUID()};
+ const app=await mount({caseId,recovery:{input:pendingTurn.question,conversationId:originalId,pendingTurn},fetchHandler:async path=>{
+  if(path===`/api/cases/${caseId}`)return response({case:{id:caseId,title:'Synthetic scoped recovery'}});
+  if(path===`/api/cases/${caseId}/conversations`)return response({conversations:listed==='empty-list'?[]:[{id:otherId,caseId,title:'Different synthetic conversation'}]});
+  if(path===`/api/conversations/${otherId}`)assert.fail('Recovery must never load an alternate conversation');
+  if(path===`/api/conversations/${originalId}`){
+   if(++originalReads===1)return gate.promise;
+   return response({conversation:{id:originalId,caseId,title:'Original saved conversation'},messages:[{id:pendingTurn.userMessageId,clientMessageId:pendingTurn.clientMessageId,requestId:pendingTurn.requestId,role:'user',content:pendingTurn.question,state:'complete'},{id:pendingTurn.assistantMessageId,requestId:pendingTurn.requestId,role:'assistant',content:'Confirmed saved synthetic reply',state:'complete'}]});
+  }
+  return response({},500);
+ }});context.after(app.close);await app.flush();
+ assert.equal(app.dom.window.document.querySelector('select').value,originalId);assert.match(app.dom.window.document.body.textContent,/Original unconfirmed synthetic reply/);
+ await import('react').then(React=>React.act(async()=>{gate.resolve(response({code:'CONVERSATION_NOT_FOUND'},404));await tick();}));await app.flush();
+ assert.equal(app.dom.window.document.querySelector('select').value,originalId);assert.equal(app.button('Send').disabled,true);
+ assert.match(app.dom.window.document.body.textContent,/This conversation could not be opened/);
+ await app.type('Keep this newer draft while the original conversation is unavailable');
+ await import('react').then(React=>React.act(async()=>{app.dom.window.document.querySelector('textarea').dispatchEvent(new app.dom.window.KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true}));await tick();}));
+ assert.equal(app.requests.some(item=>item.path==='/api/chat'),false);assert.deepEqual(app.readDraft().pendingTurn,pendingTurn);
+ await app.click(app.button('Retry opening this conversation'));await app.flush();
+ assert.equal(app.dom.window.document.querySelector('select').value,originalId);assert.equal(app.button('Send').disabled,false);
+ assert.equal(app.dom.window.document.querySelector('textarea').value,'Keep this newer draft while the original conversation is unavailable');
+ assert.match(app.dom.window.document.body.textContent,/Confirmed saved synthetic reply/);assert.doesNotMatch(app.dom.window.document.body.textContent,/Original unconfirmed synthetic reply|not yet confirmed saved/i);
+ assert.equal(app.readDraft().pendingTurn,undefined);assert.equal(app.requests.some(item=>item.path==='/api/chat'),false);
+});
+
+
+test('already saved recovered reply removes the obsolete unconfirmed notice without clearing newer text',async context=>{
+ const caseId=randomUUID(),conversationId=randomUUID();
+ const pendingTurn={userMessageId:randomUUID(),clientMessageId:randomUUID(),question:'Synthetic earlier question',assistantMessageId:randomUUID(),reply:'Synthetic answer now confirmed saved',requestId:randomUUID()};
+ const app=await mount({caseId,recovery:{input:'Newer draft must survive verification',conversationId,pendingTurn},fetchHandler:async path=>{
+  if(path===`/api/cases/${caseId}`)return response({case:{id:caseId,title:'Synthetic proof case'}});
+  if(path===`/api/cases/${caseId}/conversations`)return response({conversations:[{id:conversationId,caseId,title:'Synthetic proof thread'}]});
+  if(path===`/api/conversations/${conversationId}`)return response({conversation:{id:conversationId,caseId},messages:[{id:pendingTurn.userMessageId,clientMessageId:pendingTurn.clientMessageId,requestId:pendingTurn.requestId,role:'user',content:pendingTurn.question,state:'complete'},{id:pendingTurn.assistantMessageId,requestId:pendingTurn.requestId,role:'assistant',content:pendingTurn.reply,state:'complete'}]});
+  return response({},500);
+ }});context.after(app.close);await app.flush();
+ assert.match(app.dom.window.document.body.textContent,/Synthetic answer now confirmed saved/);
+ assert.doesNotMatch(app.dom.window.document.body.textContent,/not yet confirmed saved/i);
+ assert.equal(app.dom.window.document.querySelector('textarea').value,'Newer draft must survive verification');assert.equal(app.readDraft().pendingTurn,undefined);
+ assert.equal(app.requests.some(item=>item.path==='/api/chat'),false);
+});
+
+test('stopping a read-only connection check aborts it without changing draft or sending chat',async context=>{
+ let reads=0,aborted=false;
+ const app=await mount({statusHandler:options=>{
+  if(++reads===1)return response({...identity,liveEnabled:false});
+  return new Promise((resolve,reject)=>options.signal.addEventListener('abort',()=>{aborted=true;reject(new DOMException('Synthetic check cancelled','AbortError'));},{once:true}));
+ },fetchHandler:async()=>response({},500)});context.after(app.close);
+ await app.type('Preserve this draft during a cancelled connection check');await app.click(app.button('Check connection'));
+ assert.match(app.dom.window.document.body.textContent,/Checking connection/);
+ await app.click(app.button('Stop reply'));await app.flush();assert.equal(aborted,true);
+ assert.equal(app.dom.window.document.querySelector('textarea').value,'Preserve this draft during a cancelled connection check');assert.equal(app.dom.window.document.querySelector('textarea').disabled,false);
+ assert.equal(app.requests.some(item=>item.path==='/api/chat'),false);assert.equal(app.button('Check connection').disabled,false);
+});
+
+for(const code of ['SERVICE_PAUSED','SERVICE_EXPIRED','TRIAL_LIMIT_REACHED'])test(`${code} preserves the question without pretending sign-in or reply saving failed`,async context=>{
+ const caseId=randomUUID(),conversationId=randomUUID();let historyReads=0,statusReads=0;
+ const app=await mount({caseId,statusHandler:()=>{statusReads++;return response(identity);},fetchHandler:async path=>{
+  if(path===`/api/cases/${caseId}`)return response({case:{id:caseId,title:'Synthetic service case'}});
+  if(path===`/api/cases/${caseId}/conversations`)return response({conversations:[{id:conversationId,caseId,title:'Synthetic service conversation'}]});
+  if(path===`/api/conversations/${conversationId}`){historyReads++;return response({conversation:{id:conversationId,caseId},messages:[]});}
+  if(path==='/api/chat')return response({code},code==='TRIAL_LIMIT_REACHED'?429:403);
+  return response({},500);
+ }});context.after(app.close);await app.flush();await app.type('Retain this synthetic service-denied question');await app.click(app.button('Send'));await app.flush();
+ assert.equal(app.dom.window.document.querySelector('textarea').value,'Retain this synthetic service-denied question');assert.equal(historyReads,1);assert.equal(statusReads,1);
+ assert.doesNotMatch(app.dom.window.document.body.textContent,/sign.in.*expired|sign in again|could not confirm|could not read.*saved/i);
+ assert.equal(app.requests.filter(item=>item.path==='/api/chat').length,1);
+});
+
+test('an unsaved received reply keeps the discard guard even after the composer is cleared',async context=>{
+ const caseId=randomUUID(),conversationId=randomUUID();
+ const pendingTurn={userMessageId:randomUUID(),clientMessageId:randomUUID(),question:'Synthetic question already saved',assistantMessageId:randomUUID(),reply:'Synthetic reply not confirmed saved',requestId:randomUUID()};
+ const app=await mount({caseId,recovery:{input:'',conversationId,pendingTurn},fetchHandler:async path=>{
+  if(path===`/api/cases/${caseId}`)return response({case:{id:caseId,title:'Synthetic unsaved guard'}});
+  if(path===`/api/cases/${caseId}/conversations`)return response({conversations:[{id:conversationId,caseId,title:'Synthetic guard thread'}]});
+  if(path===`/api/conversations/${conversationId}`)return response({conversation:{id:conversationId,caseId},messages:[{id:pendingTurn.userMessageId,clientMessageId:pendingTurn.clientMessageId,requestId:pendingTurn.requestId,role:'user',content:pendingTurn.question,state:'complete'}]});
+  return response({},500);
+ }});context.after(app.close);await app.flush();await app.type('');assert.equal(app.isDirty(),true);
+ let confirmations=0;app.dom.window.confirm=message=>{confirmations++;assert.match(message,/unsaved replies/);return false;};
+ await app.click(app.button('New conversation'));assert.equal(confirmations,1);
+ assert.equal(app.dom.window.document.querySelector('select').value,conversationId);assert.match(app.dom.window.document.body.textContent,/Synthetic reply not confirmed saved/);
+ assert.equal(app.readDraft().pendingTurn.reply,pendingTurn.reply);assert.equal(app.requests.some(item=>item.path==='/api/chat'),false);
+});
+
+for(const rejection of ['CSRF_REJECTED','SERVICE_PAUSED'])test(`earlier unsaved reply survives newer ${rejection} and same-user reauthentication`,async context=>{
+ const caseId=randomUUID(),conversationId=randomUUID();const old={userMessageId:randomUUID(),clientMessageId:randomUUID(),question:'Earlier saved synthetic question',assistantMessageId:randomUUID(),reply:'Earlier received synthetic reply remains unconfirmed',requestId:randomUUID()};
+ const app=await mount({caseId,recovery:{input:'',conversationId,pendingTurn:old},fetchHandler:async path=>{
+  if(path===`/api/cases/${caseId}`)return response({case:{id:caseId,title:'Synthetic multiple turn recovery'}});
+  if(path===`/api/cases/${caseId}/conversations`)return response({conversations:[{id:conversationId,caseId,title:'Synthetic original conversation'}]});
+  if(path===`/api/conversations/${conversationId}`)return response({conversation:{id:conversationId,caseId},messages:[{id:old.userMessageId,clientMessageId:old.clientMessageId,requestId:old.requestId,role:'user',content:old.question,state:'complete'}]});
+  if(path==='/api/chat')return response({code:rejection},403);return response({},500);
+ }});context.after(app.close);await app.flush();await app.type('Newer explicit question denied before provider');await app.click(app.button('Send'));await app.flush();await app.flush();
+ assert.equal(app.readDraft().pendingTurn.reply,old.reply);assert.equal(app.readDraft().input,'Newer explicit question denied before provider');
+ await app.setStatus({authenticated:false});await app.setStatus(identity);await app.flush();
+ assert.match(app.dom.window.document.body.textContent,/Earlier received synthetic reply remains unconfirmed/);assert.equal(app.dom.window.document.querySelector('textarea').value,'Newer explicit question denied before provider');
+ assert.equal(app.requests.filter(item=>item.path==='/api/chat').length,1);
+});
+
+for(const outcome of ['complete','unsaved'])test(`a newer ${outcome} turn cannot erase an earlier unconfirmed reply`,async context=>{
+ const caseId=randomUUID(),conversationId=randomUUID(),newUserId=randomUUID(),newAssistantId=randomUUID(),newRequestId=randomUUID();let sent=false,newClientId;
+ const old={userMessageId:randomUUID(),clientMessageId:randomUUID(),question:'Earlier saved synthetic question',assistantMessageId:randomUUID(),reply:'Earlier unconfirmed synthetic answer',requestId:randomUUID()};
+ const oldRow={id:old.userMessageId,clientMessageId:old.clientMessageId,requestId:old.requestId,role:'user',content:old.question,state:'complete'};
+ const frame=(name,value)=>`event: ${name}\ndata: ${JSON.stringify(value)}\n\n`;
+ const app=await mount({caseId,recovery:{input:'',conversationId,pendingTurn:old},fetchHandler:async(path,options)=>{
+  if(path===`/api/cases/${caseId}`)return response({case:{id:caseId,title:'Synthetic successive turns'}});
+  if(path===`/api/cases/${caseId}/conversations`)return response({conversations:[{id:conversationId,caseId,title:'Synthetic successive conversation'}]});
+  if(path===`/api/conversations/${conversationId}`)return response({conversation:{id:conversationId,caseId},messages:[oldRow,...(sent?[{id:newUserId,clientMessageId:newClientId,requestId:newRequestId,role:'user',content:'Newer explicit synthetic question',state:'complete'},...(outcome==='complete'?[{id:newAssistantId,requestId:newRequestId,role:'assistant',content:'Newer synthetic answer',state:'complete'}]:[])]:[])]});
+  if(path==='/api/chat'){sent=true;newClientId=JSON.parse(options.body).clientMessageId;return new Response(frame('conversation',{conversationId,userMessageId:newUserId})+frame('delta',{text:'Newer synthetic answer'})+(outcome==='complete'?frame('done',{requestId:newRequestId,assistantMessageId:newAssistantId,conversationId}):frame('error',{code:'CHAT_SAVE_FAILED',requestId:newRequestId})),{headers:{'Content-Type':'text/event-stream','X-Request-Id':newRequestId}});}
+  return response({},500);
+ }});context.after(app.close);await app.flush();await app.type('Newer explicit synthetic question');await app.click(app.button('Send'));await app.flush();await app.flush();
+ assert.match(app.dom.window.document.body.textContent,/Earlier unconfirmed synthetic answer/);assert.match(app.dom.window.document.body.textContent,/Newer synthetic answer/);assert.equal(app.isDirty(),true);
+ const cache=app.readDraft();assert.equal(outcome==='complete'?cache.pendingTurn.reply:cache.earlierTurns[0].reply,old.reply);
+ await app.setStatus({authenticated:false});await app.setStatus(identity);await app.flush();
+ assert.match(app.dom.window.document.body.textContent,/Earlier unconfirmed synthetic answer/);assert.match(app.dom.window.document.body.textContent,/Newer synthetic answer/);assert.equal(app.requests.filter(item=>item.path==='/api/chat').length,1);
 });
