@@ -10,6 +10,28 @@ const packets = text => text.split(/\r?\n\r?\n/u).filter(Boolean).map(block => (
   event: /^event: (.+)$/mu.exec(block)?.[1],
   data: JSON.parse(block.split(/\r?\n/u).filter(line => line.startsWith('data:')).map(line => line.slice(5).trimStart()).join('\n')),
 }));
+function observeLegacyChatWire() {
+  window.__legacyWireResponses = [];
+  const nativeFetch = window.fetch;
+  window.fetch = async function (...args) {
+    // Observe a native clone; return the original Response unchanged. Forward
+    // the same input/options/AbortSignal, never author or delay app SSE frames.
+    const response = await Reflect.apply(nativeFetch, this, args);
+    const input = args[0] instanceof Request ? args[0].url : String(args[0]);
+    const url = new URL(input, location.href);
+    if (url.origin === location.origin && url.pathname === '/api/chat') {
+      const captured = { requestId: response.headers.get('x-request-id'), state: 'pending', text: null, error: null };
+      window.__legacyWireResponses.push(captured);
+      const failed = error => { captured.error = error.name; captured.state = 'failed'; };
+      try {
+        // Read the bounded authored fixture in parallel rather than relying on
+        // Chromium's CDP body cache after the old parser releases its reader.
+        response.clone().text().then(text => { captured.text = text; captured.state = 'complete'; }, failed);
+      } catch (error) { failed(error); }
+    }
+    return response;
+  };
+}
 const test = base.extend({
   legacyMode: ['prepared', { option: true }],
   legacyReview: async ({ page, legacyMode }, use, testInfo) => {
@@ -56,6 +78,7 @@ const test = base.extend({
         window.__legacyCspViolations = [];
         document.addEventListener('securitypolicyviolation', event => window.__legacyCspViolations.push(`${event.violatedDirective}: ${event.blockedURI}`));
       });
+      await page.addInitScript(observeLegacyChatWire);
       await page.route('**/*', routePinnedAssets);
       const bundleResponse = page.waitForResponse(response => new URL(response.url()).pathname === '/next/app.js');
       await page.goto(app.origin + '/');
@@ -78,6 +101,17 @@ const test = base.extend({
       const unchanged = () => {
         expect(mutations, 'Preview, stop and proposal dismissal never mutate case/facts/artifacts').toEqual([]);
         app.assertUnchanged();
+      };
+      const wireText = async response => {
+        expect(response.status()).toBe(200);
+        const requestId = response.headers()['x-request-id'];
+        expect(requestId).toMatch(/^[0-9a-f-]{36}$/u);
+        await expect.poll(() => page.evaluate(id => window.__legacyWireResponses.find(item => item.requestId === id)?.state || 'missing', requestId),
+          { message: 'The actual native chat response clone reaches a terminal state' }).toMatch(/^(?:complete|failed)$/u);
+        const captures = await page.evaluate(id => window.__legacyWireResponses.filter(item => item.requestId === id), requestId);
+        expect(captures).toHaveLength(1);
+        expect(captures[0]).toMatchObject({ requestId, state: 'complete', error: null });
+        return captures[0].text;
       };
       const begin = async () => {
         await settled();
@@ -116,7 +150,7 @@ const test = base.extend({
         unchanged();
         return history.messages;
       };
-      await use({ app, chat, cards, begin, settled, unchanged, reopenHistory });
+      await use({ app, chat, cards, begin, settled, unchanged, reopenHistory, wireText });
       app.assertHealthy();
       expect([...served].sort()).toEqual(['app.js', 'index.css', 'index.html']);
       expect(errors, 'No uncaught errors in the pinned old application').toEqual([]);
@@ -135,7 +169,7 @@ test('actual pinned old browser consumes post-save canonical fallback and confli
   const response = await review.begin();
   review.app.release();
   await review.settled();
-  const events = packets(await response.text());
+  const events = packets(await review.wireText(response));
   expect(events.map(packet => packet.event)).toEqual(['conversation', 'proposal', 'delta', 'done']);
   expect(events.find(packet => packet.event === 'delta').data.text).toBe(canonicalText);
   const proposal = events.find(packet => packet.event === 'proposal').data.proposal;
@@ -172,7 +206,7 @@ test.describe('pinned old browser no-preview fallback', () => {
     const response = await review.begin();
     review.app.release();
     await review.settled();
-    const events = packets(await response.text());
+    const events = packets(await review.wireText(response));
     expect(events.map(packet => packet.event)).toEqual(['conversation', 'delta', 'done']);
     expect(events.find(packet => packet.event === 'delta').data.text).toBe(noPreviewText);
     await expect(review.cards).toHaveCount(0);
@@ -188,7 +222,7 @@ test.describe('pinned old browser persistence failure', () => {
     const response = await review.begin();
     review.app.release();
     await review.settled();
-    const events = packets(await response.text());
+    const events = packets(await review.wireText(response));
     expect(events.map(packet => packet.event)).toEqual(['conversation', 'error']);
     expect(events.at(-1).data.code).toBe('CHAT_SAVE_FAILED');
     await expect(review.cards).toHaveCount(0);
@@ -198,11 +232,16 @@ test.describe('pinned old browser persistence failure', () => {
   });
 });
 
-test('actual pinned old browser stop clears pending review and cannot revive a card from history', async ({ legacyReview: review }) => {
-  await review.begin();
+test('actual pinned old browser stop clears pending review and cannot revive a card from history', async ({ page, legacyReview: review }) => {
+  const response = await review.begin();
   await review.chat.getByRole('button', { name: 'Stop reply', exact: true }).click();
   await review.settled();
   await expect(review.chat.getByText('Reply stopped', { exact: true })).toBeVisible();
+  const requestId = response.headers()['x-request-id'];
+  await expect.poll(() => page.evaluate(id => window.__legacyWireResponses.find(item => item.requestId === id)?.state, requestId),
+    { message: 'Stop aborts the native response clone as well as the app reader' }).toBe('failed');
+  expect(await page.evaluate(id => window.__legacyWireResponses.filter(item => item.requestId === id), requestId))
+    .toMatchObject([{ requestId, state: 'failed', error: 'AbortError', text: null }]);
   await expect(review.cards).toHaveCount(0);
   await expect.poll(() => review.app.metrics().length).toBe(1);
   expect(review.app.metrics()[0]).toMatchObject({ outcome: 'cancelled', emittedProposals: 0 });
