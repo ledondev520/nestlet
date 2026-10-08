@@ -34,7 +34,7 @@ test('saved same-case rename refreshes the chat toolbar on return without reload
   const click=async node=>{assert.ok(node,'Expected button');assert.equal(node.disabled,false);await React.act(async()=>node.click());await flush();};
   const change=async(node,value)=>{assert.ok(node,'Expected input');await React.act(async()=>{const proto=node.tagName==='TEXTAREA'?dom.window.HTMLTextAreaElement.prototype:node.tagName==='SELECT'?dom.window.HTMLSelectElement.prototype:dom.window.HTMLInputElement.prototype;Object.getOwnPropertyDescriptor(proto,'value').set.call(node,value);node.dispatchEvent(new dom.window.Event(node.tagName==='SELECT'?'change':'input',{bubbles:true}));});await flush();};
   const input=label=>{const node=[...document.querySelectorAll('label')].find(node=>!node.closest('[hidden]')&&node.textContent===label);return node&&document.getElementById(node.htmlFor);};
-  const nav=label=>click(button(label,document.querySelector('nav')));
+  const nav=label=>click(button(label,document.querySelector('nav[aria-label="Workspace navigation"]')));
   const title=()=>document.querySelector('.chat-toolbar [data-slot="card-title"]')?.textContent;
   await React.act(async()=>root.render(React.createElement(SessionProvider,null,React.createElement(App))));
   await wait(()=>button('Switch interface to English'),'App loaded');await click(button('Switch interface to English'));

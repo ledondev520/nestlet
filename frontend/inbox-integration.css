@@ -22,3 +22,10 @@
 .wb-center > section { padding: 16px; min-inline-size: 0; }
 .wb-center > section[hidden] { display: none; }
 @media(max-width:640px) { .wb-center > section { padding: 10px; } }
+.wb [hidden] { display: none !important; }
+.wb [data-chat-workflow-slot] { padding: 12px; }
+.wb [data-chat-workflow-slot] [data-slot="card"] { box-shadow: none; }
+.wb [data-chat-lookup-slot] { padding: 12px; }
+.inbox-skip { position: absolute; z-index: 60; inset-inline-start: 8px; inset-block-start: -100px; }
+.inbox-skip:focus { inset-block-start: 8px; background: var(--sheet); padding: 12px; }
+.wb-context dd { margin-block-end: 10px; }

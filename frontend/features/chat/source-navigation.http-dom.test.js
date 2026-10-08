@@ -169,7 +169,7 @@ test('actual App source selection keeps unsaved chat/material/document edits on 
   await render(React.createElement(SessionProvider, null, React.createElement(App)));
   await wait(() => button('Switch interface to English')); await click(button('Switch interface to English'));
   await wait(() => host.querySelector('.chat-toolbar')?.textContent.includes(first.title) && !button('New conversation').disabled);
-  const nav = label => click(button(label, host.querySelector('nav')));
+  const nav = label => click(button(label, host.querySelector('nav[aria-label="Workspace navigation"]')));
   await nav('Documents'); await wait(() => host.querySelector(`[data-artifact-id="${document.id}"]`));
   await wait(() => input('English document body')?.value === document.content || !button('Open', host.querySelector(`[data-artifact-id="${document.id}"]`)).disabled);
   if (input('English document body')?.value !== document.content) await click(button('Open', host.querySelector(`[data-artifact-id="${document.id}"]`)));
@@ -255,7 +255,7 @@ test('empty actual App finds and selects an existing case without provider confi
   await click(button(`Open case: ${record.title} · ${record.id}`));
   await wait(() => host.querySelector('.chat-toolbar')?.textContent.includes(record.title));
   assert.equal(owner.calls.slice(callsStart).some(call => call.method !== 'GET' && ['/api/cases', '/api/chat', '/api/extract'].includes(call.path)), false);
-  await click(button('Materials & facts', host.querySelector('nav')));
+  await click(button('Materials & facts', host.querySelector('nav[aria-label="Workspace navigation"]')));
   await wait(() => input('Case name')?.value === record.title);
   assert.equal(input('Case source text').value, '');
 });

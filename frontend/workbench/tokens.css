@@ -8,7 +8,7 @@
    production app before root integration. Loaded after styles.css; semantic
    overrides re-skin every component that consumes the shared CSS variables. */
 
-.wb {
+.wb, .wb-theme {
   /* Primitives: warm-forest palette — center reads warm neutral WHITE,
      not yellow-paper (root review of head 0df5005). */
   --paper: #faf9f6;        /* warm neutral canvas, minimal yellow cast */

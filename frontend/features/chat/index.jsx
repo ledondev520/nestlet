@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -26,7 +27,7 @@ const idValid = value => typeof value === 'string' && /^[0-9a-f-]{36}$/u.test(va
 const timeoutSignal = (signal, milliseconds=15000) => AbortSignal.any([signal,AbortSignal.timeout(milliseconds)]);
 
 /** Durable conversation UI. Case facts and document/source buffers have separate owners. */
-export function ChatPage({ lang='zh', caseId=null, guidanceAgency='unknown', onCaseChange, onDirtyChange, onImportFiles, onReviewMessage, onOpenMaterials, onOpenDocuments, onOpenSourceCase, active = true }) {
+export function ChatPage({ lang='zh', caseId=null, guidanceAgency='unknown', onCaseChange, onDirtyChange, onImportFiles, onReviewMessage, onOpenMaterials, onOpenDocuments, onOpenSourceCase, active = true, workflowTarget = null, lookupTarget = null }) {
   const { status, api, refresh } = useSession();
   const {restored,saveDraft,clearDraft,cacheStatus}=useSuspendedDraft('chat');
   const words = chatCopy[lang] || chatCopy.zh;
@@ -375,11 +376,13 @@ export function ChatPage({ lang='zh', caseId=null, guidanceAgency='unknown', onC
   const stop=()=>{stopRequested.current=true;controller.current?.abort();};
 
   if(!status.authenticated)return <Card className="paper-card"><CardContent><p>{words.signIn}</p></CardContent></Card>;
+  const workflow = onOpenMaterials && onOpenDocuments ? <ChatCaseWorkflow api={api} lang={lang} caseId={caseId} userId={status.userId} disabled={busy} active={active} refreshKey={`${conversationId}:${messages.length}:${phase === 'idle'}:${actionRevision}`} onSavedTitle={setTitle} onOpenMaterials={onOpenMaterials} onOpenDocuments={onOpenDocuments} /> : null;
+  const lookup = onOpenSourceCase ? <ChatLookup api={api} userId={status.userId} caseId={caseRef.current} lang={lang} active={active}
+      disabled={phase !== 'idle' || bridgeBusy || retentionBusy || imagePending > 0} onOpenSourceCase={onOpenSourceCase} claimOperation={claimSourceOperation} releaseOperation={releaseSourceOperation} /> : null;
   return <section className="chat-workspace" aria-label={words.title} data-feature="chat">
     <LibraryPermissionDialog lang={lang} open={permissionPrompt&&active} ready={Boolean(permissionPending.current?.snapshot)} onRetry={refreshPermission} busy={permission.busy} error={permissionFailure} onChoose={choosePermission} onClose={closePermission} onWithoutLibrary={sendWithoutLibrary} />
-    {onOpenMaterials && onOpenDocuments && <ChatCaseWorkflow api={api} lang={lang} caseId={caseId} userId={status.userId} disabled={busy} active={active} refreshKey={`${conversationId}:${messages.length}:${phase === 'idle'}:${actionRevision}`} onSavedTitle={setTitle} onOpenMaterials={onOpenMaterials} onOpenDocuments={onOpenDocuments} />}
-    {onOpenSourceCase && <ChatLookup api={api} userId={status.userId} caseId={caseRef.current} lang={lang} active={active}
-      disabled={phase !== 'idle' || bridgeBusy || retentionBusy || imagePending > 0} onOpenSourceCase={onOpenSourceCase} claimOperation={claimSourceOperation} releaseOperation={releaseSourceOperation} />}
+    {workflow && (workflowTarget ? createPortal(<div hidden={!active} data-chat-workflow-slot>{workflow}</div>, workflowTarget) : workflow)}
+    {lookup && (lookupTarget ? createPortal(<div hidden={!active} data-chat-lookup-slot>{lookup}</div>, lookupTarget) : lookup)}
     <Card className="chat-surface">
       <CardHeader className="chat-toolbar"><CardTitle className="truncate text-base">{title||words.title}</CardTitle>
         <div className="flex flex-wrap items-center gap-3"><Label className="sr-only" htmlFor={`${inputId}-conversation`}>{words.conversation}</Label>

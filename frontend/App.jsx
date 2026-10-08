@@ -33,6 +33,8 @@ function AccountWorkspace({ lang, view, navigate, shellProps, notices }) {
   const [recoveredWorkspace] = useState(() => draftVault.read({ userId: status.userId, workspaceKey: 'active', feature: 'workspace' }));
   const [workspaceKey, setWorkspaceKey] = useState(() => recoveredWorkspace?.workspaceKey || crypto.randomUUID());
   const [caseId, setCaseId] = useState(() => recoveredWorkspace?.caseId || null);
+  const [workflowTarget, setWorkflowTarget] = useState(null);
+  const [lookupTarget, setLookupTarget] = useState(null);
   const [workspaceEpoch, setWorkspaceEpoch] = useState(0);
   // Reference selection is transient and cannot write or confirm the case's PHA.
   const [guidanceAgency, setGuidanceAgency] = useState(DEFAULT_GUIDANCE_AGENCY);
@@ -58,8 +60,8 @@ function AccountWorkspace({ lang, view, navigate, shellProps, notices }) {
   const markChatDirty = useCallback(value => { dirty.current.chat = value; }, []);
   const markDocumentsDirty = useCallback(value => { dirty.current.documents = value; }, []);
   const markIntakeDirty = useCallback(value => { dirty.current.intake = value; }, []);
-  const openCase = useCallback((nextId, destination = 'chat') => {
-    if (nextId !== caseIdRef.current) {
+  const openCase = useCallback((nextId, destination = 'chat', fresh = false) => {
+    if (fresh || nextId !== caseIdRef.current) {
       if (Object.values(dirty.current).some(Boolean) && !window.confirm(lang === 'zh' ? '切换案例会丢失当前未保存的输入，并停止正在进行的请求。继续？' : 'Switching cases clears unsaved input and stops active requests. Continue?')) return false;
       dirty.current = { chat: false, documents: false, intake: false };
       draftVault.clearWorkspace(userIdRef.current, workspaceKey);
@@ -117,17 +119,17 @@ function AccountWorkspace({ lang, view, navigate, shellProps, notices }) {
     return openCase(request.targetCaseId, request.view);
   }, [openCase, continueDocument]);
   const slots = {
-    chat: [modules.chat?.ChatPage, { caseId, guidanceAgency, onCaseChange: bindCurrentCase, onDirtyChange: markChatDirty, onImportFiles: importFiles, onReviewMessage: reviewConversation, onOpenMaterials: openIntake, onOpenDocuments: continueDocument, onOpenSourceCase: openSourceCase, active: view === 'chat' }],
+    chat: [modules.chat?.ChatPage, { caseId, guidanceAgency, workflowTarget, lookupTarget, onCaseChange: bindCurrentCase, onDirtyChange: markChatDirty, onImportFiles: importFiles, onReviewMessage: reviewConversation, onOpenMaterials: openIntake, onOpenDocuments: continueDocument, onOpenSourceCase: openSourceCase, active: view === 'chat' }],
     intake: [modules.intake?.IntakePage, { caseId, onCaseChange: bindCurrentCase, onDirtyChange: markIntakeDirty, importRequest, onImportHandled: imported, textReviewRequest, onTextReviewHandled: reviewedConversation, onOpenDocuments: openDocuments, active: view === 'intake' }],
     customers: [modules.customers?.CustomersPage, { onOpenCase: openCase, active: view === 'customers' }],
     documents: [modules.documents?.DocumentsPage, { caseId, onDirtyChange: markDocumentsDirty, onOpenIntake: openIntake, active: view === 'documents' }],
     settings: [modules.auth?.SettingsPage, { active: view === 'settings' }]
   };
   return <DraftWorkspaceProvider userId={status.userId} workspaceKey={workspaceKey}>
-    <ApplicationShell {...shellProps} inbox
-      rail={<CaseRail lang={lang} selectedCaseId={caseId} onSelectCase={nextId => openCase(nextId)} refreshKey={view} />}
-      context={<ContextPanel lang={lang} caseId={caseId} guidanceAgency={guidanceAgency} onAgencyChange={setGuidanceAgency} onOpenMaterials={openIntake} onOpenDocuments={() => continueDocument({ userId: status.userId, caseId })} refreshKey={view} />}
-      onNewCase={() => openCase(null)}>
+    <ApplicationShell {...shellProps} inbox navigationKey={`${view}:${caseId}:${workspaceEpoch}`}
+      rail={<><div ref={setLookupTarget} /><CaseRail lang={lang} selectedCaseId={caseId} onSelectCase={nextId => openCase(nextId)} refreshKey={view} /></>}
+      context={<><div ref={setWorkflowTarget} /><ContextPanel lang={lang} caseId={caseId} guidanceAgency={guidanceAgency} onAgencyChange={setGuidanceAgency} onOpenMaterials={openIntake} onOpenDocuments={() => continueDocument({ userId: status.userId, caseId })} refreshKey={view} showCaseDetails={view !== 'chat'} showGuidance={['chat','intake','documents'].includes(view)} /></>}
+      onNewCase={() => openCase(null, 'chat', true)}>
     {notices}
     {views.filter(id => visited.has(id) || id === view).map(id => {
     const [Page, props] = slots[id];
