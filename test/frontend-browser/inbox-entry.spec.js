@@ -6,24 +6,28 @@ import { english, navigate, noHorizontalOverflow, watchBrowser, screenshot } fro
 for (const {width,lang} of [1280,390,320].flatMap(width=>['en','zh'].map(lang=>({width,lang})))) test(`real Inbox entry preserves dirty guards and mounted editors (${width}/${lang})`,async({page,customerApp:app},testInfo)=>{
  await page.setViewportSize({width,height:900});const clean=await watchBrowser(page);
  testInfo.annotations.push({type:'visual-fixture',description:'Viewport-only real-entry screenshots with authored synthetic messages/artifact and UI-only liveEnabled capability. No model requests.'});
- await page.route('**/api/status',async route=>{const response=await route.fetch();const value=await response.json();await route.fulfill({response,json:{...value,liveEnabled:value.authenticated===true}});});const session=await signInCustomer(page,app);let selectedRecord;
- for(const title of ['Synthetic Inbox A','Synthetic Inbox B']){const response=await apiWrite(page,app,'/api/cases','POST',{title,sourceText:'',fields:[],draftType:'followup',draftText:''});expect(response.status()).toBe(201);selectedRecord=(await response.json()).case;}
+ await page.route('**/api/status',async route=>{const response=await route.fetch();const value=await response.json();await route.fulfill({response,json:{...value,liveEnabled:value.authenticated===true}});});const session=await signInCustomer(page,app);let selectedRecord,firstConversation;
+ for(const title of ['Synthetic Inbox A','Synthetic Inbox B']){const response=await apiWrite(page,app,'/api/cases','POST',{title,sourceText:'',fields:[],draftType:'followup',draftText:''});expect(response.status()).toBe(201);selectedRecord=(await response.json()).case;if(!firstConversation){const result=await apiWrite(page,app,`/api/cases/${selectedRecord.id}/conversations`,'POST',{title:'Synthetic first conversation'});expect(result.status()).toBe(201);firstConversation=(await result.json()).conversation;}}
  const conversationResponse=await apiWrite(page,app,`/api/cases/${selectedRecord.id}/conversations`,'POST',{title:'Synthetic saved conversation'});expect(conversationResponse.status()).toBe(201);const {conversation}=await conversationResponse.json();
  app.withDatabase(db=>{for(const [index,role,content] of [[1,'user','Please prepare a follow-up from these synthetic materials.'],[2,'assistant','Synthetic saved conversation. The recipient and sender contact still need confirmation. No message has been sent. '+ 'Keep the source linked and review the facts before finalizing. '.repeat(20)]])db.prepare('INSERT INTO messages(id,user_id,conversation_id,sequence,role,content,state,request_id,client_message_id,image_metadata_json,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)').run(randomUUID(),session.userId,conversation.id,index,role,content,'complete',null,null,'[]',new Date().toISOString());});
  const artifactResponse=await apiWrite(page,app,`/api/cases/${selectedRecord.id}/artifacts`,'POST',{kind:'followup',title:'Synthetic follow-up draft',status:'draft',content:'Dear Synthetic Intake Team,\n\nPlease confirm the current status and any remaining documentation. This is an authored synthetic draft, not an official form or a sent message.\n\nSynthetic Sender',expectedCaseVersion:selectedRecord.version});expect(artifactResponse.status()).toBe(201);const {artifact}=await artifactResponse.json();
  await page.reload();await english(page);if(lang==='zh')await switchLanguage(page,'zh');await expect(page.locator('.wb')).toBeVisible();
- const toggle=page.getByRole('button',{name:lang==='zh'?'打开客户与事项列表':'Open customers and cases',exact:true});
+ const toggle=page.getByRole('button',{name:lang==='zh'?'打开对话列表':'Open conversations',exact:true});
  const rail=page.locator('.wb-rail');
  if(width<960)await toggle.click();
- await rail.getByRole('button',{name:'Synthetic Inbox A',exact:true}).click();
+ await expect(rail.getByRole('link',{name:'Synthetic saved conversation',exact:true})).toBeVisible();
+ if(width>=960){const row=rail.locator('.chat-record-search-row');const inputBox=await row.locator('input').boundingBox(),buttonBox=await row.locator('button').boundingBox();expect(Math.abs(inputBox.y-buttonBox.y)).toBeLessThanOrEqual(5);expect(buttonBox.x).toBeGreaterThan(inputBox.x);await expect(rail).not.toContainText('Read-only · No AI');}
+ if(width>=960)await expect(page.locator('.wb-topbar nav[aria-label]')).toHaveCount(1);
+ if(width>=960)await screenshot(page,testInfo,`unified-welcome-${width}-${lang}`,false);
+ await rail.getByRole('link',{name:'Synthetic first conversation',exact:true}).click();
  const composer=page.locator('.chat-input');await composer.fill('Keep this unsent draft');
  await navigate(page,lang==='zh'?'材料与事实':'Materials & facts');const materialsUrl=page.url();await page.locator('.inbox-skip').focus();await page.keyboard.press('Enter');await expect(page).toHaveURL(materialsUrl);await expect(page.locator('main')).toBeFocused();await navigate(page,lang==='zh'?'对话':'Conversation');await expect(composer).toHaveValue('Keep this unsent draft');
  if(width<960)await toggle.click();
- page.once('dialog',dialog=>dialog.dismiss());await rail.getByRole('button',{name:'Synthetic Inbox B',exact:true}).click();
+ page.once('dialog',dialog=>dialog.dismiss());await rail.getByRole('link',{name:'Synthetic saved conversation',exact:true}).click();
  await expect(composer).toHaveValue('Keep this unsent draft');
  if(width<960)await expect(rail).toHaveAttribute('aria-modal','true');
- page.once('dialog',dialog=>dialog.accept());await rail.getByRole('button',{name:'Synthetic Inbox B',exact:true}).click();
- await expect(composer).toHaveValue('');await expect(page.locator('[data-feature="chat"]')).toContainText('Synthetic Inbox B');
+ page.once('dialog',dialog=>dialog.accept());await rail.getByRole('link',{name:'Synthetic saved conversation',exact:true}).click();
+ await expect(composer).toHaveValue('');await expect(page.locator('[data-feature="chat"]')).toHaveAttribute('data-case-id',selectedRecord.id);await expect(page.locator('[data-feature="chat"]')).toHaveAttribute('data-conversation-id',conversation.id);
  if(width<960){await expect(rail).toHaveAttribute('inert','');await expect(page.locator('main')).toBeFocused();}
  await expect(page.locator('[data-feature="chat"]')).toContainText('Synthetic saved conversation.');
  const thread=page.locator('.chat-thread');await thread.focus();await page.keyboard.press('End');
@@ -31,7 +35,22 @@ for (const {width,lang} of [1280,390,320].flatMap(width=>['en','zh'].map(lang=>(
  await composer.fill('Synthetic next message ready to review');
  const send=page.locator('.chat-composer-actions button[type="submit"]');await expect(send).toBeEnabled();
  const assertComposer=async()=>{for(const target of [composer,send]){const box=await target.boundingBox();expect(box).not.toBeNull();expect(box.y).toBeGreaterThanOrEqual(0);expect(box.y+box.height).toBeLessThanOrEqual(page.viewportSize().height+1);}expect(await page.evaluate(()=>window.scrollY)).toBe(0);};
- await assertComposer();if(width<960)expect((await page.locator('.wb-topbar').boundingBox()).height).toBeLessThanOrEqual(64);
+ await assertComposer();await expect(page.locator('.wb-center nav[aria-label="Workspace navigation"],.wb-center nav[aria-label="工作区导航"]')).toHaveCount(0);if(width<960)expect((await page.locator('.wb-topbar').boundingBox()).height).toBeLessThanOrEqual(64);
+ // Open the authoritative material editor from this exact conversation's context,
+ // save there, and return without promoting chat text or replacing the thread.
+ if(width<960)await page.getByRole('button',{name:lang==='zh'?'打开案例上下文':'Open case context',exact:true}).click();
+ await page.locator('[data-testid="chat-case-workflow"]').getByRole('button',{name:lang==='zh'?'核对事实与材料':'Review facts and materials',exact:true}).click();
+ const canonicalSource=page.getByLabel(lang==='zh'?'案例原文':'Case source text',{exact:true});
+ await expect(canonicalSource).toHaveValue('');await canonicalSource.fill('Synthetic material edit from the exact saved conversation.');
+ const savedCase=page.waitForResponse(response=>new URL(response.url()).pathname===`/api/cases/${selectedRecord.id}`&&response.request().method()==='PUT');
+ await page.getByRole('button',{name:lang==='zh'?'保存案例':'Save case',exact:true}).click();expect((await savedCase).status()).toBe(200);
+ await navigate(page,lang==='zh'?'对话':'Conversation');await expect(page.locator('[data-feature="chat"]')).toHaveAttribute('data-conversation-id',conversation.id);await expect(composer).toHaveValue('Synthetic next message ready to review');
+ const returnUrl=page.url(),scrollBeforeSettings=await thread.evaluate(node=>node.scrollTop);
+ await accountSettings(page);await expect(page.locator('section[aria-label="'+(lang==='zh'?'账户与设置':'Account and settings')+'"]:not([hidden])')).toBeVisible();
+ if(width>=960){await expect(page.locator('[data-account-settings]')).toHaveAttribute('aria-current','page');const topbar=page.locator('.wb-topbar');const language=await topbar.getByRole('button',{name:lang==='zh'?'Switch interface to English':'切换界面为中文',exact:true}).boundingBox();const logout=await topbar.getByRole('button',{name:lang==='zh'?'退出':'Sign out',exact:true}).boundingBox();expect(language.x).toBeLessThan(logout.x);}
+ await screenshot(page,testInfo,`unified-settings-${width}-${lang}`,false);
+ await page.getByRole('button',{name:lang==='zh'?'返回工作区':'Back to workspace',exact:true}).click();
+ await expect(page).toHaveURL(returnUrl);await expect(composer).toHaveValue('Synthetic next message ready to review');await expect(page.locator('[data-feature="chat"]')).toHaveAttribute('data-conversation-id',conversation.id);expect(Math.abs(await thread.evaluate(node=>node.scrollTop)-scrollBeforeSettings)).toBeLessThanOrEqual(2);
  await noHorizontalOverflow(page);await screenshot(page,testInfo,`real-inbox-${width}-${lang}-populated`,false);
  await page.setViewportSize({width,height:560});await composer.focus();await page.keyboard.press('ArrowLeft');await assertComposer();await screenshot(page,testInfo,`real-inbox-${width}-${lang}-keyboard-resize`,false);await page.setViewportSize({width,height:900});
 

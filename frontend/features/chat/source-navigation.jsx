@@ -53,14 +53,14 @@ export function ChatSourceNavigation({ api, sources, userId, caseId, lang = 'zh'
     <ul className="space-y-2 text-xs">{sources.items.map(source => <li key={source.sourceId} className="space-y-2 break-words" data-source-id={source.sourceId}>
       <p><strong>{source.sourceId}</strong> · {words[{ client: 'libraryClient', case: 'libraryCase', asset: 'libraryAsset', artifact: 'libraryArtifact' }[source.kind]]} · {source.title} {source.titleTruncated && `(${words.libraryTitleTruncated})`}</p>
       <p>{words.libraryVersion} {source.version} · {words[{ metadata: 'libraryMetadata', read: 'libraryRead', unavailable: 'libraryUnreadable' }[source.retrievalState]]}{source.truncated && ` · ${words.libraryExcerptTruncated}`}{source.status && ` · ${words[source.status === 'final' ? 'libraryFinal' : 'libraryDraft']}`}{(source.isStale || source.needsRegeneration) && ` · ${words.libraryStale}`}</p>
-      <p className="text-muted-foreground">{source.id}{source.kind === 'case' && source.id === caseId && ` · ${copy.current}`}</p>
+      <p className="text-muted-foreground">{source.displayId||source.sourceId}{source.kind === 'case' && source.id === caseId && ` · ${copy.current}`}</p>
       <Button type="button" variant="outline" size="sm" disabled={blocked || source.kind === 'case' && !onOpenSourceCase}
         onClick={() => run(source, source.kind === 'case' ? 'chat' : null)}>{source.kind === 'case' ? copy.openCase : source.kind === 'client' ? copy.choose : copy.inspect}</Button>
       {detail?.source.sourceId === source.sourceId && <div className="space-y-2 rounded border p-3">
         <p className="font-medium">{detail.title}</p>
         {detail.cases && <><p>{copy.chooseNote}</p>{!detail.cases.length && <p>{copy.empty}</p>}<ul className="space-y-2">{detail.cases.map(record => <li key={record.id}>
-          <p>{record.title} · {record.id} · {words.libraryVersion} {record.version}{record.id === caseId && ` · ${copy.current}`}</p>
-          <Button type="button" variant="outline" size="sm" disabled={blocked || !onOpenSourceCase} onClick={() => run(source, 'chat', record.id)} aria-label={`${copy.openCase}: ${record.title} · ${record.id}`}>{copy.openCase}</Button>
+          <p>{record.title} · {record.displayId||'—'} · {words.libraryVersion} {record.version}{record.id === caseId && ` · ${copy.current}`}</p>
+          <Button type="button" variant="outline" size="sm" disabled={blocked || !onOpenSourceCase} onClick={() => run(source, 'chat', record.id)} aria-label={`${copy.openCase}: ${record.title} · ${record.displayId||'—'}`}>{copy.openCase}</Button>
         </li>)}</ul></>}
         {detail.preview && <div className="flex flex-wrap gap-3">
           <a className="underline underline-offset-4" href={blocked ? undefined : detail.preview} aria-disabled={blocked} target="_blank" rel="noopener noreferrer">{copy.preview}</a>

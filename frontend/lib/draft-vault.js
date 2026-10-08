@@ -6,7 +6,7 @@
 export const DRAFT_VAULT_LIMITS=Object.freeze({ttlMs:1800000,maxBytes:1048576,entryBytes:524288,entries:128,depth:8,array:1000,nodes:10000});
 const ROOT_KEYS=Object.freeze({
   workspace:['caseId','view','workspaceKey'],
-  chat:['input','conversationId'],
+  chat:['input','conversationId','pendingTurn','earlierTurns'],
   intake:['title','sourceText','fields','extractionMode','namesVerified','baseVersion','caseId','assetIds','selectedAssetId'],
   documents:['caseId','baseVersion','kind','content','artifactTitle','saveStatus','answers','namesVerified','issueForm','issueBaseline','selectedArtifactId','detailForm']
 });
@@ -50,6 +50,18 @@ function snapshotJson(key,snapshot){
   if(key.feature==='chat'){
     if(Object.hasOwn(snapshot,'input')&&(typeof snapshot.input!=='string'||snapshot.input.length>8000))fail();
     if(Object.hasOwn(snapshot,'conversationId')&&snapshot.conversationId!==null&&!uuid(snapshot.conversationId))fail();
+    const validateTurn=turn=>{
+      const keys=['userMessageId','clientMessageId','question','assistantMessageId','reply','requestId'];
+      if(!uuid(snapshot.conversationId)||!plain(turn)||Object.keys(turn).length!==keys.length||!keys.every(key=>Object.hasOwn(turn,key)))fail();
+      if(!['userMessageId','clientMessageId','assistantMessageId'].every(key=>uuid(turn[key]))||turn.requestId!==null&&!uuid(turn.requestId))fail();
+      if(typeof turn.question!=='string'||turn.question.length>8000||typeof turn.reply!=='string'||!turn.reply||turn.reply.length>64000)fail();
+    };
+    if(Object.hasOwn(snapshot,'pendingTurn'))validateTurn(snapshot.pendingTurn);
+    if(Object.hasOwn(snapshot,'earlierTurns')){
+      if(!snapshot.pendingTurn||!Array.isArray(snapshot.earlierTurns)||snapshot.earlierTurns.length>7)fail();
+      for(const turn of snapshot.earlierTurns)validateTurn(turn);
+      const ids=[...snapshot.earlierTurns,snapshot.pendingTurn].map(turn=>turn.clientMessageId);if(new Set(ids).size!==ids.length)fail();
+    }
   }
   if(key.feature==='workspace'){
     if(Object.hasOwn(snapshot,'caseId')&&snapshot.caseId!==null&&!uuid(snapshot.caseId))fail();

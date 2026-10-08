@@ -36,20 +36,20 @@ export function ChatLookup({ api, userId, caseId, lang, active, disabled, onOpen
       const rows = [...clients.clients.map(record => ({ kind: 'client', record })), ...cases.cases.filter(record => typeof record.title === 'string' && record.title.toLocaleLowerCase().includes(match)).slice(0, 24).map(record => ({ kind: 'case', record }))];
       if (!rows.length) { setNotice(en ? 'No matching saved customers or cases.' : '未找到匹配的已保存客户或案例。'); return; }
       const result = normalizeLibrarySources({ requestId: crypto.randomUUID(), appendix: '', items: rows.map(({ kind, record }, index) => ({
-        sourceId: `S${index + 1}`, kind, id: record.id, version: record.version, title: kind === 'client' ? record.displayName : record.title,
+        sourceId: `S${index + 1}`, kind, id: record.id, ...(record.displayId?{displayId:record.displayId}:{}), version: record.version, title: kind === 'client' ? record.displayName : record.title,
         titleTruncated: false, retrievalState: 'metadata', ...(record.clientId ? { clientId: record.clientId } : {})
       })) });
       setSources(result);
     } catch (error) { if (current() && error.name !== 'AbortError') setNotice(sourceNavigationError(error, sourceNavigationCopy[en ? 'en' : 'zh'])); }
     finally { if (operation.current === token) { operation.current = null; token.release?.(token.claim); setPending(false); } }
   }
-  return <section className="mb-5 space-y-3 rounded border p-4" aria-label={en ? 'Find a saved customer or case' : '查找已保存的客户或案例'}>
+  return <section className="chat-record-search space-y-3" aria-label={en ? 'Find a saved customer or case' : '查找已保存的客户或案例'}>
     <form onSubmit={search} className="space-y-2">
-      <Label htmlFor={id}>{en ? 'Customer name or case title' : '客户名称或案例标题'}</Label>
-      <div className="flex gap-2"><Input id={id} type="search" maxLength={120} value={query} disabled={disabled || pending || !active}
+      <Label className={compact?'sr-only':undefined} htmlFor={id}>{en ? 'Customer name or case title' : '客户名称或案例标题'}</Label>
+      <div className="chat-record-search-row"><Input id={id} placeholder={en?'Search saved records':'搜索已保存记录'} type="search" maxLength={120} value={query} disabled={disabled || pending || !active}
         onChange={event => { setQuery(event.target.value); setSources(null); setNotice(''); }} />
-        <Button type="submit" variant="outline" aria-label={en ? 'Find saved records' : '查找已保存记录'} disabled={disabled || pending || !active || !query.trim()}>{compact ? <><Search aria-hidden="true" size={16}/>{en ? 'Search' : '查找'}</> : (en ? 'Find saved records' : '查找已保存记录')}</Button></div>
-      {compact ? <details className="text-xs text-muted-foreground"><summary className="cursor-pointer">{en ? 'Read-only · No AI' : '只读查询 · 不调用 AI'}</summary>      <p className="text-xs text-muted-foreground">{en ? 'Read-only lookup, without AI or creating a case. Choose a matching record below. Up to 24 customers and 24 cases are shown; refine the name if needed.' : '只查询已保存记录，不调用 AI，也不新建案例。请在下方明确选择匹配记录。最多显示 24 位客户和 24 个案例，可缩小名称范围重试。'}</p></details> :       <p className="text-xs text-muted-foreground">{en ? 'Read-only lookup, without AI or creating a case. Choose a matching record below. Up to 24 customers and 24 cases are shown; refine the name if needed.' : '只查询已保存记录，不调用 AI，也不新建案例。请在下方明确选择匹配记录。最多显示 24 位客户和 24 个案例，可缩小名称范围重试。'}</p>}
+        <Button type="submit" variant="outline" aria-label={en ? 'Find saved records' : '查找已保存记录'} disabled={disabled || pending || !active || !query.trim()}>{compact ? <Search aria-hidden="true" size={18}/> : (en ? 'Find saved records' : '查找已保存记录')}</Button></div>
+
     </form>
     {pending && <div role="status">{en ? 'Searching saved records…' : '正在查找已保存记录…'} <Button type="button" variant="ghost" onClick={cancel}>{en ? 'Cancel lookup' : '取消查找'}</Button></div>}
     {notice && <p role="status" className="text-sm">{notice}</p>}

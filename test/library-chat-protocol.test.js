@@ -91,6 +91,7 @@ test('actual chat HTTP integration persists the server appendix exactly once and
   try{
     const own=f.storage.createCase('owner',payload('Johnny owner fixture')),conversation=f.storage.createConversation('owner',own.id,{});
     upstream=await provider((body,_round,_req,res)=>{
+      if(body.stream===false){res.writeHead(200,{'Content-Type':'application/json'});res.end(JSON.stringify({model:'deepseek-flash',choices:[{message:{content:'Saved case search'},finish_reason:'stop'}]}));return;}
       assert.match(body.messages[0].content,/Official-source reference context:/);
       assert.match(body.messages[0].content,/"id":"oha"/);
       assert.match(body.messages[0].content,/https:\/\/www\.oakha\.org/);
@@ -125,7 +126,8 @@ test('actual chat HTTP integration persists the server appendix exactly once and
     const expected=frames.filter(frame=>frame.event==='delta').map(frame=>frame.data.text).join('')+source.appendix;
     const saved=f.storage.listMessages('owner',conversation.id).at(-1);assert.equal(saved.id,done.assistantMessageId);assert.equal(saved.state,'complete');assert.equal(saved.content,expected);assert.equal(saved.content.split('Server-recorded sources').length-1,1);
     const plain=await send(false);assert.equal(plain.status,200);assert.equal(plain.headers.get('x-library-retrieval'),null);const ordinary=await plain.text();assert.doesNotMatch(ordinary,/event: (?:sources|activity)/);assert.match(ordinary,/Ordinary authored protocol response/);
-    assert.equal(upstream.requests.length,3);
+    assert.equal(upstream.requests.filter(body=>body.stream).length,3);
+    assert.equal(upstream.requests.filter(body=>body.stream===false).length,1);
     const failedResponse=await send(true,'Make length failure');const failedText=await failedResponse.text();
     const failedFrames=failedText.trim().split(/\n\n/u).map(frame=>({event:frame.match(/^event: (.+)$/mu)?.[1],data:JSON.parse(frame.match(/^data: (.+)$/mu)[1])}));
     const failedSource=failedFrames.find(frame=>frame.event==='sources').data,failedEvent=failedFrames.find(frame=>frame.event==='error').data;
@@ -136,7 +138,7 @@ test('actual chat HTTP integration persists the server appendix exactly once and
     await reader.cancel();let interrupted;
     for(let attempt=0;attempt<200;attempt++){interrupted=f.storage.listMessages('owner',conversation.id).find(message=>message.role==='assistant'&&message.requestId===interruptedRequestId);if(interrupted)break;await new Promise(resolve=>setTimeout(resolve,10));}
     assert.ok(interrupted);assert.equal(interrupted.state,'interrupted');assert.match(interrupted.content,/Partial fixture before disconnect/);assert.equal(interrupted.content.split('Server-recorded sources').length-1,1);assert.match(interrupted.content,new RegExp(interruptedRequestId));
-    const afterCancel=await send(false);assert.equal(afterCancel.status,200);await afterCancel.text();assert.equal(upstream.requests.length,8);
+    const afterCancel=await send(false);assert.equal(afterCancel.status,200);await afterCancel.text();assert.equal(upstream.requests.filter(body=>body.stream).length,8);
     const database=new DatabaseSync(f.filename);
     try{
       database.exec("CREATE TRIGGER reject_protocol_assistant BEFORE INSERT ON messages WHEN NEW.role='assistant' BEGIN SELECT RAISE(ABORT,'public fixture save failure'); END;");

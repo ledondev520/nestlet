@@ -55,7 +55,7 @@ try {
   }
   // CLI output may be captured by deployment logs: no private paths, filenames, IDs or manifest contents.
   const summary = Object.fromEntries(
-    ['verified', 'schemaVersion', 'assetCount', 'unreferencedFiles']
+    ['verified', 'schemaVersion', 'assetCount', 'unreferencedFiles', 'serviceRecovery', 'preserveRestoreDirectory']
       .filter((key) => Object.hasOwn(result, key))
       .map((key) => [key, result[key]])
   );

@@ -50,7 +50,7 @@ test('official references across chat/materials/documents: bilingual keyboard di
           await page.keyboard.press('Enter');
           await expect(tab).toHaveAttribute('aria-current', 'page');
           await expect(tab).toBeFocused();
-          if (view === 'chat') await expect(page.locator('[data-feature="chat"]')).toContainText(record.title);
+          if (view === 'chat') await expect(page.locator('[data-feature="chat"]')).toHaveAttribute('data-case-id',record.id);
           if (view === 'materials') await expect(page.getByLabel(zh ? '案例名称' : 'Case name', { exact: true })).toHaveValue(record.title);
           if (view === 'documents') await expect(page.getByLabel(zh ? '文书类型' : 'Document type', { exact: true })).toBeEnabled();
 

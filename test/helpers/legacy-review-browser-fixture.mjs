@@ -37,6 +37,26 @@ async function bounded(promise, label, milliseconds = 10000) {
   } finally { clearTimeout(timer); }
 }
 
+// Optional title metadata is a distinct bounded call, never a second primary turn.
+export function assertLegacyTitleRequest(body, { primaryCount, titleCount, completedAssistant, mode }) {
+  assert.equal(primaryCount, 1, 'A title must follow exactly one primary request');
+  assert.equal(titleCount, 0, 'At most one optional title request is allowed');
+  assert.notEqual(mode, 'save-failure', 'A failed assistant save cannot generate a title');
+  assert.equal(completedAssistant, true, 'A title must follow a persisted complete assistant');
+  assert.deepEqual(Object.keys(body).sort(), ['max_tokens','messages','model','stream','temperature','thinking']);
+  assert.equal(body.model, 'deepseek-flash');
+  assert.equal(body.stream, false);
+  assert.equal(body.max_tokens, 80);
+  assert.equal(body.temperature, 0);
+  assert.deepEqual(body.thinking, { type: 'disabled' });
+  assert.equal(body.messages.length, 2);
+  assert.deepEqual(Object.keys(body.messages[0]).sort(), ['content','role']);
+  assert.equal(body.messages[0].role, 'system');
+  assert.match(body.messages[0].content, /^Generate a short descriptive conversation title in English\./u);
+  assert.ok(body.messages[0].content.length <= 600, 'Bound the fixed title instruction');
+  assert.deepEqual(body.messages[1], { role: 'user', content: LEGACY_REVIEW_REQUEST.slice(0,1200) });
+}
+
 export async function startLegacyReviewFixture({ mode = 'prepared' } = {}) {
   assert.ok(['prepared', 'no-preview', 'save-failure'].includes(mode));
   const directory = await mkdtemp(join(await realpath(tmpdir()), 'nestlet-legacy-review-'));
@@ -46,7 +66,7 @@ export async function startLegacyReviewFixture({ mode = 'prepared' } = {}) {
   const record = store.createCase('owner', { title: 'Synthetic pinned legacy review case', sourceText,
     fields: extract(sourceText).map(field => field.key === 'rent' ? { ...field, confirmed: true } : field), draftType: 'followup', draftText: '' });
   const conversation = store.createConversation('owner', record.id, { title: 'Synthetic legacy review conversation' });
-  const requests = [], failures = [], events = new EventEmitter();
+  const requests = [], primaryRequests = [], titleRequests = [], failures = [], events = new EventEmitter();
   let held, child, output = '', stopped = false, released = false;
   const upstream = http.createServer(async (request, response) => {
     try {
@@ -57,7 +77,18 @@ export async function startLegacyReviewFixture({ mode = 'prepared' } = {}) {
       for await (const chunk of request) bytes += chunk;
       const body = JSON.parse(bytes);
       requests.push(body);
-      assert.equal(requests.length, 1, 'Unexpected extra provider request fails the authored fixture');
+      if (body.stream === false) {
+        assertLegacyTitleRequest(body, { primaryCount: primaryRequests.length, titleCount: titleRequests.length,
+          completedAssistant: store.listMessages('owner', conversation.id).some(message => message.role === 'assistant' && message.state === 'complete'), mode });
+        titleRequests.push(body);
+        response.writeHead(200, { 'Content-Type': 'application/json' });
+        response.end(JSON.stringify({ model: 'deepseek-flash', choices: [{ finish_reason: 'stop', message: { content: 'Synthetic rent review' } }] }));
+        events.emit('title-served');
+        return;
+      }
+      assert.equal(body.stream, true, 'Unexpected provider request type fails closed');
+      primaryRequests.push(body);
+      assert.equal(primaryRequests.length, 1, 'Unexpected extra primary provider request fails the authored fixture');
       assert.equal(body.model, 'deepseek-flash');
       assert.deepEqual(body.thinking, { type: 'disabled' });
       assert.deepEqual(body.tool_choice, { type: 'function', function: { name: 'prepare_case_suggestion' } });
@@ -80,7 +111,7 @@ export async function startLegacyReviewFixture({ mode = 'prepared' } = {}) {
       // The test releases provider EOF by an observed condition, never a sleep.
       held = response;
       events.emit('provider-held');
-    } catch (error) { failures.push(error); response.destroy(error); events.emit('provider-held'); }
+    } catch (error) { failures.push(error); response.destroy(error); events.emit('provider-held'); events.emit('title-served'); }
   });
   const withDatabase = operation => {
     const db = new DatabaseSync(filename);
@@ -137,11 +168,16 @@ globalThis.fetch = (url, options) => {
     assert.equal((await fetch(origin + '/api/health', { signal: AbortSignal.timeout(5000) })).status, 200);
     const messages = () => store.listMessages('owner', conversation.id);
     return {
-      origin, record, conversation, requests, messages, withDatabase, stop,
+      origin, record, conversation, requests, primaryRequests, titleRequests, messages, withDatabase, stop,
       async waitForProvider() {
         if (!held && !failures.length) await bounded(once(events, 'provider-held'), 'authored provider request');
         assert.deepEqual(failures, []);
         assert.ok(held && !held.destroyed);
+      },
+      async waitForTitle() {
+        if (!titleRequests.length && !failures.length) await bounded(once(events, 'title-served'), 'optional title request');
+        assert.deepEqual(failures, []);
+        assert.equal(titleRequests.length, 1);
       },
       release() {
         assert.ok(held && !held.destroyed && !released, 'Release exactly one live authored provider response');

@@ -1,3 +1,4 @@
+import { SCHEMA10_OBJECTS, sortedSchemaObjects } from './helpers/schema10-objects.js';
 // Populated historical schema8, assembled without opening it through current storage.
 // All rows, credentials, sessions and original bytes below are synthetic local fixtures.
 import { test } from 'node:test';
@@ -56,7 +57,9 @@ function fileTree(directory) {
 function preserved(db, before, { omit = [] } = {}) {
   const after = snapshot(db);
   for (const [name, rows] of Object.entries(before.rows)) {
-    if (!omit.includes(name)) assert.equal(after.rows[name], rows, `${name} rows and sequence`);
+    if (name==='sqlite_sequence' && omit.includes('service_entitlement_audit')) {
+      assert.deepEqual(JSON.parse(after.rows[name]).filter(row=>row.name!=='service_entitlement_audit'), JSON.parse(rows).filter(row=>row.name!=='service_entitlement_audit'));
+    } else if (!omit.includes(name)) assert.equal(after.rows[name], rows, `${name} rows and sequence`);
   }
   for (const old of before.schema) {
     assert.deepEqual(after.schema.find(row => row.type === old.type && row.name === old.name), old, `${old.name} DDL`);
@@ -133,8 +136,8 @@ test('genuine populated schema8 to 9 is additive, preserves every old row/schema
    assert.throws(()=>store.libraryPermissions.assertAllowed(f.id,0),{code:'LIBRARY_CONSENT_REQUIRED'});
   }finally{store.close();}
   inspect(f.filename,db=>{
-   assert.equal(version(db),9);preserved(db,before);
-   assert.deepEqual(ddl(db).filter(row=>!before.schema.some(old=>old.name===row.name)).map(row=>[row.type,row.name]),[['table','library_permissions']]);
+   assert.equal(version(db),10);preserved(db,before);
+   assert.deepEqual(ddl(db).filter(row=>!before.schema.some(old=>old.name===row.name)).map(row=>[row.type,row.name]),sortedSchemaObjects([['table','library_permissions'],...SCHEMA10_OBJECTS]));
    assert.equal(db.prepare("SELECT strict FROM pragma_table_list WHERE name='library_permissions'").get().strict,1);
    assert.equal(db.prepare('SELECT COUNT(*) AS n FROM library_permissions').get().n,0);
   });
@@ -157,17 +160,19 @@ test('schema9 backup preserves choice; restore resets both grant and denial plus
  let store=openStorage({filename:f.filename});
  store.libraryPermissions.set('owner',grant('deny',0));store.libraryPermissions.set(f.id,grant('allow',0));store.close();
  const before=inspect(f.filename,snapshot),sourceBefore=fileTree(f.source),post=join(f.root,'post-schema9');
- assert.equal((await backupPrivateData({...f,output:post})).schemaVersion,9);assert.equal(verifyPrivateBackup({input:post}).schemaVersion,9);
+ assert.equal((await backupPrivateData({...f,output:post})).schemaVersion,10);assert.equal(verifyPrivateBackup({input:post}).schemaVersion,10);
  assert.deepEqual(fileTree(f.source),sourceBefore);
  inspect(join(post,'nestlet.sqlite'),db=>preserved(db,before));
  const snapshotBefore=fileTree(post);
  const restored=await restorePrivateBackup({input:post,output:join(f.root,'restored-schema9')});
- assert.equal(restored.schemaVersion,9);
+ assert.equal(restored.schemaVersion,10);
  inspect(restored.filename,db=>{
-  assert.equal(version(db),9);assert.equal(db.prepare('SELECT COUNT(*) AS n FROM auth_sessions').get().n,0);
+  assert.equal(version(db),10);assert.equal(db.prepare('SELECT COUNT(*) AS n FROM auth_sessions').get().n,0);
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM library_permissions').get().n,0);
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM email_actions').get().n,0);
-  preserved(db,before,{omit:['auth_sessions','library_permissions','email_actions']});
+  assert.equal(db.prepare('SELECT enabled FROM service_entitlements WHERE user_id=?').get(f.id).enabled,0);
+  assert.equal(db.prepare('SELECT source FROM service_entitlement_audit WHERE target_user_id=?').get(f.id).source,'recovery');
+  preserved(db,before,{omit:['auth_sessions','library_permissions','email_actions','service_entitlements','service_entitlement_audit']});
  });
  store=openStorage({filename:restored.filename});try{assert.equal(store.libraryPermissions.read(f.id).decision,'unset');}finally{store.close();}
  assert.deepEqual(fileTree(post),snapshotBefore);assert.deepEqual(fileTree(f.source),sourceBefore);

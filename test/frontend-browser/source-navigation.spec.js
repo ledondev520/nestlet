@@ -25,9 +25,9 @@ test('chat lookup is read-only, requires an exact case choice, and protects unsa
   await lookup.getByRole('button', { name: 'Find saved records', exact: true }).click();
   await expect(lookup.getByRole('button', { name: 'Choose a customer case', exact: true })).toBeVisible();
   await lookup.getByRole('button', { name: 'Choose a customer case', exact: true }).click();
-  const choice = record => lookup.getByRole('button', { name: `Open case: ${record.title} · ${record.id}`, exact: true });
+  const choice = record => lookup.getByRole('button', { name: `Open case: ${record.title} · ${record.displayId}`, exact: true });
   await expect(choice(records[0])).toBeVisible(); await expect(choice(records[1])).toBeVisible();
-  await expect(chat.locator('.chat-toolbar')).not.toContainText(records[0].title);
+  await expect(chat).not.toHaveAttribute('data-case-id',records[0].id);
   await chat.locator('.chat-input').fill('Keep this unsent synthetic question');
   page.once('dialog', dialog => dialog.dismiss());
   await choice(records[1]).click();
@@ -35,7 +35,7 @@ test('chat lookup is read-only, requires an exact case choice, and protects unsa
   await expect(chat.locator('.chat-input')).toHaveValue('Keep this unsent synthetic question');
   page.once('dialog', dialog => dialog.accept());
   await choice(records[1]).click();
-  await expect(chat.locator('.chat-toolbar')).toContainText(records[1].title);
+  await expect(chat).toHaveAttribute('data-case-id',records[1].id);
   await expect(chat.locator('.chat-input')).toHaveValue('');
   await navigate(page, 'Materials & facts');
   await expect(page.getByLabel('Case name', { exact: true })).toHaveValue(records[1].title);
@@ -43,7 +43,8 @@ test('chat lookup is read-only, requires an exact case choice, and protects unsa
   await navigate(page, 'Conversation');
   await lookup.getByLabel('Customer name or case title', { exact: true }).fill('Synthetic matching');
   await lookup.getByRole('button', { name: 'Find saved records', exact: true }).click();
-  const first = lookup.locator(`[data-source-id]`).filter({ hasText: records[0].id });
+  expect(records[0].displayId).toMatch(/^SX[0-9]{8}$/u);
+  const first = lookup.locator(`[data-source-id]`).filter({ hasText: records[0].displayId });
   await expect(first.getByRole('button', { name: 'Open case', exact: true })).toBeVisible();
   page.once('dialog', dialog => dialog.dismiss());
   await first.getByRole('button', { name: 'Open case', exact: true }).click();

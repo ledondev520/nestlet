@@ -55,7 +55,8 @@ export function normalizeMessages(messages) {
   return messages.map(message => {
     if (!message || !uuid(message.id) || !['user', 'assistant'].includes(message.role) || typeof message.content !== 'string' || message.content.length > CHAT_BOUNDS.output || !['complete', 'interrupted', 'failed'].includes(message.state)) fail('INVALID_RESPONSE');
     if (message.imageMetadata !== undefined && (!Array.isArray(message.imageMetadata) || message.imageMetadata.length > 2)) fail('INVALID_RESPONSE');
-    return { id: message.id, role: message.role, content: message.content, state: message.state,
+    const display={};for(const [key,prefix]of [['displayId','XX'],['conversationDisplayId','DH']])if(message[key]!==undefined){if(typeof message[key]!=='string'||!new RegExp('^'+prefix+'\\d{8}$','u').test(message[key]))fail('INVALID_RESPONSE');display[key]=message[key];}
+    return { ...display,id: message.id, role: message.role, content: message.content, state: message.state,
       clientMessageId: message.clientMessageId || null, requestId: message.requestId || null,
       imageMetadata: (message.imageMetadata || []).slice(0,2).map(image => ({mimeType:image.mimeType,byteCount:image.byteCount,retained:false})) };
   });

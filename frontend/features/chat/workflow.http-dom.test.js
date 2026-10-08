@@ -161,7 +161,7 @@ test('chat bridges a persisted conversation into append-only review and the real
   await wait(()=>stale.received,'Old case response delayed');
   await nav('Customers');await wait(()=>button('Open saved case: '+otherCase.title),'Other saved case listed');
   await click(button('Open saved case: '+otherCase.title));await React.act(async()=>{stale.resolve();});
-  await wait(()=>document.querySelector('.chat-toolbar')?.textContent.includes(otherCase.title),'New case remains selected');
+  await wait(()=>document.querySelector('.chat-toolbar [data-slot="card-title"]')?.textContent==='Conversation' && !document.querySelector('.chat-toolbar select').value,'New case remains selected');
   assert.doesNotMatch(document.querySelector('[data-feature="chat"]').textContent,/999 Unreviewed|Cancellation and stale|Unreviewed draft saved:/);
   assert.equal((await checkRead(`/api/cases/${otherCase.id}/artifacts`)).artifacts.length,0);
   assert.equal((await checkRead(`/api/cases/${record.id}/artifacts`)).artifacts.length,3,'Late old-case response cannot save');

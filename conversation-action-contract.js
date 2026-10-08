@@ -41,7 +41,9 @@ export function prepareConversationAction(input, {record, conversation, message}
   if (record.version !== request.expectedVersion) fail('CASE_CONFLICT', 409);
   if (message.state !== 'complete' || message.localOnly || message.streaming || !['user', 'assistant'].includes(message.role) || typeof message.content !== 'string' || !message.content.trim()) fail('CONVERSATION_ACTION_SOURCE_INCOMPLETE', 409);
   const base = {action: request.action, caseId: record.id, expectedVersion: record.version, sourceConversationId: conversation.id, sourceMessageId: message.id, requiresExplicitApply: true, request};
-  if (request.action === 'prepare_answer_draft') return {...base, status: 'draft', title: `Conversation draft · ${message.id.slice(0, 8)}`, kind: request.kind, content: conversationAnswerContent(message), conflicts: [], apply: {method: 'POST', path: `/api/cases/${record.id}/artifacts`, body: {conversationAction: request}}};
+  if(typeof message.displayId==='string'&&/^XX\d{8}$/u.test(message.displayId))base.sourceDisplayId=message.displayId;
+  if(typeof conversation.displayId==='string'&&/^DH\d{8}$/u.test(conversation.displayId))base.conversationDisplayId=conversation.displayId;
+  if (request.action === 'prepare_answer_draft') return {...base, status: 'draft', title: message.displayId ? `Conversation draft · ${message.displayId}` : 'Conversation draft', kind: request.kind, content: conversationAnswerContent(message), conflicts: [], apply: {method: 'POST', path: `/api/cases/${record.id}/artifacts`, body: {conversationAction: request}}};
   const source = `Unconfirmed ${message.role} message ${message.id}; conversation ${conversation.id}`;
   const factChanges = {}, changes = {}, preview = [], conflicts = [];
   for (const [group, target] of [['factChanges', factChanges], ['changes', changes]]) {

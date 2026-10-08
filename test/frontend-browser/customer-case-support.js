@@ -1,6 +1,6 @@
 import { test as base, expect } from '@playwright/test';
 import { startBrowserFixture } from '../helpers/browser-fixture.mjs';
-import { ENTRY_PATH, PASSWORD, english, navigate } from './support.js';
+import { ENTRY_PATH, PASSWORD, english, navigate, expectedCaseId } from './support.js';
 
 export const CUSTOMER_USERS = ['synthetic-customer-a', 'synthetic-customer-b'];
 export const OWNER_PASSWORD = 'public-browser-owner-fixture';
@@ -83,15 +83,16 @@ export async function createLinkedCase(page, client, title) {
   expect(record).toMatchObject({ title, clientId: client.id, sourceText: '', draftText: '' });
   expect(record.fields.every(field => !field.value && !field.confirmed)).toBe(true);
   await expect(page).toHaveURL(/#chat$/u);
-  await expect(page.locator('[data-feature="chat"]')).toContainText(title);
+  await expect(page.locator('[data-feature="chat"]')).toHaveAttribute('data-case-id',record.id);
   return record;
 }
 
 export async function openLinkedCase(page, label, title) {
   await selectCustomer(page, label);
+  const caseId=await expectedCaseId(page,title,{clientLabel:label});
   await customerRecord(page).getByRole('button', { name: `Open case: ${title}`, exact: true }).click();
   await expect(page).toHaveURL(/#chat$/u);
-  await expect(page.locator('[data-feature="chat"]')).toContainText(title);
+  await expect(page.locator('[data-feature="chat"]')).toHaveAttribute('data-case-id',caseId);
 }
 
 export async function saveLinkedMaterial(page, record, source, { review = false } = {}) {

@@ -65,3 +65,28 @@ test('clock reversal or invalid time fails closed and stale drafts never reappea
   time=999;assert.equal(vault.read(key()),null);assert.equal(vault.verifyUser(user),false);assert.equal(vault.read(key()),null);
   vault.write(key(),{input:'Fresh verified draft'});time=NaN;assert.equal(vault.read(key()),null);time=2000;vault.verifyUser(user);assert.equal(vault.read(key()),null);
 });
+
+test('pending chat reply recovery is bounded, text-only and hidden until the same account is verified',()=>{
+ const vault=createDraftVault(),userId=randomUUID(),workspaceKey=randomUUID(),conversationId=randomUUID();
+ const key={userId,workspaceKey,feature:'chat'};
+ const pendingTurn={userMessageId:randomUUID(),clientMessageId:randomUUID(),question:'Synthetic sent question',assistantMessageId:randomUUID(),reply:'Synthetic unconfirmed reply',requestId:randomUUID()};
+ vault.verifyUser(userId);assert.equal(vault.write(key,{input:'Newer synthetic draft',conversationId,pendingTurn}),true);
+ vault.suspend(userId);assert.equal(vault.read(key),null);vault.verifyUser(userId);assert.deepEqual(vault.read(key).pendingTurn,pendingTurn);
+ for(const bad of [{...pendingTurn,reply:'x'.repeat(64001)},{...pendingTurn,question:'x'.repeat(8001)},{...pendingTurn,images:[]},{...pendingTurn,assistantMessageId:'wrong'},{...pendingTurn,requestId:'wrong'},{...pendingTurn,reply:''}])assert.equal(vault.write(key,{conversationId,pendingTurn:bad}),false);
+ assert.equal(vault.write(key,{pendingTurn}),false,'A cached reply must be bound to its conversation');
+ vault.verifyUser(randomUUID());assert.equal(vault.read(key),null,'A different signed-in account never sees the recovery copy');
+});
+
+test('multiple unconfirmed chat copies have a strict count, unique questions and the existing byte budget',()=>{
+ const vault=createDraftVault(),userId=randomUUID(),workspaceKey=randomUUID(),conversationId=randomUUID();vault.verifyUser(userId);
+ const key={userId,workspaceKey,feature:'chat'};
+ const turn=()=>({userMessageId:randomUUID(),clientMessageId:randomUUID(),question:'Synthetic question',assistantMessageId:randomUUID(),reply:'Synthetic reply',requestId:randomUUID()});
+ const earlierTurns=Array.from({length:7},turn),pendingTurn=turn();
+ assert.equal(vault.write(key,{conversationId,earlierTurns,pendingTurn}),true);
+ assert.equal(vault.write(key,{conversationId,earlierTurns:[...earlierTurns,turn()],pendingTurn}),false);
+ assert.equal(vault.write(key,{conversationId,earlierTurns:[pendingTurn],pendingTurn}),false);
+ assert.equal(vault.write(key,{conversationId,earlierTurns}),false);
+ const large=Array.from({length:7},()=>({...turn(),reply:'中'.repeat(64000)}));
+ assert.equal(vault.write(key,{conversationId,earlierTurns:large,pendingTurn}),false,'Existing entry byte cap remains authoritative');
+ assert.deepEqual(vault.read(key).earlierTurns,earlierTurns,'Rejected excess must not evict the existing recovery copies');
+});

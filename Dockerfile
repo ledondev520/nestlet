@@ -23,7 +23,7 @@ RUN apt-get update \
 WORKDIR /app
 COPY --from=dependencies --chown=node:node /app/node_modules ./node_modules
 # Explicit copies prevent an accidental .env, upload or private document inclusion.
-COPY --chown=node:node package.json server.js auth.js auth-session-storage.js account-administration.js account-administration-storage.js email-auth.js email-auth-domain.js email-auth-storage.js email-delivery.js library-consent-storage.js storage.js conversation-review.js conversation-review-storage.js synchronous-transaction.js telemetry.js chat.js review-operation.js conversation-action-contract.js agent-library-tools.js document-context.js document-pdf.js case-records.js workbook-worker.js asset-domain.js asset-records.js private-assets.js asset-image-worker.js ./
+COPY --chown=node:node package.json server.js provider-metadata.js auth.js auth-session-storage.js account-administration.js account-administration-storage.js email-auth.js email-auth-domain.js email-auth-storage.js email-delivery.js library-consent-storage.js service-entitlements.js service-entitlement-storage.js service-recovery.js record-display-ids.js storage.js conversation-review.js conversation-review-storage.js synchronous-transaction.js telemetry.js chat.js review-operation.js conversation-action-contract.js agent-library-tools.js document-context.js document-pdf.js case-records.js workbook-worker.js asset-domain.js asset-records.js private-assets.js asset-image-worker.js ./
 COPY --chown=node:node public ./public
 COPY --from=frontend-build --chown=node:node /app/public/next ./public/next
 COPY --chown=node:node ops/healthcheck.mjs ./ops/healthcheck.mjs

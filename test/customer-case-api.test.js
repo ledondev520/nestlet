@@ -487,3 +487,19 @@ test('PDF downloads are authenticated, own-user, immutable saved artifact bytes 
   assert.equal(Buffer.from(await response.arrayBuffer()).subarray(0,5).toString(),'%PDF-');
   assert.equal((await request(path+'?content=injected',{session:a})).status,400);
 });
+
+test('account conversation index crosses own cases only, bounds previews, and keeps exact conversation references', async () => {
+  const a=sessions['trial-a'],b=sessions['trial-b'];
+  const first=await create(a,'Synthetic unified first'),second=await create(a,'Synthetic unified second');
+  const left=await conversation(a,first,'Synthetic first topic'),right=await conversation(a,second,'Synthetic second topic');
+  const foreign=await conversation(b,await create(b,'Synthetic foreign case'),'Synthetic private topic');
+  const index=await json('/api/conversations',{session:a});
+  assert.ok(index.conversations.some(row=>row.id===left.id&&row.caseId===first.id));
+  assert.ok(index.conversations.some(row=>row.id===right.id&&row.caseId===second.id));
+  assert.equal(index.conversations.some(row=>row.id===foreign.id),false);
+  const empty=index.conversations.find(row=>row.id===left.id);
+  assert.equal(empty.lastMessage,null);assert.equal(empty.draftCount,0);
+  assert.equal((await request('/api/conversations')).status,401);
+  await json('/api/conversations?userId='+b.userId,{session:a},400);
+  await json('/api/conversations?limit=10000',{session:a},400);
+});

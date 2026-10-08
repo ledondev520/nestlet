@@ -3,6 +3,7 @@
 !package.json
 !package-lock.json
 !server.js
+!provider-metadata.js
 !auth.js
 !auth-session-storage.js
 !account-administration.js
@@ -51,3 +52,8 @@ public/next/
 !conversation-review.js
 !conversation-review-storage.js
 !synchronous-transaction.js
+
+!service-entitlements.js
+!service-entitlement-storage.js
+!record-display-ids.js
+!service-recovery.js

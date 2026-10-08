@@ -1,3 +1,5 @@
+import { pauseRecoveredServices } from '../service-entitlement-storage.js';
+import { writeServiceRecoveryFence } from '../service-recovery.js';
 /** Explicit local operator backup/recovery/export. No network, scheduling, deletion or live-path overwrite. */
 import { DatabaseSync, backup } from 'node:sqlite';
 import {
@@ -19,7 +21,7 @@ import { createHash } from 'node:crypto';
 import { preparePrivateDirectory, openAssetVault } from '../private-assets.js';
 import { assetId, ASSET_LIMITS } from '../asset-domain.js';
 const APPLICATION_ID = 0x4e53544c;
-const SUPPORTED_SCHEMAS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+const SUPPORTED_SCHEMAS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 const schemaVersion = (db) => db.prepare('PRAGMA user_version').get().user_version;
 const fail = (message) => {
   throw new Error(message);
@@ -128,7 +130,7 @@ function openDatabase(filename, { readOnly = true } = {}) {
     if (readSync(fd, header, 0, header.length, 0) === 100 &&
         header.subarray(0,16).equals(Buffer.from('SQLite format 3\0')) &&
         header.readUInt32BE(60) > Math.max(...SUPPORTED_SCHEMAS))
-      fail('Only a recognized Nestlet schema1–9 database is supported.');
+      fail('Only a recognized Nestlet schema1–10 database is supported.');
   } finally { closeSync(fd); }
   const db = new DatabaseSync(filename, {
     readOnly,
@@ -145,7 +147,7 @@ function openDatabase(filename, { readOnly = true } = {}) {
       db.prepare('PRAGMA application_id').get().application_id !== APPLICATION_ID ||
       !SUPPORTED_SCHEMAS.includes(schemaVersion(db))
     )
-      fail('Only a recognized Nestlet schema1–9 database is supported.');
+      fail('Only a recognized Nestlet schema1–10 database is supported.');
     if (
       db.prepare('PRAGMA integrity_check').get().integrity_check !== 'ok' ||
       db.prepare('PRAGMA foreign_key_check').all().length
@@ -353,15 +355,29 @@ export async function restorePrivateBackup({ input, output }) {
     if (checked.schemaVersion >= 8) restored.exec('DELETE FROM auth_sessions');
     // A historical snapshot must never resurrect a subsequently revoked data-sharing grant.
     if (checked.schemaVersion >= 9) restored.exec('DELETE FROM library_permissions');
+    // A restored historical service grant cannot silently revive later-revoked AI access.
+    // Preserve owned records and usage; recovery requires a fresh explicit owner decision.
+    if (checked.schemaVersion >= 10) {
+      restored.exec('BEGIN IMMEDIATE');
+      try {
+        pauseRecoveredServices(restored);
+        restored.exec('COMMIT');
+      } catch (error) { restored.exec('ROLLBACK'); throw error; }
+    }
   } finally {
     restored.close();
   }
+  // Legacy restores retain their historical schema. A candidate schema10 startup
+  // must atomically pause services before this recovered data can be served.
+  if (checked.schemaVersion < 10) writeServiceRecoveryFence(filename, checked.schemaVersion);
   complete(output);
   return {
     verified: true,
     filename,
     assetsDirectory: target.directory,
     schemaVersion: checked.schemaVersion,
+    serviceRecovery: checked.schemaVersion >= 10 ? 'paused-in-copy' : 'schema10-startup-fence',
+    preserveRestoreDirectory: true,
     assetCount: checked.assetCount
   };
 }

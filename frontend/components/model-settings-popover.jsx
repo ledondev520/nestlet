@@ -35,7 +35,7 @@ function OwnerModelPopover({ session, lang }) {
       </Tooltip.Root>
     </Tooltip.Provider>
     <Popover.Portal>
-      <Popover.Content aria-label={label} align="end" sideOffset={8} collisionPadding={12} className="z-50 max-h-[var(--radix-popover-content-available-height)] w-[min(24rem,calc(100vw-1.5rem))] overflow-y-auto rounded-xl border border-border bg-background p-5 text-foreground shadow-lg outline-none">
+      <Popover.Content aria-label={label} align="end" sideOffset={8} collisionPadding={12} className="z-50 max-h-[var(--radix-popover-content-available-height)] w-[min(20rem,calc(100vw-1.5rem))] overflow-y-auto rounded-xl border border-border bg-background p-4 text-foreground shadow-lg outline-none">
         <Popover.Close asChild><Button className="absolute right-2 top-2" variant="ghost" size="icon" aria-label={lang === 'zh' ? '关闭模型设置' : 'Close model settings'}><X aria-hidden="true" /></Button></Popover.Close>
         <ModelSettingsForm session={session} lang={lang} />
       </Popover.Content>

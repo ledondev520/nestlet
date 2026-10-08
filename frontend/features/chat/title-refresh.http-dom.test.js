@@ -7,7 +7,7 @@ import { createServer } from 'vite';
 import { startBrowserFixture } from '../../../test/helpers/browser-fixture.mjs';
 import { newCasePayload } from './logic.js';
 
-test('saved same-case rename refreshes the chat toolbar on return without reloading its conversation or clearing pending drafts', {timeout:30000}, async context => {
+test('saved case rename does not replace the conversation title or clear pending drafts', {timeout:30000}, async context => {
   const app=await startBrowserFixture({legacyUsers:['synthetic-title-refresh']});
   const realFetch=globalThis.fetch;
   const login=await realFetch(app.origin+'/api/login',{method:'POST',headers:{Origin:app.origin,'Content-Type':'application/json'},body:JSON.stringify({username:'synthetic-title-refresh',password:'Case26'})});
@@ -43,8 +43,8 @@ test('saved same-case rename refreshes the chat toolbar on return without reload
   assert.equal(document.querySelector('nav[aria-label="Workspace navigation"]'),null,'Language is usable while authentication is still loading');
   releaseInitialStatus();
   await nav('Customers');await wait(()=>button('Open saved case: '+record.title),'Saved case listed');await click(button('Open saved case: '+record.title));
-  await wait(()=>title()===record.title&&!button('New conversation').disabled,'Original chat title loaded');
-  await change(document.querySelector('.chat-toolbar select'),first.id);await wait(()=>!button('New conversation').disabled,'Selected conversation loaded');
+  await wait(()=>title()==='Other synthetic conversation'&&!button('New conversation',document.querySelector('.chat-toolbar')).disabled,'Conversation title loaded');
+  await change(document.querySelector('.chat-toolbar select'),first.id);await wait(()=>!button('New conversation',document.querySelector('.chat-toolbar')).disabled,'Selected conversation loaded');
   await change(document.querySelector('.chat-input'),'Unsent chat question must survive');
   const historyReads=requests.filter(item=>item.path.startsWith('/api/conversations/')).length;
   await nav('Materials & facts');await wait(()=>input('Case name')?.value===record.title,'Material editor loaded');
@@ -52,7 +52,7 @@ test('saved same-case rename refreshes the chat toolbar on return without reload
   await wait(()=>requests.some(item=>item.path===`/api/cases/${record.id}`&&item.method==='PUT'&&item.status===200)&&!button('Save case').disabled,'Rename persisted');
   await change(input('Case source text'),'Unsaved material draft after the rename');
   await nav('Conversation');
-  await wait(()=>title()==='Synthetic renamed case','Chat toolbar stayed stale after a saved same-case rename');
+  await wait(()=>title()===first.title,'Saved case rename must not overwrite the conversation title');
   assert.equal(document.querySelector('.chat-input').value,'Unsent chat question must survive');
   assert.equal(document.querySelector('.chat-toolbar select').value,first.id);
   assert.equal(requests.filter(item=>item.path.startsWith('/api/conversations/')).length,historyReads,'Title refresh must not reload or replace conversation history');

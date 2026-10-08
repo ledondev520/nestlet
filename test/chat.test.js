@@ -129,3 +129,17 @@ test('stored history excludes incomplete answers, bounds recent excerpts includi
   assert.ok(imageAndLongText[0].content.length <= 8000);
   assert.ok(/not retained.*unavailable/.test(imageAndLongText[0].content), 'Excerpt must retain the image-unavailable notice');
 });
+
+test('repeated turns reuse stable context prefixes and keep bounded canonical provenance outside history',()=>{
+  const record={sourceText:'Synthetic full source',fields:[{key:'property',value:'Synthetic property',confirmed:true,conflict:false,source:'x'.repeat(1501),sourceCell:{sheet:'Sheet1',row:2,column:'B'}}],
+    documentContext:{senderName:{value:'Synthetic sender',source:'Confirmed in saved reply',sourceMessageId:'11111111-1111-4111-8111-111111111111',confirmed:true,confirmedAt:'2026-10-08T00:00:00Z'}}};
+  const before=structuredClone(record), first=chatProviderMessages(validateChatRequest(valid()),record);
+  const next=chatProviderMessages(validateChatRequest(valid({messages:[{role:'user',content:'Different next question'}]})),record);
+  assert.deepEqual(first.slice(0,2),next.slice(0,2));
+  const context=JSON.parse(first[1].content.split('\n').slice(1).join('\n'));
+  assert.deepEqual(context.fields[0].sourceCell,record.fields[0].sourceCell);
+  assert.equal(context.fields[0].source.length,1500);assert.equal(context.fields[0].sourceIncomplete,true);
+  assert.equal(context.documentContext.senderName.sourceMessageId,record.documentContext.senderName.sourceMessageId);
+  assert.equal(context.documentContext.senderName.source,'Confirmed in saved reply');
+  assert.deepEqual(record,before);assert.match(first[0].content,/incomplete value or source excerpt is not complete evidence/);
+});

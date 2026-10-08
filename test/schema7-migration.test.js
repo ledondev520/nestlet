@@ -21,13 +21,13 @@ test('schema6→7 preserves old rows and DDL, immutable audit, reopen, backup an
  const f=fixture(t),before=inspect(f.filename,snapshot),ddl=inspect(f.filename,db=>db.prepare("SELECT type,name,sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY name").all());
  const beforeBytes=readFileSync(f.filename);const oldBackup=await backupPrivateData({...f,output:join(f.root,'before')});assert.equal(oldBackup.schemaVersion,6);assert.deepEqual(readFileSync(f.filename),beforeBytes);
  let s=openStorage({filename:f.filename});
- inspect(f.filename,db=>{for(const[name,rows]of Object.entries(before))assert.equal(snapshot(db)[name],rows);for(const row of ddl)assert.deepEqual(db.prepare('SELECT type,name,sql FROM sqlite_master WHERE name=?').get(row.name),row);assert.equal(db.prepare('PRAGMA user_version').get().user_version,9);});
+ inspect(f.filename,db=>{for(const[name,rows]of Object.entries(before))assert.equal(snapshot(db)[name],rows);for(const row of ddl)assert.deepEqual(db.prepare('SELECT type,name,sql FROM sqlite_master WHERE name=?').get(row.name),row);assert.equal(db.prepare('PRAGMA user_version').get().user_version,10);});
  const record=s.createCase('owner',{title:'Synthetic migration case',sourceText:'',fields:[],draftType:'followup',draftText:''}),c=s.createConversation('owner',record.id,{}),m=s.appendMessage('owner',c.id,{role:'assistant',content:'Synthetic evidence',state:'complete'});
  const request={clientRequestId:randomUUID(),locale:'en',conversationAction:{action:'prepare_case_suggestion',expectedVersion:1,sourceConversationId:c.id,sourceMessageId:m.id,factChanges:{rent:{value:'$2200'}},changes:{}}};
  const p=s.conversationReviews.prepare('owner',record.id,request),reply={conversationId:c.id,expectedVersion:1,clientMessageId:randomUUID(),answer:'confirm'};
  s.conversationReviews.reply('owner',record.id,p.intent.id,reply);s.close();s=openStorage({filename:f.filename});
  assert.equal(s.conversationReviews.reply('owner',record.id,p.intent.id,reply).replayed,true);s.close();
- const post=join(f.root,'after');assert.equal((await backupPrivateData({...f,output:post})).schemaVersion,9);assert.equal(verifyPrivateBackup({input:post}).schemaVersion,9);
+ const post=join(f.root,'after');assert.equal((await backupPrivateData({...f,output:post})).schemaVersion,10);assert.equal(verifyPrivateBackup({input:post}).schemaVersion,10);
  inspect(join(post,'nestlet.sqlite'),db=>{assert.equal(db.prepare('SELECT state FROM conversation_review_intents WHERE id=?').get(p.intent.id).state,'applied');assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[]);assert.equal(db.prepare('PRAGMA integrity_check').get().integrity_check,'ok');assert.throws(()=>db.prepare('UPDATE conversation_review_intents SET expected_version=99 WHERE id=?').run(p.intent.id),/immutable/);});
 });
 test('late migration failure rolls back schema7 DDL without touching schema6 rows',t=>{
@@ -35,7 +35,7 @@ test('late migration failure rolls back schema7 DDL without touching schema6 row
  const before=inspect(f.filename,snapshot);assert.throws(()=>openStorage({filename:f.filename}),/already exists/);
  inspect(f.filename,db=>{assert.equal(db.prepare('PRAGMA user_version').get().user_version,6);assert.deepEqual(snapshot(db),before);});
 });
-test('future schema10 refuses before persistent pragmas or files change',t=>{
- const f=fixture(t);inspect(f.filename,db=>db.exec('PRAGMA journal_mode=WAL; PRAGMA user_version=10;'));
+test('future schema11 refuses before persistent pragmas or files change',t=>{
+ const f=fixture(t);inspect(f.filename,db=>db.exec('PRAGMA journal_mode=WAL; PRAGMA user_version=11;'));
  const bytes=readFileSync(f.filename),files=readdirSync(f.root);assert.throws(()=>openStorage({filename:f.filename}),error=>error.code==='STORAGE_VERSION_UNSUPPORTED');assert.deepEqual(readFileSync(f.filename),bytes);assert.deepEqual(readdirSync(f.root),files);
 });

@@ -61,3 +61,8 @@ No original-file DELETE endpoint, automatic pruning or scheduled retention is in
 Schema8 release and rollback details: [durable login sessions](durable-login-sessions.md). Never replace a running database with a historical snapshot as a routine release step. Recovery requires an explicit decision about writes since that snapshot; use the verified restore utility and keep its session invalidation behavior.
 
 Schema9 consent and recovery details: [remembered library permission](library-permission.md). Restore deliberately resets both sessions and remembered library choices.
+
+
+Schema10 candidate extends backup support to10 and retains stable record references/usage. A schema10 restored copy additionally pauses AI service for every ordinary account with a recovery audit; original record read/export remains available. The owner must explicitly review/re-enable service after recovery. These operations never change the source snapshot. See [manual service and record-reference recovery](service-access-record-ids.md). Prior schema9 instructions above remain historical; no new deployment or live restore is claimed here.
+
+Historical schema1–9 restored directories produced by the schema10 helper also contain a private service-reconfirmation sidecar. Preserve it with the restored DB/assets until schema10 startup atomically migrates/pauses services and consumes it; do not copy only the DB/assets and discard the fence. The immutable source backup remains unchanged and retains its old schema. See the linked schema10 recovery contract for crash/concurrency validation and the explicit old-binary limitation.

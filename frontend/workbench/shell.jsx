@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { PanelLeft, PanelRight, X } from 'lucide-react';
-const copy={zh:{openNav:'打开客户与事项列表',closeNav:'关闭列表',openContext:'打开案例上下文',closeContext:'关闭上下文',navigation:'客户与事项',context:'案例上下文',skip:'跳到工作区'},en:{openNav:'Open customers and cases',closeNav:'Close list',openContext:'Open case context',closeContext:'Close context',navigation:'Customers and cases',context:'Case context',skip:'Skip to workspace'}};
+const copy={zh:{openNav:'打开对话列表',closeNav:'关闭列表',openContext:'打开案例上下文',closeContext:'关闭上下文',navigation:'对话记录',context:'案例上下文',skip:'跳到工作区'},en:{openNav:'Open conversations',closeNav:'Close list',openContext:'Open case context',closeContext:'Close context',navigation:'Conversations',context:'Case context',skip:'Skip to workspace'}};
 const query='(max-width: 960px)';
 const externalModal=()=>[...document.querySelectorAll('[role="dialog"][aria-modal="true"],[data-slot="dialog-content"][data-state="open"]')].some(node=>!node.closest('.wb'));
 const selector='a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),summary,[tabindex]:not([tabindex="-1"])';
 /** Stable desktop/sidebar hosts retain their React portals and feature state.
  * One modal drawer at a time on mobile; no business-state decisions live here. */
-export function WorkbenchShell({lang='zh',brand,topbarEnd,rail,center,context,contextOpen,onContextOpenChange,navigationKey}){
+export function WorkbenchShell({lang='zh',brand,topbarEnd,navigation,rail,center,context,contextOpen,onContextOpenChange,navigationKey}){
  const t=copy[lang]||copy.zh,id=useId();
  const [mobile,setMobile]=useState(()=>window.matchMedia?.(query).matches===true),[drawer,setDrawer]=useState(null);
  const railRef=useRef(null),contextRef=useRef(null),mainRef=useRef(null),railToggle=useRef(null),contextToggle=useRef(null),previousDrawer=useRef(null),focusCenter=useRef(false),previousNavigation=useRef(navigationKey);
@@ -38,11 +38,13 @@ export function WorkbenchShell({lang='zh',brand,topbarEnd,rail,center,context,co
   <a href="#workspace" className="inbox-skip" inert={!!modal} onClick={event=>{event.preventDefault();mainRef.current?.focus();}}>{t.skip}</a>
   <header className="wb-topbar" inert={!!modal}>
    {mobile&&<button ref={railToggle} type="button" className="wb-icon-button" aria-label={t.openNav} aria-controls={`${id}-rail`} aria-expanded={modal==='rail'} onClick={()=>setDrawer('rail')}><PanelLeft aria-hidden="true" size={20}/></button>}
-   {brand}<div className="wb-spacer">{typeof topbarEnd==='function'?topbarEnd(mobile):topbarEnd}</div>
+   {brand}{!mobile&&<div className="wb-global-navigation">{navigation}</div>}
    <button ref={contextToggle} type="button" className="wb-icon-button" aria-label={(!mobile&&contextOpen)?t.closeContext:t.openContext} aria-controls={`${id}-context`} aria-expanded={mobile?modal==='context':contextOpen} onClick={()=>mobile?setDrawer('context'):onContextOpenChange(!contextOpen)}><PanelRight aria-hidden="true" size={20}/></button>
+    <div className="wb-spacer">{typeof topbarEnd==='function'?topbarEnd(mobile):topbarEnd}</div>
   </header>
+  {mobile&&<div className="wb-global-navigation" inert={!!modal}>{navigation}</div>}
   <div className="wb-body" data-context-open={!mobile&&contextOpen?'true':'false'}>
-   <aside ref={railRef} id={`${id}-rail`} className="wb-rail" data-open={!railHidden?'true':'false'} hidden={railHidden} inert={railHidden||!!modal&&modal!=='rail'} tabIndex={-1} aria-label={t.navigation} {...dialogProps('rail')} onClick={event=>{if(mobile&&!event.defaultPrevented&&event.target.closest('.wb-rail-item')){focusCenter.current=true;close();}}}>
+   <aside ref={railRef} id={`${id}-rail`} className="wb-rail" data-open={!railHidden?'true':'false'} hidden={railHidden} inert={railHidden||!!modal&&modal!=='rail'} tabIndex={-1} aria-label={t.navigation} {...dialogProps('rail')} onClick={event=>{if(mobile&&(!event.defaultPrevented||event.nativeEvent.workspaceNavigationAccepted)&&event.target.closest('.wb-rail-item')){focusCenter.current=true;close();}}}>
     {mobile&&<button type="button" className="wb-icon-button" data-drawer-close aria-label={t.closeNav} onClick={close}><X aria-hidden="true"/></button>}{rail}
    </aside>
    <main id="workspace" className="wb-center" ref={mainRef} tabIndex={-1} inert={!!modal}>{center}</main>

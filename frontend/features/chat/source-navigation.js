@@ -34,7 +34,7 @@ export async function inspectSource(api, envelope, sourceId, { signal } = {}) {
     const page = await api.get(`/api/clients/${record.id}/cases`, { signal });
     if (!Array.isArray(page?.cases) || page.cases.length > 100 || page.cases.some(item => !uuid(item?.id) ||
         !version(item.version) || !title(item.title) || item.clientId !== record.id)) fail('SOURCE_INVALID');
-    return { source, title: record.displayName, cases: page.cases.map(item => ({ id: item.id, title: item.title, version: item.version, clientId: item.clientId })) };
+    return { source, title: record.displayName, cases: page.cases.map(item => ({ id: item.id, displayId:item.displayId, title: item.title, version: item.version, clientId: item.clientId })) };
   }
   if (source.kind === 'asset') return { source, title: record.originalFilename, preview: assetPath(record.id, 'preview'), download: assetPath(record.id, 'download') };
   if (source.kind === 'artifact') {

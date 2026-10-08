@@ -6,7 +6,8 @@ export function reviewableMessage(message) {
 }
 export function conversationHandoff(message, scope) {
   if (!reviewableMessage(message) || !(typeof scope?.userId === 'string' && scope.userId.length > 0 && scope.userId.length <= 128) || !uuid(scope?.caseId) || !uuid(scope?.conversationId)) return null;
-  return { id: crypto.randomUUID(), userId: scope.userId, caseId: scope.caseId, conversationId: scope.conversationId, messageId: message.id, role: message.role, content: message.content };
+  const display={};if(/^XX\d{8}$/u.test(message.displayId||''))display.messageDisplayId=message.displayId;if(/^DH\d{8}$/u.test(message.conversationDisplayId||''))display.conversationDisplayId=message.conversationDisplayId;
+  return { ...display,id: crypto.randomUUID(), userId: scope.userId, caseId: scope.caseId, conversationId: scope.conversationId, messageId: message.id, role: message.role, content: message.content };
 }
 export function handoffMatches(request, userId, caseId) {
   return Boolean(uuid(request?.id) && request.userId === userId && request.caseId === caseId && uuid(caseId) && uuid(request.conversationId) && uuid(request.messageId) && ['user', 'assistant'].includes(request.role) && typeof request.content === 'string' && request.content.trim() && request.content.length <= HANDOFF_LIMIT);

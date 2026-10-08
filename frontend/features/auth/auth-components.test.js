@@ -3,7 +3,7 @@ import { test, before, after, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
 import { createServer } from 'vite';
-let server, React, createRoot, SessionProvider, SettingsPage, AccountControls, AuthPanel, ModelSettingsForm, useSession, root, host;
+let ModelSettingsPopover, server, React, createRoot, SessionProvider, SettingsPage, AccountControls, AuthPanel, ModelSettingsForm, useSession, root, host;
 const originalFetch=globalThis.fetch;
 const dom=new JSDOM('<!doctype html><html><body></body></html>',{url:'https://fixture.invalid',pretendToBeVisual:true});
 for(const key of ['window','document','navigator','HTMLElement','Element','Node','MutationObserver','Event','CustomEvent','NodeFilter','HTMLInputElement','getComputedStyle']) Object.defineProperty(globalThis,key,{value: key==='getComputedStyle'?dom.window.getComputedStyle.bind(dom.window):dom.window[key],configurable:true,writable:true});
@@ -14,6 +14,7 @@ before(async()=>{
   React=await import('react');({createRoot}=await import('react-dom/client'));
   server=await createServer({configFile:'vite.config.js',server:{middlewareMode:true,hmr:false,watch:null,ws:false},appType:'custom'});
   ({SessionProvider,useSession}=await server.ssrLoadModule('/lib/session.jsx'));
+  ({ModelSettingsPopover}=await server.ssrLoadModule('/components/model-settings-popover.jsx'));
   ({ModelSettingsForm}=await server.ssrLoadModule('/features/auth/model-settings-form.jsx'));
   ({SettingsPage,AccountControls,AuthPanel}=await server.ssrLoadModule('/features/auth/index.js'));
 });
@@ -25,7 +26,7 @@ function fixture(status,settings={configured:false,liveEnabled:false,secureSetti
  globalThis.fetch=async(path,options={})=>{
    calls.push({path,method:options.method||'GET',body:options.body?JSON.parse(options.body):null});
    let body=path==='/api/status'?status:settings,code=200;
-   if(path==='/api/settings' && options.method==='POST') {if(failSave){body={error:'Synthetic secret must never show',code:'PROVIDER_UNAVAILABLE'};code=503;}else{body={...settings,configured:true};}}
+   if(path==='/api/settings' && options.method==='POST') {if(failSave){body={error:'Synthetic secret must never show',code:'PROVIDER_UNAVAILABLE'};code=503;}else{body={...settings,configured:true,liveEnabled:true,connectionVerifiedAt:'2026-10-08T00:00:00.000Z',check:'chat-completion',chatCompletionTested:true};}}
    if(path==='/api/register'){body={accepted:true,authenticated:false,next:'check-email-if-eligible',retryAfter:60};code=202;}
    if(path==='/api/login'){status={...owner,role:'trial',canManageSettings:false,username:JSON.parse(options.body).username};body=status;}
    if(path==='/api/settings/test')body={ok:true,model:'deepseek-flash',check:'model-access',chatCompletionTested:false,verifiedAt:'2026-10-07T00:00:00.000Z'};
@@ -65,7 +66,8 @@ test('ambiguous save failure clears secret and requires fresh read',async()=>{
  await React.act(async()=>host.querySelector('form').dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true})));
  assert.equal(calls.filter(c=>c.method==='POST').length,1);
  assert.ok(host.querySelector('[role=alert]'));
- assert.equal(host.querySelector('input[type=password]'),null);
+ assert.equal(host.querySelector('input[type=password]').value,'');
+ assert.ok(calls.filter(c=>c.path==='/api/settings' && c.method==='GET').length>=2);
  assert.doesNotMatch(host.textContent,/Synthetic secret must never show|synthetic-key-123456/);
 });
 test('logout cancellation sends nothing; explicit confirmation sends logout once',async()=>{
@@ -89,12 +91,10 @@ test('email registration requires confirmation and stays signed out on generic20
  assert.deepEqual(calls.find(c=>c.path==='/api/register').body,{email:'synthetic@example.invalid',password:'123456',passwordConfirmation:'123456'});
  assert.equal(host.querySelector('input[type=password]'),null);assert.match(host.textContent,/Check your inbox if eligible/);assert.doesNotMatch(host.textContent,/Signed in/);assert.equal(calls.filter(c=>c.path==='/api/status').length,1);
 });
-test('model-access action is explicit and does not claim chat generation passed',async()=>{
+test('model settings has only explicit Save and never calls the obsolete test endpoint',async()=>{
  const calls=fixture(owner,{configured:true,liveEnabled:false,secureSettings:true,keyStorage:'server-memory'});await render(FormHarness);
- assert.equal(calls.filter(c=>c.path==='/api/settings/test').length,0);
- await click([...host.querySelectorAll('button')].find(button=>button.textContent==='Verify model access'));
- assert.deepEqual(calls.find(c=>c.path==='/api/settings/test').body,{});
- assert.match(host.textContent,/Model access verified/);
+ assert.deepEqual([...host.querySelectorAll('button')].map(button=>button.textContent),['Save']);
+ assert.equal(calls.filter(c=>c.method==='POST').length,0);
 });
 
 test('remembered login uses native autofill values and stores only username',async()=>{
@@ -115,7 +115,7 @@ test('remembered login uses native autofill values and stores only username',asy
 
  test('settings popover clears an unsaved key on Escape, close and navigation', async()=>{
   const calls=fixture(owner);
-  await render(SettingsPage);
+  await render(ModelSettingsPopover);
   const trigger=[...host.querySelectorAll('button')].find(button=>button.getAttribute('aria-label')==='Model settings');
   assert.ok(trigger); assert.equal(calls.filter(c=>c.path==='/api/settings').length,0);
   await click(trigger);

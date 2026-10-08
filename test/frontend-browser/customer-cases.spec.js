@@ -116,11 +116,11 @@ test('customer → two cases → resolved question and document versions → rea
     await openLinkedCase(page, label, first.title);
     const chat = page.locator('[data-feature="chat"]');
     const selector = chat.getByRole('combobox', { name: 'Saved conversations', exact: true });
-    await expect(selector.locator('option')).toHaveCount(3);
+    await expect.poll(()=>selector.locator('option').evaluateAll(options=>options.map(option=>option.value).sort())).toEqual(['',...conversations.map(row=>row.id),secondConversation.id].sort());
     for (const conversation of conversations) {
       await selector.selectOption(conversation.id);
       await expect(selector).toHaveValue(conversation.id);
-      await expect(chat.getByRole('heading', { name: 'What would you like to work on?', exact: true })).toBeVisible();
+      await expect(chat.getByRole('heading', { name: 'Hi, I’m Nestlet.', exact: true })).toBeVisible();
       await expect(chat.getByRole('log').locator('article')).toHaveCount(0);
     }
     await navigate(page, 'Materials & facts');
@@ -146,7 +146,10 @@ test('customer → two cases → resolved question and document versions → rea
     await screenshot(page, testInfo, 'customer-reopened-question-and-edited-draft');
     await openLinkedCase(page, label, second.title);
     await expect(chat.getByRole('combobox', { name: 'Saved conversations', exact: true })).toHaveValue(secondConversation.id);
-    await expect(chat).not.toContainText(conversations[0].title);
+    await expect(chat).toHaveAttribute('data-case-id',second.id);
+    await expect(chat).toHaveAttribute('data-conversation-id',secondConversation.id);
+    await expect(chat.locator('.chat-toolbar [data-slot="card-title"]')).toHaveText(secondConversation.title);
+    await expect(chat.getByRole('log').locator('article')).toHaveCount(0);
     await navigate(page, 'Materials & facts');
     await expect(page.getByLabel('Case source text', { exact: true })).toHaveValue(secondSource);
     await navigate(page, 'Documents');
@@ -312,7 +315,7 @@ test('offline save preserves edits, explicit retry persists once, and cancelled 
   const interrupted = page.waitForEvent('dialog');
   const switchCase = customerRecord(page).getByRole('button', { name: `Open case: ${second.title}`, exact: true }).click();
   const warning = await interrupted;
-  expect(warning.message()).toContain('Switching cases clears unsaved input');
+  expect(warning.message()).toContain('Switching workspace clears unsaved input');
   await warning.dismiss(); await switchCase;
   await navigate(page, 'Materials & facts');
   await expect(page.getByLabel('Case source text', { exact: true })).toHaveValue(pendingText);
@@ -329,13 +332,14 @@ test('offline save preserves edits, explicit retry persists once, and cancelled 
   await expect(page.getByRole('button', { name: 'Send', exact: true })).toBeDisabled();
   for (const accept of [false, true]) {
     const pending = page.waitForEvent('dialog');
-    const click = page.getByRole('button', { name: 'New conversation', exact: true }).click();
+    const click = page.locator('[data-feature="chat"]').getByRole('button', { name: 'New conversation', exact: true }).click();
     const dialog = await pending;
-    expect(dialog.message()).toContain('Switching conversations stops the current reply');
+    expect(dialog.message()).toContain('Switching workspace clears unsaved input');
     await (accept ? dialog.accept() : dialog.dismiss()); await click;
     await expect(composer).toHaveValue(accept ? '' : question);
   }
   expect((await getJson(page, app, `/api/cases/${first.id}/conversations`)).conversations).toEqual([]);
+  await openLinkedCase(page, client.displayName, first.title);
   await navigate(page, 'Materials & facts');
   await expect(page.getByLabel('Case source text', { exact: true })).toHaveValue(pendingText);
   await screenshot(page, testInfo, 'offline-edit-explicitly-saved-and-reopened');

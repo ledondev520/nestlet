@@ -1,3 +1,5 @@
+import { validateModelKey, generateConversationTitle, conversationTitleTopic } from './provider-metadata.js';
+import { ServiceEntitlementError } from './service-entitlements.js';
 import { newReviewReceipt, reviewReceiptSnapshot } from './review-operation.js';
 import { LibraryPermissionError } from './library-consent-storage.js';
 import http from 'node:http';
@@ -51,11 +53,9 @@ const auth = createOperatorAuth({ sessionStore: storage.authSessions, passwordHa
   hasAdministratorCapability: id => storage.accountAdministration.administrator(id) });
 const emailAuth = createEmailAuth({ establishRegistrationSession: auth.establishRegistrationSession, storage: storage.emailAuth, delivery: createEmailDelivery(), publicOrigin,
   currentCredential: id => id === 'owner' ? process.env.NESTLET_OPERATOR_PASSWORD_HASH : storage.getUserById(id)?.passwordHash });
-const trialAiRequests = [];
-const TRIAL_USER_AI_LIMIT = 10;
-const TRIAL_GLOBAL_AI_LIMIT = 30;
 const settingsCalls = [];
 let activeConnectionTests = 0;
+let activeTitleRequests = 0;
 const maxTextLength = 50000;
 const maxPdfBytes = 5 * 1024 * 1024;
 // Untrusted document parsers receive no API credentials, operator hash, or ambient secrets.
@@ -125,7 +125,7 @@ function settingsStatus(request) {
     assetStorageEnabled: true, assetLimits: ASSET_LIMITS, assetTypes: Object.keys(ASSET_TYPES),
     chatEnabled: true, chatImageTypes: CHAT_IMAGE_TYPES, chatLimits: CHAT_LIMITS,
     libraryRetrievalEnabled:true, libraryLimits:{rounds:LIBRARY_AGENT_LIMITS.rounds,calls:LIBRARY_AGENT_LIMITS.calls,resultChars:LIBRARY_AGENT_LIMITS.resultChars,timeoutMs:CHAT_LIMITS.timeoutMs},
-    ...(session ? { csrfToken: session.csrfToken, userId: session.userId, username: session.username } : {}) };
+    ...(session ? { csrfToken: session.csrfToken, userId: session.userId, username: session.username, service:storage.serviceEntitlements.read(session.userId) } : {}) };
   if (!owner) return common;
   // Only the authenticated owner sees provider-configuration metadata; never credential bytes.
 
@@ -133,33 +133,13 @@ function settingsStatus(request) {
     connectionVerifiedAt, keyStorage: apiKey ? (apiKey === process.env.DEEPSEEK_API_KEY ? 'server-environment' : 'server-memory') : 'none' };
 }
 
-function consumeTrialAiAllowance(session) {
-  if (session.role !== 'trial') return;
-  const now = Date.now();
-  while (trialAiRequests.length && now - trialAiRequests[0].at >= 60 * 60 * 1000) trialAiRequests.shift();
-  if (trialAiRequests.length >= TRIAL_GLOBAL_AI_LIMIT || trialAiRequests.filter(item => item.userId === session.userId).length >= TRIAL_USER_AI_LIMIT) {
-    throw new RequestError(429, 'TRIAL_LIMIT_REACHED', 'The trial AI request limit has been reached. Try again after the hourly window expires.');
-  }
-  trialAiRequests.push({ userId: session.userId, at: now });
+function consumeTrialAiAllowance(session, requestId) {
+  return storage.serviceEntitlements.consume(session, requestId);
 }
 
-async function testProviderConnection(signal) {
-  const requestKey = apiKey;
-  const revision = configurationRevision;
-  const upstream = await fetch('https://api.deepseek.com/models', { headers: { Authorization: `Bearer ${requestKey}` }, signal, redirect: 'error' });
-  if (!upstream.ok) throw new RequestError(502, 'CONNECTION_FAILED', 'The provider rejected the connection check. Verify the API credential and account access.');
-  let size = 0;
-  const chunks = [];
-  for await (const chunk of upstream.body) {
-    size += chunk.length;
-    if (size > 150000) throw new Error('Provider response too large');
-    chunks.push(chunk);
-  }
-  const data = JSON.parse(Buffer.concat(chunks).toString('utf8'));
-  if (!Array.isArray(data.data) || !data.data.some(item => item?.id === model)) throw new RequestError(502, 'MODEL_UNAVAILABLE', 'DeepSeek Flash was not listed for this account. Verify model access.');
-  if (revision !== configurationRevision || requestKey !== apiKey) throw new RequestError(409, 'SETTINGS_CHANGED', 'The API configuration changed during the check. Test the current configuration again.');
-  connectionVerifiedAt = new Date().toISOString();
-  return { ok: true, model, verifiedAt: connectionVerifiedAt, check: 'model-access', chatCompletionTested: false };
+async function testProviderConnection(signal, requestKey = apiKey) {
+  try { return await validateModelKey({ apiKey: requestKey, signal }); }
+  catch { throw new RequestError(502, 'CONNECTION_FAILED', 'Model verification failed. The previous key and settings were not changed.'); }
 }
 
 async function readBody(request, maxBytes) {
@@ -471,30 +451,62 @@ const server = http.createServer(async (request, response) => {
     }
     if (request.url === '/api/settings' && request.method === 'POST') {
       verifyOrigin(request);
-      requireSecureSettings(request);
+      const settingsSession = requireSecureSettings(request);
       const body = await readJson(request);
       if (typeof body.enableLive !== 'boolean' || Object.keys(body).some(key => !['apiKey', 'enableLive'].includes(key)) ||
           (body.apiKey !== undefined && (typeof body.apiKey !== 'string' || !/^[A-Za-z0-9_.-]{16,256}$/u.test(body.apiKey)))) {
         throw new RequestError(400, 'INVALID_SETTINGS', 'Enter a valid API key and an explicit live-extraction preference.');
       }
       if (body.enableLive && !body.apiKey && !apiKey) throw new RequestError(400, 'API_KEY_REQUIRED', 'Configure an API key before enabling live extraction.');
-      if (body.apiKey) { apiKey = body.apiKey; connectionVerifiedAt = null; }
-      enabled = body.enableLive && Boolean(apiKey);
-      configurationRevision++;
-      return json(200, settingsStatus(request));
+      if (activeConnectionTests) throw new RequestError(429, 'BUSY', 'A connection check is already running.');
+      if (!body.enableLive && !body.apiKey) {
+        enabled = false; configurationRevision++;
+        return json(200, settingsStatus(request));
+      }
+      // Candidate credentials remain local until a single bounded inference succeeds.
+      // Failed/aborted checks cannot replace the last working configuration.
+      const candidateKey = body.apiKey || apiKey;
+      const revision = configurationRevision;
+      activeConnectionTests++;
+      try {
+        const result = await testProviderConnection(AbortSignal.any([cancel.signal, AbortSignal.timeout(15000)]), candidateKey);
+        if (cancel.signal.aborted) throw new RequestError(499, 'REQUEST_CANCELLED', 'The request was cancelled.');
+        if (revision !== configurationRevision) throw new RequestError(409, 'SETTINGS_CHANGED', 'Settings changed during verification.');
+        const currentSession = requireOwnerSession(request);
+        if (currentSession.token !== settingsSession.token) throw new RequestError(401, 'AUTH_REQUIRED', 'Sign in again before changing settings.');
+        apiKey = candidateKey;
+        enabled = body.enableLive;
+        connectionVerifiedAt = result.verifiedAt;
+        configurationRevision++;
+        return json(200, { ...settingsStatus(request), check: result.check, chatCompletionTested: true });
+      } finally { activeConnectionTests--; }
     }
     if (request.url === '/api/settings/test' && request.method === 'POST') {
       verifyOrigin(request);
       requireSecureSettings(request);
       await readJson(request);
       if (!apiKey) throw new RequestError(400, 'API_KEY_REQUIRED', 'Configure an API key before testing the connection.');
-      if (activeConnectionTests) throw new RequestError(429, 'BUSY', 'A connection check is already running.');
-      activeConnectionTests++;
-      try { return json(200, await testProviderConnection(AbortSignal.any([cancel.signal, AbortSignal.timeout(15000)]))); }
-      catch (error) { if (error instanceof RequestError) throw error; throw new RequestError(502, 'CONNECTION_FAILED', 'Connection verification failed. No chat completion was tested.'); }
-      finally { activeConnectionTests--; }
+      throw new RequestError(410, 'USE_SETTINGS_SAVE', 'Save the API key to validate and activate it in one step.');
     }
     const accountUrl = new URL(request.url, 'http://localhost');
+    const serviceRoute = /^\/api\/admin\/accounts\/(owner|[0-9a-f-]{36})\/service$/u.exec(accountUrl.pathname);
+    if (accountUrl.pathname === '/api/service' || accountUrl.pathname === '/api/admin/services' || accountUrl.pathname === '/api/admin/service-audit' || serviceRoute) {
+      verifyOrigin(request);
+      if (accountUrl.search) throw new ServiceEntitlementError();
+      const mutation=request.method!=='GET';
+      const session=accountUrl.pathname==='/api/service'?requireSession(request,false):requireOwnerSession(request,mutation);
+      if (mutation && !request.headers.origin) throw new RequestError(403,'ORIGIN_REJECTED','A same-origin browser request is required.');
+      if (!auth.secure && !auth.localTransportAllowed) throw new RequestError(403,'HTTPS_REQUIRED','Service administration requires HTTPS outside loopback development.');
+      if (request.method==='GET' && accountUrl.pathname==='/api/service') return json(200,{service:storage.serviceEntitlements.read(session.userId)});
+      if (request.method==='GET' && accountUrl.pathname==='/api/admin/services') return json(200,storage.serviceEntitlements.list(session));
+      if (request.method==='GET' && accountUrl.pathname==='/api/admin/service-audit') return json(200,storage.serviceEntitlements.audit(session));
+      if (request.method==='PUT' && serviceRoute) {
+        const body=await readJson(request,1024);
+        const current=requireOwnerSession(request,true);
+        return json(200,storage.serviceEntitlements.set(current,serviceRoute[1],body));
+      }
+      throw new RequestError(405,'METHOD_NOT_ALLOWED','Method not allowed.');
+    }
     const accountRoute = /^\/api\/admin\/accounts\/(owner|[0-9a-f-]{36})\/administrator$/u.exec(accountUrl.pathname);
     if (accountUrl.pathname === '/api/admin/accounts' || accountUrl.pathname === '/api/admin/account-audit' || accountRoute) {
       verifyOrigin(request);
@@ -675,7 +687,7 @@ const server = http.createServer(async (request, response) => {
       if(input.libraryConsent)response.setHeader('X-Library-Retrieval','enabled');
       if (!enabled) throw new RequestError(503, 'LIVE_DISABLED', 'Live AI is disabled. The administrator must configure the provider before chatting.');
       if (activeExtractions >= 2) throw new RequestError(429, 'BUSY', 'AI processing is busy. Try again shortly.');
-      consumeTrialAiAllowance(session);
+      consumeTrialAiAllowance(session, requestId);
       activeExtractions++;
       if (conversationKey) activeConversations.add(conversationKey);
       const chatAbort = new AbortController();
@@ -711,6 +723,25 @@ const server = http.createServer(async (request, response) => {
           if (!assistantMessage) throw new Error('Conversation no longer exists');
           return assistantMessage;
         } catch { throw new ChatError('CHAT_SAVE_FAILED',503); }
+      };
+      let titleAttempted = false;
+      const saveGeneratedTitle = async () => {
+        if (!enabled || titleAttempted || activeTitleRequests >= 2 || signal.aborted || !conversation || !assistantMessage || !answer.trim() ||
+            history.some(message => message.role === 'assistant' && message.state === 'complete' && message.content.trim())) return;
+        const titleTopic=conversationTitleTopic({userText:body.messages[0].content,assistantText:assistantMessage.state==='complete'?assistantMessage.content:'',hasImages:Boolean(userMessage?.imageMetadata?.length)});
+        if(!titleTopic)return;
+        titleAttempted = true;
+        activeTitleRequests++;
+        try {
+          const titleSession = auth.getSession(request, {touch:false});
+          if (!titleSession || titleSession.token !== session.token) return;
+          authorizeLibrary?.();
+          consumeTrialAiAllowance(session, randomUUID());
+          const title = await generateConversationTitle({ apiKey, userText: titleTopic, locale: input.locale,
+            signal: AbortSignal.timeout(4000) });
+          if (title) storage.setGeneratedConversationTitle(session.userId, conversation.id, title, conversation.title, assistantMessage.id);
+        } catch { /* Optional metadata must never turn a saved assistant answer into failure. */ }
+        finally { activeTitleRequests--; }
       };
       try {
         library=input.libraryConsent?createLibraryToolSession({storage,userId:session.userId,libraryConsent:true,currentCaseId:caseId||null,signal}):null;
@@ -765,6 +796,7 @@ const server = http.createServer(async (request, response) => {
           }
         }
         response.end();
+        if (completed) void saveGeneratedTitle();
       } catch (error) {
         let failure = error;
         if(reviewReceipt) {
@@ -805,7 +837,7 @@ const server = http.createServer(async (request, response) => {
       const body = await readJson(request);
       validateInput(body);
       if (activeExtractions >= 2) throw new RequestError(429, 'BUSY', 'Extraction is busy. Try again shortly.');
-      consumeTrialAiAllowance(session);
+      consumeTrialAiAllowance(session, requestId);
       activeExtractions++;
       try {
         const fields = await providerSuggestions(body.text, AbortSignal.any([cancel.signal, AbortSignal.timeout(45000)]));
@@ -850,7 +882,7 @@ const server = http.createServer(async (request, response) => {
     if (file.startsWith('samples/')) response.setHeader('Content-Disposition', `attachment; filename="${file.slice('samples/'.length)}"`);
     response.end(content);
   } catch (error) {
-    if (error instanceof LibraryPermissionError || error instanceof AccountAdministrationError || error instanceof EmailAuthError || error instanceof AssetError || error instanceof RequestError || error instanceof StorageError || error instanceof TelemetryError || error instanceof ChatError || error instanceof CaseRecordsError || error instanceof DocumentContextError) return json(error.status, { error: error.message, code: error.code, ...(error.details ? {details:error.details} : {}) });
+    if (error instanceof ServiceEntitlementError || error instanceof LibraryPermissionError || error instanceof AccountAdministrationError || error instanceof EmailAuthError || error instanceof AssetError || error instanceof RequestError || error instanceof StorageError || error instanceof TelemetryError || error instanceof ChatError || error instanceof CaseRecordsError || error instanceof DocumentContextError) return json(error.status, { error: error.message, code: error.code, ...(error.details ? {details:error.details} : {}) });
     return json(500, { error: 'Request could not be completed', code: 'INTERNAL_ERROR' });
   }
 });

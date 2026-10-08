@@ -1,3 +1,4 @@
+import { SCHEMA10_OBJECTS, sortedSchemaObjects } from './helpers/schema10-objects.js';
 // Populated historical schema7, assembled without opening it through current storage.
 // All rows, credentials, sessions and original bytes below are synthetic local fixtures.
 import { test } from 'node:test';
@@ -54,7 +55,9 @@ function fileTree(directory) {
 function preserved(db, before, { omit = [] } = {}) {
   const after = snapshot(db);
   for (const [name, rows] of Object.entries(before.rows)) {
-    if (!omit.includes(name)) assert.equal(after.rows[name], rows, `${name} rows and sequence`);
+    if (name==='sqlite_sequence' && omit.includes('service_entitlement_audit')) {
+      assert.deepEqual(JSON.parse(after.rows[name]).filter(row=>row.name!=='service_entitlement_audit'), JSON.parse(rows).filter(row=>row.name!=='service_entitlement_audit'));
+    } else if (!omit.includes(name)) assert.equal(after.rows[name], rows, `${name} rows and sequence`);
   }
   for (const old of before.schema) {
     assert.deepEqual(after.schema.find(row => row.type === old.type && row.name === old.name), old, `${old.name} DDL`);
@@ -147,12 +150,12 @@ test('genuine populated schema7→current preserves every old row, DDL, foreign 
     assert.deepEqual(openAssetVault({ directory: f.assetsDirectory }).read(store.getAsset(f.id, f.asset)), original);
     store.close();
     inspect(f.filename, db => {
-      assert.equal(version(db), 9);
+      assert.equal(version(db), 10);
       preserved(db, before);
       const added = ddl(db).filter(row => !before.schema.some(old => old.name === row.name));
-      assert.deepEqual(added.map(row => [row.type, row.name]), [
-        ['index', 'auth_sessions_user_created'], ['table', 'auth_sessions'], ['table', 'library_permissions'], ['trigger', 'auth_sessions_revoke_credentials']
-      ]);
+      assert.deepEqual(added.map(row => [row.type, row.name]), sortedSchemaObjects([
+        ['index', 'auth_sessions_user_created'], ['table', 'auth_sessions'], ['table', 'library_permissions'], ['trigger', 'auth_sessions_revoke_credentials'], ...SCHEMA10_OBJECTS
+      ]));
       assert.equal(db.prepare("SELECT strict FROM pragma_table_list WHERE name='auth_sessions'").get().strict, 1);
       assert.equal(db.prepare('SELECT state FROM conversation_review_intents WHERE id=?').get(f.review).state, 'cancelled');
     });
@@ -176,18 +179,18 @@ test('late schema8 migration failure rolls back its table, index and version and
   assert.deepEqual(fileTree(f.assetsDirectory), assetsBefore);
 });
 
-test('future schema10 startup and backup reject before changing bytes or nested files in DELETE and WAL mode', async t => {
+test('future schema11 startup and backup reject before changing bytes or nested files in DELETE and WAL mode', async t => {
   for (const mode of ['DELETE', 'WAL']) {
     await t.test(mode, async t => {
       const f = fixture(t);
-      inspect(f.filename, db => db.exec(`PRAGMA journal_mode=${mode}; PRAGMA user_version=10;`), false);
+      inspect(f.filename, db => db.exec(`PRAGMA journal_mode=${mode}; PRAGMA user_version=11;`), false);
       const before = fileTree(f.root);
       assert.throws(() => openStorage({ filename: f.filename }), error => error.code === 'STORAGE_VERSION_UNSUPPORTED');
       assert.deepEqual(fileTree(f.root), before);
-      await assert.rejects(backupPrivateData({ ...f, output: join(f.root, 'future-backup') }), /schema1–9/u);
+      await assert.rejects(backupPrivateData({ ...f, output: join(f.root, 'future-backup') }), /schema1–10/u);
       assert.deepEqual(fileTree(f.root), before);
       inspect(f.filename, db => {
-        assert.equal(version(db), 10);
+        assert.equal(version(db), 11);
         assert.equal(db.prepare('PRAGMA journal_mode').get().journal_mode, mode.toLowerCase());
       });
     });
@@ -229,15 +232,15 @@ test('current schema backup retains sessions and email actions but restore purge
   store.close();
   const before = inspect(f.filename, snapshot), sourceBefore = fileTree(f.source);
   const output = join(f.root, 'schema8-backup');
-  assert.equal((await backupPrivateData({ ...f, output })).schemaVersion, 9);
+  assert.equal((await backupPrivateData({ ...f, output })).schemaVersion, 10);
   assert.deepEqual(fileTree(f.source), sourceBefore);
   inspect(join(output, 'nestlet.sqlite'), db => {
-    assert.equal(version(db), 9);
+    assert.equal(version(db), 10);
     preserved(db, before);
     assert.equal(db.prepare('SELECT COUNT(*) AS n FROM auth_sessions').get().n, 2);
   });
   const snapshotBefore = fileTree(output);
-  assert.equal(verifyPrivateBackup({ input: output }).schemaVersion, 9);
+  assert.equal(verifyPrivateBackup({ input: output }).schemaVersion, 10);
   // Both credentials may have been logged out/revoked since this snapshot was taken.
   store = openStorage({ filename: f.filename });
   for (const [hash] of sessions) store.authSessions.delete(hash);
@@ -245,13 +248,15 @@ test('current schema backup retains sessions and email actions but restore purge
   store.close();
   const revokedSource = fileTree(f.source);
   const restored = await restorePrivateBackup({ input: output, output: join(f.root, 'schema8-restored') });
-  assert.equal(restored.schemaVersion, 9);
+  assert.equal(restored.schemaVersion, 10);
   // Assert before application startup: restore itself, not startup expiry, must remove sessions.
   inspect(restored.filename, db => {
-    assert.equal(version(db), 9);
+    assert.equal(version(db), 10);
     assert.equal(db.prepare('SELECT COUNT(*) AS n FROM auth_sessions').get().n, 0);
     assert.equal(db.prepare('SELECT COUNT(*) AS n FROM email_actions').get().n, 0);
-    preserved(db, before, { omit: ['auth_sessions', 'email_actions'] });
+    assert.equal(db.prepare('SELECT enabled FROM service_entitlements WHERE user_id=?').get(f.id).enabled, 0);
+    assert.equal(db.prepare("SELECT source FROM service_entitlement_audit WHERE target_user_id=?").get(f.id).source, 'recovery');
+    preserved(db, before, { omit: ['auth_sessions', 'email_actions', 'service_entitlements', 'service_entitlement_audit'] });
     assert.deepEqual(ddl(db), before.schema);
   });
   store = openStorage({ filename: restored.filename });
@@ -262,20 +267,20 @@ test('current schema backup retains sessions and email actions but restore purge
   store.close();
   inspect(restored.filename, db => {
     assert.equal(db.prepare('SELECT COUNT(*) AS n FROM email_actions').get().n, 0);
-    preserved(db, historical, { omit: ['email_actions'] });
+    preserved(db, historical, { omit: ['email_actions', 'service_entitlement_audit'] });
   });
   assert.deepEqual(fileTree(output), snapshotBefore);
   assert.deepEqual(fileTree(f.source), revokedSource);
-  assert.equal(verifyPrivateBackup({ input: output }).schemaVersion, 9);
+  assert.equal(verifyPrivateBackup({ input: output }).schemaVersion, 10);
   assert.deepEqual(fileTree(output), snapshotBefore);
 });
 
-test('future schema10 manifest rejects verification and restore before any destination or snapshot change', async t => {
+test('future schema11 manifest rejects verification and restore before any destination or snapshot change', async t => {
   const f = fixture(t), input = join(f.root, 'unsupported-backup');
   await backupPrivateData({ ...f, output: input });
   const manifestPath = join(input, 'manifest.json');
   const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
-  manifest.schemaVersion = 10;
+  manifest.schemaVersion = 11;
   writeFileSync(manifestPath, JSON.stringify(manifest));
   const before = fileTree(f.root);
   assert.throws(() => verifyPrivateBackup({ input }), /Unsupported backup manifest/u);

@@ -66,7 +66,7 @@ await access('/app/library-consent-storage.js', constants.R_OK);
 assert.equal(spawnSync(process.execPath, ['--check', '/app/library-consent-storage.js']).status, 0);
 assert.equal(spawnSync(process.execPath, ['--check', '/app/agent-library-tools.js']).status, 0);
 assert.equal(status.csrfToken, undefined);
-for (const [path, method] of [['/api/library-permission', 'GET'], ['/api/library-permission', 'PUT'], ['/api/register', 'POST'], ['/api/workflows', 'POST'], ['/api/admin/telemetry', 'GET'], ['/api/admin/accounts', 'GET'], ['/api/admin/account-audit', 'GET'], ['/api/admin/diagnostics', 'GET'], ['/api/cases', 'GET'], ['/api/cases', 'POST'], ['/api/settings', 'GET'], ['/api/settings', 'POST'], ['/api/settings/test', 'POST'], ['/api/extract', 'POST'], ['/api/chat', 'POST'], ['/api/document', 'POST'], ['/api/workbook', 'POST']]) {
+for (const [path, method] of [['/api/service', 'GET'], ['/api/admin/services', 'GET'], ['/api/admin/service-audit', 'GET'], ['/api/admin/accounts/owner/service', 'PUT'], ['/api/library-permission', 'GET'], ['/api/library-permission', 'PUT'], ['/api/register', 'POST'], ['/api/workflows', 'POST'], ['/api/admin/telemetry', 'GET'], ['/api/admin/accounts', 'GET'], ['/api/admin/account-audit', 'GET'], ['/api/admin/diagnostics', 'GET'], ['/api/cases', 'GET'], ['/api/cases', 'POST'], ['/api/settings', 'GET'], ['/api/settings', 'POST'], ['/api/settings/test', 'POST'], ['/api/extract', 'POST'], ['/api/chat', 'POST'], ['/api/document', 'POST'], ['/api/workbook', 'POST']]) {
   const response = await fetch(base + path, {
     method,
     headers: { Origin: 'https://nestlet.invalid', 'Content-Type': 'application/json' },

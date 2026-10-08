@@ -206,3 +206,37 @@ test('complete same-case provenance gates final artifacts; process restart resto
     assert.equal(restarted.getCase(bob.id,foreign.id).id,foreign.id);
   } finally {restarted.close();}
 });
+
+test('account conversation index labels only current linked drafts and bounded last message, never changes case associations', t => {
+  const {store,alice,bob}=fixture(t);
+  const first=store.createCase(alice.id,payload()),second=store.createCase(alice.id,payload({title:'Another topic'}));
+  const a=store.createConversation(alice.id,first.id,{title:'Original conversation'}),b=store.createConversation(alice.id,second.id,{title:'Second conversation'});
+  const privateCase=store.createCase(bob.id,payload());store.createConversation(bob.id,privateCase.id,{title:'Private'});
+  const user=store.appendMessage(alice.id,a.id,{role:'user',content:'Question',state:'complete'});
+  store.appendMessage(alice.id,a.id,{role:'assistant',content:'x'.repeat(500),state:'interrupted'});
+  store.createArtifact(alice.id,first.id,{kind:'followup',title:'Draft',status:'draft',content:'Synthetic draft',expectedCaseVersion:1,sourceConversationId:a.id,sourceMessageId:user.id});
+  let rows=store.listAccountConversations(alice.id);
+  assert.equal(rows.length,2);let row=rows.find(row=>row.id===a.id);
+  assert.deepEqual(row.lastMessage,{role:'assistant',state:'interrupted',preview:'x'.repeat(160)});assert.equal(row.draftCount,1);
+  assert.equal(rows.find(row=>row.id===b.id).lastMessage,null);
+  const replacement=store.createConversation(alice.id,first.id,{title:'Replacement draft conversation'});
+  store.createArtifact(alice.id,first.id,{kind:'followup',title:'Replacement draft',status:'draft',content:'Synthetic replacement',expectedCaseVersion:1,sourceConversationId:replacement.id});
+  row=store.listAccountConversations(alice.id).find(row=>row.id===a.id);assert.equal(row.draftCount,0);
+  assert.equal(store.getConversation(alice.id,a.id).caseId,first.id);
+  assert.equal(store.listAccountConversations(bob.id).length,1);
+});
+
+test('AI title update is owner-scoped and compare-and-set for the first saved complete answer',t=>{
+  const {store,alice,bob}=fixture(t);
+  const record=store.createCase(alice.id,payload());
+  const conversation=store.createConversation(alice.id,record.id,{title:'New conversation'});
+  assert.equal(store.setGeneratedConversationTitle(alice.id,conversation.id,'Generated topic',conversation.title,randomUUID()),null);
+  const first=store.appendMessage(alice.id,conversation.id,{role:'assistant',content:'Meaningful answer',state:'complete',requestId:randomUUID()});
+  assert.equal(store.setGeneratedConversationTitle(bob.id,conversation.id,'Foreign title',conversation.title,first.id),null);
+  assert.equal(store.setGeneratedConversationTitle(alice.id,conversation.id,'Generated topic','stale title',first.id),null);
+  const second=store.appendMessage(alice.id,conversation.id,{role:'assistant',content:'Second answer',state:'complete',requestId:randomUUID()});
+  assert.equal(store.setGeneratedConversationTitle(alice.id,conversation.id,'Later topic',conversation.title,second.id),null);
+  assert.equal(store.setGeneratedConversationTitle(alice.id,conversation.id,'Generated topic',conversation.title,first.id).id,conversation.id);
+  assert.equal(store.setGeneratedConversationTitle(alice.id,conversation.id,'Duplicate topic',conversation.title,first.id),null);
+  assert.equal(store.getConversation(alice.id,conversation.id).title,'Generated topic');
+});

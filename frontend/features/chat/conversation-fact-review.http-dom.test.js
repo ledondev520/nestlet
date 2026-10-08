@@ -10,7 +10,7 @@ import {createApiClient} from '../../lib/api.js';
 import {newCasePayload} from './logic.js';
 import {normalizeConversationProposal} from './conversation-actions.js';
 const realFetch=globalThis.fetch,globals=new Map();
-let fixture,dom,vite,React,createRoot,Review,ChatPage,SessionProvider,root,host,owner;
+let fixture,dom,vite,React,createRoot,Review,ChatPage,SessionProvider,useSession,root,host,owner;
 const set=(key,value)=>{if(!globals.has(key))globals.set(key,Object.getOwnPropertyDescriptor(globalThis,key));Object.defineProperty(globalThis,key,{configurable:true,writable:true,value});};
 before(async()=>{
  fixture=await startBrowserFixture({legacyUsers:['synthetic-action-owner']});
@@ -23,7 +23,7 @@ before(async()=>{
  set('getComputedStyle',dom.window.getComputedStyle.bind(dom.window));set('IS_REACT_ACT_ENVIRONMENT',true);set('ResizeObserver',class{observe(){}unobserve(){}disconnect(){}});
  dom.window.HTMLElement.prototype.scrollIntoView=function(){};dom.window.confirm=()=>true;
  React=await import('react');({createRoot}=await import('react-dom/client'));vite=await createServer({server:{middlewareMode:true,hmr:false,ws:false,watch:null},logLevel:'error'});
- ({ConversationActionReview:Review}=await vite.ssrLoadModule('/features/chat/conversation-actions.jsx'));({ChatPage}=await vite.ssrLoadModule('/features/chat/index.jsx'));({SessionProvider}=await vite.ssrLoadModule('/lib/session.jsx'));
+ ({ConversationActionReview:Review}=await vite.ssrLoadModule('/features/chat/conversation-actions.jsx'));({ChatPage}=await vite.ssrLoadModule('/features/chat/index.jsx'));({SessionProvider,useSession}=await vite.ssrLoadModule('/lib/session.jsx'));
 });
 after(async()=>{if(root)await React.act(async()=>root.unmount());await vite?.close();dom?.window.close();await fixture?.stop();for(const[key,value]of globals){if(value)Object.defineProperty(globalThis,key,value);else delete globalThis[key];}});
 const flush=()=>React.act(async()=>new Promise(resolve=>setTimeout(resolve,10)));
@@ -119,4 +119,40 @@ test('lost prepare response retains the exact human answer and recovers correcti
   if(answer!=='cancel')assert.equal(saved.fields.find(row=>row.key==='property').value,'512 Synthetic Recovery Lane');
   const history=await owner.api.get(`/api/conversations/${s.conversation.id}`);assert.equal(history.messages.length,3);
  }
+});
+
+
+test('paused AI service preserves an explicit targeted human fact confirmation but blocks ordinary model work',async()=>{
+ const s=await sample();let paused=false,refreshSession,release,mode='success',chatBody,chatCount=0;const gate=new Promise(done=>release=done);
+ set('fetch',async(path,options={})=>{
+  if(path==='/api/chat'){
+   chatCount++;chatBody=JSON.parse(options.body);assert.equal(chatBody.actionConsent,true);const requestId=randomUUID();
+   const userId=savedMessage(s.conversation.id,'user',chatBody.messages[0].content,{requestId,clientMessageId:chatBody.clientMessageId});
+   const proposal=await prepare(s);let done;
+   return new Response(new ReadableStream({start(controller){
+    const emit=(name,value)=>controller.enqueue(new TextEncoder().encode(frame(name,value)));
+    emit('conversation',{conversationId:s.conversation.id,userMessageId:userId});emit('proposal',{requestId,proposal});emit('delta',{text:'Review the property suggestion before applying.'});
+    done=async()=>{await gate;const assistantId=savedMessage(s.conversation.id,'assistant','Review the property suggestion before applying.',{requestId});emit('done',{requestId,assistantMessageId:assistantId,conversationId:mode==='wrong-thread'?randomUUID():s.conversation.id});controller.close();};void done();
+   }}),{headers:{'Content-Type':'text/event-stream'}});
+  }
+  const response=await owner.transport(path,options);if(path==='/api/status')return new Response(JSON.stringify({...await response.json(),liveEnabled:!paused,libraryRetrievalEnabled:false}),{headers:{'Content-Type':'application/json'}});return response;
+ });
+ function View(){const session=useSession();refreshSession=session.refresh;return React.createElement(ChatPage,{caseId:s.record.id,lang:'en'});}
+ await render(React.createElement(SessionProvider,null,React.createElement(View)));
+ await wait(()=>button('Send')&&!button('New conversation').disabled);
+ await fill(host.querySelector('.chat-input'),'Prepare a property suggestion');
+ assert.equal(host.querySelector('[role="checkbox"]'),null);
+ const before=writes().length;await click(button('Send'));await wait(()=>button('Apply as unreviewed suggestions'));
+ assert.equal(button('Apply as unreviewed suggestions').disabled,true);assert.equal(writes().length,before);
+ await React.act(async()=>release());await wait(()=>!button('Apply as unreviewed suggestions').disabled);
+ paused=true;fixture.withDatabase(db=>db.prepare('INSERT INTO service_entitlements(user_id,enabled,expires_at,requests_per_hour,version,updated_at) VALUES(?,0,NULL,10,1,?)').run(owner.userId,new Date().toISOString()));
+ try {
+ await React.act(async()=>{await refreshSession();});await wait(()=>host.textContent.includes('AI service is paused'));
+ const replyCount=owner.calls.filter(call=>call.path.endsWith('/reply')).length;
+ await fill(host.querySelector('.chat-input'),'confirm');assert.equal(button('Send').disabled,false,'Human confirmation remains available even with global AI off');await click(button('Send'));await wait(()=>host.textContent.includes('Saved as reviewed'));
+ assert.equal(host.querySelector('.chat-input').value,'');assert.equal(chatCount,1);assert.equal((await owner.api.get(`/api/cases/${s.record.id}`)).case.fields.find(row=>row.key==='property').confirmed,true);
+ assert.equal(owner.calls.filter(call=>call.path.endsWith('/reply')).length,replyCount+1,'One explicit human review mutation');
+ await fill(host.querySelector('.chat-input'),'An ordinary model question');assert.equal(button('Send').disabled,true);
+ await React.act(async()=>host.querySelector('.chat-input').dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true})));await flush();assert.equal(chatCount,1,'Paused ordinary AI cannot call the provider');
+ }finally{fixture.withDatabase(db=>db.prepare('DELETE FROM service_entitlements WHERE user_id=?').run(owner.userId));}
 });

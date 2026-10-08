@@ -103,14 +103,30 @@ export async function saveCase(page, title, { review = false } = {}) {
   return record;
 }
 
-export async function openSavedCase(page, title) {
+// Resolve the expected canonical identity from real own-account metadata.
+// Case labels are no longer conversation titles, and friendly IDs are display-only.
+export async function expectedCaseId(page,title,{clientLabel=null,unassigned=false}={}) {
+  const origin=new URL(page.url()).origin;
+  const response=await page.request.get(origin+'/api/cases');expect(response.status()).toBe(200);
+  let clientId=null;
+  if(clientLabel){
+    const clientsResponse=await page.request.get(origin+'/api/clients?search='+encodeURIComponent(clientLabel)+'&limit=100');expect(clientsResponse.status()).toBe(200);
+    const clients=(await clientsResponse.json()).clients.filter(row=>row.displayName===clientLabel);expect(clients).toHaveLength(1);clientId=clients[0].id;
+  }
+  const matches=(await response.json()).cases.filter(row=>row.title===title&&(!unassigned||row.clientId===null)&&(!clientLabel||row.clientId===clientId));
+  expect(matches).toHaveLength(1);expect(matches[0].id).toMatch(/^[0-9a-f-]{36}$/u);return matches[0].id;
+}
+
+export async function openSavedCase(page, title, {legacy=false}={}) {
   await navigate(page, 'Customers');
   const archive = page.getByRole('region', { name: 'Saved cases', exact: true });
   await archive.getByRole('button', { name: 'Unassigned', exact: true }).click();
   await archive.getByLabel('Search saved cases', { exact: true }).fill(title);
+  const caseId=legacy?null:await expectedCaseId(page,title,{unassigned:true});
   await archive.getByRole('button', { name: `Open saved case: ${title}`, exact: true }).click();
   await expect(page).toHaveURL(/#chat$/u);
-  await expect(page.locator('[data-feature="chat"]')).toContainText(title);
+  if(legacy)await expect(page.locator('[data-feature="chat"]')).toContainText(title);
+  else await expect(page.locator('[data-feature="chat"]')).toHaveAttribute('data-case-id',caseId);
 }
 
 export async function openOriginals(page) {
