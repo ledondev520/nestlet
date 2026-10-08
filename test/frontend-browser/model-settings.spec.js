@@ -1,6 +1,7 @@
 import { accountSettings, switchLanguage } from './support.js';
 import { test, expect } from '@playwright/test';
 import { noHorizontalOverflow } from './support.js';
+import { LANGUAGE_PREFERENCE_KEY } from '../../frontend/lib/language-preference.js';
 
 // Synthetic API fixtures only. Never submit a real key or contact a provider.
 test.use({ trace: 'off' });
@@ -79,7 +80,7 @@ for (const [lang, width] of [['en', 1280], ['zh', 390], ['en', 320]]) test(`key-
   await expect(page.locator('.wb-topbar').getByRole('button', {name:lang==='zh'?'模型设置':'Model settings',exact:true})).toBeVisible();
   await page.getByRole('button', { name: lang === 'zh' ? '模型设置' : 'Model settings', exact: true }).click();
   await expect(popover.locator('input')).toHaveValue('');
-  expect(await page.evaluate(() => [localStorage.length, sessionStorage.length])).toEqual([0, 0]);
+  expect(await page.evaluate(() => ({ local: Object.entries(localStorage), session: Object.entries(sessionStorage) }))).toEqual({ local: [[LANGUAGE_PREFERENCE_KEY, lang]], session: [] });
 });
 test('ordinary account never gets model settings and failed save keeps secrets out of errors', async ({ page }) => {
   await fixture(page, { role: 'trial' }); await page.goto('/');
