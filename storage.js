@@ -779,6 +779,16 @@ export function openStorage({ filename, reservedUsername = process.env.NESTLET_O
           .map(({lastMessageJson,...row})=>({...row,lastMessage:lastMessageJson?JSON.parse(lastMessageJson):null}));
       },
       getConversation(id, conversationId) { requireUser(id); const row = caseId(conversationId) && conversationLookup.get(id,conversationId); return row ? { ...row } : null; },
+      setGeneratedConversationTitle(id, conversationId, title, expectedTitle, sourceMessageId) {
+        requireUser(id);
+        if (!caseId(conversationId) || !caseId(sourceMessageId) || typeof title !== 'string' || !title.trim() || title.length > 80 ||
+            /[\u0000-\u001f\u007f]/u.test(title) || typeof expectedTitle !== 'string') fail('CONVERSATION_INVALID');
+        // Owner scope and compare-and-set protect newer titles and preserve UUID identity.
+        const result = db.prepare(`UPDATE conversations SET title=? WHERE user_id=? AND id=? AND title=?
+          AND (SELECT id FROM messages WHERE user_id=? AND conversation_id=? AND role='assistant' AND state='complete' AND trim(content)<>'' ORDER BY sequence LIMIT 1)=?`)
+          .run(title.trim(),id,conversationId,expectedTitle,id,conversationId,sourceMessageId);
+        return result.changes ? { ...conversationLookup.get(id,conversationId) } : null;
+      },
       listMessages(id, conversationId) {
         requireUser(id);
         if (!caseId(conversationId) || !conversationLookup.get(id,conversationId)) return null;

@@ -1,3 +1,4 @@
+import { validateModelKey, generateConversationTitle } from './provider-metadata.js';
 import { newReviewReceipt, reviewReceiptSnapshot } from './review-operation.js';
 import { LibraryPermissionError } from './library-consent-storage.js';
 import http from 'node:http';
@@ -56,6 +57,7 @@ const TRIAL_USER_AI_LIMIT = 10;
 const TRIAL_GLOBAL_AI_LIMIT = 30;
 const settingsCalls = [];
 let activeConnectionTests = 0;
+let activeTitleRequests = 0;
 const maxTextLength = 50000;
 const maxPdfBytes = 5 * 1024 * 1024;
 // Untrusted document parsers receive no API credentials, operator hash, or ambient secrets.
@@ -143,23 +145,9 @@ function consumeTrialAiAllowance(session) {
   trialAiRequests.push({ userId: session.userId, at: now });
 }
 
-async function testProviderConnection(signal) {
-  const requestKey = apiKey;
-  const revision = configurationRevision;
-  const upstream = await fetch('https://api.deepseek.com/models', { headers: { Authorization: `Bearer ${requestKey}` }, signal, redirect: 'error' });
-  if (!upstream.ok) throw new RequestError(502, 'CONNECTION_FAILED', 'The provider rejected the connection check. Verify the API credential and account access.');
-  let size = 0;
-  const chunks = [];
-  for await (const chunk of upstream.body) {
-    size += chunk.length;
-    if (size > 150000) throw new Error('Provider response too large');
-    chunks.push(chunk);
-  }
-  const data = JSON.parse(Buffer.concat(chunks).toString('utf8'));
-  if (!Array.isArray(data.data) || !data.data.some(item => item?.id === model)) throw new RequestError(502, 'MODEL_UNAVAILABLE', 'DeepSeek Flash was not listed for this account. Verify model access.');
-  if (revision !== configurationRevision || requestKey !== apiKey) throw new RequestError(409, 'SETTINGS_CHANGED', 'The API configuration changed during the check. Test the current configuration again.');
-  connectionVerifiedAt = new Date().toISOString();
-  return { ok: true, model, verifiedAt: connectionVerifiedAt, check: 'model-access', chatCompletionTested: false };
+async function testProviderConnection(signal, requestKey = apiKey) {
+  try { return await validateModelKey({ apiKey: requestKey, signal }); }
+  catch { throw new RequestError(502, 'CONNECTION_FAILED', 'Model verification failed. The previous key and settings were not changed.'); }
 }
 
 async function readBody(request, maxBytes) {
@@ -471,28 +459,42 @@ const server = http.createServer(async (request, response) => {
     }
     if (request.url === '/api/settings' && request.method === 'POST') {
       verifyOrigin(request);
-      requireSecureSettings(request);
+      const settingsSession = requireSecureSettings(request);
       const body = await readJson(request);
       if (typeof body.enableLive !== 'boolean' || Object.keys(body).some(key => !['apiKey', 'enableLive'].includes(key)) ||
           (body.apiKey !== undefined && (typeof body.apiKey !== 'string' || !/^[A-Za-z0-9_.-]{16,256}$/u.test(body.apiKey)))) {
         throw new RequestError(400, 'INVALID_SETTINGS', 'Enter a valid API key and an explicit live-extraction preference.');
       }
       if (body.enableLive && !body.apiKey && !apiKey) throw new RequestError(400, 'API_KEY_REQUIRED', 'Configure an API key before enabling live extraction.');
-      if (body.apiKey) { apiKey = body.apiKey; connectionVerifiedAt = null; }
-      enabled = body.enableLive && Boolean(apiKey);
-      configurationRevision++;
-      return json(200, settingsStatus(request));
+      if (activeConnectionTests) throw new RequestError(429, 'BUSY', 'A connection check is already running.');
+      if (!body.enableLive && !body.apiKey) {
+        enabled = false; configurationRevision++;
+        return json(200, settingsStatus(request));
+      }
+      // Candidate credentials remain local until a single bounded inference succeeds.
+      // Failed/aborted checks cannot replace the last working configuration.
+      const candidateKey = body.apiKey || apiKey;
+      const revision = configurationRevision;
+      activeConnectionTests++;
+      try {
+        const result = await testProviderConnection(AbortSignal.any([cancel.signal, AbortSignal.timeout(15000)]), candidateKey);
+        if (cancel.signal.aborted) throw new RequestError(499, 'REQUEST_CANCELLED', 'The request was cancelled.');
+        if (revision !== configurationRevision) throw new RequestError(409, 'SETTINGS_CHANGED', 'Settings changed during verification.');
+        const currentSession = requireOwnerSession(request);
+        if (currentSession.token !== settingsSession.token) throw new RequestError(401, 'AUTH_REQUIRED', 'Sign in again before changing settings.');
+        apiKey = candidateKey;
+        enabled = body.enableLive;
+        connectionVerifiedAt = result.verifiedAt;
+        configurationRevision++;
+        return json(200, { ...settingsStatus(request), check: result.check, chatCompletionTested: true });
+      } finally { activeConnectionTests--; }
     }
     if (request.url === '/api/settings/test' && request.method === 'POST') {
       verifyOrigin(request);
       requireSecureSettings(request);
       await readJson(request);
       if (!apiKey) throw new RequestError(400, 'API_KEY_REQUIRED', 'Configure an API key before testing the connection.');
-      if (activeConnectionTests) throw new RequestError(429, 'BUSY', 'A connection check is already running.');
-      activeConnectionTests++;
-      try { return json(200, await testProviderConnection(AbortSignal.any([cancel.signal, AbortSignal.timeout(15000)]))); }
-      catch (error) { if (error instanceof RequestError) throw error; throw new RequestError(502, 'CONNECTION_FAILED', 'Connection verification failed. No chat completion was tested.'); }
-      finally { activeConnectionTests--; }
+      throw new RequestError(410, 'USE_SETTINGS_SAVE', 'Save the API key to validate and activate it in one step.');
     }
     const accountUrl = new URL(request.url, 'http://localhost');
     const accountRoute = /^\/api\/admin\/accounts\/(owner|[0-9a-f-]{36})\/administrator$/u.exec(accountUrl.pathname);
@@ -712,6 +714,23 @@ const server = http.createServer(async (request, response) => {
           return assistantMessage;
         } catch { throw new ChatError('CHAT_SAVE_FAILED',503); }
       };
+      let titleAttempted = false;
+      const saveGeneratedTitle = async () => {
+        if (!enabled || titleAttempted || activeTitleRequests >= 2 || signal.aborted || !conversation || !assistantMessage || !answer.trim() ||
+            history.some(message => message.role === 'assistant' && message.state === 'complete' && message.content.trim())) return;
+        titleAttempted = true;
+        activeTitleRequests++;
+        try {
+          const titleSession = auth.getSession(request, {touch:false});
+          if (!titleSession || titleSession.token !== session.token) return;
+          authorizeLibrary?.();
+          consumeTrialAiAllowance(session, randomUUID());
+          const title = await generateConversationTitle({ apiKey, userText: body.messages[0].content, locale: input.locale,
+            signal: AbortSignal.timeout(4000) });
+          if (title) storage.setGeneratedConversationTitle(session.userId, conversation.id, title, conversation.title, assistantMessage.id);
+        } catch { /* Optional metadata must never turn a saved assistant answer into failure. */ }
+        finally { activeTitleRequests--; }
+      };
       try {
         library=input.libraryConsent?createLibraryToolSession({storage,userId:session.userId,libraryConsent:true,currentCaseId:caseId||null,signal}):null;
         if (conversation) {
@@ -765,6 +784,7 @@ const server = http.createServer(async (request, response) => {
           }
         }
         response.end();
+        if (completed) void saveGeneratedTitle();
       } catch (error) {
         let failure = error;
         if(reviewReceipt) {

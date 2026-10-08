@@ -15,7 +15,7 @@ async function fixture(page, { role = 'owner', failSave = false, initialStatusGa
     let body = path === '/api/status' ? { ...owner, role, canManageSettings: role === 'owner' } : path === '/api/settings' ? settings : { conversations: [], customers: [], cases: [], assets: [] };
     if (path === '/api/settings' && request.method() === 'POST') {
       if (failSave) return route.fulfill({ status: 503, json: { code: 'PROVIDER_UNAVAILABLE', error: 'synthetic-untrusted-provider-detail' } });
-      settings = { ...settings, configured: true, liveEnabled: request.postDataJSON().enableLive, keyStorage: 'server-memory' };
+      settings = { ...settings, configured: true, liveEnabled: request.postDataJSON().enableLive, keyStorage: 'server-memory', connectionVerifiedAt: '2026-10-08T00:00:00.000Z', check: 'chat-completion', chatCompletionTested: true };
       body = settings;
     }
     if (path === '/api/settings/test') body = { ok: true, model: 'deepseek-flash', check: 'model-access', chatCompletionTested: false, verifiedAt: '2026-10-08T00:00:00.000Z' };
@@ -43,6 +43,7 @@ for (const [lang, width] of [['en', 1280], ['zh', 390], ['en', 320]]) test(`key-
   await trigger.focus(); await trigger.press('Enter');
   const popover = page.getByRole('dialog', { name: lang === 'zh' ? '模型设置' : 'Model settings' });
   await expect(popover).toBeVisible();
+  if(width>=960)expect((await popover.boundingBox()).width).toBeLessThanOrEqual(320);
   const field = popover.locator('input');
   await expect(field).toHaveCount(1); await expect(field).toHaveAttribute('type', 'password'); await expect(field).toHaveValue('');
   await expect(popover).not.toContainText(/https?:|endpoint|端点/i);
@@ -50,12 +51,12 @@ for (const [lang, width] of [['en', 1280], ['zh', 390], ['en', 320]]) test(`key-
   await field.press('Escape'); await expect(popover).toHaveCount(0); await expect(trigger).toBeFocused();
   await trigger.click(); await expect(field).toHaveValue('');
   await field.fill('synthetic-key-123456');
-  await popover.getByRole('button', { name: lang === 'zh' ? '保存并启用 AI' : 'Save and enable AI' }).click();
+  await popover.getByRole('button', { name: lang === 'zh' ? '保存' : 'Save' }).click();
   await expect(field).toHaveValue('');
   expect(writes).toEqual([{ path: '/api/settings', body: { apiKey: 'synthetic-key-123456', enableLive: true } }]);
-  await expect(popover).toContainText(lang === 'zh' ? '待验证' : 'Not checked');
-  await popover.getByRole('button', { name: lang === 'zh' ? '验证模型权限' : 'Verify model access' }).click();
-  await expect(popover).toContainText(lang === 'zh' ? '模型访问权限验证通过' : 'Model access verified');
+  await expect(popover).toContainText(lang === 'zh' ? '模型调用验证通过' : 'Model response verified');
+  await expect(popover.getByRole('button', { name: /验证模型|Verify model|测试连接|Test connection/ })).toHaveCount(0);
+  expect(writes).toHaveLength(1);
   await noHorizontalOverflow(page);
   await page.screenshot({ path: `test-results/model-key-${lang}-${width}.png` });
   await field.fill('synthetic-unsaved-key');
@@ -64,7 +65,8 @@ for (const [lang, width] of [['en', 1280], ['zh', 390], ['en', 320]]) test(`key-
   await trigger.click(); await expect(field).toHaveValue('');
   await page.evaluate(() => { window.location.hash = 'settings'; });
   await expect(popover).toHaveCount(0);
-  await page.locator('main').getByRole('button', { name: lang === 'zh' ? '模型设置' : 'Model settings', exact: true }).click();
+  await expect(page.locator('.wb-topbar').getByRole('button', {name:lang==='zh'?'模型设置':'Model settings',exact:true})).toBeVisible();
+  await page.getByRole('button', { name: lang === 'zh' ? '模型设置' : 'Model settings', exact: true }).click();
   await expect(popover.locator('input')).toHaveValue('');
   expect(await page.evaluate(() => [localStorage.length, sessionStorage.length])).toEqual([0, 0]);
 });
@@ -75,7 +77,7 @@ test('ordinary account never gets model settings and failed save keeps secrets o
   await page.getByRole('button', { name: '模型设置', exact: true }).click();
   const popover = page.getByRole('dialog', { name: '模型设置' });
   await popover.locator('input').fill('synthetic-key-123456');
-  await popover.getByRole('button', { name: '保存并启用 AI' }).click();
-  await expect(popover.getByRole('alert')).toBeVisible(); await expect(popover.locator('input')).toHaveCount(0);
+  await popover.getByRole('button', { name: '保存' }).click();
+  await expect(popover.getByRole('alert')).toBeVisible(); await expect(popover.locator('input')).toHaveValue('');
   await expect(popover).not.toContainText(/synthetic-key|synthetic-untrusted/);
 });

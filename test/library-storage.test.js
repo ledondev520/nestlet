@@ -225,3 +225,18 @@ test('account conversation index labels only current linked drafts and bounded l
   assert.equal(store.getConversation(alice.id,a.id).caseId,first.id);
   assert.equal(store.listAccountConversations(bob.id).length,1);
 });
+
+test('AI title update is owner-scoped and compare-and-set for the first saved complete answer',t=>{
+  const {store,alice,bob}=fixture(t);
+  const record=store.createCase(alice.id,payload());
+  const conversation=store.createConversation(alice.id,record.id,{title:'New conversation'});
+  assert.equal(store.setGeneratedConversationTitle(alice.id,conversation.id,'Generated topic',conversation.title,randomUUID()),null);
+  const first=store.appendMessage(alice.id,conversation.id,{role:'assistant',content:'Meaningful answer',state:'complete',requestId:randomUUID()});
+  assert.equal(store.setGeneratedConversationTitle(bob.id,conversation.id,'Foreign title',conversation.title,first.id),null);
+  assert.equal(store.setGeneratedConversationTitle(alice.id,conversation.id,'Generated topic','stale title',first.id),null);
+  const second=store.appendMessage(alice.id,conversation.id,{role:'assistant',content:'Second answer',state:'complete',requestId:randomUUID()});
+  assert.equal(store.setGeneratedConversationTitle(alice.id,conversation.id,'Later topic',conversation.title,second.id),null);
+  assert.equal(store.setGeneratedConversationTitle(alice.id,conversation.id,'Generated topic',conversation.title,first.id).id,conversation.id);
+  assert.equal(store.setGeneratedConversationTitle(alice.id,conversation.id,'Duplicate topic',conversation.title,first.id),null);
+  assert.equal(store.getConversation(alice.id,conversation.id).title,'Generated topic');
+});

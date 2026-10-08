@@ -1,0 +1,27 @@
+# Model setup and conversation context
+
+## Atomic model setup
+
+The owner enters a key and selects Save. The server checks the candidate with one fixed `deepseek-flash` completion (`Reply with exactly OK.`, at most eight output tokens, 15-second deadline). This check contains no case, conversation or library material and consumes a small amount of provider quota. Success requires the requested model identifier, a complete plain-text response and the exact answer. No `/models` listing is treated as inference verification.
+
+The current credential, enabled state and verification time change together only after success. The original owner session is rechecked after the asynchronous call, before activation. Failed, malformed, concurrent, cancelled or unauthorized attempts do not replace the previous working configuration. At most one setup check runs, and the existing ten-per-minute settings limit remains. Errors never return raw provider details or credentials. Keys entered in the interface remain process-memory-only; restart durability is not claimed. The UI clears input and reads status after uncertain responses, never automatically resubmitting the key.
+
+The current UI has one password field and Save. It exposes no endpoint, pause or separate connection-test button. The obsolete test endpoint does not spend provider quota; configured callers receive a use-Save error.
+
+## AI conversation titles
+
+A title request can start only after a meaningful first complete assistant answer has been persisted and the primary HTTP response has ended. Primary answer/card delivery never waits for this optional metadata. The request uses only a bounded excerpt of the current user topic, not library results or assistant content, and is limited to 80 output tokens and four seconds. At most two title requests are active. A separate server-generated request ID charges the service allowance; a quota failure leaves the primary reply intact.
+
+Saved complete-message history prevents another title call on later turns, reloads or process restarts, even if the first title attempt failed. The per-conversation active-turn lock prevents simultaneous first-turn generation within the single server process. Persistence is owner-scoped compare-and-set against the expected existing title and the first complete assistant message ID. A later turn cannot overwrite the source identity or discard a pending first title. No manual title-edit endpoint is introduced. A failed or skipped attempt leaves the neutral title; it is not replaced with a fabricated model title. Title text is untrusted display text; the prompt asks to avoid personal identifiers but is not deterministic redaction.
+
+## Bounded context reuse, without destructive compaction
+
+DeepSeek's [context caching guide](https://api-docs.deepseek.com/guides/kv_cache/) says matching persisted prefixes are cached automatically. Nestlet keeps its stable system/reference prefix before canonical case context and bounded recent messages. No new SDK, cache credential, hidden remote conversation state or summary database is needed for that capability.
+
+Canonical case data and its source bindings remain in SQLite independently of the recent-message window. This change carries source-cell coordinates, bounded field-source excerpts, explicit source-excerpt truncation flags, and document-context source-message IDs into the provider context. Existing value/source bounds and incomplete flags remain. The prompt instructs the model to obtain exact authorized evidence or disclose the limitation before relying on incomplete excerpts. Drafts are not silently attached; prior image pixels are not recreated. There is no destructive history summary or assertion that every old conversation fact fits inside a bounded prompt.
+
+A deterministic synthetic comparison measured serialized request content, not tokenizer output: before 4,223 UTF-8 bytes; after 4,632 bytes; repeated unchanged system/case prefix 4,567 bytes. The extra 409 bytes preserve provenance and clarify incomplete evidence. This is an input-size increase, not measured token or cost savings. Actual cache hits and monetary savings remain unverified; those require authorized live calls and provider usage accounting (`prompt_cache_hit_tokens` / `prompt_cache_miss_tokens`).
+
+## Evidence scope
+
+HTTP/SQLite tests use a local authored provider transport and synthetic credentials. They cover one-call activation, failure preservation, concurrent writes, logout during validation, first-turn title persistence, optional held/failed title completion, and later-turn idempotency. Unit/React tests cover response bounds, unsafe metadata, provenance and explicit Save-only behavior. These checks do not establish real DeepSeek credentials or production TLS. Browser CI and exact combined-release tests are separate acceptance gates.
