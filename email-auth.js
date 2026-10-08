@@ -94,14 +94,16 @@ export function createEmailAuth({ storage, delivery, publicOrigin = '', currentC
       assertFields(body, ['token']);
       const tokenHash = claim(body.token, ip);
       const ownerHash = currentCredential('owner');
-      let session;
+      let staged;
       if (!storage.verify(tokenHash, { now: now(), ownerFingerprint: ownerHash ? digest(ownerHash) : null,
         onRegistration(target) {
-          session = establishRegistrationSession?.(target, previousSession);
-          if (!session || session.error) throw new EmailAuthError(session?.error || 'OPERATOR_SETUP_REQUIRED', session?.error === 'LOGIN_RATE_LIMITED' ? 429 : 503);
+          staged = establishRegistrationSession?.(target, previousSession);
+          if (!staged?.result || typeof staged.commit !== 'function' || staged.error) throw new EmailAuthError(staged?.error || 'OPERATOR_SETUP_REQUIRED', staged?.error === 'LOGIN_RATE_LIMITED' ? 429 : 503);
         }
       })) throw new EmailAuthError('EMAIL_TOKEN_INVALID');
-      return session ? { verified: true, authenticated: true, ...session } : { verified: true, authenticated: false };
+      // No asynchronous work may separate successful SQLite commit from activation.
+      staged?.commit();
+      return staged ? { verified: true, authenticated: true, ...staged.result } : { verified: true, authenticated: false };
     },
     async reset(body, ip) {
       assertFields(body, ['token', 'password', 'passwordConfirmation']); passwords(body);

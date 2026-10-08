@@ -57,7 +57,7 @@ export function createOperatorAuth({ passwordHash = '', operatorUsername = 'owne
     return Boolean(session && typeof token === 'string' && /^[A-Za-z0-9_-]{43}$/u.test(token) &&
       timingSafeEqual(Buffer.from(token), Buffer.from(session.csrfToken)));
   };
-  const issueSession = (target, now = Date.now(), rememberMe = false) => {
+  const issueSession = (target, now = Date.now(), rememberMe = false, staged = false) => {
     // A private account helper could create a collision during an asynchronous KDF.
     // Never promote, overwrite, or sign in as that ordinary identity.
     if (!isConfigured()) return { error: 'OPERATOR_SETUP_REQUIRED' };
@@ -68,8 +68,11 @@ export function createOperatorAuth({ passwordHash = '', operatorUsername = 'owne
     if (sessions.size >= 512) return { error: 'LOGIN_RATE_LIMITED' };
     const token = randomBytes(32).toString('base64url');
     const csrfToken = randomBytes(32).toString('base64url');
-    sessions.set(token, { rememberMe, csrfToken, created: now, lastUsed: now, userId: target.id, username: target.username, role: target.role, credentialFingerprint: fingerprint(target.passwordHash) });
-    return { csrfToken, cookie: cookie(token), userId: target.id, username: target.username, role: target.role, ...accountPermissions({ userId: target.id, role: target.role }, hasAdministratorCapability(target.id)) };
+    const record = { rememberMe, csrfToken, created: now, lastUsed: now, userId: target.id, username: target.username, role: target.role, credentialFingerprint: fingerprint(target.passwordHash) };
+    const result = { csrfToken, cookie: cookie(token), userId: target.id, username: target.username, role: target.role, ...accountPermissions({ userId: target.id, role: target.role }, hasAdministratorCapability(target.id)) };
+    if (staged) return { result, commit() { sessions.set(token, record); } };
+    sessions.set(token, record);
+    return result;
   };
   return {
     get configured() { return isConfigured(); },
@@ -107,9 +110,14 @@ export function createOperatorAuth({ passwordHash = '', operatorUsername = 'owne
       // No HTTP caller can supply this identity or use binding/reset as login proof.
       const current = target?.id && findTrialUserById(target.id);
       if (!current || current.id === 'owner' || current.role !== 'trial' || current.passwordHash !== target.passwordHash) return { error: 'INVALID_CREDENTIALS' };
-      const result = issueSession(current);
-      if (!result.error && previousSession) sessions.delete(previousSession.token);
-      return result;
+      const staged = issueSession(current, Date.now(), false, true);
+      if (staged.error) return staged;
+      // Called synchronously only after SQLite COMMIT succeeds. A failed commit
+      // leaves both the prior session and the unconsumed proof untouched.
+      return { result: staged.result, commit() {
+        staged.commit();
+        if (previousSession) sessions.delete(previousSession.token);
+      } };
     },
     logout(session) { if (session) sessions.delete(session.token); return cookie('', true); },
   };

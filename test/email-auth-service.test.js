@@ -1,6 +1,8 @@
 // Service contract tests with explicitly fake delivery. Real SQLite/scrypt are used;
 // none of these tests is real provider, mailbox, or browser acceptance.
 import { test } from 'node:test';
+import { DatabaseSync } from 'node:sqlite';
+import { createEmailAuthStorage, EMAIL_SCHEMA_SQL } from '../email-auth-storage.js';
 import assert from 'node:assert/strict';
 import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -128,4 +130,33 @@ test('fake-delivery contract: email-only resend recovers an unconfirmed registra
   assert.deepEqual(await f.auth.resend({ email: 'retry@example.invalid' }, 'ip'), accepted); await f.auth.whenIdle();
   assert.notEqual(f.token(), failedToken); assert.throws(() => f.auth.verify({ token: failedToken }, 'ip'), e => e.code === 'EMAIL_TOKEN_INVALID');
   assert.equal(f.auth.verify({ token: f.token() }, 'ip').verified, true);
+});
+
+
+test('COMMIT failure after session preparation preserves prior session and leaves no active registration session', async t => {
+  const db = new DatabaseSync(':memory:'); t.after(() => db.close());
+  db.exec("CREATE TABLE users(id TEXT PRIMARY KEY, username TEXT, role TEXT, password_hash TEXT, created_at TEXT);" + EMAIL_SCHEMA_SQL);
+  db.prepare("INSERT INTO users VALUES('owner','owner','owner',NULL,'fixture')").run();
+  let failCommit = false;
+  const storage = createEmailAuthStorage({ db, transaction(action) {
+    db.exec('BEGIN IMMEDIATE');
+    try { const result = action(); if (failCommit) throw new Error('Synthetic COMMIT failure'); db.exec('COMMIT'); return result; }
+    catch (error) { db.exec('ROLLBACK'); throw error; }
+  } });
+  const sessionAuth = createOperatorAuth({ passwordHash: ownerHash, publicOrigin: 'https://trusted.example.invalid',
+    findTrialUserById: id => db.prepare('SELECT id,username,role,password_hash AS passwordHash FROM users WHERE id=?').get(id) });
+  const old = await sessionAuth.login(ownerPassword), oldRequest = { headers: { cookie: old.cookie.split(';')[0] } };
+  const previous = sessionAuth.getSession(oldRequest);
+  const action = storage.createAction({ kind: 'register', email: 'commit-failure@example.invalid', passwordHash: await hashPassword(password) });
+  storage.markAccepted(action.tokenHash);
+  let prepared;
+  const service = createEmailAuth({ storage: { ...storage, verify(...args) { failCommit = true; return storage.verify(...args); } },
+    delivery: { configured: true }, publicOrigin: 'https://trusted.example.invalid', currentCredential: () => ownerHash,
+    establishRegistrationSession(...args) { prepared = sessionAuth.establishRegistrationSession(...args); return prepared; }
+  });
+  assert.throws(() => service.verify({ token: action.token }, 'synthetic-ip', previous), /COMMIT failure/);
+  assert.equal(storage.findByEmail('commit-failure@example.invalid'), null);
+  assert.equal(storage.getAction(action.tokenHash).ready, 1);
+  assert.equal(sessionAuth.getSession(oldRequest).userId, 'owner');
+  assert.equal(sessionAuth.getSession({ headers: { cookie: prepared.result.cookie.split(';')[0] } }), null);
 });
