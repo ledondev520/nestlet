@@ -86,7 +86,7 @@ export function conversationActionContext(storage, userId, record, conversationI
       const saved = artifacts.filter(artifact => artifact.sourceMessageId === message.id);
       return {id: message.id, role: message.role, state: 'complete',
         contentPreview: message.content.slice(0, 350), contentPreviewIncomplete: message.content.length > 350,
-        answerDraftEligible: eligible(message),
+        caseSuggestionEligible: ['user', 'assistant'].includes(message.role), answerDraftEligible: eligible(message),
         savedArtifacts: saved.slice(0, 5).map(artifact => ({id: artifact.id, kind: artifact.kind, status: artifact.status, version: artifact.version, sourceCaseVersion: artifact.sourceCaseVersion, isStale: artifact.isStale})),
         savedArtifactsIncomplete: saved.length > 5};
     })
@@ -96,9 +96,10 @@ export function conversationActionContext(storage, userId, record, conversationI
 /** Provider schema narrows source selection; storage still revalidates every call. */
 export function conversationActionTools(context) {
   return CONVERSATION_ACTION_TOOLS.flatMap(tool => {
-    const ids = context.messages.filter(message => tool.function.name !== 'prepare_answer_draft' || message.answerDraftEligible).map(message => message.id);
+    const ids = context.messages.filter(message => tool.function.name === 'prepare_case_suggestion' ? message.caseSuggestionEligible : message.answerDraftEligible).map(message => message.id);
     if (!ids.length) return [];
     const copy = structuredClone(tool);
+    copy.function.parameters.properties.expectedVersion.enum = [context.expectedVersion];
     copy.function.parameters.properties.sourceConversationId.enum = [context.conversationId];
     copy.function.parameters.properties.sourceMessageId.enum = ids;
     return [copy];
@@ -106,8 +107,24 @@ export function conversationActionTools(context) {
 }
 
 const valueMap = names => ({type:'object',additionalProperties:false,properties:Object.fromEntries(names.map(key => [key,{type:'object',additionalProperties:false,properties:{value:{type:'string'}},required:['value']}]))});
-const sourceProperties = {expectedVersion:{type:'integer',minimum:1},sourceConversationId:{type:'string'},sourceMessageId:{type:'string',description:'Use the exact ID from the server source catalogue; draft sources must have answerDraftEligible true. Never use a user turn for an answer draft.'}};
+const sourceProperties = {expectedVersion:{type:'integer',minimum:1},sourceConversationId:{type:'string'},sourceMessageId:{type:'string'}};
 export const CONVERSATION_ACTION_TOOLS = Object.freeze([
-  {type:'function',function:{name:'prepare_case_suggestion',description:'Preview unconfirmed changes for the current case from a complete saved conversation message. Read-only; a person must explicitly apply the preview. Never confirms facts or resolves issues.',parameters:{type:'object',additionalProperties:false,properties:{...sourceProperties,factChanges:valueMap(FIELDS),changes:valueMap(DOCUMENT_DETAIL_KEYS)},required:Object.keys(sourceProperties)}}},
-  {type:'function',function:{name:'prepare_answer_draft',description:'Preview an unreviewed English draft from a complete already-saved assistant answer in the current conversation. No write; cannot save an answer still being generated or make a final document.',parameters:{type:'object',additionalProperties:false,properties:{...sourceProperties,kind:{type:'string',enum:DRAFT_TYPES}},required:[...Object.keys(sourceProperties),'kind']}}}
+  {type:'function',function:{name:'prepare_case_suggestion',description:'Preview unconfirmed changes for the current case from a complete saved USER or assistant message, including the current saved user turn. Use caseSuggestionEligible, not answerDraftEligible. Include at least one factChanges or changes entry shaped as {value: string}; do not include an action argument. Read-only; a person must explicitly apply the preview. Never confirms facts or resolves issues.',parameters:{type:'object',additionalProperties:false,properties:{...sourceProperties,sourceMessageId:{type:'string',description:'Exact caseSuggestionEligible message ID. Complete saved user messages are valid fact sources; assistant-only draft restrictions do not apply.'},factChanges:valueMap(FIELDS),changes:valueMap(DOCUMENT_DETAIL_KEYS)},required:Object.keys(sourceProperties)}}},
+  {type:'function',function:{name:'prepare_answer_draft',description:'Preview an unreviewed English draft from a complete already-saved assistant answer in the current conversation. No write; cannot save an answer still being generated or make a final document.',parameters:{type:'object',additionalProperties:false,properties:{...sourceProperties,sourceMessageId:{type:'string',description:'Exact answerDraftEligible assistant message ID. User messages are not eligible for this draft tool.'},kind:{type:'string',enum:DRAFT_TYPES}},required:[...Object.keys(sourceProperties),'kind']}}}
 ]);
+
+/** Safe, bounded repair context for the specific read-only tool that failed.
+ * Never picks a source or applies a change; all retries pass normal validation. */
+export function conversationActionRepair(context, toolName, code) {
+  if (!['CONVERSATION_ACTION_INVALID','CONVERSATION_ACTION_SOURCE_NOT_FOUND','CONVERSATION_ACTION_SOURCE_INCOMPLETE','DOCUMENT_ENGLISH_REQUIRED'].includes(code)) return null;
+  const suggestion = toolName === 'prepare_case_suggestion';
+  if (!suggestion && toolName !== 'prepare_answer_draft') return null;
+  return {
+    tool: toolName,
+    reason: suggestion
+      ? 'Use a complete saved user or assistant message as the fact source. Draft-only assistant eligibility does not apply. Supply at least one factChanges or changes entry as {value: string}; omit action and unknown fields. This repair hint is not a successful preview.'
+      : 'Choose a complete English assistant answer with answerDraftEligible true. A user turn or bilingual/incomplete assistant answer cannot be an answer draft. Include a supported kind; omit action and unknown fields. This repair hint is not a successful preview.',
+    expectedVersion: context.expectedVersion, sourceConversationId: context.conversationId,
+    eligibleSourceMessageIds: context.messages.filter(message => suggestion ? message.caseSuggestionEligible : message.answerDraftEligible).map(message => message.id)
+  };
+}
