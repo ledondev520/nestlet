@@ -53,3 +53,28 @@ real synthetic HTTP/SQLite data and no model calls. See the dated validation
 entry for whether that scenario actually ran; discovery alone is not browser
 acceptance. Its PDF capture checks Chromium rendering, not native dialog or
 physical printing completion.
+
+## Direct PDF download (2026-10-08)
+
+Download PDF requests the selected immutable artifact at authenticated
+`GET /api/artifacts/:id/pdf`. Ownership and stale-final checks run before local
+rendering, and freshness/ownership is checked again afterward. Unsaved edits
+must be saved first. TXT and native Print remain separate alternatives.
+
+PDFKit 0.17.2 runs in a bounded worker with no model/provider/network calls and
+no temporary document files. It emits only the saved body (literal text), with
+version/status and artifact ID in PDF metadata, never the surrounding UI.
+Letter-size pages use an embedded subset of NotoSansCJKsc-Regular. Docker and
+CI install Debian/Ubuntu `fonts-noto-cjk` (upstream Noto CJK, SIL Open Font
+License 1.1; the OS package retains its copyright/license file). There is no
+runtime font download. Missing fonts and unsupported glyphs fail with a clear
+error instead of silently substituting boxes. Complex writing-system coverage
+outside the tested Latin/CJK letters is not claimed; TXT/Print remain available.
+
+Each render is limited to 50,000 input characters, 100 pages, 8 MiB output and
+15 seconds, with at most two active workers per server process. Text wrapping
+and extracted whitespace can differ from TXT; characters and body order must
+remain intact. An app download event means the browser initiated saving, not
+that a particular user's OS retained it. The direct-PDF browser acceptance test
+separately saves browser download bytes and checks them with Poppler; production
+download/open acceptance is a separate release check.

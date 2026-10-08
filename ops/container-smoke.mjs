@@ -6,6 +6,30 @@ const base = 'http://127.0.0.1:4173';
 assert.notEqual(process.getuid(), 0, 'Runtime must not run as root');
 assert.equal(spawnSync('pdftotext', ['-v'], { stdio: 'ignore' }).status, 0);
 assert.equal(spawnSync('prlimit', ['--version'], { stdio: 'ignore' }).status, 0);
+// Exercise the packaged PDF worker/font as the real read-only runtime user.
+// A separate ordinary Node child avoids inheriting this stdin harness's --input-type.
+const pdfSmoke = spawnSync(process.execPath, ['-e', `
+  import('./document-pdf.js').then(async ({createDocumentPdf}) => {
+    const {mkdtemp,writeFile,rm} = await import('node:fs/promises');
+    const {tmpdir} = await import('node:os');
+    const {join} = await import('node:path');
+    const {execFileSync} = await import('node:child_process');
+    const {default:assert} = await import('node:assert/strict');
+    const directory = await mkdtemp(join(tmpdir(),'nestlet-ci-pdf-'));
+    try {
+      const content = 'Synthetic PDF export: Café — 张伟 李明.';
+      const bytes = await createDocumentPdf({content,id:'synthetic-container-fixture',version:1,status:'draft'});
+      assert.equal(bytes.subarray(0,5).toString(),'%PDF-');
+      const file = join(directory,'output.pdf'); await writeFile(file,bytes);
+      assert.equal(execFileSync('pdftotext',['-raw',file,'-'],{encoding:'utf8'}).replace(/\\f/g,'').trim(),content);
+      assert.match(execFileSync('pdffonts',[file],{encoding:'utf8'}),/NotoSansCJKsc-Regular/);
+      console.log('Packaged local PDF worker and embedded CJK font passed.');
+    } finally {await rm(directory,{recursive:true,force:true});}
+  }).catch(error => {console.error(error);process.exitCode=1;});
+`], {encoding:'utf8',timeout:20000});
+assert.equal(pdfSmoke.status,0,pdfSmoke.stderr);
+assert.match(pdfSmoke.stdout,/Packaged local PDF worker and embedded CJK font passed/);
+
 await assert.rejects(writeFile('/app/public/.ci-write-check', 'must fail'), { code: 'EROFS' });
 for (const path of ['/app/.env', '/app/.git/config', '/app/test/server.test.js']) {
   await assert.rejects(access(path, constants.F_OK), { code: 'ENOENT' });

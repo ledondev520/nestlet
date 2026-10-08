@@ -19,7 +19,7 @@ export function documentFailure(name, error) {
   const validation = ['UNSAVED_ARTIFACT', 'DOCUMENT_ENGLISH_REQUIRED', 'DOCUMENT_DETAILS_REQUIRED', 'CASE_CONFLICT', 'LOCAL_CHANGED'].includes(error?.code);
   return {ok:false, cancelled:error?.name === 'AbortError',
     ...(Number.isInteger(error?.status) && error.status > 0 ? {httpStatus:error.status} : {}),
-    errorCode:validation ? 'CLIENT_VALIDATION' : ({copy:'CLIPBOARD_FAILED', download:'DOWNLOAD_FAILED', print:'PRINT_FAILED'}[name] || 'UNKNOWN_CLIENT_ERROR')};
+    errorCode:validation ? 'CLIENT_VALIDATION' : ({copy:'CLIPBOARD_FAILED', download:'DOWNLOAD_FAILED', pdf:'DOWNLOAD_FAILED', print:'PRINT_FAILED'}[name] || 'UNKNOWN_CLIENT_ERROR')};
 }
 
 /** Focus owns dwell. Navigation, text changes and background refreshes never activate it. */

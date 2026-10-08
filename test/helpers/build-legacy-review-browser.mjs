@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { cp, mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -18,17 +18,18 @@ const git = (...args) => execFileSync('git', args, { cwd: repository, maxBuffer:
 export async function buildLegacyReviewBrowser() {
   assert.equal(git('rev-parse', `${LEGACY_REVIEW_COMMIT}^{commit}`).toString().trim(), LEGACY_REVIEW_COMMIT);
   const lock = git('show', `${LEGACY_REVIEW_COMMIT}:package-lock.json`);
-  // Sharing installed dependencies is valid only while the exact lock is equal.
-  // A future dependency upgrade must deliberately update this build strategy.
-  assert.equal(sha256(await readFile(join(repository, 'package-lock.json'))), sha256(lock), 'Legacy build requires the baseline dependency lock, not an approximate current toolchain');
   const source = await mkdtemp(join(await realpath(tmpdir()), 'nestlet-pinned-frontend-'));
   try {
     // Include shared domain modules imported by that frontend as well. Every
     // source file comes from the same tree; no current-worktree import leaks in.
     const archive = git('archive', '--format=tar', LEGACY_REVIEW_COMMIT);
     execFileSync('tar', ['-xf', '-', '-C', source], { input: archive });
-    await symlink(join(repository, 'node_modules'), join(source, 'node_modules'), 'dir');
-    execFileSync(process.execPath, [join(repository, 'node_modules/vite/bin/vite.js'), 'build'], { cwd: source, stdio: 'inherit' });
+    // Install the archived baseline lock in its own tree. Current dependencies
+    // may evolve, but must never be substituted into the old-client evidence.
+    assert.equal(sha256(await readFile(join(source, 'package-lock.json'))), sha256(lock));
+    execFileSync('npm', ['ci', '--ignore-scripts', '--no-audit', '--no-fund'], { cwd: source, stdio: 'inherit', timeout: 180000 });
+    assert.equal(sha256(await readFile(join(source, 'package-lock.json'))), sha256(lock));
+    execFileSync(process.execPath, [join(source, 'node_modules/vite/bin/vite.js'), 'build'], { cwd: source, stdio: 'inherit' });
     await mkdir(LEGACY_REVIEW_BUILD, { recursive: true });
     const hashes = {};
     for (const file of files) {
@@ -40,6 +41,7 @@ export async function buildLegacyReviewBrowser() {
       sourceCommit: LEGACY_REVIEW_COMMIT,
       frontendTree: git('rev-parse', `${LEGACY_REVIEW_COMMIT}:frontend`).toString().trim(),
       dependencyLockSha256: sha256(lock),
+      dependencyInstall: 'npm ci --ignore-scripts --no-audit --no-fund (isolated archived baseline)',
       buildCommand: 'node node_modules/vite/bin/vite.js build (unchanged baseline vite.config.js)',
       hashes,
     };
@@ -53,6 +55,7 @@ export async function loadLegacyReviewBrowser() {
   assert.equal(manifest.sourceCommit, LEGACY_REVIEW_COMMIT, 'Run the pinned legacy build before browser acceptance');
   assert.equal(manifest.frontendTree, git('rev-parse', `${LEGACY_REVIEW_COMMIT}:frontend`).toString().trim());
   assert.equal(manifest.dependencyLockSha256, sha256(git('show', `${LEGACY_REVIEW_COMMIT}:package-lock.json`)));
+  assert.equal(manifest.dependencyInstall, 'npm ci --ignore-scripts --no-audit --no-fund (isolated archived baseline)');
   const assets = {};
   for (const file of files) {
     assets[file] = await readFile(join(LEGACY_REVIEW_BUILD, file));

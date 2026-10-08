@@ -29,7 +29,7 @@ jobs:
       - name: Install official Chromium for the locked Playwright version
         run: npx --no-install playwright install --with-deps chromium
       - name: Install the actual PDF text parser
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends poppler-utils
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends poppler-utils fonts-noto-cjk
       - name: Build the production frontend
         run: npm run build
       - name: Build the pinned pre-review-result frontend in isolation

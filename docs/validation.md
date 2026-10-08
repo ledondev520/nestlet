@@ -635,6 +635,41 @@ Local pre-publication evidence: pinned dependency install, JavaScript checks and
 
 The test-only correction captures a passive clone of the real native fetch response before the old client's stream cleanup, preserving the original request arguments, AbortSignal, headers and Response returned to the pinned application. The clone tees and consumes the bounded test stream; Stop must explicitly abort that clone with `AbortError` as well as stopping the app reader. Protocol/UI assertions remain required. A new exact-head official run must establish the complete result; no runtime change or production-defect claim is made from this harness failure.
 
+### 2026-10-08 — direct PDF implementation, local evidence only
+
+- Added local-only authenticated immutable-artifact PDF export with embedded Noto
+  CJK font, worker resource bounds, ownership and stale-final checks, and bilingual
+  Download PDF control/errors. No schema migration or AI transmission.
+- Local `npm run check`, production frontend build, `npm test` (431/431) and
+  `npm run test:frontend` (323/323) passed. The first frontend run caught a missing
+  Docker-context allowlist entry; corrected before the passing rerun.
+- Real local Poppler checks cover PDF header, searchable English/accented Latin/
+  Chinese/Japanese/Korean, embedded font, no PDF JavaScript, literal HTML-like text,
+  multipage/long-token fidelity, unsupported glyph errors, limits and recovery.
+- Local Chromium launch is BLOCKED by the environment's process-singleton socket
+  restriction, including the first reviewed escalation. No local browser journey
+  pass is claimed. The new direct-PDF browser test is intended for official CI:
+  actual saved download bytes, repeat download, edited draft, unsaved guard and
+  stale-final rejection. Official CI, runtime container and deployed app's actual
+  download/open remain PENDING. Offline generated PDFs do not satisfy live acceptance.
+
+### Direct PDF integration after PR47
+
+Rebased on merged PR47 `6813b5350f5bed092759fdcaabc86c2c190cf2c0`.
+The pinned legacy-browser helper now installs the exact archived baseline lock
+into its own temporary tree using `npm ci --ignore-scripts --no-audit --no-fund`,
+checks its lock hash before and after installation, and runs that tree's Vite.
+It never substitutes current PDF dependencies into old-client evidence. The
+isolated build retained the original baseline app SHA-256
+`916def12865f2d43e18400633ae582335b12205333daf58e41183537baf4bef0`;
+all three real-HTTP/SQLite legacy fixture sanity modes passed.
+
+Combined local checks/build, backend **432/432** and frontend **323/323** passed.
+Browser discovery lists **57 scenarios**. Full official Chromium and runtime
+container gates remain required on the published exact SHA; no local Chromium
+launch was attempted during this integration. Live PDF download/open remains a
+separate deployment acceptance gate.
+
 ## 2026-10-08 — restored email-action invalidation candidate
 
 Based on exact main `f738655ccab834d77d9204ebab25ab1e2a61d8ee`. An isolated synthetic rehearsal confirmed that a still-unexpired reset link consumed after a backup could be replayed in a newly restored copy. The original live source rejected the replay and remained unchanged; this is a recovery-cutover hazard, not a normal live reset bypass.
@@ -642,3 +677,42 @@ Based on exact main `f738655ccab834d77d9204ebab25ab1e2a61d8ee`. An isolated synt
 The restore helper now clears every registration, binding and reset action from schema5+ restored copies, including pending and accepted challenges. Source databases/snapshots stay unchanged; account credentials, verified email bindings and email rate limits retain their snapshot values. Existing restored-session and library-grant invalidation remains. Recovery can still restore an older password hash; the operator must assess later credential changes and users must request fresh links. No migration, ordinary login/reset contract, provider call or live restore is part of this change.
 
 Final local locked install, syntax checks, build and whitespace checks passed. Aggregate backend **431/431**, frontend **323/323**, and focused actual SQLite backup/restore/schema checks **28/28** passed, zero failures/skips. New checks cover every action kind/readiness on genuine schema5 and current schema9, real pre-email schema4 compatibility, snapshot/source byte hashes, identity/rate retention, rejection of a consumed token after restore, and fail-closed INCOMPLETE recovery when invalidation itself fails. An initial aggregate run passed427/430 and exposed three historical restore tests that expected email-action preservation; those restore-only expectations now explicitly assert zero actions, while backup and ordinary migration still require preservation of all rows. The final431/431 run includes the additional failure-boundary test. The preexisting frontend bundle-size advisory remains. Independent review found no blocking issue in the bounded restore change; exact final-SHA signoff and official CI remain separate publication/release gates. No local browser run, provider request, production deployment or live restoration is claimed.
+
+## 2026-10-08 — Safe assistant Markdown candidate
+
+- Added assistant-only CommonMark/GFM rendering: emphasis, nested lists, headings,
+  tables, code, blockquotes, links and disabled task checkboxes. User messages
+  remain escaped literal text; copied reply and stored/source-linked content are
+  the original bytes, including CRLF line endings.
+- Pinned `react-markdown` 10.1.0 and `remark-gfm` 4.0.1; lock preserves all prior
+  dependency versions, including PDFKit. Clean `npm ci --ignore-scripts` passed.
+- `npm run check`, `npm run build`, backend `npm test` **432/432** and frontend
+  `npm run test:frontend` **327/327** passed. Focused renderer/chat/source-navigation
+  checks passed **32/32**. Every prefix of an authored partial-table/code/link
+  stream was rendered safely; HTML/scripts, encoded unsafe URLs and tracking
+  images produced no executable/resource elements. These are synthetic DOM tests,
+  not real-provider acceptance.
+- Updated two earlier plain-text assumptions: block paragraphs change DOM text
+  whitespace, and safe external Markdown links are now intentional. Source
+  navigation still uses separate authenticated controls. Full aggregate rerun
+  passed after these explicit expectation changes.
+- Added official Chromium test covering original clipboard bytes, literal user
+  text, absence of image tracking requests, semantic rendering and keyboard table
+  scrolling at 1440/390/320 px. **Browser acceptance is blocked/unrun** here:
+  Chromium aborts before page creation with `socket() failed: Operation not
+  permitted`, including the allowed escalated launch. No screenshots or mobile
+  layout pass are claimed. Run `assistant-markdown.spec.js` in the QA environment.
+- Build retains the existing large-bundle warning. No schema, provider prompt,
+  stored message, source provenance, automatic action or deployment change.
+  Rollback: revert the Markdown integration commit and rebuild the frontend.
+
+### Markdown parser complexity correction
+
+Independent review reproduced a 5.5-second synchronous render for an allowed
+60,000-character nested-bracket reply. Added a conservative linear pre-parse
+budget and escaped full-text fallback for long/complex content, including all
+streaming prefixes. No source is truncated, normalized, or rewritten. New
+focused tests cover pathological and maximum-length strings, parser budget
+boundaries, literal HTML safety, full text and streaming cursor retention. A
+browser fixture additionally checks full-length fallback, exact clipboard/
+history contents and 320px layout; official execution remains required.
