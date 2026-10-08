@@ -1,13 +1,14 @@
 import {test as base,expect} from '@playwright/test';
 import {randomUUID} from 'node:crypto';
 import {startBrowserFixture} from '../helpers/browser-fixture.mjs';
-import {signInCustomer,createCustomer,createLinkedCase,apiWrite,getJson} from './customer-case-support.js';
+import {signInCustomer,createCustomer,createLinkedCase,createEmptyConversation,openLinkedCase,selectCustomer,apiWrite,getJson} from './customer-case-support.js';
 import {watchBrowser,screenshot,noHorizontalOverflow} from './support.js';
 import {newReviewReceipt,reviewResultText} from '../../review-operation.js';
 
 // Official Chromium UI + real disposable authentication, prepare API and SQLite.
 // Only chat SSE and the UI's liveEnabled status are authored browser fixtures.
 // Saved messages and provider receipts below are synthetic, not live acceptance.
+const originalQuestion='Property address: 128 Synthetic Review Lane. Could you prepare a review preview?';
 const test=base.extend({
  groundedReview:async({page},use,testInfo)=>{
   const app=await startBrowserFixture({legacyUsers:['synthetic-customer-a']});
@@ -59,8 +60,9 @@ const test=base.extend({
      const path=new URL(typeof input==='string'?input:input.url,location.href).pathname;
      if(path==='/api/chat'){
       const packet=await window.__prepareGroundedReview({payload:JSON.parse(options.body),kind:window.__groundedReviewKind||'prepared'});
-      let controller;
-      const control={packet,closed:false,cancelled:false,partial:false,persisted:false};
+      let controller,releaseResponse;
+      const responseGate=new Promise(resolve=>{releaseResponse=resolve;});
+      const control={packet,closed:false,cancelled:false,partial:false,persisted:false,responseReturned:false,get aborted(){return options.signal?.aborted===true;}};
       const enqueue=text=>controller.enqueue(new TextEncoder().encode(text));
       const close=()=>{controller.close();control.closed=true;};
       const persist=async()=>{
@@ -78,6 +80,14 @@ const test=base.extend({
        // All JSON is present, but the SSE frame boundary has not arrived.
        enqueue(frame('done',done).slice(0,-2));control.partial=true;
       };
+      // A held fetch intentionally ignores abort, so scope checks, not the fake
+      // transport refusing delivery, must reject this old result after navigation.
+      control.releaseLateResponse=async outcome=>{
+       if(outcome==='complete')enqueue(frame('done',await persist()));
+       else enqueue(frame('error',{code:'CHAT_PROVIDER_FAILED'}));
+       close();releaseResponse();
+      };
+      control.dispose=()=>{if(!control.closed&&!control.cancelled)close();releaseResponse();};
       control.endWithoutDone=close;
       control.incompleteEnvelope=()=>{
        const done=structuredClone(packet.done);delete done.reviewResult.receipt;
@@ -88,6 +98,8 @@ const test=base.extend({
        cancel(){control.cancelled=true;}
       });
       window.__groundedReviewControl=control;
+      if(window.__groundedReviewHoldResponse)await responseGate;
+      control.responseReturned=true;
       return new Response(stream,{headers:{'Content-Type':'text/event-stream'}});
      }
      const response=await originalFetch(input,options);
@@ -114,10 +126,10 @@ const test=base.extend({
     const path=new URL(request.url()).pathname;
     if(!['GET','HEAD'].includes(request.method())&&(path===`/api/cases/${record.id}`||path===`/api/cases/${record.id}/document-context`||path===`/api/cases/${record.id}/artifacts`||path.startsWith(`/api/cases/${record.id}/conversation-reviews`)))writes.push(`${request.method()} ${path}`);
    });
-   const begin=async(kind='prepared')=>{
+   const begin=async(kind='prepared',{holdResponse=false}={})=>{
     await settled();
-    await page.evaluate(value=>{window.__groundedReviewKind=value;window.__groundedReviewControl=null;},kind);
-    await chat.locator('.chat-input').fill('Property address: 128 Synthetic Review Lane. Could you prepare a review preview?');
+    await page.evaluate(({kind,holdResponse})=>{window.__groundedReviewKind=kind;window.__groundedReviewHoldResponse=holdResponse;window.__groundedReviewControl=null;},{kind,holdResponse});
+    await chat.locator('.chat-input').fill(originalQuestion);
     const send=chat.getByRole('button',{name:'Send',exact:true});await expect(send).toBeEnabled();await send.click();
     await expect.poll(()=>page.evaluate(()=>Boolean(window.__groundedReviewControl)),{message:'Controlled review stream is ready',timeout:10000}).toBe(true);
     await expect(chat.getByRole('button',{name:'Stop reply',exact:true})).toBeVisible();
@@ -136,9 +148,43 @@ const test=base.extend({
     const history=await getJson(page,app,`/api/conversations/${packet.conversationId}`);
     return history.messages.filter(message=>message.role==='assistant'&&message.requestId===packet.requestId);
    };
-   await use({chat,cards,begin,settled,unchanged,savedAssistant,turns});
+   const recoverOriginalAndKeepNewerDraft=async packet=>{
+    const history=await getJson(page,app,`/api/conversations/${packet.conversationId}`);
+    expect(history.messages.filter(message=>message.id===packet.userMessageId)).toMatchObject([{role:'user',content:originalQuestion}]);
+    await expect(chat.getByText(originalQuestion,{exact:true})).toBeVisible();
+    await chat.getByRole('button',{name:'Edit this question again',exact:true}).click();
+    const input=chat.locator('.chat-input');
+    await expect(input).toHaveValue(originalQuestion);
+    const newer='Keep this newer unsent synthetic question, not the recovered original.';
+    await input.fill(newer);
+    // The composer is disabled during work. Type while editable, then hold the
+    // real history refresh and verify it cannot replace that newer draft.
+    const url=app.origin+`/api/conversations/${packet.conversationId}`;
+    let release,finish,started=false;
+    const gate=new Promise(resolve=>{release=resolve;});
+    const finished=new Promise(resolve=>{finish=resolve;});
+    const handler=async route=>{
+     try{const response=await route.fetch();started=true;await gate;await route.fulfill({response});}
+     finally{finish();}
+    };
+    await page.route(url,handler);
+    try{
+     await chat.getByRole('button',{name:'Reload conversation',exact:true}).click();
+     await expect.poll(()=>started,{message:'Real saved history response is held'}).toBe(true);
+     await expect(input).toBeDisabled();await expect(input).toHaveValue(newer);
+     release();await finished;await settled();
+     await expect(input).toHaveValue(newer);
+     await expect(chat.getByRole('button',{name:'Send',exact:true})).toBeEnabled();
+     await expect(chat.getByText(originalQuestion,{exact:true})).toBeVisible();
+     await expect(cards).toHaveCount(0);
+    }finally{release();await page.unroute(url,handler);if(started)await finished;}
+   };
+   await use({app,client,record,chat,cards,begin,settled,unchanged,savedAssistant,turns,recoverOriginalAndKeepNewerDraft});
    await assertClean();
-  }finally{await app.stop();}
+  }finally{
+   if(!page.isClosed())await page.evaluate(()=>window.__groundedReviewControl?.dispose()).catch(()=>{});
+   await app.stop();
+  }
  }
 });
 
@@ -160,7 +206,7 @@ test('atomic saved review reveals the canonical card only on completion; explici
 });
 
 for(const [name,method] of [['missing completion','endWithoutDone'],['incomplete result envelope','incompleteEnvelope']]){
- test(`${name} exposes no review card or success text`,async({page,groundedReview:review})=>{
+ test(`${name} preserves recoverable input and a newer draft without a review card`,async({page,groundedReview:review})=>{
   const packet=await review.begin();
   await page.evaluate(action=>window.__groundedReviewControl[action](),method);
   await review.settled();
@@ -168,6 +214,7 @@ for(const [name,method] of [['missing completion','endWithoutDone'],['incomplete
   await expect(review.cards).toHaveCount(0);
   await expect(review.chat.getByText(packet.done.reviewResult.text,{exact:true})).toHaveCount(0);
   expect(await review.savedAssistant(packet)).toEqual([]);await review.unchanged();
+  await review.recoverOriginalAndKeepNewerDraft(packet);await review.unchanged();
  });
 }
 
@@ -203,7 +250,7 @@ test('saved no-preview completion gives a clear result and no review card',async
  await review.unchanged();
 });
 
-test('stopping before final persistence cannot leave or revive a usable review card',async({page,groundedReview:review})=>{
+test('stopping before final persistence preserves recoverable input and a newer draft without reviving a review card',async({page,groundedReview:review})=>{
  const packet=await review.begin();
  await review.chat.getByRole('button',{name:'Stop reply',exact:true}).click();
  await review.settled();
@@ -214,4 +261,50 @@ test('stopping before final persistence cannot leave or revive a usable review c
  await expect(review.cards).toHaveCount(0);
  await expect(review.chat.getByText(packet.done.reviewResult.text,{exact:true})).toHaveCount(0);
  expect(await review.savedAssistant(packet)).toEqual([]);await review.unchanged();
+ await review.recoverOriginalAndKeepNewerDraft(packet);await review.unchanged();
 });
+
+
+for(const outcome of ['complete','failure']){
+ test(`late ${outcome} response after a supported case and conversation switch cannot overwrite the newer draft`,async({page,groundedReview:review},testInfo)=>{
+  const {app,client,record}=review;
+  // Create the alternate case through the real UI before any request is pending.
+  await selectCustomer(page,client.displayName);
+  const other=await createLinkedCase(page,client,'Synthetic alternate isolation case');
+  await openLinkedCase(page,client.displayName,record.title);await review.settled();
+  const packet=await review.begin('prepared',{holdResponse:true});
+  const next=await createEmptyConversation(page,app,record,'Synthetic independent conversation');
+  // In-flight conversation controls are deliberately disabled. Use the supported
+  // case-switch confirmation instead, return, and select a different conversation.
+  await expect(review.chat.getByRole('button',{name:'New conversation',exact:true})).toBeDisabled();
+  const acceptSwitch=async dialog=>{
+   expect(dialog.type()).toBe('confirm');
+   expect(dialog.message()).toContain('Switching cases clears unsaved input');
+   await dialog.accept();
+  };
+  page.on('dialog',acceptSwitch);
+  try{await openLinkedCase(page,client.displayName,other.title);}
+  finally{page.off('dialog',acceptSwitch);}
+  await review.settled();
+  await openLinkedCase(page,client.displayName,record.title);await review.settled();
+  const selector=review.chat.getByRole('combobox',{name:'Saved conversations',exact:true});
+  await selector.selectOption(next.id);await review.settled();await expect(selector).toHaveValue(next.id);
+  const input=review.chat.locator('.chat-input'),newer='This newer synthetic draft belongs only to the selected conversation.';
+  await input.fill(newer);
+  expect(await page.evaluate(()=>window.__groundedReviewControl.aborted)).toBe(true);
+  await page.evaluate(value=>window.__groundedReviewControl.releaseLateResponse(value),outcome);
+  await expect.poll(()=>page.evaluate(()=>window.__groundedReviewControl.responseReturned),{message:'Old fetch response actually delivered after scope change'}).toBe(true);
+  await expect(input).toHaveValue(newer);await expect(review.cards).toHaveCount(0);
+  await expect(review.chat.getByText(packet.done.reviewResult.text,{exact:true})).toHaveCount(0);
+  await expect(review.chat.getByText(originalQuestion,{exact:true})).toHaveCount(0);
+  await review.chat.getByRole('button',{name:'Reload conversation',exact:true}).click();
+  await expect(review.chat.getByText('Conversation restored from the server',{exact:true})).toBeVisible();await review.settled();
+  await expect(input).toHaveValue(newer);
+  await expect(review.chat.getByRole('button',{name:'Send',exact:true})).toBeEnabled();
+  await expect(selector).toHaveValue(next.id);await expect(review.cards).toHaveCount(0);
+  expect((await getJson(page,app,`/api/conversations/${next.id}`)).messages).toEqual([]);
+  expect(await review.savedAssistant(packet)).toHaveLength(outcome==='complete'?1:0);
+  expect((await getJson(page,app,`/api/cases/${other.id}`)).case).toEqual(other);
+  await review.unchanged();await screenshot(page,testInfo,`grounded-review-late-${outcome}-isolated`);
+ });
+}

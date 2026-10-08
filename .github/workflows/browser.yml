@@ -18,6 +18,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+          # Build the actual historical frontend at its immutable source pin.
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -30,11 +32,14 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends poppler-utils
       - name: Build the production frontend
         run: npm run build
+      - name: Build the pinned pre-review-result frontend in isolation
+        run: node test/helpers/build-legacy-review-browser.mjs
       - name: Verify the disposable backend fixture over real HTTP
         run: |
           node test/frontend-browser/fixture.check.mjs
           node test/frontend-browser/formats-fixture.check.mjs
           node test/frontend-browser/customer-cases-fixture.check.mjs
+          node test/frontend-browser/legacy-review-fixture.check.mjs
       - name: Run real-browser journeys against disposable Node and SQLite
         run: npm run test:browser:frontend
       - name: Describe the exact acceptance boundary
@@ -47,6 +52,7 @@ jobs:
             echo 'This job uses built frontend assets, real HTTP, real SQLite, and synthetic disposable accounts/files.'
             echo 'Read the test result for pass/fail. A component-only pass does not establish the product journeys.'
             echo 'The customer-case scenario tests an isolated Node restart with the same SQLite/assets and an unchanged valid login session; check individual test results.'
+            echo 'Legacy review compatibility loads the full frontend from 090d08ee4823c041b1f835d4ac307e7963b6fb93, built separately with the identical lockfile. API/chat/history use the current server and real SQLite; only provider transport is synthetic and outbound is fail-closed.'
             echo 'Live DeepSeek extraction/chat/vision, genuine email delivery, production host/container restart or restore, and production deployment are NOT RUN by this job.'
           } >> "$GITHUB_STEP_SUMMARY"
       - name: Retain synthetic browser report and failure evidence
@@ -57,5 +63,6 @@ jobs:
           path: |
             playwright-report/
             test-results/
+            artifacts/legacy-review-browser/manifest.json
           retention-days: 7
           if-no-files-found: ignore
