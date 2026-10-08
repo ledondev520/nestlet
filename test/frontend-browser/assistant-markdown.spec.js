@@ -46,13 +46,23 @@ test('assistant Markdown is safe, accessible, mobile-scrollable and copied verba
       await page.setViewportSize({ width, height: 900 });
       await noHorizontalOverflow(page);
       const table = assistant.getByRole('region', { name: 'Response table (scroll horizontally)' });
+      await table.evaluate(element=>element.scrollIntoView({block:'center',inline:'nearest'}));
       await table.focus(); await expect(table).toBeFocused();
+      const captureTable=async name=>{
+        const tableBox=await table.boundingBox(), historyBox=await page.locator('.chat-thread').boundingBox(), composerBox=await page.locator('.chat-composer').boundingBox();
+        expect(tableBox.y).toBeGreaterThanOrEqual(historyBox.y-1);
+        expect(tableBox.y+tableBox.height).toBeLessThanOrEqual(Math.min(historyBox.y+historyBox.height,composerBox.y)+1);
+        await screenshot(page,testInfo,name);
+      };
       if (width <= 390) {
         expect(await table.evaluate(el => el.scrollWidth > el.clientWidth)).toBe(true);
-        await table.press('ArrowRight');
+        for(let key=0;key<12;key++) await table.press('ArrowLeft');
+        await expect.poll(()=>table.evaluate(el=>el.scrollLeft)).toBe(0);
+        await captureTable(`assistant-markdown-${width}-table-left`);
+        for(let key=0;key<8;key++) await table.press('ArrowRight');
         await expect.poll(() => table.evaluate(el => el.scrollLeft)).toBeGreaterThan(0);
-      }
-      await screenshot(page, testInfo, `assistant-markdown-${width}`);
+        await captureTable(`assistant-markdown-${width}-table-right`);
+      } else await captureTable(`assistant-markdown-${width}`);
     }
     expect(requests).toEqual([]);
     await assertClean();
