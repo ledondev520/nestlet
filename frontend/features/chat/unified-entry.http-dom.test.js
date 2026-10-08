@@ -142,4 +142,8 @@ for(const indexMode of ['other','empty'])test(`same-user pending reply stays acc
   await React.act(async()=>{window.location.hash='#chat?conversation=11111111-1111-4111-8111-111111111111';});await wait(()=>!visibleChat(),'Unrelated unknown link does not expose this recovery');
   await React.act(async()=>{window.location.hash=`#chat?conversation=${first.id}`;});await wait(visibleChat,'Returning to the cached original exposes its unconfirmed copy');
   assert.equal(button('Send').disabled,true);assert.equal(requests.some(item=>item.method==='POST'),false);
+  let warning='';dom.window.confirm=message=>{warning=message;return false;};
+  await change(document.querySelector('.chat-input'),'');await click(button('New conversation'));
+  assert.match(warning,/unsaved input and replies/,'The global guard explains that the received reply is unconfirmed');
+  assert.match(chat().textContent,/Received unconfirmed reply must remain visible/);
 });

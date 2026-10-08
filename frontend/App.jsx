@@ -73,7 +73,7 @@ function AccountWorkspace({ lang, view, navigate, shellProps, notices }) {
   const markIntakeDirty = useCallback(value => { dirty.current.intake = value; }, []);
   const openCase = useCallback((nextId, destination = 'chat', fresh = false, preserveRoute = false) => {
     if (fresh || nextId !== caseIdRef.current) {
-      if (Object.values(dirty.current).some(Boolean) && !window.confirm(lang === 'zh' ? '切换工作区会丢失当前未保存的输入，并停止正在进行的请求。继续？' : 'Switching workspace clears unsaved input and stops active requests. Continue?')) return false;
+      if (Object.values(dirty.current).some(Boolean) && !window.confirm(lang === 'zh' ? '切换工作区会丢失尚未保存的输入和回复，并停止当前请求。继续？' : 'Switching workspace clears unsaved input and replies and stops active requests. Continue?')) return false;
       dirty.current = { chat: false, documents: false, intake: false };
       draftVault.clearWorkspace(userIdRef.current, workspaceKey);
       setWorkspaceKey(crypto.randomUUID());
