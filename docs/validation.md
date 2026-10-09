@@ -2,6 +2,12 @@
 
 Checkpoint: 2026-10-07. This is a development checkpoint, not final acceptance. Deployment and real-browser integration remain separate; rerun after the final source freeze.
 
+## Unknown agency requirements remain unverified, 2026-10-09
+
+A same-history live retest of `c5e988a` correctly recognized the completed document and stopped applying the selected agency’s specific rules, but used categorical absence wording for unknown PHA. The context did not contain an empty requirements list; its “no requirement is established” instruction was ambiguous. This bounded correction explicitly labels case requirements `not_verified` and uses “尚未核实哪些机构要求适用，不代表没有要求”. Unknown/empty/withheld guidance cannot establish absence or waiver. No other behavior, source history, case data, document metadata or schema changes.
+
+Focused regression checks the internal status and exact epistemic instruction. Fixture tests do not establish live model wording; original-history live revalidation remains required after release.
+
 ## Current-case document and agency grounding, 2026-10-09
 
 Branch `fix/current-case-document-grounding`, based on `1d6c259`. A live saved-case summary incorrectly described only old conversation-linked drafts although the document UI showed a current completed followup version 3; it also repeated selected-agency requirements while the reviewed PHA was unknown. The previous prompt had no case-wide artifact inventory, and source-message artifact links omit independently generated documents.
