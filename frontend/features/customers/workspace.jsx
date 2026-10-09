@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { clientSearchPath, emptyCasePayload, errorCopy, formatDate, localeCopy, validLabel } from './copy';
 import { useApiResource, useReturnFocus, useScopedMutation } from './hooks';
 import { OriginalMaterials } from './original-materials';
+import { CaseManagement } from './case-management';
 import { LinkExistingCase } from './link-existing-case';
 import { SavedCases } from './saved-cases';
 import { casesCopy } from './saved-cases-copy';
@@ -103,7 +104,7 @@ function CreateCase({ api, clientId, t, onCreated, onCancel }) {
   </form>;
 }
 
-function CustomerDetail({ api, customerId, lang, onOpenCase, onRenamed, onCreatedCase, onDeletedCase, active, refreshKey }) {
+function CustomerDetail({ api, customerId, lang, onOpenCase, onRenamed, onCreatedCase, onManageCase, managementBusy, active, refreshKey }) {
   const t = localeCopy(lang);
   const activeRef = useRef(active); activeRef.current = active;
   const wasActive = useRef(active);
@@ -152,8 +153,8 @@ function CustomerDetail({ api, customerId, lang, onOpenCase, onRenamed, onCreate
     <Card className="paper-card gap-4">
       <CardHeader><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="paper-title text-xl">{t.cases}</h2><Button type="button" size="sm" variant="outline" ref={caseTrigger} disabled={!client.data || creatingCase || renaming} onClick={() => { setCreatingCase(true); setNotice(''); }}><Plus aria-hidden="true" />{t.newCase}</Button></div></CardHeader>
       <CardContent className="space-y-4">
-        <Button type="button" variant="outline" size="sm" disabled={linking||!client.data} onClick={()=>setLinking(true)}>{lang==='en'?'Link existing case':'关联事项'}</Button>
-        {linking&&active&&<LinkExistingCase api={api} clientId={customerId} lang={lang} onCancel={()=>setLinking(false)} onDone={result=>{setLinking(false);refresh();onCreatedCase?.();if(result.deleted)onDeletedCase?.(result.deleted);}}/>}
+        <Button type="button" variant="outline" size="sm" disabled={linking||!client.data||managementBusy} onClick={()=>setLinking(true)}>{lang==='en'?'Link existing case':'关联事项'}</Button>
+        {linking&&active&&<LinkExistingCase api={api} clientId={customerId} lang={lang} onCancel={()=>setLinking(false)} disabled={managementBusy} onSelect={(id,clientId,trigger)=>{onManageCase(id,clientId,trigger);setLinking(false);}}/>}
         {creatingCase && <CreateCase api={api} clientId={customerId} t={t} onCreated={created} onCancel={() => setCreatingCase(false)} />}
         {cases.loading && <Loading label={t.loading} />}
         <ErrorNotice error={cases.error} t={t} onRetry={cases.refresh} />
@@ -191,6 +192,19 @@ export function CustomerWorkspace({ api, lang = 'zh', onOpenCase, onDeletedCase,
   const [selectedId, setSelectedId] = useState(null);
   const [caseRevision, setCaseRevision] = useState(0);
   const [allCases, setAllCases] = useState([]);
+  // Keep an in-flight management operation mounted across list filters, customer
+  // selection and hidden-page navigation. Only an account change discards it.
+  const [management,setManagement]=useState(null),[managementBusy,setManagementBusy]=useState(false),[managementNotice,setManagementNotice]=useState('');
+  const managementTrigger=useRef(null);
+  useReturnFocus(Boolean(management),managementTrigger);
+  function manageCase(id,suggestedClientId,trigger){if(managementBusy)return;managementTrigger.current=trigger;setManagementNotice('');setManagement({id,suggestedClientId});}
+  function managementDone(result){
+    setManagement(null);setManagementBusy(false);setCaseRevision(value=>value+1);setOriginalsRevision(value=>value+1);
+    setManagementNotice(result.deleted?archiveCopy.deleted:result.unavailable?archiveCopy.unavailable:archiveCopy.saved);
+    // An unavailable read/save is not a confirmed deletion and must keep drafts.
+    if(result.deleted)onDeletedCase?.(result.deleted);
+  }
+
   const [originalsOpen, setOriginalsOpen] = useState(false);
   const [originalsRevision, setOriginalsRevision] = useState(0);
   const archiveCopy = casesCopy(lang);
@@ -210,7 +224,9 @@ export function CustomerWorkspace({ api, lang = 'zh', onOpenCase, onDeletedCase,
   }
   return <div className="space-y-7">
     <header><div className="mb-3 flex flex-wrap items-center justify-between gap-2"><p className="text-[11px] font-medium tracking-[.16em] text-muted-foreground">{t.eyebrow}</p><span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"><ShieldCheck className="size-3.5" aria-hidden="true" />{t.private}</span></div><h1 className="paper-title text-3xl leading-tight sm:text-4xl">{t.title}</h1><p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">{t.intro}</p></header>
-    <SavedCases api={api} lang={lang} onOpenCase={onOpenCase} active={active} refreshKey={caseRevision} onRecords={setAllCases} onChanged={result=>{setCaseRevision(value=>value+1);if(result.deleted)onDeletedCase?.(result.deleted);}} />
+    {managementNotice&&<p role="status">{managementNotice}</p>}
+    {management&&<CaseManagement key={management.id} api={api} caseId={management.id} suggestedClientId={management.suggestedClientId} lang={lang} onDone={managementDone} onCancel={()=>setManagement(null)} onBusyChange={setManagementBusy}/>}
+    <SavedCases api={api} lang={lang} onOpenCase={onOpenCase} active={active} refreshKey={caseRevision} onRecords={setAllCases} onManageCase={manageCase} managementBusy={managementBusy} />
     <details className="rounded-xl border bg-card p-5" onToggle={event => setOriginalsOpen(event.currentTarget.open)}><summary className="cursor-pointer rounded-sm text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring">{archiveCopy.allOriginals}</summary><p className="mt-2 whitespace-pre-line text-xs leading-relaxed text-muted-foreground">{archiveCopy.originalsHint}</p>{originalsOpen && <div className="mt-4"><OriginalMaterials api={api} cases={allCases} lang={lang} refreshKey={originalsRevision} /></div>}</details>
     <div className="grid items-start gap-6 md:grid-cols-[260px_minmax(0,1fr)]">
       <Card className="paper-card min-w-0 gap-4">
@@ -225,7 +241,7 @@ export function CustomerWorkspace({ api, lang = 'zh', onOpenCase, onDeletedCase,
           {directory.data && <><p className="text-xs text-muted-foreground" role="status">{t.results(directory.data.length)}</p>{directory.data.length === 0 ? <Empty icon={Users} title={query.trim() ? t.noMatches : t.customersEmpty} description={query.trim() ? t.noMatchesHint : t.customersEmptyHint} /> : <ul className="space-y-1" aria-label={t.directory}>{directory.data.map(client => <li key={client.id}><Button type="button" variant="ghost" aria-pressed={selectedId === client.id} onClick={() => select(client.id)} className={cn('h-auto min-h-16 w-full items-start justify-start gap-3 px-3 py-3 text-left whitespace-normal', selectedId === client.id && 'border-l-2 border-primary bg-secondary')}><UserRound className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" /><span className="min-w-0"><span className="block break-words text-sm font-medium">{client.displayName}</span><span className="mt-1 block break-all text-[10px] font-normal text-muted-foreground">{t.recordId}: {client.displayId||'—'}</span><span className="mt-1 block text-[10px] font-normal text-muted-foreground">{formatDate(client.updatedAt, lang)}</span></span></Button></li>)}</ul>}</>}
         </CardContent>
       </Card>
-      {selectedId ? <CustomerDetail key={selectedId} api={api} customerId={selectedId} lang={lang} onOpenCase={onOpenCase} onRenamed={() => directory.refresh()} onCreatedCase={() => setCaseRevision(value => value + 1)} refreshKey={caseRevision} onDeletedCase={onDeletedCase} active={active} /> : <Card className="paper-card min-h-80 justify-center"><CardContent><Empty icon={FolderOpen} title={t.selectedEmpty} description={t.selectedEmptyHint} /></CardContent></Card>}
+      {selectedId ? <CustomerDetail key={selectedId} api={api} customerId={selectedId} lang={lang} onOpenCase={onOpenCase} onRenamed={() => directory.refresh()} onCreatedCase={() => setCaseRevision(value => value + 1)} refreshKey={caseRevision} onManageCase={manageCase} managementBusy={managementBusy} active={active} /> : <Card className="paper-card min-h-80 justify-center"><CardContent><Empty icon={FolderOpen} title={t.selectedEmpty} description={t.selectedEmptyHint} /></CardContent></Card>}
     </div>
   </div>;
 }

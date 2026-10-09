@@ -12,7 +12,7 @@ const copy = {
 const editableKeys = ['sourceText','fields','draftType','draftText','extractionMode','namesVerified'];
 
 /** The current canonical version is reviewed before a write. Never replay an uncertain mutation. */
-export function CaseManagement({api, caseId, lang='zh', suggestedClientId, onDone, onCancel}) {
+export function CaseManagement({api, caseId, lang='zh', suggestedClientId, onDone, onCancel, onBusyChange}) {
   const t=copy[lang==='en'?'en':'zh'], id=useId(), mutation=useScopedMutation(), nameInput=useRef(null);
   const [loaded,setLoaded]=useState(null),[readError,setReadError]=useState(null),[revision,setRevision]=useState(0);
   const [title,setTitle]=useState(''),[clientId,setClientId]=useState(''),[deleting,setDeleting]=useState(false);
@@ -28,6 +28,7 @@ export function CaseManagement({api, caseId, lang='zh', suggestedClientId, onDon
     return()=>controller.abort();
   },[api,caseId,revision,suggestedClientId]);
   useEffect(()=>{if(loaded)nameInput.current?.focus();},[loaded]);
+  useEffect(()=>{onBusyChange?.(mutation.pending);},[mutation.pending,onBusyChange]);
   const error=readError||mutation.error, blocked=mutation.pending||!loaded||Boolean(error);
   function reload(){mutation.clearError();setRevision(value=>value+1);}
   function save(event){
@@ -43,7 +44,7 @@ export function CaseManagement({api, caseId, lang='zh', suggestedClientId, onDon
   return <section aria-label={t.title} className="w-full space-y-4 rounded-lg border bg-background p-4">
     <h3 className="font-medium">{t.title}</h3>
     {!loaded&&!readError&&<p role="status">{t.loading}</p>}
-    {error&&<div role="alert" className="space-y-2 text-sm"><p className="whitespace-pre-line">{error.status===404?t.gone:error.code==='CASE_CONFLICT'?t.conflict:t.failed}</p><Button type="button" variant="outline" disabled={mutation.pending} onClick={error.status===404?()=>onDone?.({deleted:caseId}):reload}>{error.status===404?t.close:t.retry}</Button></div>}
+    {error&&<div role="alert" className="space-y-2 text-sm"><p className="whitespace-pre-line">{error.status===404?t.gone:error.code==='CASE_CONFLICT'?t.conflict:t.failed}</p><Button type="button" variant="outline" disabled={mutation.pending} onClick={error.status===404?()=>onDone?.({unavailable:caseId}):reload}>{error.status===404?t.close:t.retry}</Button></div>}
     {loaded&&<form onSubmit={save} className="space-y-3">
       <div className="space-y-2"><Label htmlFor={`${id}-name`}>{t.name}</Label><Input ref={nameInput} id={`${id}-name`} value={title} maxLength={120} disabled={blocked||deleting} onChange={event=>setTitle(event.target.value)}/></div>
       <div className="space-y-2"><Label htmlFor={`${id}-customer`}>{t.customer}</Label><NativeSelect id={`${id}-customer`} value={clientId} disabled={blocked||deleting} onChange={event=>setClientId(event.target.value)}><NativeSelectOption value="">{t.none}</NativeSelectOption>{loaded.clients.map(client=><NativeSelectOption key={client.id} value={client.id}>{client.displayName} · {client.displayId||client.id}</NativeSelectOption>)}</NativeSelect><p className="whitespace-pre-line text-xs text-muted-foreground">{t.hint}</p></div>

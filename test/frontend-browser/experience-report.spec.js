@@ -68,3 +68,17 @@ for(const width of [1440,390])test(`experience report: associate, rename, review
  await expect(page.locator('[data-feature="chat"]')).not.toHaveAttribute('data-case-id',record.id);
  await assertClean();
 });
+
+test('a remote deletion followed by a failed rename preserves unsaved case material',async({page,customerApp:app})=>{
+ await signInCustomer(page,app);
+ const created=await apiWrite(page,app,'/api/cases','POST',{title:'Synthetic remote deletion',sourceText:'Saved synthetic material',fields:[],draftType:'followup',draftText:''});expect(created.status()).toBe(201);const record=(await created.json()).case;
+ await navigate(page,'Customers');await page.getByRole('button',{name:`Open saved case: ${record.title}`,exact:true}).click();
+ await navigate(page,'Materials & facts');await page.getByLabel('Case source text',{exact:true}).fill('Unsaved synthetic material must survive');
+ await navigate(page,'Customers');await page.getByRole('button',{name:`Manage case: ${record.title}`,exact:true}).click();
+ const manage=page.getByRole('region',{name:'Manage case',exact:true});await expect(manage.getByLabel('Case title',{exact:true})).toHaveValue(record.title);
+ const removed=await apiWrite(page,app,`/api/cases/${record.id}`,'DELETE',{expectedVersion:record.version});expect(removed.status()).toBe(200);
+ const rejected=responseFor(page,`/api/cases/${record.id}`,'PUT');await manage.getByRole('button',{name:'Save changes',exact:true}).click();expect((await rejected).status()).toBe(404);
+ await manage.getByRole('button',{name:'Back to list',exact:true}).click();
+ await expect(page.getByText('Case unavailable. Workspace drafts were not discarded.',{exact:true})).toBeVisible();
+ await navigate(page,'Materials & facts');await expect(page.getByLabel('Case source text',{exact:true})).toHaveValue('Unsaved synthetic material must survive');
+});

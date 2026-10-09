@@ -1,6 +1,6 @@
 export const savedCasesCopy = {
   zh: {
-    manage:'管理事项', saved:'修改已保存。', deleted:'事项已删除，已存原件保留。',
+    unavailable:'事项暂不可用，未清除工作区草稿。', manage:'管理事项', saved:'修改已保存。', deleted:'事项已删除，已存原件保留。',
     allOriginals: '全部原件', originalsHint: '查看本账号保存的全部原件。\n无需先选客户或事项。',
     title: '已存事项', intro: "选择事项，接着处理。",
     all: '全部事项', recent: '最近十项', unassigned: '未选客户', scope: '显示范围',
@@ -18,7 +18,7 @@ export const savedCasesCopy = {
     page: (page, pages) => `第 ${page} / ${pages} 页`
   },
   en: {
-    manage:'Manage case', saved:'Changes saved.', deleted:'Case deleted. Saved originals were retained.',
+    unavailable:'Case unavailable. Workspace drafts were not discarded.', manage:'Manage case', saved:'Changes saved.', deleted:'Case deleted. Saved originals were retained.',
     allOriginals: 'All originals, including unassigned', originalsHint: 'Expand to find saved files without selecting a customer or case first.',
     title: 'Saved cases', intro: "Continue a saved case.",
     all: 'All cases', recent: 'Latest 10', unassigned: 'Unassigned', scope: 'Case scope',

@@ -134,7 +134,7 @@ test('customer → two cases → resolved question and document versions → rea
     await navigate(page, 'Documents');
     const documents = page.getByTestId('documents-page');
     await expect(documents.getByText(resolution, { exact: true })).toBeVisible();
-    await expect(documents.getByText('The essential details are ready.', { exact: true })).toBeVisible();
+    await expect(documents.getByText('The supplementary document details are ready.', { exact: true })).toBeVisible();
     await expect(documents.getByLabel('Recipient / department', { exact: true })).toHaveCount(0);
     for (const [artifact, content] of [[final, finalText], [draft, draftText]]) {
       await documents.locator(`[data-artifact-id="${artifact.id}"]`).getByRole('button', { name: 'Open', exact: true }).click();
