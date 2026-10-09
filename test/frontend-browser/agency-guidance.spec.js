@@ -42,11 +42,17 @@ test('official references across chat/materials/documents: bilingual keyboard di
 
     for (const width of [320, 390, 1280]) {
       await page.setViewportSize({ width, height: width === 1280 ? 900 : 844 });
+      // matchMedia changes the React navigation host asynchronously after resize.
+      // Wait for the intended host before focusing; never press a detached mobile tab.
+      const navigationHost = page.locator(width < 960 ? '.wb > .wb-global-navigation' : '.wb-topbar .wb-global-navigation');
+      const navigation = navigationHost.getByRole('navigation', { name: zh ? '页面导航' : 'Workspace navigation' });
+      await expect(navigation).toBeVisible();
+      await expect(page.locator('.wb [aria-modal="true"]')).toHaveCount(0);
       for (const [view, label] of views) {
         await test.step(`${language} / ${width}px / ${view}: open, select, inspect, close`, async () => {
-          const navigation = page.getByRole('navigation', { name: zh ? "页面导航" : 'Workspace navigation' });
           const tab = navigation.getByRole('button', { name: label, exact: true });
           await tab.focus();
+          await expect(tab).toBeFocused();
           await page.keyboard.press('Enter');
           await expect(tab).toHaveAttribute('aria-current', 'page');
           await expect(tab).toBeFocused();
@@ -120,7 +126,10 @@ test('official references across chat/materials/documents: bilingual keyboard di
           await noHorizontalOverflow(page);
           expect((await getJson(page, app, `/api/cases/${record.id}`)).case).toEqual(original);
           expect(await getJson(page, app, readinessPath)).toEqual(readiness);
-          if (width < 960) await page.keyboard.press('Escape');
+          if (width < 960) {
+            await page.keyboard.press('Escape');
+            await expect(page.locator('.wb [aria-modal="true"]')).toHaveCount(0);
+          }
           expect(mutations, 'Reference-only interactions must not write case/customer/document/material/conversation data').toEqual([]);
         });
       }
