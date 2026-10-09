@@ -102,7 +102,7 @@ test('realHTTP + controlledDOM: documents and promoted root preserve case facts,
   await enter('document-body',finalBody+'\nPending local edit.');
   assert.equal(button('Download TXT').disabled,true);
   assert.equal(button('Print / Save PDF').disabled,true);
-  assert.equal(button('Generate final document').disabled,true);
+  assert.equal(button('Generate another document').disabled,true);
   await enter('document-body',finalBody);
 
   await click('Add a question');await enter('document-issue-question','Which secure channel should be used?');await enter('document-issue-resolution','Confirmed the example agency secure channel.');
@@ -177,7 +177,7 @@ test('realHTTP + controlledDOM: documents and promoted root preserve case facts,
   assert.equal(caseWrites(),writesBefore,'Changing references and language makes no case/artifact mutations');
   assert.deepEqual((await(await request(`/api/cases/${record.id}`)).json()).case,beforeReferenceChange);
   assert.deepEqual(await(await request(`/api/cases/${record.id}/readiness?kind=followup&locale=en`)).json(),beforeReadiness);
-  await click('Generate final document');
+  await click('Generate another document');
   await waitFor(()=>dom.window.document.getElementById('document-body')?.value.includes('Supplementary correspondence;'));
   const rootDocument=dom.window.document.getElementById('document-body').value;
   assert.doesNotMatch(rootDocument,/[\p{Script=Han}]|Oakland|OHA|SFHA/u,'Reference choice does not become a document fact');

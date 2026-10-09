@@ -21,7 +21,15 @@ for (const delayedReadiness of [false, true]) test(`desktop document review gate
     expect(rejected.status()).toBe(409);
     expect((await getJson(page,app,`/api/cases/${record.id}/artifacts`)).artifacts).toEqual([]);
     await navigate(page,'Conversation');
-    await page.getByTestId('chat-case-workflow').getByRole('button',{name:'Finish and preview English document',exact:true}).click();
+    const workflow = page.getByTestId('chat-case-workflow');
+    if (delayedReadiness) {
+      // An intentionally held inventory/readiness check cannot truthfully claim
+      // that a new document is needed. Navigation remains available meanwhile.
+      await expect(workflow.getByRole('button',{name:'Finish and preview English document',exact:true})).toHaveCount(0);
+      await workflow.getByRole('button',{name:'View saved documents',exact:true}).click();
+    } else {
+      await workflow.getByRole('button',{name:'Finish and preview English document',exact:true}).click();
+    }
     await expect(documents.getByText('No saved document versions yet.',{exact:true})).toBeVisible();
     if (delayedReadiness) await expect(documents.locator('#document-answer-property')).toHaveCount(0);
   } finally {

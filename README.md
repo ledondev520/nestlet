@@ -6,6 +6,12 @@ A standalone JavaScript frontend and backend for one Housing Choice Voucher pape
 
 ## Product contract and release status
 
+**Current operator guidance, October 9, 2026:** start with the [current onboarding guide](docs/onboarding.md). The workspace supports unified conversations, source review, saved records and document downloads. Login sessions, request allowances and validated browser-saved provider settings are durable, subject to their expiry and recovery rules. Commercialization is deferred; manual service controls are not payments or subscriptions. Synthetic end-to-end CI and limited production acceptance are separate evidence categories.
+
+### Historical release checkpoints (October 7, 2026)
+
+The following dated checkpoints retain what was known then; pending items below are not current setup instructions.
+
 The final workflow starts empty and uses real document parsing and `deepseek-flash` extraction. It must not substitute samples, mocked model output, a local rule extractor or an older model alias when configuration or a provider call fails. Test fixtures and isolated fake-provider tests are development evidence only.
 
 **Checkpoint, October 7, 2026:** operator authentication, protected parser/extraction/settings routes, real PDF/Excel import, Flash-only extraction and authenticated HTTPS key settings are implemented. The workflow starts empty and has no silent mock/provider fallback. Local Codex reported a real-browser retake against `8b429` covering login, PDF/Excel and exports, plus 87 core and five independent HTTP checks; see [validation](docs/validation.md) for the exact evidence and limitations.
@@ -16,9 +22,11 @@ The initial private loopback deployment of `8b429` was reported successful at 04
 
 ## Accounts, cases and release scope
 
+The dated implementation checkpoint below is historical. For current registration, session and provider behavior, use [onboarding](docs/onboarding.md).
+
 **Implementation checkpoint, October 7, 2026, 06:07 UTC:** named trial logins and server-local SQLite case storage are implemented and awaiting final CI, browser and deployment verification. Self-service web registration and ordinary/administrator roles are now explicitly in scope and are implemented, with final release verification pending. This is not a completed customer pilot or evidence that the new release is already on the public service.
 
-Use explicit **Save / Open / Delete** for a case. The page’s preview, editing, copy, download and print remain primary; saving is optional. Saved source text, reviewed fields and drafts belong to the signed-in user. The owner also sees only their own cases; trial users cannot manage the API key or provider settings. Web username/password registration is implemented with a server-assigned ordinary role; administrators bootstrap privately and cannot be selected at registration. Shared teams, CRM and cross-user case administration are not included.
+Use explicit **Save / Open / Delete** for a case. The page’s preview, editing, copy, download and print remain primary; saving is optional. Saved source text, reviewed fields and drafts belong to the signed-in user. The owner also sees only their own cases; trial users cannot manage the API key or provider settings. Current web registration uses email verification with a server-assigned ordinary role; existing username logins remain supported. Administrators bootstrap privately and cannot be selected at registration. Shared teams, CRM and cross-user case administration are not included.
 
 Node.js 24 is required. Configure `NESTLET_DB_PATH` to an explicit private absolute path for direct launch. Docker uses `/data/nestlet.sqlite` on the dedicated `case_data` volume. Saved cases and explicitly saved original files survive process/container restart when that volume is preserved. Private originals default to the assets directory beside SQLite, with optional NESTLET_ASSETS_PATH configuration. Manual verified backup/restore/export commands are implemented; no automatic backups are configured. Never remove/prune the data volume as routine deployment or rollback. [SQLite runtime](docs/sqlite-runtime.md)
 
@@ -42,7 +50,7 @@ The JavaScript/JSX React + shadcn/ui workspace is served at `/`, with `/next/` r
 node --env-file=.env server.js
 ```
 
-Protected routes require configured operator authentication, sign-in and CSRF protection. For real extraction, configure an authorized key either server-side with `DEEPSEEK_API_KEY` and `ENABLE_LIVE_AI=true`, or through the implemented authenticated HTTPS Settings screen with explicit enablement. Browser-entered keys are validated, then encrypted in a private provider-settings SQLite file before activation. A separately provisioned private wrapping-key file is required; see [provider credential storage](docs/provider-config-storage.md). The only supported product model is `deepseek-flash`; legacy aliases are not maintained. An absent key must be a visible configuration blocker, not an offline success. No live account/key/model response has yet been verified by the project.
+Protected routes require configured operator authentication, sign-in and CSRF protection. For real extraction, configure an authorized key either server-side with `DEEPSEEK_API_KEY` and `ENABLE_LIVE_AI=true`, or through the authenticated HTTPS assistant settings Save action. Browser-entered keys are validated, then encrypted in a private provider-settings SQLite file before activation. A separately provisioned private wrapping-key file is required; see [provider credential storage](docs/provider-config-storage.md). The only supported product model is `deepseek-flash`; legacy aliases are not maintained. An absent key must be a visible configuration blocker, not an offline success. Save performs one bounded synthetic completion before encrypted persistence and activation; it can consume provider quota. Failure leaves the previous configuration unchanged. An existing environment-provided production connection is not automatically imported into this store. See [current verification boundaries](docs/onboarding.md#7-verification-boundaries).
 
 Never paste secrets into chat, arbitrary browser fields, screenshots or commits. The operator personally enters/submits credentials only through the authorized private setup or the authenticated HTTPS Settings screen. Before sending any production tenant material, resolve provider terms, retention, training use, geography and authorization. The current development build accepts synthetic or thoroughly de-identified inputs only. [Provider notes](docs/provider.md)
 
@@ -74,7 +82,7 @@ Assistance is optional. Keep the existing process and use Nestlet only when a fi
 4. Select a supported English document type, generate and edit the draft
 5. Verify placeholders, recipient, facts, dates and attachments before copy/TXT/print export
 
-The interface defaults to Simplified Chinese and supports English, including errors. External draft boilerplate is English in either locale. Case values and manual edits are preserved rather than silently translated; the operator must ensure the complete formal artifact is English. Print / Save PDF is a browser export, not an official-government PDF generator.
+The interface defaults to Simplified Chinese and supports English, including errors. External draft boilerplate is English in either locale. Case values and manual edits are preserved rather than silently translated; the operator must ensure the complete formal artifact is English. Direct PDF download and browser print are supported exports, not official-government form completion.
 
 “Not provided here” never means “not submitted to the agency.” Proposed rent is not approved rent. Operator confirmation is not agency verification. [Product scope](docs/product.md)
 
@@ -82,7 +90,7 @@ The interface defaults to Simplified Chinese and supports English, including err
 
 Frontend, backend and parser code live in this repository. Sites is only a temporary preview and is not a runtime or deployment dependency. An owner-only preview is not assumed accessible to collaborators.
 
-The owner selected the same VPS as the existing Jiesong service, with Nestlet isolated as an independent service. Private addresses and access details are not published here. An initial loopback container deployment is reported above; certificate issuance has completed, but trusted HTTPS activation is still being verified. [Deployment status and guide](docs/deployment.md) distinguishes implementation, deployment, configuration and verification. Owner/named-trial access and own-user case isolation are implemented in the new feature pending final release verification; production privacy readiness is not established.
+The owner selected the same VPS as the existing Jiesong service, with Nestlet isolated as an independent service. Private addresses and access details are not published here. Trusted public HTTPS activation was verified in the October 7 run linked above. Always use the authorized HTTPS entry point and heed certificate errors; that historical result is not continuous availability monitoring. [Deployment status and guide](docs/deployment.md) distinguishes implementation, deployment, configuration and verification. Owner, registered and named-trial access use own-user record isolation. Production privacy readiness is not established by deployment or test results.
 
 ## Data boundaries
 
@@ -100,7 +108,7 @@ No real personal records, raw customer materials, secret values or private infra
 - [Prepared owner-controlled administrator capability and schema6 release gates](docs/account-administration.md)
 - [Durable login sessions and schema8 recovery](docs/durable-login-sessions.md)
 - [Remembered library permission and schema9 recovery](docs/library-permission.md)
-- [First operator session and verification gates](docs/onboarding.md)
+- [Current operator session and verification boundaries](docs/onboarding.md)
 - [Code and data flow](docs/code-walkthrough.md)
 - [Collaboration contract](docs/collaboration.md)
 - [Local Codex acceptance task](docs/tasks/local-codex-acceptance.md)

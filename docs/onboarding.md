@@ -1,62 +1,57 @@
-# First operator session
+# Current operator session
 
-Checkpoint: October 7, 2026. Keep the existing process. If a first actual administrative case reveals a concrete difficulty, optionally try assistance with appropriately de-identified material. No ROI or time saving has been demonstrated; do not expand scope before checking whether the reviewed result is useful.
+Updated October 9, 2026 against main `52f6ce549ea847274caaa3b973814bc23f448b3a` (PRs #50–54). Prioritize completing the user's task and checking the whole journey. Commercialization is deferred: existing manual service controls are not checkout, payments or subscriptions. No ROI or time saving has been demonstrated. Dated October 7 validation matrices and design plans remain historical evidence, not current setup instructions.
 
-## 1. Establish a trusted entry point
+## 1. Use the trusted entry point
 
-The initial private loopback container deployment is separate from public access. Certificate issuance has completed, but public HTTPS activation is still being verified. Do not treat issuance alone as a working public entry point. Do not enter an operator password or API key on an untrusted/IP-only public page or bypass a certificate warning.
+Public trusted HTTPS activation was verified in the [October 7 deployment run](https://github.com/ledondev520/jiesong-system/actions/runs/37579840911). Use the authorized service address; do not enter credentials on an untrusted/IP-only public page or bypass a certificate warning. A historical HTTPS check does not guarantee current availability.
 
-Application authentication already exists. Production operator configuration is a separate private setup, not automatic enrollment. The user-run operator setup helper passed independent review and was published in PR #6, merged as main commit `b431ea59405cbbf9ab6ec9945010f66f655b1781`. Exact PR and main Node/container CI passed, including actual Docker/PTY helper checks. The helper release is staged on the private loopback service: corrected [upgrade run 37577482526](https://github.com/ledondev520/jiesong-system/actions/runs/37577482526) succeeded at 05:40:48 UTC, with a healthy container, fail-closed HTTP checks, helper-module checks and current-release pointer verified; existing runtime configuration was preserved. The earlier attempt rolled back safely and is no longer a blocker. The helper is now privately staged; follow its private operator handoff only through the authorized user-controlled setup. Trusted public HTTPS and live-provider verification remain pending. No default password or API key is created.
+Owner setup remains a private, authorized operator action. No default password or API key is created. The operator personally enters and submits credentials through the approved private setup or authenticated HTTPS form; never put passwords, hashes or keys in chat, screenshots, source files or support logs.
 
-## 2. Sign in as the owner first
+## 2. Sign in and understand session expiry
 
-Once the operator hash and trusted HTTPS entry are configured, open Settings and sign in with the operator password. The application uses a server-memory session, HttpOnly/SameSite=Strict cookie, Secure under HTTPS, and CSRF protection. Missing setup or authentication blocks server parsing, extraction and settings instead of falling back to demo output.
+Sign in with your own account. The owner manages provider settings; ordinary users cannot change them. Registration assigns an ordinary role, never owner or administrator privileges. Follow the displayed email-verification steps when required; successful registration verification signs in automatically. Delegated administrator diagnostics do not grant provider control or access to another user's records.
 
-The operator personally enters and submits credentials. Do not send passwords, hashes or API keys through chat, source files, screenshots or support logs.
+Sessions are stored in private SQLite and survive routine service restarts while still valid. The browser uses an HttpOnly, SameSite=Strict cookie, Secure under HTTPS, with CSRF protection. Ordinary sessions expire after 30 minutes idle; remember-me removes that idle cutoff, but **every session expires eight hours after creation**. Restart does not extend either deadline. Logout, credential changes and supported restore invalidate sessions as documented in [durable sessions](durable-login-sessions.md). This is not permanent login.
 
-## 3. Owner configures and verifies the model separately
+If a connection or login check interrupts work, use the displayed recovery action and inspect saved history before sending again. Same-tab recovery is bounded and temporary, not a durable backup of unsaved input or replies. Save or copy anything important before signing out, switching workspaces or closing the page.
 
-Authenticated HTTPS Settings can accept a DeepSeek key and explicit live-extraction preference. The key is held in server process memory only and is not returned to the browser. A server restart drops browser-submitted RAM-only keys but preserves unexpired schema8 sessions; a separately configured environment key may load again on startup.
+## 3. Owner sets up the assistant with Save
 
-Only `deepseek-flash` is supported. Saving a key means **configured**, not **verified**. The explicit connection check queries the provider’s model list. Success verifies model access, not chat completion, billing availability, extraction quality or privacy suitability. A real consented extraction is a further check. No real-key check or model completion has yet been established in this project’s acceptance.
+Only `deepseek-flash` is supported. In the authenticated HTTPS assistant settings, the owner enters the authorized key and chooses **保存 / Save**. There is no separate model-list check or connection-test button. Save makes one fixed synthetic completion, with at most eight output tokens and a 15-second deadline; it sends no case, conversation or library material and can consume provider quota. A successful check proves that bounded completion worked at that time, not future billing availability, extraction accuracy or privacy suitability.
 
-## 4. Ordinary-user registration and optional named trials
+After validation and a fresh owner-session check, settings are encrypted in a separate private SQLite store before becoming active. Validation, authorization or persistence failure leaves the previous working configuration unchanged. The UI does not return the key. A separately authorized stable wrapping-key file is required; unavailable secure storage blocks Save before a provider call. See [atomic setup](model-setup-and-conversation-context.md) and [encrypted provider storage](provider-config-storage.md).
 
-Self-service web username/password registration is implemented, with final release verification pending. The server assigns an ordinary role; users cannot choose administrator rights. Wait for final CI/browser/deployment verification before treating the new registration flow as available. After registration, sign in and use only your own saved cases. Only the administrator controls the shared provider connection.
+Successfully saved settings and their verification timestamp survive restart when both the private database and wrapping file are preserved. Restart itself makes no verification call. An existing environment-provided connection can remain the baseline until a validated Save; it is **not automatically imported**. Configured/enabled status alone does not prove encrypted storage. Confirm `keyStorage: encrypted-database` and its retention across restart before claiming a database-backed credential was verified. The production baseline reported for this release remains environment-provided; no real-key database migration is claimed here.
 
-### Existing optional named-trial setup
+Encryption at rest is not a complete privacy program. Before any production tenant material is sent, resolve provider terms, retention, training use, geography and authorization. Use synthetic or thoroughly de-identified material for the current validation workflow, and grant library disclosure only when intended; it is separate from signing in or enabling service.
 
-Named trial users and SQLite persistence are implemented, pending final CI/browser/deployment verification. Complete the owner password and provider setup first. No real trial credentials have been created by this documentation or its development tests.
+## 4. Understand access and request limits
 
-After the reviewed trial-enabled release is ready, an authorized operator can personally run:
+Each user sees their own saved records; even the owner has no all-user case list. Optional named-trial setup remains available through the authorized private CLI described in [SQLite runtime](sqlite-runtime.md). It is not needed for ordinary web registration. Credential rotation preserves that user's saved cases and invalidates their sessions.
 
-```sh
-node scripts/setup-trial-user.js /absolute/nestlet.sqlite username
-```
+Ordinary accounts without a manual service override default to enabled access with no expiry and ten AI requests per rolling hour; no separate commercial activation is required. All ordinary users share thirty per rolling hour. The owner can manually pause access, set expiry or choose one to thirty requests per hour. Usage reservations persist in SQLite across restart; failed admitted attempts still count. Optional generated titles have their own reservation. These are application request allowances, not upstream-call/token counts or guaranteed money limits. Paused or expired AI access does not block the user's own saved records and exports. See [service access and recovery](service-access-record-ids.md).
 
-Use the actual private database path and its authorized account; see [SQLite runtime](sqlite-runtime.md) for the Docker path/mount procedure. The CLI uses hidden password entry and confirmation plus a final `SET TRIAL USER` approval. Do not put passwords in command arguments or chat. Creating/rotating a named trial credential does not give access to provider settings. A rotation preserves that user’s saved cases and invalidates its existing sessions.
+## 5. Complete one task from conversation to document
 
-Trial users sign in with their own username/password, see only their own cases and use the owner-configured extraction service. The owner likewise sees only owner cases, not an all-user administrative case list. Web registration is the new ordinary-user enrollment path pending final release verification; team sharing and CRM remain out of scope. Trial extraction is capped at ten requests per user/hour and thirty across trial users/hour in server memory; restarts reset these counters. These are abuse controls, not guaranteed billing limits.
+1. Open the workspace and continue an existing conversation or choose **新对话**. Ask a natural question; uploading a document is optional.
+2. When needed, add safe material or open **材料**. TXT/CSV/PDF/XLSX/XLS parsing happens on the application backend; text-PDF parsing is not OCR. Inspect reading order or select and map the workbook's actual sheet/row.
+3. Open the exact source for a proposed fact. Review values, conflicts and unknowns before confirming or saving; a request for information is not evidence that the agency never received it.
+4. Return to the same conversation. Confirm saved history and visible save feedback rather than assuming every received reply is durable.
+5. Open the resulting document, edit and save it, then preview/download the supported export. Inspect facts, recipient, dates, placeholders and attachments before using an English supplementary draft externally.
 
-## 5. Work through one case
+The actual PHA and current requirements must come from evidence. An unknown PHA does not inherit SFHA requirements. Generic guidance, requested rent and operator-reviewed facts are not agency approval. No email, official submission, signature, housing eligibility decision or rent approval is performed automatically. For failures, retain the visible error and unsaved work, check the connection or latest saved version, then explicitly retry only the intended action.
 
-- Start empty and paste reviewed text or import an actual TXT/CSV/PDF/XLSX/XLS file
-- PDF/Excel bytes go to this app’s backend for parsing; text-PDF parsing is not OCR
-- Select and map the workbook’s actual sheet/row where needed
-- Send only authorized minimal de-identified text for live extraction
-- Review every fact and source; resolve conflicts, preserve unknowns and confirm values explicitly
-- Produce an English supplementary draft, then inspect facts, placeholders, recipient and attachments before export
+## 6. Save and recover deliberately
 
-SFHA is the initial research focus, but the case’s actual PHA must come from evidence. The five fields do not establish an official packet’s completeness. Actual de-identified material is not automatically labeled synthetic. No email or government submission happens in the app.
+Explicitly saved case text, reviewed facts and drafts belong to the signed-in user. Saving a case alone does not preserve original PDF/Excel bytes; explicitly saved private files use separate owned storage. Opening saved work restores that record. Clearing the workspace or signing out does not delete saved records. Unsaved browser work is not guaranteed to survive refresh, closing the page or logout.
 
-## 6. Save only when useful
+The case cap is 100 per user. Version conflicts do not silently overwrite another edit: copy/export work you need, reopen the latest record and compare. The dedicated database and original-file storage must be preserved across releases. Automatic backups are not configured; follow [manual backup and recovery](private-data-operations.md). Case backups do not include the separate provider credential store or wrapping key. Never prune the data volume as routine deployment or rollback.
 
-Preview, edit, copy, download and print remain the primary workflow. **Save case** explicitly stores the title, source text, reviewed fields and draft in server-local SQLite; it does not retain the original PDF/Excel binary. **Open** loads one of your saved cases. **Delete** removes your selected saved case after the application’s confirmation; clearing the workspace or signing out does not delete saved cases.
+## 7. Verification boundaries
 
-There is a 100-case cap per user. Updates/deletes carry the last saved `expectedVersion`; an HTTP 409 conflict means another edit occurred and your changes were not silently overwritten. Copy/export work you need to keep, then reopen the latest version to compare. The dedicated database volume survives restarts, but automatic backups are not implemented. Never delete/prune that volume during deployment or rollback.
+- **Synthetic end-to-end evidence:** official CI exercises real application authentication, HTTP, SQLite, parsers and browser task flows with synthetic data and a controlled provider. The current main's [66-scenario browser run](https://github.com/ledondev520/nestlet/actions/runs/37873769269) passed on `52f6ce549ea847274caaa3b973814bc23f448b3a`; later releases need their own exact-commit evidence. These fixtures do not establish real-provider quality or production credential migration.
+- **Production evidence:** the [final deployment run](https://github.com/ledondev520/jiesong-system/actions/runs/37874251763) succeeded for `52f6ce549ea847274caaa3b973814bc23f448b3a`. A limited manual production check on October 9 used an existing synthetic conversation: repeating its prompt identified the latest final document version 3 and case version 4, distinguished unknown agency requirements from no requirements, retained the result after refresh, and downloaded/opened/parsed the actual PDF. This manual observation is separate from, and cannot be independently proved by, CI. It does not prove browser-entered real keys were encrypted, production email delivery, a complete real-customer journey or an agency-accepted document. The environment-provider baseline remains distinct from validated browser Save. No additional live model call is performed by updating this guide.
+- **Not established:** a real-case pilot, time savings/ROI, verified local PHA pack, official-form completion, broad production privacy/security assurance or commercialization readiness.
 
-## 7. Judge usefulness before expanding
-
-Do not require an upload, another questionnaire or five-field review merely to prove there is a need. If the operator requests help at a concrete point of friction, check the resulting draft against the original material and actual agency instructions. Record corrections and total hands-on time, including review. For a first case, the question is whether this helps the operator complete a task they actually own accurately, with less total effort after review. If the existing task remains quick and reliable, leave the tool optional and do not force adoption or expand scope. The five-case protocol is a later structured measurement plan, not a completed study or proof of ROI.
-
-Local Codex’s reported retake against `8b429` covers real browser login, PDF/Excel and exports, with 87 core and five independent HTTP checks. That evidence does not establish production DNS/TLS, a working real key or an agency-accepted document. Consult [validation](validation.md), [authentication](auth-contract.md), [provider](provider.md) and [deployment](deployment.md) for the current evidence boundaries.
+Use [validation](validation.md) for dated engineering evidence and [deployment](deployment.md) for operational context. Historical pending statements and unexecuted plans retain their original scope. Judge the actual task by source accuracy, saved-state feedback and recovery on desktop/mobile; screenshots alone are insufficient acceptance.

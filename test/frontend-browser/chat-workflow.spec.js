@@ -47,7 +47,7 @@ test('chat case bridge preserves the composer, saves a chosen original, and cont
   await expect(documents.getByLabel('English document body',{exact:true})).toHaveValue(artifact.content);
   await documents.getByLabel('English document body',{exact:true}).fill(artifact.content+'\nPending human edit to keep.');
   await navigate(page,'Conversation');await expect(chat.locator('.chat-input')).toHaveValue('Unsent synthetic question preserved across this workflow');
-  await page.getByTestId('chat-case-workflow').getByRole('button',{name:'Finish and preview English document',exact:true}).click();
+  await page.getByTestId('chat-case-workflow').getByRole('button',{name:'View saved documents',exact:true}).click();
   await expect(documents.getByLabel('English document body',{exact:true})).toHaveValue(artifact.content+'\nPending human edit to keep.');
   expect((await getJson(page,app,`/api/cases/${record.id}/artifacts`)).artifacts).toHaveLength(1);
   expect((await getJson(page,app,`/api/assets?caseId=${record.id}&limit=100`)).assets).toHaveLength(1);

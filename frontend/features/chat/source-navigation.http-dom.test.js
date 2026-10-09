@@ -222,6 +222,8 @@ test('read-only lookup handles exact customer/case results, empty search and can
   await click(button('Find saved records'));
   await wait(() => host.querySelectorAll('[data-source-id]').length === 2);
   assert.equal(opened.length, 0);
+  assert.match(host.textContent,/Matching saved records only/);
+  assert.doesNotMatch(host.textContent,/appendix|reply status|attached to the reply/i);
   await click(button('Choose a customer case'));
   await wait(() => button(`Open case: ${record.title} · ${record.displayId}`));
   await click(button(`Open case: ${record.title} · ${record.displayId}`));

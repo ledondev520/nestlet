@@ -1,3 +1,5 @@
+import { conversationDetails } from '@/lib/conversation-index';
+import { useThreadPosition } from './use-thread-position.js';
 import { serviceAvailabilityError } from './service-availability.js';
 import { ConversationOpening } from './opening.jsx';
 import { createPortal } from 'react-dom';
@@ -50,6 +52,7 @@ export function ChatPage({ lang='zh', caseId=null, initialConversationId=null, c
   const unavailableExactRef=useRef(false);
   const markExactUnavailable=value=>{unavailableExactRef.current=value;setUnavailableExactConversation(value);};
   const [phase,setPhase] = useState('idle');
+  const threadPosition = useThreadPosition({scope:conversationId?`${status.userId}:${caseId}:${conversationId}`:null,active,loading:phase==='loading',messages});
   const [imagePending,setImagePending] = useState(0);
   const [actionBatch,setActionBatch] = useState(null);
   const [actionRevision,setActionRevision] = useState(0);
@@ -488,14 +491,14 @@ export function ChatPage({ lang='zh', caseId=null, initialConversationId=null, c
       <CardHeader className="chat-toolbar"><CardTitle className="truncate text-base">{title||words.title}</CardTitle>
         <div className="flex flex-wrap items-center gap-3"><Label className="sr-only" htmlFor={`${inputId}-conversation`}>{words.conversation}</Label>
           <NativeSelect id={`${inputId}-conversation`} value={conversationId||''} onChange={event=>{const row=conversationIndex?.data?.find(item=>item.id===event.target.value);if(row&&onOpenConversation)onOpenConversation(row);else chooseConversation(event.target.value);}} disabled={busy||!listedConversations.length} aria-describedby={!listedConversations.length&&phase!=='loading'?`${inputId}-conversation-empty`:undefined} className="w-48 max-w-full">
-            <NativeSelectOption value="" disabled>{listedConversations.length?words.chooseConversation:words.noConversations}</NativeSelectOption>{listedConversations.map(item=><NativeSelectOption key={item.id} value={item.id}>{item.title}</NativeSelectOption>)}
+            <NativeSelectOption value="" disabled>{listedConversations.length?words.chooseConversation:words.noConversations}</NativeSelectOption>{listedConversations.map(item=><NativeSelectOption key={item.id} value={item.id}>{[item.title,conversationDetails(item,lang).metadata].filter(Boolean).join(' · ')}</NativeSelectOption>)}
           </NativeSelect><Button variant="outline" size="sm" type="button" disabled={busy} onClick={()=>onNewConversation?onNewConversation():chooseConversation('')}><Plus aria-hidden="true" />{words.newConversation}</Button>
           <Button variant="ghost" size="sm" type="button" disabled={busy} onClick={reloadConversation} aria-label={words.reload} title={words.reload}><RefreshCw aria-hidden="true" /></Button>
         </div>
         {!listedConversations.length&&phase!=='loading'&&<p id={`${inputId}-conversation-empty`} className="whitespace-pre-line text-xs text-muted-foreground">{words.noConversationsReason}</p>}
       </CardHeader>
       <CardContent className="chat-body">
-        <div className="chat-thread" tabIndex={0} aria-label={lang==='en'?'Conversation history':'对话记录'}>
+        <div className="chat-thread" {...threadPosition} tabIndex={0} aria-label={lang==='en'?'Conversation history':'对话记录'}>
         {phase==='loading'&&<p role="status" className="whitespace-pre-line text-sm text-muted-foreground">{words.loading}</p>}
         <div id={threadId} className="chat-messages" role="log" aria-label={words.conversation} aria-live="polite" aria-relevant="additions text">
           {!messages.length&&phase!=='loading'&&<ConversationOpening lang={lang} state={conversationIndex} onOpen={onOpenConversation} disabled={busy} onPrompt={text=>{inputRef.current=text;setInput(text);composer.current?.focus();}} />}

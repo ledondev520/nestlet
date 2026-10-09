@@ -53,6 +53,6 @@ export function ChatLookup({ api, userId, caseId, lang, active, disabled, onOpen
     </form>
     {pending && <div role="status">{en ? 'Searching saved records…' : '正在查找已保存记录…'} <Button type="button" variant="ghost" onClick={cancel}>{en ? 'Cancel lookup' : '取消查找'}</Button></div>}
     {notice && <p role="status" className="whitespace-pre-line text-sm">{notice}</p>}
-    {sources && <ChatSourceNavigation {...{ api, userId, caseId, lang, active, disabled, sources, onOpenSourceCase, claimOperation, releaseOperation }} />}
+    {sources && <ChatSourceNavigation mode="lookup" {...{ api, userId, caseId, lang, active, disabled, sources, onOpenSourceCase, claimOperation, releaseOperation }} />}
   </section>;
 }

@@ -15,18 +15,18 @@ for (const {width,lang} of [1280,390,320].flatMap(width=>['en','zh'].map(lang=>(
  const toggle=page.getByRole('button',{name:lang==='zh'?"打开列表":'Open conversations',exact:true});
  const rail=page.locator('.wb-rail');
  if(width<960)await toggle.click();
- await expect(rail.getByRole('link',{name:'Synthetic saved conversation',exact:true})).toBeVisible();
+ await expect(rail.locator(`a[href="#chat?conversation=${conversation.id}"]`)).toBeVisible();
  if(width>=960){const row=rail.locator('.chat-record-search-row');const inputBox=await row.locator('input').boundingBox(),buttonBox=await row.locator('button').boundingBox();expect(Math.abs(inputBox.y-buttonBox.y)).toBeLessThanOrEqual(5);expect(buttonBox.x).toBeGreaterThan(inputBox.x);await expect(rail).not.toContainText('Read-only · No AI');}
  if(width>=960)await expect(page.locator('.wb-topbar nav[aria-label]')).toHaveCount(1);
  if(width>=960)await screenshot(page,testInfo,`unified-welcome-${width}-${lang}`,false);
- await rail.getByRole('link',{name:'Synthetic first conversation',exact:true}).click();
+ await rail.locator(`a[href="#chat?conversation=${firstConversation.id}"]`).click();
  const composer=page.locator('.chat-input');await composer.fill('Keep this unsent draft');
  await navigate(page,lang==='zh'?"材料":'Materials & facts');const materialsUrl=page.url();await page.locator('.inbox-skip').focus();await page.keyboard.press('Enter');await expect(page).toHaveURL(materialsUrl);await expect(page.locator('main')).toBeFocused();await navigate(page,lang==='zh'?'对话':'Conversation');await expect(composer).toHaveValue('Keep this unsent draft');
  if(width<960)await toggle.click();
- page.once('dialog',dialog=>dialog.dismiss());await rail.getByRole('link',{name:'Synthetic saved conversation',exact:true}).click();
+ page.once('dialog',dialog=>dialog.dismiss());await rail.locator(`a[href="#chat?conversation=${conversation.id}"]`).click();
  await expect(composer).toHaveValue('Keep this unsent draft');
  if(width<960)await expect(rail).toHaveAttribute('aria-modal','true');
- page.once('dialog',dialog=>dialog.accept());await rail.getByRole('link',{name:'Synthetic saved conversation',exact:true}).click();
+ page.once('dialog',dialog=>dialog.accept());await rail.locator(`a[href="#chat?conversation=${conversation.id}"]`).click();
  await expect(composer).toHaveValue('');await expect(page.locator('[data-feature="chat"]')).toHaveAttribute('data-case-id',selectedRecord.id);await expect(page.locator('[data-feature="chat"]')).toHaveAttribute('data-conversation-id',conversation.id);
  if(width<960){await expect(rail).toHaveAttribute('inert','');await expect(page.locator('main')).toBeFocused();}
  await expect(page.locator('[data-feature="chat"]')).toContainText('Synthetic saved conversation.');
