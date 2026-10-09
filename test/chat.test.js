@@ -186,3 +186,18 @@ test('current document metadata is bounded, case-scoped and distinguishes latest
   assert.throws(()=>caseArtifactContext({listArtifacts:()=>[{caseId:'another-case'}]},'owner-fixture',record),code('CHAT_INVALID'));
   assert.equal(caseArtifactContext({listArtifacts:()=>[{...rows[0],currentCaseVersion:5}]},'owner-fixture',record).snapshotConsistent,false);
 });
+
+
+test('unknown agency represents unverified requirements, never verified absence or waiver',()=>{
+  const input=validateChatRequest(valid({guidanceAgency:'sfha'}));
+  const record={sourceText:'',fields:[{key:'pha',value:'',confirmed:true,conflict:false}]};
+  const reference=caseAgencyReference(input,record),system=chatProviderMessages(input,record)[0].content;
+  assert.equal(reference.caseRequirementsStatus,'not_verified');assert.equal(reference.caseApplicability,'unconfirmed');
+  assert.match(system,/尚未核实哪些机构要求适用，不代表没有要求/);
+  assert.match(system,/Unknown, empty or withheld guidance is not evidence.*do not exist or are waived/);
+  assert.doesNotMatch(system,/no agency-specific deadline, vendor-number or packet requirement is established/);
+  const english=chatProviderMessages({...input,locale:'en'},record)[0].content;
+  assert.match(english,/Which agency requirements apply has not been verified; that does not mean there are none/);
+  assert.doesNotMatch(english,/尚未核实哪些机构要求适用，不代表没有要求/);
+  assert.match(system,/Translate this guidance if a different output language is explicitly requested/);
+});
