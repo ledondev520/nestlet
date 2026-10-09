@@ -116,7 +116,7 @@ function CustomerDetail({ api, customerId, lang, onOpenCase, onRenamed, onCreate
   const previousRevision = useRef(refreshKey);
   useEffect(()=>{if(previousRevision.current!==refreshKey){cases.refresh();artifacts.refresh();}previousRevision.current=refreshKey;},[refreshKey,cases.refresh,artifacts.refresh]);
   const [creatingCase, setCreatingCase] = useState(false);
-  const renameTrigger = useRef(null), caseTrigger = useRef(null);
+  const renameTrigger = useRef(null), caseTrigger = useRef(null), linkTrigger=useRef(null);
   useReturnFocus(renaming, renameTrigger); useReturnFocus(creatingCase, caseTrigger);
   const [notice, setNotice] = useState('');
   const [assetRevision, setAssetRevision] = useState(0);
@@ -153,8 +153,8 @@ function CustomerDetail({ api, customerId, lang, onOpenCase, onRenamed, onCreate
     <Card className="paper-card gap-4">
       <CardHeader><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="paper-title text-xl">{t.cases}</h2><Button type="button" size="sm" variant="outline" ref={caseTrigger} disabled={!client.data || creatingCase || renaming} onClick={() => { setCreatingCase(true); setNotice(''); }}><Plus aria-hidden="true" />{t.newCase}</Button></div></CardHeader>
       <CardContent className="space-y-4">
-        <Button type="button" variant="outline" size="sm" disabled={linking||!client.data||managementBusy} onClick={()=>setLinking(true)}>{lang==='en'?'Link existing case':'关联事项'}</Button>
-        {linking&&active&&<LinkExistingCase api={api} clientId={customerId} lang={lang} onCancel={()=>setLinking(false)} disabled={managementBusy} onSelect={(id,clientId,trigger)=>{onManageCase(id,clientId,trigger);setLinking(false);}}/>}
+        <Button type="button" variant="outline" size="sm" ref={linkTrigger} disabled={linking||!client.data||managementBusy} onClick={()=>setLinking(true)}>{lang==='en'?'Link existing case':'关联事项'}</Button>
+        {linking&&active&&<LinkExistingCase api={api} clientId={customerId} lang={lang} onCancel={()=>setLinking(false)} disabled={managementBusy} onSelect={(id,clientId)=>{onManageCase(id,clientId,linkTrigger.current);setLinking(false);}}/>}
         {creatingCase && <CreateCase api={api} clientId={customerId} t={t} onCreated={created} onCancel={() => setCreatingCase(false)} />}
         {cases.loading && <Loading label={t.loading} />}
         <ErrorNotice error={cases.error} t={t} onRetry={cases.refresh} />

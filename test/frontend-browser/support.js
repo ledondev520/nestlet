@@ -165,6 +165,9 @@ export async function watchBrowser(page) {
 }
 
 export async function noHorizontalOverflow(page) {
+  // Viewport changes can precede React matchMedia updates; wait for the layout,
+  // retaining the same strict overflow assertions instead of a fixed sleep.
+  await expect(async () => {
   const measurement = await page.evaluate(() => {
     const width = document.documentElement.clientWidth;
     // Check controls as well as root scroll width, so overflow:hidden cannot hide failures.
@@ -178,6 +181,7 @@ export async function noHorizontalOverflow(page) {
   });
   expect(measurement.scroll, JSON.stringify(measurement)).toBeLessThanOrEqual(measurement.width + 1);
   expect(measurement.clipped, 'Visible controls must fit inside the viewport').toEqual([]);
+  }).toPass({timeout:10000});
 }
 
 export async function screenshot(page, testInfo, name, fullPage = true) {
