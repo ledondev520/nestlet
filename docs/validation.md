@@ -2,6 +2,14 @@
 
 Checkpoint: 2026-10-07. This is a development checkpoint, not final acceptance. Deployment and real-browser integration remain separate; rerun after the final source freeze.
 
+## History identification and reading continuity, 2026-10-09
+
+Based on `52f6ce5`. Existing generated titles are attempted asynchronously only after the first meaningful completed assistant reply; old or unsuccessful titles can remain generic. The stored generic value cannot establish whether a historical attempt was absent, skipped or failed. History reads do not generate or backfill titles. The frontend previously discarded available account-scoped date/reference/last-message metadata and had no initial transcript positioning.
+
+The frontend now keeps the canonical title, adds local-time date/reference and a bounded 60-code-point last-message excerpt in the home suggestions and history list, and adds date/reference to the conversation selector. Credential-shaped previews are conservatively withheld; this is not a general private-data redaction guarantee. No additional transcript fetch, model call, database rewrite, schema or authorization change. First loaded/selected history opens at the end; same mounted conversation returns from materials/settings and active-row clicks preserve reading position. An upward reader is not pulled down by new content or late layout. Switching to another conversation resets to its latest content; cross-conversation reading-position persistence is not claimed.
+
+Verification: focused presentation/position tests use synthetic geometry and data; full Node/frontend/check/build results are recorded with the frozen patch. New 1280/en, 390/zh and 320/zh browser scenarios cover indistinguishable generic names, exact links, recent-message viewport, upward reading and returns. Local Chromium could not launch because its Unix socket creation was prohibited (`EPERM`); these browser assertions and screenshots are not locally accepted. Final reviewed-source official browser CI remains required. No push, merge, deployment or real provider acceptance occurred in this repair.
+
 ## Unknown agency requirements remain unverified, 2026-10-09
 
 A same-history live retest of `c5e988a` correctly recognized the completed document and stopped applying the selected agency’s specific rules, but used categorical absence wording for unknown PHA. The context did not contain an empty requirements list; its “no requirement is established” instruction was ambiguous. This bounded correction explicitly labels case requirements `not_verified` and uses “尚未核实哪些机构要求适用，不代表没有要求”. Unknown/empty/withheld guidance cannot establish absence or waiver. No other behavior, source history, case data, document metadata or schema changes.
