@@ -8,6 +8,8 @@ import { join } from 'node:path';
 import { openStorage } from '../storage.js';
 import { DatabaseSync } from 'node:sqlite';
 import { spawnSync } from 'node:child_process';
+import { openAssetVault, parseAsset } from '../private-assets.js';
+import { LIBRARY_PERMISSION_SCOPE } from '../library-consent-storage.js';
 
 const salt = randomBytes(16);
 const passwordHash = `scrypt$${salt.toString('base64url')}$${scryptSync('public-storage-test', salt, 32).toString('base64url')}`;
@@ -22,6 +24,52 @@ function fixture(t) {
   return { store, alice, bob, filename };
 }
 const code = expected => error => error.code === expected;
+
+test('saved case, conversation, document, original and scoped grant survive a fresh process together', async t => {
+  const { store, alice, bob, filename } = fixture(t);
+  const fields = ['property', 'owner', 'pha', 'caseReference', 'rent'].map(key => ({ key, value: key === 'property' ? 'Synthetic property' : '', source: 'Synthetic reviewed source', confirmed: true, conflict: false }));
+  const record = store.createCase(alice.id, payload({ fields, sourceText: 'Synthetic saved source', draftText: 'Synthetic edited draft' }));
+  const conversation = store.createConversation(alice.id, record.id, {});
+  const message = store.appendMessage(alice.id, conversation.id, { role: 'assistant', content: 'Synthetic saved reply', state: 'complete' });
+  const artifact = store.createArtifact(alice.id, record.id, { kind: 'status-summary', status: 'draft', content: 'Synthetic saved document', expectedCaseVersion: record.version, sourceMessageId: message.id });
+  const directory = join(filename, '..', 'assets');
+  const vault = openAssetVault({ directory });
+  const bytes = Buffer.from('Synthetic original bytes\r\n中文');
+  const metadata = await parseAsset(bytes, { originalFilename: 'synthetic.txt', mimeType: 'text/plain' });
+  const asset = store.createAsset(alice.id, metadata, { caseId: record.id }, id => vault.write(id, bytes));
+  const grant = store.libraryPermissions.set(alice.id, { decision: 'allow', expectedVersion: 0, ...LIBRARY_PERMISSION_SCOPE });
+  store.close();
+  const script = `
+    import { openStorage } from ${JSON.stringify(new URL('../storage.js', import.meta.url).href)};
+    import { openAssetVault } from ${JSON.stringify(new URL('../private-assets.js', import.meta.url).href)};
+    const input = JSON.parse(process.argv[1]);
+    const store = openStorage({ filename: input.filename });
+    const vault = openAssetVault({ directory: input.directory });
+    try {
+      const asset = store.getAsset(input.userId, input.assetId);
+      console.log(JSON.stringify({
+        record: store.getCase(input.userId, input.caseId),
+        messages: store.listMessages(input.userId, input.conversationId),
+        artifact: store.getArtifact(input.userId, input.artifactId),
+        asset, bytes: vault.read(asset).toString('base64'),
+        grant: store.libraryPermissions.read(input.userId),
+        isolated: [store.getCase(input.otherId, input.caseId), store.getConversation(input.otherId, input.conversationId), store.getArtifact(input.otherId, input.artifactId), store.getAsset(input.otherId, input.assetId)],
+        otherPermission: store.libraryPermissions.read(input.otherId).decision
+      }));
+    } finally { store.close(); }
+  `;
+  const child = spawnSync(process.execPath, ['--input-type=module', '-e', script, JSON.stringify({ filename, directory, userId: alice.id, otherId: bob.id, caseId: record.id, conversationId: conversation.id, artifactId: artifact.id, assetId: asset.id })], { encoding: 'utf8', timeout: 30000 });
+  assert.equal(child.status, 0, child.stderr);
+  const restored = JSON.parse(child.stdout);
+  assert.deepEqual(restored.record, record);
+  assert.deepEqual(restored.messages, [message]);
+  assert.deepEqual(restored.artifact, artifact);
+  assert.deepEqual(restored.asset, asset);
+  assert.equal(restored.bytes, bytes.toString('base64'));
+  assert.deepEqual(restored.grant, grant);
+  assert.deepEqual(restored.isolated, [null, null, null, null]);
+  assert.equal(restored.otherPermission, 'unset');
+});
 
 test('own customer search is literal, bounded and private; rename uses optimistic versions', t => {
   const { store, alice, bob } = fixture(t);

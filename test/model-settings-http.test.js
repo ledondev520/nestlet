@@ -1,3 +1,4 @@
+import { DatabaseSync } from 'node:sqlite';
 // Real HTTP/SQLite with synthetic provider transport; never live model or real credentials.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -10,8 +11,10 @@ import { join } from 'node:path';
 const password='synthetic-model-check-password',salt=randomBytes(16);
 const hash=`scrypt$${salt.toString('base64url')}$${scryptSync(password,salt,32).toString('base64url')}`;
 const waitFor=async fn=>{for(let i=0;i<400;i++){if(fn())return;await new Promise(r=>setTimeout(r,20));}throw new Error('Fixture timeout');};
-async function fixture(t, {titleMode='normal',holdChat=false}={}){
+async function fixture(t, {titleMode='normal',holdChat=false,persistence=true,environmentKey=''}={}){
  const dir=mkdtempSync(join(realpathSync(tmpdir()),'nestlet-model-atomic-'));
+ const keyFile=join(dir,'synthetic-wrapping.key');writeFileSync(keyFile,randomBytes(32),{mode:0o600});
+ const configPath=join(dir,'private','provider-config.sqlite');
  const calls=[];let release=null, output='';
  const upstream=http.createServer(async(req,res)=>{
   let raw='';for await(const chunk of req)raw+=chunk;
@@ -27,13 +30,14 @@ async function fixture(t, {titleMode='normal',holdChat=false}={}){
  const preload=join(dir,'fixture.mjs');writeFileSync(preload,`const original=fetch;globalThis.fetch=(url,options)=>{if(String(url)!=='https://api.deepseek.com/chat/completions')throw Error('Unexpected outbound');return original('http://127.0.0.1:${upstream.address().port}',options);};`);
  const reservation=http.createServer();await new Promise(r=>reservation.listen(0,'127.0.0.1',r));const port=reservation.address().port;await new Promise(r=>reservation.close(r));
  const origin='https://synthetic-model.invalid',url=`http://127.0.0.1:${port}`;
- const child=spawn(process.execPath,['--import',preload,'server.js'],{cwd:new URL('../',import.meta.url),env:{...process.env,HOST:'127.0.0.1',PORT:String(port),PUBLIC_ORIGIN:origin,NESTLET_DB_PATH:join(dir,'private','test.sqlite'),NESTLET_OPERATOR_PASSWORD_HASH:hash,NESTLET_OPERATOR_USERNAME:'owner',DEEPSEEK_API_KEY:'',ENABLE_LIVE_AI:'false'},stdio:['ignore','pipe','pipe']});
- child.stdout.on('data',x=>output+=x);child.stderr.on('data',x=>output+=x);
+ const launch=()=>spawn(process.execPath,['--import',preload,'server.js'],{cwd:new URL('../',import.meta.url),env:{...process.env,HOST:'127.0.0.1',PORT:String(port),PUBLIC_ORIGIN:origin,NESTLET_DB_PATH:join(dir,'private','test.sqlite'),NESTLET_PROVIDER_WRAPPING_KEY_FILE:persistence?keyFile:'',NESTLET_OPERATOR_PASSWORD_HASH:hash,NESTLET_OPERATOR_USERNAME:'owner',DEEPSEEK_API_KEY:environmentKey,ENABLE_LIVE_AI:environmentKey?'true':'false'},stdio:['ignore','pipe','pipe']});
+ let child=launch();
+ const observe=()=>{child.stdout.on('data',x=>output+=x);child.stderr.on('data',x=>output+=x);};observe();
  t.after(async()=>{release?.();if(child.exitCode===null)await new Promise(r=>{child.once('exit',r);child.kill();});upstream.closeAllConnections();await new Promise(r=>upstream.close(r));rmSync(dir,{recursive:true,force:true});});
  await waitFor(()=>output.includes('Nestlet available'));
  const login=await fetch(url+'/api/login',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify({username:'owner',password})});assert.equal(login.status,200);const data=await login.json();
  const headers={Origin:origin,'Content-Type':'application/json',Cookie:login.headers.get('set-cookie').split(';')[0],'X-CSRF-Token':data.csrfToken};
- return {calls,release:()=>release?.(),output:()=>output,login:async()=>{const r=await fetch(url+'/api/login',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify({username:'owner',password})});assert.equal(r.status,200);const b=await r.json();headers.Cookie=r.headers.get('set-cookie').split(';')[0];headers['X-CSRF-Token']=b.csrfToken;},request:(path,body)=>fetch(url+path,{method:body===undefined?'GET':'POST',headers,...(body===undefined?{}:{body:JSON.stringify(body)})})};
+ return {calls,configPath,restartFailure:async mutate=>{await new Promise(r=>{child.once('exit',r);child.kill();});mutate();child=launch();observe();return await new Promise(r=>child.once('exit',r));},restart:async(mutate=()=>{})=>{await new Promise(r=>{child.once('exit',r);child.kill();});mutate();const offset=output.length;child=launch();observe();await waitFor(()=>output.slice(offset).includes('Nestlet available'));},rejectPersistence:()=>{const db=new DatabaseSync(configPath);db.exec("CREATE TRIGGER fail_provider_save BEFORE INSERT ON provider_config BEGIN SELECT RAISE(ABORT,'SYNTHETIC_FAIL'); END;");db.close();},release:()=>release?.(),output:()=>output,login:async()=>{const r=await fetch(url+'/api/login',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify({username:'owner',password})});assert.equal(r.status,200);const b=await r.json();headers.Cookie=r.headers.get('set-cookie').split(';')[0];headers['X-CSRF-Token']=b.csrfToken;},request:(path,body)=>fetch(url+path,{method:body===undefined?'GET':'POST',headers,...(body===undefined?{}:{body:JSON.stringify(body)})})};
 }
 test('save validates once, atomically retains the working key on failure, and locks concurrent writes',async t=>{
  const f=await fixture(t);
@@ -99,4 +103,33 @@ test('an image-only first turn generates its optional title from the persisted a
  const titles=f.calls.filter(call=>call.body.max_tokens===80);assert.equal(titles.length,1);assert.equal(titles[0].body.messages[1].content,'Synthetic administrative answer.');
  assert.equal(JSON.stringify(titles[0].body).includes(data),false);
  assert.equal(f.calls.filter(call=>call.body.stream).length,1);
+});
+
+test('validated encrypted configuration is authoritative across server restart, including pause and failed replacements',async t=>{
+ const f=await fixture(t,{environmentKey:'synthetic-original-env-key'});const saved=await f.request('/api/settings',{apiKey:'synthetic-durable-key',enableLive:true});assert.equal(saved.status,200);const initial=await saved.json();
+ assert.equal(initial.keyStorage,'encrypted-database');assert.equal(initial.persistentSettingsAvailable,true);
+ assert.equal(readFileSync(f.configPath).includes(Buffer.from('synthetic-durable-key')),false);
+ await f.restart();let status=await(await f.request('/api/settings')).json();assert.equal(status.liveEnabled,true);assert.equal(status.connectionVerifiedAt,initial.connectionVerifiedAt);assert.equal(status.keyStorage,'encrypted-database');assert.equal(f.calls.length,1);
+ assert.equal((await f.request('/api/settings',{apiKey:'synthetic-rejected-key',enableLive:true})).status,502);
+ f.rejectPersistence();assert.equal((await f.request('/api/settings',{apiKey:'synthetic-uncommitted-key',enableLive:true})).status,503);
+ await f.restart();status=await(await f.request('/api/settings')).json();assert.equal(status.connectionVerifiedAt,initial.connectionVerifiedAt);assert.equal(status.liveEnabled,true);
+ const db=new DatabaseSync(f.configPath);db.exec('DROP TRIGGER fail_provider_save');db.close();
+ assert.equal((await f.request('/api/settings',{enableLive:false})).status,200);await f.restart();status=await(await f.request('/api/settings')).json();assert.equal(status.liveEnabled,false);assert.equal(status.configured,true);assert.equal(status.connectionVerifiedAt,initial.connectionVerifiedAt);
+ assert.doesNotMatch(JSON.stringify(status),/synthetic-durable-key|nonce|ciphertext|wrapping/);assert.doesNotMatch(f.output(),/synthetic-durable-key|synthetic-uncommitted-key|SYNTHETIC_FAIL/);
+});
+test('missing persistence bootstrap rejects a new key before any provider call',async t=>{
+ const f=await fixture(t,{persistence:false});const status=await(await f.request('/api/settings')).json();assert.equal(status.persistentSettingsAvailable,false);
+ const response=await f.request('/api/settings',{apiKey:'synthetic-unpersistable-key',enableLive:true});assert.equal(response.status,503);assert.equal((await response.json()).code,'PROVIDER_SETTINGS_UNAVAILABLE');assert.equal(f.calls.length,0);
+});
+
+test('a truncated credential store disables AI without environment fallback while case data remains available',async t=>{
+ const f=await fixture(t,{environmentKey:'synthetic-environment-fallback'});
+ const created=await f.request('/api/cases',{title:'Synthetic preserved case',sourceText:'Synthetic retained source',fields:[],draftType:'followup',draftText:''});assert.equal(created.status,201);const record=(await created.json()).case;
+ assert.equal((await f.request('/api/settings',{apiKey:'synthetic-saved-before-corruption',enableLive:true})).status,200);
+ await f.restart(()=>writeFileSync(f.configPath,Buffer.alloc(0)));
+ const status=await(await f.request('/api/settings')).json();assert.equal(status.providerSettingsError,true);assert.equal(status.persistentSettingsAvailable,false);assert.equal(status.configured,false);assert.equal(status.liveEnabled,false);assert.equal(status.keyStorage,'unavailable');
+ assert.equal(readFileSync(f.configPath).length,0);assert.equal(f.calls.length,1);
+ const restored=await f.request(`/api/cases/${record.id}`);assert.equal(restored.status,200);assert.equal((await restored.json()).case.sourceText,'Synthetic retained source');
+ const chat=await f.request('/api/chat',{locale:'en',consent:true,messages:[{role:'user',content:'Synthetic no-fallback request'}]});assert.equal(chat.status,503);assert.equal(f.calls.length,1);
+ assert.doesNotMatch(f.output(),/synthetic-environment-fallback|synthetic-saved-before-corruption/);
 });

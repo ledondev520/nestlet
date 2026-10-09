@@ -2,6 +2,16 @@
 
 Checkpoint: 2026-10-07. This is a development checkpoint, not final acceptance. Deployment and real-browser integration remain separate; rerun after the final source freeze.
 
+## Saved-state survival and language preference, 2026-10-08
+
+Based on `4215457`, the interface now restores only its supported `zh`/`en` preference from browser storage, with safe Chinese fallback for invalid/missing/denied storage and a usable in-memory switch when writes fail. No private content or credentials enter this browser preference. See [frontend boundary](../frontend/README.md).
+
+- A new real child-process test closes SQLite, starts a fresh Node process, and compares exact saved case/source/manual draft, conversation message, document artifact, original-file metadata and bytes, and library grant. It also checks that another account cannot read those records or inherit the grant. Fixtures are synthetic; no provider is called.
+- Existing suites separately exercise durable hashed sessions, saved source provenance, artifact immutability, private original reopen, grant policy invalidation, service-policy/quota restart, and bounded unsaved-draft memory recovery.
+- Local `npm ci --ignore-scripts`, `npm run check`, `npm run build`, `npm run test:frontend` (370/370) and `npm test` (483/483) passed. The build retains the existing large-chunk advisory.
+- Three Chromium scenarios cover preference reload/new-page retention, invalid preference fallback and denied storage. Local launch was blocked before page execution by the environment's Chromium socket `EPERM`; no local browser pass is claimed. The existing service-access reload assertion now intentionally expects its previously selected English. Exact-commit official browser CI remains required.
+- These checks establish application preservation against retained local SQLite/assets and browser storage, not production host/container deployment, recovery from volume loss, cross-device preference sync or production backup verification. Normal rollout must preserve the same private database/assets volume and origin. Provider-key durability is a separate implementation/review lane.
+
 ## Grounded current-turn review lane, 2026-10-08
 
 Branch `fix/ground-current-review-result`, based on `090d08e`. The previous release's original-history live retest produced a success claim without a genuine proposal card. Raw tool execution was not observed, so no invocation is inferred from its prose. Inspection found that automatic tool choice permitted a no-tool stop and streamed/persisted prose before any trusted outcome. The bounded implementation and grammar limits are documented in [grounded current-turn fact review](grounded-review.md).
@@ -758,3 +768,7 @@ Final local checks/build/whitespace passed. Backend **460/460**, frontend **326/
 Legacy schema4/schema9 restore fences are tested through first schema10 startup; malformed/hash-mismatched fences, incomplete recovery and WAL/journal sidecars fail closed. Pause/audit/fence receipt commit together. Three concurrent startups apply one recovery; a retained receipt reconciles a leftover fence after verified stale-lock handling without undoing a later explicit owner decision. An actual five-second stale-lock test refuses startup and preserves the lock, fence and DB; no automatic crash-recovery or stale-lock deletion is claimed. Restores return content-free serviceRecovery/preserveRestoreDirectory flags; DB-only copies or old-binary cutovers are not silently covered by the fence guarantee.
 
 An exact historical `f738655` schema9 storage binary refused a disposable schema10 database without byte changes. The real schema1→10 migration smoke passed on private synthetic local data; this is not a Docker/production run. The unchanged production-build bundle-size advisory remains. Browser discovery lists **57 scenarios**, adding a manual-service confirmation/cancel/ordinary-read-only and display-reference journey. Chromium was not launched locally; exact combined official browser/container CI and independent review remain release gates. No live migration, restore, payment, provider request or account grant occurred.
+
+## 2026-10-09 — durable encrypted provider settings candidate
+
+Replaces browser-saved RAM-only credentials with a separate AES-256-GCM SQLite credential store, committed before activation and restored at startup. Application schema10 is unchanged. Synthetic private wrapping files and authored provider transport verify restart, paused-state retention, prior-key preservation on validation/database failure, fail-closed wrong-key/tamper handling, private-path checks and explicit ciphertext-only backup/restore. Production wrapping-secret creation/mounts and real credential migration have not been performed; these require the separate approved operations/secure-entry steps documented in `provider-config-storage.md`.

@@ -41,7 +41,7 @@ export function ModelSettingsForm({ lang, session }) {
   async function save(event) {
     const enableLive = true;
     event.preventDefault();
-    if(busy || !view?.secureSettings || (enableLive && !apiKey.trim() && !view.configured))return;
+    if(busy || !view?.secureSettings || !view.persistentSettingsAvailable || (enableLive && !apiKey.trim() && !view.configured))return;
     const parsed=settingsPayload({apiKey,enableLive,configured:view.configured});
     if(!parsed.ok){setError(parsed);return;}
     const task=operation.start();if(!task)return;
@@ -73,7 +73,7 @@ export function ModelSettingsForm({ lang, session }) {
       {warning && <p role="status" className="paper-note rounded-r-md p-3 text-sm">{t.refreshFailed}</p>}
       {view && <>
         {!notice && <p className="text-sm"><span className="font-medium">deepseek-flash</span> · {view.configured?t.configured:t.notConfigured} · {view.liveEnabled?t.enabled:t.paused}</p>}
-        {!view.secureSettings ? <p role="status" className="paper-note rounded-r-md p-4 text-sm leading-relaxed">{t.secureSettingsRequired}</p> : <form noValidate onSubmit={event=>save(event)} className="space-y-3">
+        {!view.secureSettings ? <p role="status" className="paper-note rounded-r-md p-4 text-sm leading-relaxed">{t.secureSettingsRequired}</p> : !view.persistentSettingsAvailable ? <p role="status" className="text-sm text-muted-foreground">{t.persistentUnavailable}</p> : <form noValidate onSubmit={event=>save(event)} className="space-y-3">
           <div className="space-y-2"><Label htmlFor={`${id}-key`}>{t.keyLabel}</Label><Input id={`${id}-key`} name="deepseek-api-key" type="password" autoComplete="off" autoCapitalize="none" spellCheck={false} value={apiKey} onChange={event=>{setApiKey(event.target.value);setError(null);setNotice('');}} disabled={Boolean(busy)} placeholder={t.keyPlaceholder} aria-invalid={error?.field==='apiKey'} /></div>
 
           <div className="flex items-center gap-3"><Button type="submit" disabled={Boolean(busy) || !dirty}>{busy==='save' && <LoaderCircle className="animate-spin" aria-hidden="true" />}{busy==='save'?(lang==='zh'?'正在验证并保存…':'Checking and saving…'):(lang==='zh'?'保存':'Save')}</Button><span className="text-xs text-muted-foreground">{lang==='zh'?'验证消耗少量额度':'Check uses model quota'}</span></div>
@@ -81,6 +81,7 @@ export function ModelSettingsForm({ lang, session }) {
         <details className="text-xs text-muted-foreground"><summary className="cursor-pointer">{lang==='zh'?'详情':'Details'}</summary><div className="mt-2 space-y-2">
         <p className="text-sm"><span className="font-medium">deepseek-flash</span> · {view.configured?t.configured:t.notConfigured} · {view.liveEnabled?t.enabled:t.paused}</p>
         <p className="text-xs text-muted-foreground">{view.verifiedAt ? `${lang==='zh'?'模型调用上次验证':'Model response last checked'} · ${new Date(view.verifiedAt).toLocaleString(language(lang)==='zh'?'zh-CN':'en-US')}` : t.notVerified}</p>
+        {view.configured && view.keyStorage==='encrypted-database' && <p className="text-xs leading-relaxed text-muted-foreground">{t.persistentStorage}</p>}
         {view.configured && view.keyStorage==='server-memory' && <p className="text-xs leading-relaxed text-muted-foreground">{t.memoryStorage}</p>}
           <p className="text-xs text-muted-foreground">{lang==='zh'?'保存时自动验证一次，成功后启用 AI；失败不会替换原有 Key。验证会消耗少量模型额度。':'Save checks the key once and enables AI on success. A failed check keeps your previous key. Verification uses a small amount of model quota.'}</p>
         </div></details>

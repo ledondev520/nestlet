@@ -28,9 +28,13 @@ services:
       NESTLET_EMAIL_FROM: ${NESTLET_EMAIL_FROM:-}
       DEEPSEEK_MODEL: deepseek-flash
       ENABLE_LIVE_AI: ${ENABLE_LIVE_AI:-false}
-      # Optional server-provided key. Prefer the authenticated, RAM-only settings flow.
+      # Optional legacy/bootstrap provider key. Encrypted saved settings take precedence.
       # Never bake keys into this file or an image; do not share rendered Compose config.
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      # Set only after an approved private 32-byte wrapping-key file is mounted read-only.
+      # Never put that file in case_data, a database backup, or a source checkout.
+      NESTLET_PROVIDER_WRAPPING_KEY_FILE: ${NESTLET_PROVIDER_WRAPPING_KEY_FILE:-}
+      NESTLET_PROVIDER_CONFIG_PATH: /data/provider-config.sqlite
     volumes:
       - case_data:/data
     read_only: true
