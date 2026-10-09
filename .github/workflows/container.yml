@@ -41,6 +41,28 @@ jobs:
           done
       - name: Exercise disposable Docker helper through a real terminal
         run: python3 ops/helper-docker-pty.py nestlet:ci
+      - name: Verify encrypted settings across recreated images with a private wrapping-key mount
+        shell: bash
+        run: |
+          set -euo pipefail
+          fixture="$(mktemp -d)"
+          trap 'sudo rm -rf "$fixture"' EXIT
+          mkdir "$fixture/state" "$fixture/secrets"
+          head -c 32 /dev/urandom > "$fixture/secrets/wrapping.key"
+          head -c 32 /dev/urandom > "$fixture/secrets/wrong.key"
+          chmod 700 "$fixture" "$fixture/state" "$fixture/secrets"
+          chmod 400 "$fixture/secrets/"*.key
+          sudo chown -R 1000:1000 "$fixture"
+          for phase in write read paused wrong-key; do
+            wrapping="$fixture/secrets/wrapping.key"
+            if [ "$phase" = wrong-key ]; then wrapping="$fixture/secrets/wrong.key"; fi
+            docker run --rm -i --pull never --network none --read-only \
+              --cap-drop ALL --security-opt no-new-privileges:true --user 1000:1000 \
+              --tmpfs /tmp:rw,noexec,nosuid,nodev,size=64m,mode=1777 \
+              --mount "type=bind,src=$fixture/state,dst=/provider-config" \
+              --mount "type=bind,src=$wrapping,dst=/run/nestlet-private/provider-wrapping.key,readonly" \
+              nestlet:ci node --input-type=module - "$phase" < ops/container-provider-settings-smoke.mjs
+          done
       - name: Start loopback-only runtime
         run: docker compose up -d --no-build --wait --wait-timeout 90
       - name: Check published address and host health

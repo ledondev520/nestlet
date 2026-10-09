@@ -40,8 +40,8 @@ export function canManageProvider(status) {
 export function providerStatus(status = {}) {
   const at = typeof status.connectionVerifiedAt === 'string' ? new Date(status.connectionVerifiedAt) : null;
   return { configured:status.configured === true, liveEnabled:status.liveEnabled === true,
-    secureSettings:status.secureSettings === true, model:MODEL,
-    keyStorage:['server-memory','server-environment'].includes(status.keyStorage) ? status.keyStorage : 'none',
+    secureSettings:status.secureSettings === true, persistentSettingsAvailable:status.persistentSettingsAvailable === true, model:MODEL,
+    keyStorage:['server-memory','server-environment','encrypted-database'].includes(status.keyStorage) ? status.keyStorage : 'none',
     verifiedAt:at && Number.isFinite(at.valueOf()) ? at.toISOString() : null };
 }
 export function settingsPayload({apiKey='',enableLive,configured=false} = {}) {

@@ -23,7 +23,7 @@ test/case-api.test.js authenticated saved-case API and user isolation
 docs/               scope, sources, pilot, collaboration and evidence
 ```
 
-The backend uses SheetJS for workbooks and an operating-system pdftotext dependency for PDFs. Authenticated HTTPS browser key entry is implemented; the submitted key stays in server process memory, not browser storage or a case database. The SQLite extension persists named trial identities and explicitly saved cases in a dedicated private file; it does not persist provider keys or raw uploaded PDF/workbook binaries. Its final CI/browser/deployment checks are separate from the already staged stateless release. The app is independently deployable; Sites is only a temporary preview.
+The backend uses SheetJS for workbooks and an operating-system pdftotext dependency for PDFs. Authenticated HTTPS browser key entry is implemented; the validated key is encrypted in a separate private provider-settings SQLite file before activation, never browser storage or the case database. A separately provisioned private wrapping-key file enables restart recovery; see [provider storage](provider-config-storage.md). The SQLite extension persists named trial identities and explicitly saved cases in a dedicated private file; it does not persist provider keys or raw uploaded PDF/workbook binaries. Its final CI/browser/deployment checks are separate from the already staged stateless release. The app is independently deployable; Sites is only a temporary preview.
 
 ## Main path
 

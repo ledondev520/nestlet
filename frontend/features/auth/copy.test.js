@@ -21,6 +21,9 @@ test('authentication copy preserves security, time limits and uncertain results'
   assert.match(copy.verifyHint, /仅打开页面不会使用链接/);
   assert.match(copy.resetHint, /更改密码/); assert.match(copy.resetHint, /原有登录将失效/);
   assert.match(copy.bindingPending, /符合条件/); assert.match(copy.bindingPending, /绑定尚未完成/);
+  assert.match(copy.persistentStorage, /连接密钥已加密保存。\n服务重启后仍可使用。/);
+  assert.match(copy.persistentUnavailable, /安全保存尚未就绪/);
+  assert.match(authErrorMessage('PROVIDER_SETTINGS_UNAVAILABLE'), /原有设置未改变/);
   assert.match(copy.signOutWarning, /保存或复制未保存的输入和回复/);
   assert.match(copy.signOutWarning, /退出后，这些内容会被清空/);
   assert.match(copy.bootstrapRecovery, /不能通过邮箱重设/); assert.match(copy.bootstrapRecovery, /私有服务器终端恢复/);

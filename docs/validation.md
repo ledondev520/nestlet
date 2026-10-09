@@ -2,6 +2,16 @@
 
 Checkpoint: 2026-10-07. This is a development checkpoint, not final acceptance. Deployment and real-browser integration remain separate; rerun after the final source freeze.
 
+## Saved-state survival and language preference, 2026-10-08
+
+Based on `4215457`, the interface now restores only its supported `zh`/`en` preference from browser storage, with safe Chinese fallback for invalid/missing/denied storage and a usable in-memory switch when writes fail. No private content or credentials enter this browser preference. See [frontend boundary](../frontend/README.md).
+
+- A new real child-process test closes SQLite, starts a fresh Node process, and compares exact saved case/source/manual draft, conversation message, document artifact, original-file metadata and bytes, and library grant. It also checks that another account cannot read those records or inherit the grant. Fixtures are synthetic; no provider is called.
+- Existing suites separately exercise durable hashed sessions, saved source provenance, artifact immutability, private original reopen, grant policy invalidation, service-policy/quota restart, and bounded unsaved-draft memory recovery.
+- Local `npm ci --ignore-scripts`, `npm run check`, `npm run build`, `npm run test:frontend` (370/370) and `npm test` (483/483) passed. The build retains the existing large-chunk advisory.
+- Three Chromium scenarios cover preference reload/new-page retention, invalid preference fallback and denied storage. Local launch was blocked before page execution by the environment's Chromium socket `EPERM`; no local browser pass is claimed. The existing service-access reload assertion now intentionally expects its previously selected English. Exact-commit official browser CI remains required.
+- These checks establish application preservation against retained local SQLite/assets and browser storage, not production host/container deployment, recovery from volume loss, cross-device preference sync or production backup verification. Normal rollout must preserve the same private database/assets volume and origin. Provider-key durability is a separate implementation/review lane.
+
 ## Grounded current-turn review lane, 2026-10-08
 
 Branch `fix/ground-current-review-result`, based on `090d08e`. The previous release's original-history live retest produced a success claim without a genuine proposal card. Raw tool execution was not observed, so no invocation is inferred from its prose. Inspection found that automatic tool choice permitted a no-tool stop and streamed/persisted prose before any trusted outcome. The bounded implementation and grammar limits are documented in [grounded current-turn fact review](grounded-review.md).
@@ -775,3 +785,15 @@ Local verification on the candidate tree:
 Not established here: live provider completion, real email delivery, production deployment, or durable provider-key storage. The separately authorized persistence work must retain its own verification boundary and current storage-specific wording.
 
 Official first browser run `37861083523` on `913fa658c6445bbe63ae71d2aa7e476fb59a0d55`: 60/62 passed. The two failures matched outdated Chinese substrings for the printed-date caution and successful model-response check. Captured UI output showed the approved new meanings; only those exact test expectations were updated. Full exact-head browser rerun remains required.
+
+## 2026-10-09 — durable encrypted provider settings candidate
+
+Replaces browser-saved RAM-only credentials with a separate AES-256-GCM SQLite credential store, committed before activation and restored at startup. Application schema10 is unchanged. Synthetic private wrapping files and authored provider transport verify restart, paused-state retention, prior-key preservation on validation/database failure, fail-closed wrong-key/tamper handling, private-path checks and explicit ciphertext-only backup/restore. Production wrapping-secret creation/mounts and real credential migration have not been performed; these require the separate approved operations/secure-entry steps documented in `provider-config-storage.md`.
+
+## 2026-10-09 — plain-language copy integrated with durable settings and language preference
+
+Copy-only head `37e4ae30b435c099e74919d73c3090e1afaf299d` passed all three official gates; browser run `37862224534` passed 62/62 with no skipped scenarios. Independent review inspected desktop/mobile Chinese screenshots, the compact model setup, disclosure wording and corrected two-line keyboard hint.
+
+The copy branch now integrates main `bc17377018f22f42b811e550e8dbb118bb681fe1` without changing its provider persistence or language-preference behavior. Conflict resolution preserves the secure-storage readiness gate, encrypted-storage metadata, prior-setting-preservation error, locale initialization/save effect and exact locale-only browser-storage assertion. The encrypted-storage and unavailable-storage Chinese messages use readable short lines. Browser coverage additionally captures the expanded durable-storage feedback and setup-unavailable state; it does not claim real-provider or production restart evidence.
+
+Combined local syntax/build and diff checks passed; backend 496/496 and frontend 393/393 passed. The final integrated head still requires fresh official browser/container/checks gates and screenshot review before merging. Production deployment remains a separate operations gate.
