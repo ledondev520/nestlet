@@ -24,7 +24,7 @@ import { CaseRecordsError, isCaseRecordsPath, handleCaseRecords } from './case-r
 import { DocumentContextError } from './document-context.js';
 import { createTelemetry, TelemetryError, telemetryId, telemetryPageOptions } from './telemetry.js';
 import { conversationActionContext, loadConversationAction } from './conversation-action-contract.js';
-import { CHAT_LIMITS, CHAT_IMAGE_TYPES, ChatError, validateChatRequest, conversationHistory, chatProviderMessages, openChatStream, openLibraryChatStream, createConversationToolSession, librarySourceEvent, libraryActivityEvent, LIBRARY_CHAT_ERRORS } from './chat.js';
+import { CHAT_LIMITS, CHAT_IMAGE_TYPES, ChatError, validateChatRequest, conversationHistory, chatProviderMessages, caseArtifactContext, openChatStream, openLibraryChatStream, createConversationToolSession, librarySourceEvent, libraryActivityEvent, LIBRARY_CHAT_ERRORS } from './chat.js';
 import { createLibraryToolSession, LIBRARY_AGENT_LIMITS } from './agent-library-tools.js';
 
 const root = new URL('./public/', import.meta.url);
@@ -706,6 +706,7 @@ const server = http.createServer(async (request, response) => {
       if (history.some(message => message.role === 'user' && message.clientMessageId === input.clientMessageId)) throw new ChatError('CHAT_TURN_EXISTS',409);
       const currentMessage = input.messages[0];
       if (conversation) input.messages = [...conversationHistory(history,body.messages[0].content.length,{reviewOperation:input.reviewOperation}),currentMessage];
+      if(record)input.caseArtifactContext=caseArtifactContext(storage,session.userId,record);
       chatProviderMessages(input, record); // Validate bounded stored evidence before spending provider quota.
       if(input.libraryConsent)response.setHeader('X-Library-Retrieval','enabled');
       if (!enabled) throw new RequestError(503, 'LIVE_DISABLED', 'Live AI is disabled. The administrator must configure the provider before chatting.');

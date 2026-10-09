@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { validateChatRequest, chatProviderMessages, conversationHistory, parseProviderStream, CHAT_LIMITS } from '../chat.js';
+import { validateChatRequest, chatProviderMessages, conversationHistory, parseProviderStream, CHAT_LIMITS, caseArtifactContext, caseAgencyReference } from '../chat.js';
 import { AGENCY_OPTIONS, getAgencyGuidance } from '../public/agency-guidance.js';
 const valid = overrides => ({ locale: 'zh', consent: true, messages: [{ role: 'user', content: 'Explain the next administrative step.' }], ...overrides });
 const code = expected => error => error.code === expected;
@@ -59,8 +59,10 @@ test('chat attaches bounded server-owned references without confirming agency, p
     const system = messages[0].content, referenceText = system.split('Official-source reference context:\n')[1];
     const reference = JSON.parse(referenceText);
     assert.ok(referenceText.length <= 8000);
-    assert.equal(reference.id, id);
-    assert.deepEqual(reference.links, getAgencyGuidance(id, 'en').links);
+    assert.equal(reference.id, 'unknown');
+    assert.equal(reference.selectedReferenceAgency,id);
+    assert.equal(reference.caseAgencyConfirmedMatch,false);
+    assert.deepEqual(reference.links, getAgencyGuidance('unknown', 'en').links);
     assert.equal(reference.acceptanceStatus, 'unconfirmed');
     assert.equal(reference.checkedAt, '2026-10-07');
     assert.match(reference.versionCaution, /neither validity nor invalidity/);
@@ -142,4 +144,45 @@ test('repeated turns reuse stable context prefixes and keep bounded canonical pr
   assert.equal(context.documentContext.senderName.sourceMessageId,record.documentContext.senderName.sourceMessageId);
   assert.equal(context.documentContext.senderName.source,'Confirmed in saved reply');
   assert.deepEqual(record,before);assert.match(first[0].content,/incomplete value or source excerpt is not complete evidence/);
+});
+
+
+test('unknown, unreviewed, conflicting or mismatched PHA cannot inherit selected SFHA requirements',()=>{
+  const base={sourceText:'San Francisco address',fields:[]};
+  for(const field of [{key:'pha',value:'',confirmed:true,conflict:false},{key:'pha',value:'SFHA',confirmed:false,conflict:false},{key:'pha',value:'SFHA',confirmed:true,conflict:true},{key:'pha',value:'OHA',confirmed:true,conflict:false}]){
+    const input=validateChatRequest(valid({guidanceAgency:'sfha'})),record={...base,fields:[field]};
+    const reference=caseAgencyReference(input,record);
+    assert.equal(reference.id,'unknown');assert.equal(reference.specificNotesWithheld,true);
+    assert.equal(reference.caseApplicability,'unconfirmed');
+    assert.doesNotMatch(JSON.stringify(reference),/Vendor Number|RTA submission by voucher expiry/);
+    assert.deepEqual(record.fields,[field]);
+  }
+  const matched=caseAgencyReference(validateChatRequest(valid({guidanceAgency:'sfha'})),{...base,fields:[{key:'pha',value:'San Francisco Housing Authority',confirmed:true,conflict:false}]});
+  assert.equal(matched.id,'sfha');assert.equal(matched.caseAgencyConfirmedMatch,true);assert.equal(matched.caseApplicability,'unconfirmed');
+  assert.match(matched.notes.join(' '),/Vendor Number/);
+});
+
+test('explicit named general reference browsing stays separate from current-case applicability',()=>{
+  const record={fields:[{key:'pha',value:'',confirmed:true,conflict:false}]};
+  const input=validateChatRequest(valid({guidanceAgency:'sfha',messages:[{role:'user',content:'Please show general SFHA reference information.'}]}));
+  const reference=caseAgencyReference(input,record);
+  assert.equal(reference.id,'sfha');assert.equal(reference.referenceScope,'general-reference-only');
+  assert.equal(reference.caseAgencyConfirmedMatch,false);assert.equal(reference.caseApplicability,'unconfirmed');
+  const forCase=caseAgencyReference({...input,messages:[{role:'user',content:'Do general SFHA requirements apply to my case?'}]},record);
+  assert.equal(forCase.id,'unknown');
+  assert.equal(caseAgencyReference(validateChatRequest(valid({guidanceAgency:'sfha'})),null).id,'sfha');
+});
+
+test('current document metadata is bounded, case-scoped and distinguishes latest draft from stale final',()=>{
+  const record={id:'case-fixture',version:4},rows=[];
+  for(const kind of ['followup','missing-documents','status-summary'])for(let version=1;version<=16;version++)rows.push({id:kind+'-'+version,caseId:record.id,kind,status:version===15?'final':'draft',version,sourceCaseVersion:version===16?4:3,currentCaseVersion:4,isStale:version!==16,needsRegeneration:version===15});
+  const storage={listArtifacts:(userId,caseId)=>{assert.equal(userId,'owner-fixture');assert.equal(caseId,record.id);return rows;}};
+  const result=caseArtifactContext(storage,'owner-fixture',record);
+  assert.equal(result.versions.length,6);assert.equal(result.observedSavedVersions,48);assert.equal(result.omittedVersions,42);assert.equal(result.incomplete,true);assert.equal(result.snapshotConsistent,true);
+  assert.ok(JSON.stringify(result).length<3000);
+  for(const version of result.versions){assert.equal(version.currentCaseVersion,4);if(version.status==='final'){assert.equal(version.version,15);assert.equal(version.isStale,true);assert.equal(version.hasNewerSavedVersion,true);}}
+  const empty=caseArtifactContext({listArtifacts:()=>[]},'owner-fixture',record);assert.deepEqual(empty.versions,[]);assert.equal(empty.available,true);assert.equal(empty.incomplete,false);
+  assert.throws(()=>caseArtifactContext({listArtifacts:()=>null},'other-owner',record),code('CHAT_INVALID'));
+  assert.throws(()=>caseArtifactContext({listArtifacts:()=>[{caseId:'another-case'}]},'owner-fixture',record),code('CHAT_INVALID'));
+  assert.equal(caseArtifactContext({listArtifacts:()=>[{...rows[0],currentCaseVersion:5}]},'owner-fixture',record).snapshotConsistent,false);
 });
