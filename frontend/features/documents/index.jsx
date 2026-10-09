@@ -1,3 +1,5 @@
+import { OfficialPreparation } from './official-preparation';
+import { CaseReviewStatus } from '@/components/case-review-status';
 import { artifactNextStep, artifactNextStepCopy } from '@/lib/artifact-next-step';
 import { useEffect, useRef, useState } from 'react';
 import { FileText, Copy, Download, Printer, RefreshCw, Plus, Check, ArrowUpRight } from 'lucide-react';
@@ -120,6 +122,8 @@ export function DocumentsPage({lang = 'zh', caseId, onDirtyChange, onOpenIntake,
     {state.loading && <div role="status" aria-label={d.loading} className="space-y-3"><Skeleton className="h-10 w-2/3" /><Skeleton className="h-44 w-full" /><span className="sr-only">{d.loading}</span></div>}
     {!state.loading && !record && <Button disabled={busy} onClick={() => page.reload(false)}>{d.retry}</Button>}
     {record && <>
+      <CaseReviewStatus record={record} readiness={state.readinessLoading?null:state.readiness} lang={lang}/>
+      <OfficialPreparation record={record} lang={lang}/>
       {!state.loading && state.busy !== 'reload' && !state.error && next.phase !== 'empty' && <Card className="paper-card" data-testid="document-next-step"><CardContent className="space-y-3 pt-4">
         <p className="text-sm font-medium">{nextCopy[next.phase]}</p>
         {next.artifact && <p className="text-sm">{next.artifact.title || next.artifact.kind} · {next.artifact.status === 'final' ? d.final : d.draft} · v{next.artifact.version}</p>}

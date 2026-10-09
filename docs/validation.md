@@ -833,3 +833,14 @@ The copy branch now integrates main `bc17377018f22f42b811e550e8dbb118bb681fe1` w
 Combined local syntax/build and diff checks passed; backend 496/496 and frontend 393/393 passed. The final integrated head still requires fresh official browser/container/checks gates and screenshot review before merging. Production deployment remains a separate operations gate.
 
 Combined browser run `37863513096` on `66b5e2cf86441106877622aa934f2544cdbfd4d2` passed 65/66. Its trace showed the viewport already at 1280 while React still exposed the mobile navigation at focus time; before Enter, the navigation had remounted in the desktop header. The reference-panel test now waits for the viewport-specific navigation host and closed drawer, then asserts focus before pressing Enter. All keyboard activation, current-page, data-integrity and no-business-write checks remain; no runtime behavior was changed. Exact-head official rerun remains required.
+
+## 2026-10-09 — experience report iteration (local candidate)
+
+Base: `66725b9` (GitHub main / PR #55). Independent branch `codex/experience-report`; scope and report mapping: [experience iteration](tasks/experience-report-iteration.md).
+
+- Test-first reproduction: sensitive-input rejection incorrectly re-read history, and saved cases lacked a management control. Both focused DOM checks failed before implementation and passed afterwards.
+- `npm run check` and `npm run build`: passed on Node 24.19.0. The existing bundle-size advisory remains.
+- `npm run test:frontend`: **407/407 passed** using a canonical local temporary directory. Initial macOS temporary-path failures were environmental; no production storage permission checks were weakened.
+- `npm test`: **495/501 passed** in a private canonical temporary directory. Six PDF-related cases fail because the Linux Noto CJK font path is absent on macOS. Unmodified base PDF cases reproduce `PDF_EXPORT_UNAVAILABLE`. Local Docker is not running; Linux CI remains the required full-suite check.
+- New real-browser scenarios: **2/2 passed** at 1440px and 390px, with real HTTP/SQLite and synthetic accounts/materials. They verify association, rename, review status, official-source entry, agency mismatch without fact writes, delete cancellation/confirmation, cascaded conversation/artifact removal, original retention and current-case reset. Screenshot review found narrow mobile metadata in the initial layout; adjusted before the final affected-flow rerun.
+- No real provider requests, email delivery, production mutations, deployment or agency-content verification was performed. Production health returned `{ok:true}` only; deployed SHA remains unverified.

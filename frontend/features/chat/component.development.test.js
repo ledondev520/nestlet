@@ -497,7 +497,7 @@ test('stopping a read-only connection check aborts it without changing draft or 
  assert.equal(app.requests.some(item=>item.path==='/api/chat'),false);assert.equal(app.button('Check connection').disabled,false);
 });
 
-for(const code of ['SERVICE_PAUSED','SERVICE_EXPIRED','TRIAL_LIMIT_REACHED'])test(`${code} preserves the question without pretending sign-in or reply saving failed`,async context=>{
+for(const code of ['SENSITIVE_DATA','SERVICE_PAUSED','SERVICE_EXPIRED','TRIAL_LIMIT_REACHED'])test(`${code} preserves the question without pretending sign-in or reply saving failed`,async context=>{
  const caseId=randomUUID(),conversationId=randomUUID();let historyReads=0,statusReads=0;
  const app=await mount({caseId,statusHandler:()=>{statusReads++;return response(identity);},fetchHandler:async path=>{
   if(path===`/api/cases/${caseId}`)return response({case:{id:caseId,title:'Synthetic service case'}});

@@ -72,6 +72,17 @@ function AccountWorkspace({ lang, view, navigate, shellProps, notices }) {
   const markChatDirty = useCallback(value => { dirty.current.chat = value; }, []);
   const markDocumentsDirty = useCallback(value => { dirty.current.documents = value; }, []);
   const markIntakeDirty = useCallback(value => { dirty.current.intake = value; }, []);
+  const clearDeletedCase = useCallback(deletedId => {
+    if (caseIdRef.current !== deletedId) return;
+    // The explicit deletion confirmation covers this case's unsaved workspace.
+    dirty.current = { chat: false, documents: false, intake: false };
+    draftVault.clearWorkspace(userIdRef.current, workspaceKey);
+    setWorkspaceKey(crypto.randomUUID());
+    setImportRequest(null); setTextReviewRequest(null);
+    setWorkspaceEpoch(value => value + 1); setGuidanceAgency(DEFAULT_GUIDANCE_AGENCY);
+    setCaseId(null); setRequestedConversationId(null); setActiveConversationId(null);
+    setConversationRouteError(false);
+  }, [workspaceKey]);
   const openCase = useCallback((nextId, destination = 'chat', fresh = false, preserveRoute = false) => {
     if (fresh || nextId !== caseIdRef.current) {
       if (Object.values(dirty.current).some(Boolean) && !window.confirm(lang === 'zh' ? "切换工作区会清空未保存输入和回复。\n正在进行的操作也会停止。\n要继续吗？" : 'Switching workspace clears unsaved input and replies and stops active requests. Continue?')) return false;
@@ -166,7 +177,7 @@ function AccountWorkspace({ lang, view, navigate, shellProps, notices }) {
   const slots = {
     chat: [modules.chat?.ChatPage, { caseId, initialConversationId: requestedConversationId, conversationIndex, onOpenConversation: openConversation, onConversationChange: setActiveConversationId, onHistoryChange: refreshConversations, onNewConversation: () => openCase(null, 'chat', true), guidanceAgency, workflowTarget, lookupTarget, onCaseChange: bindCurrentCase, onDirtyChange: markChatDirty, onImportFiles: importFiles, onReviewMessage: reviewConversation, onOpenMaterials: openIntake, onOpenDocuments: continueDocument, onOpenSourceCase: openSourceCase, active: view === 'chat' && !conversationRouteError }],
     intake: [modules.intake?.IntakePage, { caseId, onCaseChange: bindCurrentCase, onDirtyChange: markIntakeDirty, importRequest, onImportHandled: imported, textReviewRequest, onTextReviewHandled: reviewedConversation, onOpenDocuments: openDocuments, active: view === 'intake' }],
-    customers: [modules.customers?.CustomersPage, { onOpenCase: openCase, active: view === 'customers' }],
+    customers: [modules.customers?.CustomersPage, { onOpenCase: openCase, onDeletedCase: clearDeletedCase, active: view === 'customers' }],
     documents: [modules.documents?.DocumentsPage, { caseId, onDirtyChange: markDocumentsDirty, onOpenIntake: openIntake, active: view === 'documents' }],
     settings: [modules.auth?.SettingsPage, { active: view === 'settings' }]
   };

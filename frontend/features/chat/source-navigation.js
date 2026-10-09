@@ -62,7 +62,7 @@ export async function sourceCase(api, inspected, selectedCaseId, { signal } = {}
 
 export const sourceNavigationCopy = {
   zh: {
-    history: "历史回复只保留文字引用。\n请重新查找，才能打开核对后的来源。",
+    history: "历史引用保留的是当时的版本。\n请用「搜索记录」核对当前资料。\n正文中的网页链接仍可打开。",
     inspect: '查看来源', choose: "选择事项", openCase: "打开事项", documents: "查看文档", preview: "预览原件", download: '下载原件',
     loading: '正在核对当前来源…', cancel: "取消查看", close: "关闭详情", empty: "这位客户还没有已保存事项。",
     chooseNote: "请选择要处理的事项。\n之后的信息核对和文档操作都用于它。", current: "当前事项",
@@ -74,7 +74,7 @@ export const sourceNavigationCopy = {
     signIn: '请重新登录后查看来源。'
   },
   en: {
-    history: 'References in saved replies are text only. Search again to enable verified source actions.',
+    history: 'Saved record references describe the version used at the time. Use Search saved records to check current records. Web links in the reply can still be opened.',
     inspect: 'Inspect source', choose: 'Choose a customer case', openCase: 'Open case', documents: 'Open case documents', preview: 'Preview original (new tab)', download: 'Download original',
     loading: 'Checking the current source…', cancel: 'Cancel source action', close: 'Close source details', empty: 'This customer has no saved cases.',
     chooseNote: 'Choose the case to continue. Subsequent review and document actions will use the case you open.', current: 'Current case',
