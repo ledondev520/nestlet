@@ -24,7 +24,7 @@ function Controls({ session, lang }) {
   return <div className="flex min-w-0 flex-wrap items-center gap-2">
     <span className="inline-flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground"><UserRound className="size-4 shrink-0" aria-hidden="true" /><span className="max-w-36 truncate" title={displayName}>{displayName}</span></span>
     <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={signOut}>{busy?<LoaderCircle className="animate-spin" aria-hidden="true" />:<LogOut aria-hidden="true" />}{busy?t.signOutBusy:t.signOut}</Button>
-    {error && <p role="alert" className="w-full max-w-sm text-xs text-destructive">{authErrorMessage(error,lang)}</p>}
+    {error && <p role="alert" className="whitespace-pre-line w-full max-w-sm text-xs text-destructive">{authErrorMessage(error,lang)}</p>}
   </div>;
 }
 

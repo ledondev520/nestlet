@@ -77,23 +77,23 @@ function OwnerAccounts({ api, lang }) {
   return <Card className="paper-card" aria-labelledby={`${id}-title`}>
     <CardHeader>
       <CardTitle id={`${id}-title`} className="paper-title text-xl">{t.title}</CardTitle>
-      <CardDescription>{t.description}</CardDescription>
+      <CardDescription className="whitespace-pre-line">{t.description}</CardDescription>
     </CardHeader>
     <CardContent className="space-y-5" aria-busy={Boolean(busy)}>
-      <p className="paper-note rounded-r-md p-3 text-sm leading-relaxed">{t.boundary}</p>
-      {busy && <p role="status" className="text-sm text-muted-foreground">{busy === 'save' ? t.saving : t.loading}</p>}
-      {(error || notice) && <p ref={feedback} tabIndex={-1} role={error ? 'alert' : 'status'} className={error ? 'rounded-md border border-destructive/30 p-3 text-sm text-destructive' : 'rounded-md border p-3 text-sm'}>{t[error || notice]}</p>}
+      <p className="whitespace-pre-line paper-note rounded-r-md p-3 text-sm leading-relaxed">{t.boundary}</p>
+      {busy && <p role="status" className="whitespace-pre-line text-sm text-muted-foreground">{busy === 'save' ? t.saving : t.loading}</p>}
+      {(error || notice) && <p ref={feedback} tabIndex={-1} role={error ? 'alert' : 'status'} className={error ? 'whitespace-pre-line rounded-md border border-destructive/30 p-3 text-sm text-destructive' : 'whitespace-pre-line rounded-md border p-3 text-sm'}>{t[error || notice]}</p>}
       {pending && <section aria-labelledby={`${id}-confirm`} className="space-y-3 rounded-lg border border-primary/30 bg-secondary/30 p-4">
         <h3 ref={confirmation} tabIndex={-1} id={`${id}-confirm`} className="font-semibold">{t.confirmTitle}</h3>
-        <p className="break-words text-sm">{t.selected}: <strong>{pending.username}</strong>{pending.email ? ` · ${pending.email}` : ''}</p>
-        <p className="text-sm leading-relaxed">{pending.administrator ? t.revokeEffect : t.grantEffect}</p>
-        <p className="text-xs text-muted-foreground">{t.confirmHint}</p>
+        <p className="whitespace-pre-line break-words text-sm">{t.selected}: <strong>{pending.username}</strong>{pending.email ? ` · ${pending.email}` : ''}</p>
+        <p className="whitespace-pre-line text-sm leading-relaxed">{pending.administrator ? t.revokeEffect : t.grantEffect}</p>
+        <p className="whitespace-pre-line text-xs text-muted-foreground">{t.confirmHint}</p>
         <div className="flex flex-wrap gap-2">
           <Button type="button" variant={pending.administrator ? 'destructive' : 'default'} disabled={Boolean(busy)} onClick={confirm}>{pending.administrator ? t.confirmRevoke : t.confirmGrant}</Button>
           <Button type="button" variant="outline" disabled={Boolean(busy)} onClick={cancel}>{t.cancel}</Button>
         </div>
       </section>}
-      {accounts && (accounts.length === 0 ? <p className="text-sm text-muted-foreground">{t.empty}</p> : <ul aria-label={t.directory} className="space-y-3">
+      {accounts && (accounts.length === 0 ? <p className="whitespace-pre-line text-sm text-muted-foreground">{t.empty}</p> : <ul aria-label={t.directory} className="space-y-3">
         {accounts.map(account => {
           const mutable = canChangeAdministrator(account);
           const reason = account.role === 'owner' ? t.ownerReason : !verifiedEmail(account) ? t.bindFirst : t.unavailable;
@@ -103,7 +103,7 @@ function OwnerAccounts({ api, lang }) {
               <div className="min-w-0"><dt className="text-muted-foreground">{t.email}</dt><dd className="break-words">{account.email || t.noEmail}<span className="mt-1 block text-xs text-muted-foreground">{verifiedEmail(account) ? t.verified : t.unverified}</span></dd></div>
               <div><dt className="text-muted-foreground">{t.created}</dt><dd>{new Date(account.createdAt).toLocaleString(lang === 'en' ? 'en-US' : 'zh-CN')}</dd></div>
             </dl>
-            {mutable ? <Button type="button" variant="outline" className="max-w-full whitespace-normal" disabled={Boolean(busy || pending)} aria-label={`${account.administrator ? t.revoke : t.grant}: ${account.username}`} onClick={event => select(account, event)}>{account.administrator ? t.revoke : t.grant}</Button> : <p className="text-xs leading-relaxed text-muted-foreground">{reason}</p>}
+            {mutable ? <Button type="button" variant="outline" className="max-w-full whitespace-normal" disabled={Boolean(busy || pending)} aria-label={`${account.administrator ? t.revoke : t.grant}: ${account.username}`} onClick={event => select(account, event)}>{account.administrator ? t.revoke : t.grant}</Button> : <p className="whitespace-pre-line text-xs leading-relaxed text-muted-foreground">{reason}</p>}
           </li>;
         })}
       </ul>)}

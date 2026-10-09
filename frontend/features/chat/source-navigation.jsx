@@ -49,29 +49,29 @@ export function ChatSourceNavigation({ api, sources, userId, caseId, lang = 'zh'
   }
   const blocked = disabled || pending || !active;
   return <section aria-label={words.librarySources} className="space-y-2 rounded border p-3" data-testid="chat-source-navigation">
-    <h2 className="text-sm font-semibold">{words.librarySources}</h2><p className="text-xs text-muted-foreground">{words.librarySourcesNote}</p>
+    <h2 className="text-sm font-semibold">{words.librarySources}</h2><p className="whitespace-pre-line text-xs text-muted-foreground">{words.librarySourcesNote}</p>
     <ul className="space-y-2 text-xs">{sources.items.map(source => <li key={source.sourceId} className="space-y-2 break-words" data-source-id={source.sourceId}>
-      <p><strong>{source.sourceId}</strong> · {words[{ client: 'libraryClient', case: 'libraryCase', asset: 'libraryAsset', artifact: 'libraryArtifact' }[source.kind]]} · {source.title} {source.titleTruncated && `(${words.libraryTitleTruncated})`}</p>
-      <p>{words.libraryVersion} {source.version} · {words[{ metadata: 'libraryMetadata', read: 'libraryRead', unavailable: 'libraryUnreadable' }[source.retrievalState]]}{source.truncated && ` · ${words.libraryExcerptTruncated}`}{source.status && ` · ${words[source.status === 'final' ? 'libraryFinal' : 'libraryDraft']}`}{(source.isStale || source.needsRegeneration) && ` · ${words.libraryStale}`}</p>
-      <p className="text-muted-foreground">{source.displayId||source.sourceId}{source.kind === 'case' && source.id === caseId && ` · ${copy.current}`}</p>
+      <p className="whitespace-pre-line"><strong>{source.sourceId}</strong> · {words[{ client: 'libraryClient', case: 'libraryCase', asset: 'libraryAsset', artifact: 'libraryArtifact' }[source.kind]]} · {source.title} {source.titleTruncated && `(${words.libraryTitleTruncated})`}</p>
+      <p className="whitespace-pre-line">{words.libraryVersion} {source.version} · {words[{ metadata: 'libraryMetadata', read: 'libraryRead', unavailable: 'libraryUnreadable' }[source.retrievalState]]}{source.truncated && ` · ${words.libraryExcerptTruncated}`}{source.status && ` · ${words[source.status === 'final' ? 'libraryFinal' : 'libraryDraft']}`}{(source.isStale || source.needsRegeneration) && ` · ${words.libraryStale}`}</p>
+      <p className="whitespace-pre-line text-muted-foreground">{source.displayId||source.sourceId}{source.kind === 'case' && source.id === caseId && ` · ${copy.current}`}</p>
       <Button type="button" variant="outline" size="sm" disabled={blocked || source.kind === 'case' && !onOpenSourceCase}
         onClick={() => run(source, source.kind === 'case' ? 'chat' : null)}>{source.kind === 'case' ? copy.openCase : source.kind === 'client' ? copy.choose : copy.inspect}</Button>
       {detail?.source.sourceId === source.sourceId && <div className="space-y-2 rounded border p-3">
-        <p className="font-medium">{detail.title}</p>
-        {detail.cases && <><p>{copy.chooseNote}</p>{!detail.cases.length && <p>{copy.empty}</p>}<ul className="space-y-2">{detail.cases.map(record => <li key={record.id}>
-          <p>{record.title} · {record.displayId||'—'} · {words.libraryVersion} {record.version}{record.id === caseId && ` · ${copy.current}`}</p>
+        <p className="whitespace-pre-line font-medium">{detail.title}</p>
+        {detail.cases && <><p className="whitespace-pre-line">{copy.chooseNote}</p>{!detail.cases.length && <p className="whitespace-pre-line">{copy.empty}</p>}<ul className="space-y-2">{detail.cases.map(record => <li key={record.id}>
+          <p className="whitespace-pre-line">{record.title} · {record.displayId||'—'} · {words.libraryVersion} {record.version}{record.id === caseId && ` · ${copy.current}`}</p>
           <Button type="button" variant="outline" size="sm" disabled={blocked || !onOpenSourceCase} onClick={() => run(source, 'chat', record.id)} aria-label={`${copy.openCase}: ${record.title} · ${record.displayId||'—'}`}>{copy.openCase}</Button>
         </li>)}</ul></>}
         {detail.preview && <div className="flex flex-wrap gap-3">
-          <a className="underline underline-offset-4" href={blocked ? undefined : detail.preview} aria-disabled={blocked} target="_blank" rel="noopener noreferrer">{copy.preview}</a>
+          <a className="underline underline-offset-4" href={blocked ? undefined : detail.preview} aria-disabled={blocked} aria-label={lang === 'en' ? 'Preview original in a new tab' : '预览原件，在新标签页打开'} target="_blank" rel="noopener noreferrer">{copy.preview}</a>
           <a className="underline underline-offset-4" href={blocked ? undefined : detail.download} aria-disabled={blocked} download>{copy.download}</a>
         </div>}
-        {detail.content !== undefined && <><p>{copy.historical}{detail.stale && ` ${words.libraryStale}`}</p><pre className="max-h-80 overflow-auto whitespace-pre-wrap break-words text-xs">{detail.content}</pre></>}
+        {detail.content !== undefined && <><p className="whitespace-pre-line">{copy.historical}{detail.stale && ` ${words.libraryStale}`}</p><pre className="max-h-80 overflow-auto whitespace-pre-wrap break-words text-xs">{detail.content}</pre></>}
         {source.caseId && onOpenSourceCase && <Button type="button" variant="outline" size="sm" disabled={blocked} onClick={() => run(source, source.kind === 'artifact' ? 'documents' : 'intake')}>{source.kind === 'artifact' ? copy.documents : copy.openCase}</Button>}
         <Button type="button" variant="ghost" size="sm" onClick={() => { cancel(); setDetail(null); setNotice(''); }}>{copy.close}</Button>
       </div>}
     </li>)}</ul>
-    {pending && <div role="status"><p>{copy.loading}</p><Button type="button" variant="outline" size="sm" onClick={() => cancel()}>{copy.cancel}</Button></div>}
-    {notice && <p role="status" className="text-sm text-destructive">{notice}</p>}
+    {pending && <div role="status"><p className="whitespace-pre-line">{copy.loading}</p><Button type="button" variant="outline" size="sm" onClick={() => cancel()}>{copy.cancel}</Button></div>}
+    {notice && <p role="status" className="whitespace-pre-line text-sm text-destructive">{notice}</p>}
   </section>;
 }

@@ -153,10 +153,14 @@ test('realHTTP + controlledDOM: documents and promoted root preserve case facts,
   await waitFor(()=>panel()&&dom.window.document.getElementById('document-kind'));
   await idle();
   assert.equal(panel().open,false,'Reference detail stays compact by default');
-  assert.match(panel().textContent,/官方资料参考/);
+  assert.match(panel().textContent,/官方参考/);
+  const scopeWarning = [...panel().querySelectorAll('p')].find(item => item.textContent.includes('五项信息核对'));
+  assert.ok(scopeWarning.textContent.includes('\n'));
+  assert.match(scopeWarning.className, /whitespace-pre-line/);
+  assert.match(scopeWarning.textContent, /参考机构不代表负责此事项的机构/);
   assert.equal(panel().querySelector('select').value,'sfha');
   assert.ok(panel().querySelector('a[href="https://sfha.org/files/documents/52517ENG.pdf"]'));
-  assert.match(panel().textContent,/尚未确认|不得修改该日期|不能视为每宗新租约必填/);
+  assert.match(panel().textContent,/尚未确认|不得修改表格上的日期|不能视为每宗新租约必填/);
   const beforeReferenceChange=(await(await request(`/api/cases/${record.id}`)).json()).case;
   const beforeReadiness=await(await request(`/api/cases/${record.id}/readiness?kind=followup&locale=en`)).json();
   const caseWrites=()=>requests.filter(item=>/^\/api\/(cases|artifacts)(?:\/|$)/u.test(item.path)&&item.options.method&&item.options.method!=='GET').length;
@@ -164,7 +168,7 @@ test('realHTTP + controlledDOM: documents and promoted root preserve case facts,
   await React.act(async()=>{panel().open=true;const select=panel().querySelector('select');select.value='oha';select.dispatchEvent(new dom.window.Event('change',{bubbles:true}));});
   assert.ok(panel().querySelector('a[href="https://www.oakha.org/propertyowners/section8ownerforms/"]'));
   assert.equal(panel().querySelector('a[href*="sfha.org"]'),null);
-  await click('材料与事实');
+  await click('材料');
   assert.equal(panel().querySelector('select').value,'oha');
   await React.act(async()=>dom.window.document.querySelector('button[aria-label="Switch interface to English"]').click());
   assert.match(panel().textContent,/Official source references|Accepted edition and case applicability unconfirmed/);

@@ -12,7 +12,7 @@ for (const {width,lang} of [1280,390,320].flatMap(width=>['en','zh'].map(lang=>(
  app.withDatabase(db=>{for(const [index,role,content] of [[1,'user','Please prepare a follow-up from these synthetic materials.'],[2,'assistant','Synthetic saved conversation. The recipient and sender contact still need confirmation. No message has been sent. '+ 'Keep the source linked and review the facts before finalizing. '.repeat(20)]])db.prepare('INSERT INTO messages(id,user_id,conversation_id,sequence,role,content,state,request_id,client_message_id,image_metadata_json,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)').run(randomUUID(),session.userId,conversation.id,index,role,content,'complete',null,null,'[]',new Date().toISOString());});
  const artifactResponse=await apiWrite(page,app,`/api/cases/${selectedRecord.id}/artifacts`,'POST',{kind:'followup',title:'Synthetic follow-up draft',status:'draft',content:'Dear Synthetic Intake Team,\n\nPlease confirm the current status and any remaining documentation. This is an authored synthetic draft, not an official form or a sent message.\n\nSynthetic Sender',expectedCaseVersion:selectedRecord.version});expect(artifactResponse.status()).toBe(201);const {artifact}=await artifactResponse.json();
  await page.reload();await english(page);if(lang==='zh')await switchLanguage(page,'zh');await expect(page.locator('.wb')).toBeVisible();
- const toggle=page.getByRole('button',{name:lang==='zh'?'打开对话列表':'Open conversations',exact:true});
+ const toggle=page.getByRole('button',{name:lang==='zh'?"打开列表":'Open conversations',exact:true});
  const rail=page.locator('.wb-rail');
  if(width<960)await toggle.click();
  await expect(rail.getByRole('link',{name:'Synthetic saved conversation',exact:true})).toBeVisible();
@@ -21,7 +21,7 @@ for (const {width,lang} of [1280,390,320].flatMap(width=>['en','zh'].map(lang=>(
  if(width>=960)await screenshot(page,testInfo,`unified-welcome-${width}-${lang}`,false);
  await rail.getByRole('link',{name:'Synthetic first conversation',exact:true}).click();
  const composer=page.locator('.chat-input');await composer.fill('Keep this unsent draft');
- await navigate(page,lang==='zh'?'材料与事实':'Materials & facts');const materialsUrl=page.url();await page.locator('.inbox-skip').focus();await page.keyboard.press('Enter');await expect(page).toHaveURL(materialsUrl);await expect(page.locator('main')).toBeFocused();await navigate(page,lang==='zh'?'对话':'Conversation');await expect(composer).toHaveValue('Keep this unsent draft');
+ await navigate(page,lang==='zh'?"材料":'Materials & facts');const materialsUrl=page.url();await page.locator('.inbox-skip').focus();await page.keyboard.press('Enter');await expect(page).toHaveURL(materialsUrl);await expect(page.locator('main')).toBeFocused();await navigate(page,lang==='zh'?'对话':'Conversation');await expect(composer).toHaveValue('Keep this unsent draft');
  if(width<960)await toggle.click();
  page.once('dialog',dialog=>dialog.dismiss());await rail.getByRole('link',{name:'Synthetic saved conversation',exact:true}).click();
  await expect(composer).toHaveValue('Keep this unsent draft');
@@ -35,26 +35,26 @@ for (const {width,lang} of [1280,390,320].flatMap(width=>['en','zh'].map(lang=>(
  await composer.fill('Synthetic next message ready to review');
  const send=page.locator('.chat-composer-actions button[type="submit"]');await expect(send).toBeEnabled();
  const assertComposer=async()=>{for(const target of [composer,send]){const box=await target.boundingBox();expect(box).not.toBeNull();expect(box.y).toBeGreaterThanOrEqual(0);expect(box.y+box.height).toBeLessThanOrEqual(page.viewportSize().height+1);}expect(await page.evaluate(()=>window.scrollY)).toBe(0);};
- await assertComposer();await expect(page.locator('.wb-center nav[aria-label="Workspace navigation"],.wb-center nav[aria-label="工作区导航"]')).toHaveCount(0);if(width<960)expect((await page.locator('.wb-topbar').boundingBox()).height).toBeLessThanOrEqual(64);
+ await assertComposer();await expect(page.locator(".wb-center nav[aria-label=\"Workspace navigation\"],.wb-center nav[aria-label=\"页面导航\"]")).toHaveCount(0);if(width<960)expect((await page.locator('.wb-topbar').boundingBox()).height).toBeLessThanOrEqual(64);
  // Open the authoritative material editor from this exact conversation's context,
  // save there, and return without promoting chat text or replacing the thread.
- if(width<960)await page.getByRole('button',{name:lang==='zh'?'打开案例上下文':'Open case context',exact:true}).click();
- await page.locator('[data-testid="chat-case-workflow"]').getByRole('button',{name:lang==='zh'?'核对事实与材料':'Review facts and materials',exact:true}).click();
- const canonicalSource=page.getByLabel(lang==='zh'?'案例原文':'Case source text',{exact:true});
+ if(width<960)await page.getByRole('button',{name:lang==='zh'?"打开详情":'Open case context',exact:true}).click();
+ await page.locator('[data-testid="chat-case-workflow"]').getByRole('button',{name:lang==='zh'?"核对材料":'Review facts and materials',exact:true}).click();
+ const canonicalSource=page.getByLabel(lang==='zh'?"材料原文":'Case source text',{exact:true});
  await expect(canonicalSource).toHaveValue('');await canonicalSource.fill('Synthetic material edit from the exact saved conversation.');
  const savedCase=page.waitForResponse(response=>new URL(response.url()).pathname===`/api/cases/${selectedRecord.id}`&&response.request().method()==='PUT');
- await page.getByRole('button',{name:lang==='zh'?'保存案例':'Save case',exact:true}).click();expect((await savedCase).status()).toBe(200);
+ await page.getByRole('button',{name:lang==='zh'?"保存事项":'Save case',exact:true}).click();expect((await savedCase).status()).toBe(200);
  await navigate(page,lang==='zh'?'对话':'Conversation');await expect(page.locator('[data-feature="chat"]')).toHaveAttribute('data-conversation-id',conversation.id);await expect(composer).toHaveValue('Synthetic next message ready to review');
  const returnUrl=page.url(),scrollBeforeSettings=await thread.evaluate(node=>node.scrollTop);
- await accountSettings(page);await expect(page.locator('section[aria-label="'+(lang==='zh'?'账户与设置':'Account and settings')+'"]:not([hidden])')).toBeVisible();
- if(width>=960){await expect(page.locator('[data-account-settings]')).toHaveAttribute('aria-current','page');const topbar=page.locator('.wb-topbar');const language=await topbar.getByRole('button',{name:lang==='zh'?'Switch interface to English':'切换界面为中文',exact:true}).boundingBox();const logout=await topbar.getByRole('button',{name:lang==='zh'?'退出':'Sign out',exact:true}).boundingBox();expect(language.x).toBeLessThan(logout.x);}
+ await accountSettings(page);await expect(page.locator('section[aria-label="'+(lang==='zh'?"设置":'Account and settings')+'"]:not([hidden])')).toBeVisible();
+ if(width>=960){await expect(page.locator('[data-account-settings]')).toHaveAttribute('aria-current','page');const topbar=page.locator('.wb-topbar');const language=await topbar.getByRole('button',{name:lang==='zh'?'Switch interface to English':'切换界面为中文',exact:true}).boundingBox();const logout=await topbar.getByRole('button',{name:lang==='zh'?"退出登录":'Sign out',exact:true}).boundingBox();expect(language.x).toBeLessThan(logout.x);}
  await screenshot(page,testInfo,`unified-settings-${width}-${lang}`,false);
- await page.getByRole('button',{name:lang==='zh'?'返回工作区':'Back to workspace',exact:true}).click();
+ await page.getByRole('button',{name:lang==='zh'?"返回":'Back to workspace',exact:true}).click();
  await expect(page).toHaveURL(returnUrl);await expect(composer).toHaveValue('Synthetic next message ready to review');await expect(page.locator('[data-feature="chat"]')).toHaveAttribute('data-conversation-id',conversation.id);expect(Math.abs(await thread.evaluate(node=>node.scrollTop)-scrollBeforeSettings)).toBeLessThanOrEqual(2);
  await noHorizontalOverflow(page);await screenshot(page,testInfo,`real-inbox-${width}-${lang}-populated`,false);
  await page.setViewportSize({width,height:560});await composer.focus();await page.keyboard.press('ArrowLeft');await assertComposer();await screenshot(page,testInfo,`real-inbox-${width}-${lang}-keyboard-resize`,false);await page.setViewportSize({width,height:900});
 
- if(width<960)await page.getByRole('button',{name:lang==='zh'?'打开案例上下文':'Open case context',exact:true}).click();
+ if(width<960)await page.getByRole('button',{name:lang==='zh'?"打开详情":'Open case context',exact:true}).click();
  await expect(page.locator('.wb-context')).toContainText('Synthetic follow-up draft');await screenshot(page,testInfo,`real-inbox-${width}-${lang}-context`,false);if(width<960)await page.keyboard.press('Escape');
  await navigate(page,lang==='zh'?'文档':'Documents');await page.locator(`[data-artifact-id="${artifact.id}"]`).getByRole('button').click();await expect(page.locator('#document-body')).toHaveValue(/Dear Synthetic Intake Team/);await screenshot(page,testInfo,`real-inbox-${width}-${lang}-document`,false);await clean();
 });
@@ -62,7 +62,7 @@ for (const {width,lang} of [1280,390,320].flatMap(width=>['en','zh'].map(lang=>(
 for(const lang of ['en','zh'])test(`Inbox drawers contain focus, close safely and never open from desktop state (${lang})`,async({page,customerApp:app})=>{
  await page.setViewportSize({width:1280,height:900});await signInCustomer(page,app);if(lang==='zh')await switchLanguage(page,'zh');
  await page.setViewportSize({width:390,height:844});await expect(page.locator('[aria-modal="true"]')).toHaveCount(0);
- const open=page.getByRole('button',{name:lang==='zh'?'打开案例上下文':'Open case context',exact:true});await open.click();const dialog=page.getByRole('dialog',{name:lang==='zh'?'案例上下文':'Case context',exact:true});await expect(dialog).toBeVisible();
+ const open=page.getByRole('button',{name:lang==='zh'?"打开详情":'Open case context',exact:true});await open.click();const dialog=page.getByRole('dialog',{name:lang==='zh'?"事项详情":'Case context',exact:true});await expect(dialog).toBeVisible();
  for(const key of ['Tab','Shift+Tab','Tab','Tab']){await page.keyboard.press(key);expect(await page.evaluate(()=>!!document.activeElement.closest('[aria-modal="true"]'))).toBe(true);}
  await page.keyboard.press('Escape');await expect(open).toBeFocused();await expect(page.locator('[aria-modal="true"]')).toHaveCount(0);
  await open.click();await page.locator('.wb-scrim').click({position:{x:3,y:3}});await expect(open).toBeFocused();

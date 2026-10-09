@@ -62,15 +62,15 @@ export async function sourceCase(api, inspected, selectedCaseId, { signal } = {}
 
 export const sourceNavigationCopy = {
   zh: {
-    history: '已保存回复中的引用仅保留为文本。重新检索后，才可使用经过核对的来源操作。',
-    inspect: '查看来源', choose: '选择客户案例', openCase: '打开案例', documents: '打开案例文档', preview: '预览原件（新标签页）', download: '下载原件',
-    loading: '正在核对当前来源…', cancel: '取消来源操作', close: '关闭来源详情', empty: '此客户没有已保存的案例。',
-    chooseNote: '请选择要继续处理的案例。打开后，后续核对和文档操作将使用该案例。', current: '当前案例',
-    changed: '来源版本或所属案例已变化。请重新检索后再选择；当前工作未改变。',
-    missing: '来源不存在或当前账号无权访问。当前工作未改变。',
-    error: '无法核对来源，请重试。当前工作未改变。',
-    historical: '这是历史文档，只供核对。请在案例文档页检查当前版本；现有编辑不会被替换。',
-    denied: '已保留当前未保存的内容，未切换案例。',
+    history: "历史回复只保留文字引用。\n请重新查找，才能打开核对后的来源。",
+    inspect: '查看来源', choose: "选择事项", openCase: "打开事项", documents: "查看文档", preview: "预览原件", download: '下载原件',
+    loading: '正在核对当前来源…', cancel: "取消查看", close: "关闭详情", empty: "这位客户还没有已保存事项。",
+    chooseNote: "请选择要处理的事项。\n之后的信息核对和文档操作都用于它。", current: "当前事项",
+    changed: "来源版本或所属事项已变。\n请重新查找后选择，当前工作未改变。",
+    missing: "来源不存在，或你无权查看。\n当前工作未改变。",
+    error: "来源核对失败，请重试。\n当前工作未改变。",
+    historical: "这是历史文档，仅供核对。\n请在文档页检查当前版本。\n现有修改不会被替换。",
+    denied: "未切换事项，未保存内容仍保留。",
     signIn: '请重新登录后查看来源。'
   },
   en: {

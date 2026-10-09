@@ -40,7 +40,7 @@ export function WorkbookMapping({
     }
   }
   return <Card className="border-primary/30" aria-labelledby={`${id}-title`}>
-    <CardHeader><CardTitle id={`${id}-title`}>{words.workbookTitle}</CardTitle><CardDescription>{workbook.filename} · {words.workbookHelp}</CardDescription></CardHeader>
+    <CardHeader><CardTitle id={`${id}-title`}>{words.workbookTitle}</CardTitle><CardDescription className="whitespace-pre-line">{workbook.filename} · {words.workbookHelp}</CardDescription></CardHeader>
     <CardContent className="space-y-5">
       <div className="flex flex-wrap gap-5">
         <div className="space-y-2"><Label htmlFor={`${id}-sheet`}>{words.sheet}</Label><NativeSelect id={`${id}-sheet`} value={sheetIndex} disabled={disabled} onChange={event => selectSheet(event.target.value)}>{workbook.sheets.map((item, index) => <NativeSelectOption key={index} value={index} disabled={item.hidden || !item.rows?.length}>{item.name}{item.hidden ? ` (${words.blocked})` : ''}</NativeSelectOption>)}</NativeSelect></div>
@@ -49,7 +49,7 @@ export function WorkbookMapping({
             setInvalid(false);
           }}>{sheet.rows.map((_, index) => <NativeSelectOption key={index} value={index}>{index + 1}</NativeSelectOption>)}</NativeSelect></div>
       </div>
-      {sheet.truncated && <p className="text-sm text-muted-foreground">{words.truncatedSheet}</p>}
+      {sheet.truncated && <p className="whitespace-pre-line text-sm text-muted-foreground">{words.truncatedSheet}</p>}
       <div className="overflow-x-auto rounded-md border"><table className="w-full text-left text-xs"><caption className="p-3 text-left text-muted-foreground">{sheet.name} · {words.row} {rowIndex + 1}</caption><thead><tr>{row.map((_, column) => <th key={column} scope="col" className="border-b bg-muted px-3 py-2 font-mono">{columnName(column)}</th>)}</tr></thead><tbody><tr>{row.map((value, column) => <td key={column} className="max-w-64 border-r px-3 py-3 break-words align-top">{blocked(column) ? words.blocked : value || '—'}</td>)}</tr></tbody></table></div>
       <div className="grid gap-4 sm:grid-cols-2">{FIELDS.map(key => <div key={key} className="space-y-2"><Label htmlFor={`${id}-${key}`}>{words.fieldLabels[key]} · {words.mapColumn}</Label><NativeSelect id={`${id}-${key}`} value={mapping[key] ?? ''} disabled={disabled} onChange={event => {
             setMapping(previous => ({
@@ -58,7 +58,7 @@ export function WorkbookMapping({
             }));
             setInvalid(false);
           }}><NativeSelectOption value="">{words.unmapped}</NativeSelectOption>{row.map((value, column) => <NativeSelectOption key={column} value={column} disabled={blocked(column)}>{columnName(column)} · {blocked(column) ? words.blocked : value.slice(0, 65) || '—'}</NativeSelectOption>)}</NativeSelect></div>)}</div>
-      {invalid && <Alert variant="destructive"><AlertDescription>{words.errors.MAPPING_INVALID}</AlertDescription></Alert>}
+      {invalid && <Alert variant="destructive"><AlertDescription className="whitespace-pre-line">{words.errors.MAPPING_INVALID}</AlertDescription></Alert>}
       <div className="flex flex-wrap gap-2"><Button type="button" disabled={disabled} onClick={apply}>{words.mapApply}</Button><Button type="button" variant="ghost" disabled={disabled} onClick={onClose}>{words.mapCancel}</Button></div>
     </CardContent>
   </Card>;

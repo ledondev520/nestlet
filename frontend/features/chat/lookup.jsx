@@ -34,7 +34,7 @@ export function ChatLookup({ api, userId, caseId, lang, active, disabled, onOpen
       if (!Array.isArray(clients?.clients) || !Array.isArray(cases?.cases) || clients.clients.length > 24 || cases.cases.length > 100) throw { code: 'SOURCE_INVALID' };
       const match = query.trim().toLocaleLowerCase();
       const rows = [...clients.clients.map(record => ({ kind: 'client', record })), ...cases.cases.filter(record => typeof record.title === 'string' && record.title.toLocaleLowerCase().includes(match)).slice(0, 24).map(record => ({ kind: 'case', record }))];
-      if (!rows.length) { setNotice(en ? 'No matching saved customers or cases.' : '未找到匹配的已保存客户或案例。'); return; }
+      if (!rows.length) { setNotice(en ? 'No matching saved customers or cases.' : "没找到相关客户或事项。"); return; }
       const result = normalizeLibrarySources({ requestId: crypto.randomUUID(), appendix: '', items: rows.map(({ kind, record }, index) => ({
         sourceId: `S${index + 1}`, kind, id: record.id, ...(record.displayId?{displayId:record.displayId}:{}), version: record.version, title: kind === 'client' ? record.displayName : record.title,
         titleTruncated: false, retrievalState: 'metadata', ...(record.clientId ? { clientId: record.clientId } : {})
@@ -43,16 +43,16 @@ export function ChatLookup({ api, userId, caseId, lang, active, disabled, onOpen
     } catch (error) { if (current() && error.name !== 'AbortError') setNotice(sourceNavigationError(error, sourceNavigationCopy[en ? 'en' : 'zh'])); }
     finally { if (operation.current === token) { operation.current = null; token.release?.(token.claim); setPending(false); } }
   }
-  return <section className="chat-record-search space-y-3" aria-label={en ? 'Find a saved customer or case' : '查找已保存的客户或案例'}>
+  return <section className="chat-record-search space-y-3" aria-label={en ? 'Find a saved customer or case' : "查找记录"}>
     <form onSubmit={search} className="space-y-2">
-      <Label className={compact?'sr-only':undefined} htmlFor={id}>{en ? 'Customer name or case title' : '客户名称或案例标题'}</Label>
-      <div className="chat-record-search-row"><Input id={id} placeholder={en?'Search saved records':'搜索已保存记录'} type="search" maxLength={120} value={query} disabled={disabled || pending || !active}
+      <Label className={compact?'sr-only':undefined} htmlFor={id}>{en ? 'Customer name or case title' : "名称搜索"}</Label>
+      <div className="chat-record-search-row"><Input id={id} placeholder={en?'Search saved records':"搜索记录"} type="search" maxLength={120} value={query} disabled={disabled || pending || !active}
         onChange={event => { setQuery(event.target.value); setSources(null); setNotice(''); }} />
-        <Button type="submit" variant="outline" aria-label={en ? 'Find saved records' : '查找已保存记录'} disabled={disabled || pending || !active || !query.trim()}>{compact ? <Search aria-hidden="true" size={18}/> : (en ? 'Find saved records' : '查找已保存记录')}</Button></div>
+        <Button type="submit" variant="outline" aria-label={en ? 'Find saved records' : "查找记录"} disabled={disabled || pending || !active || !query.trim()}>{compact ? <Search aria-hidden="true" size={18}/> : (en ? 'Find saved records' : "查找记录")}</Button></div>
 
     </form>
     {pending && <div role="status">{en ? 'Searching saved records…' : '正在查找已保存记录…'} <Button type="button" variant="ghost" onClick={cancel}>{en ? 'Cancel lookup' : '取消查找'}</Button></div>}
-    {notice && <p role="status" className="text-sm">{notice}</p>}
+    {notice && <p role="status" className="whitespace-pre-line text-sm">{notice}</p>}
     {sources && <ChatSourceNavigation {...{ api, userId, caseId, lang, active, disabled, sources, onOpenSourceCase, claimOperation, releaseOperation }} />}
   </section>;
 }

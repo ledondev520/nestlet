@@ -45,8 +45,8 @@ export function proposalMatchesScope(proposal,{caseId,conversationId}) {
 }
 export function conversationActionError(error,lang='zh') {
   const en=lang==='en';
-  if(['CASE_CONFLICT','DOCUMENT_CONTEXT_CONFLICT'].includes(error?.code))return en?'This case changed or contains reviewed conflicts. Review the latest facts and request a new proposal. Nothing was overwritten.':'案例已更新或存在已核实的冲突。请核对最新事实并重新请求建议，没有覆盖原值。';
-  if(error?.code==='CONVERSATION_ACTION_INVALID')return en?'This proposal could not be validated. Request a new preview; no action was applied.':'无法验证此建议，请重新请求预览；没有应用任何操作。';
+  if(['CASE_CONFLICT','DOCUMENT_CONTEXT_CONFLICT'].includes(error?.code))return en?'This case changed or contains reviewed conflicts. Review the latest facts and request a new proposal. Nothing was overwritten.':"事项有更新，或已核实的信息有冲突。\n请核对最新信息，再次请求建议。\n原有内容未被覆盖。";
+  if(error?.code==='CONVERSATION_ACTION_INVALID')return en?'This proposal could not be validated. Request a new preview; no action was applied.':"无法核实此建议，请重新请求预览。\n没有执行任何修改。";
   if(error?.code==='DOCUMENT_ENGLISH_REQUIRED')return en?'The draft must be in English. Ask for an English answer first.':'草稿必须为英文，请先请求英文回答。';
   if(error?.code==='AUTH_REQUIRED')return en?'Sign in again before continuing.':'请重新登录后继续。';
   if(['CONVERSATION_ACTION_SOURCE_NOT_FOUND','CONVERSATION_ACTION_SOURCE_INCOMPLETE'].includes(error?.code))return en?'The saved source is unavailable or incomplete. Request a new proposal.':'已存来源不可用或不完整，请重新请求建议。';

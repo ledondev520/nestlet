@@ -108,14 +108,14 @@ export const DOCUMENT_REQUIREMENTS = Object.freeze({
   'status-summary': Object.freeze({ fields: Object.freeze(['property']), details: Object.freeze(['senderName']), anyOf: Object.freeze([]) }),
 });
 const labels = Object.freeze({
-  property: ['房屋地址', 'Property address'], owner: ['业主名称', 'Owner name'], pha: ['住房管理机构', 'Housing authority'],
-  caseReference: ['案件编号', 'Case reference'], rent: ['拟议租金', 'Proposed rent'],
-  documentDate: ['文书日期', 'Document date'], recipientName: ['收件人或收件部门', 'Recipient or department'],
-  recipientContact: ['收件人联系地址', 'Recipient contact/address'], recipientOrganization: ['收件人机构', 'Recipient organization'],
-  salutation: ['信件称呼', 'Salutation'],
-  senderName: ['发件人姓名', 'Sender name'], senderContact: ['发件人联系方式', 'Sender contact details'],
-  senderRole: ['发件人角色', 'Sender role'], senderOrganization: ['发件人机构', 'Sender organization'],
-  attachments: ['实际附件清单', 'Actual attachment list'], nextActionOwner: ['下一步负责人', 'Next-action owner'], targetDate: ['目标日期', 'Target date'],
+  property: ['房屋地址', 'Property address'], owner: ['业主', 'Owner name'], pha: ['住房机构', 'Housing authority'],
+  caseReference: ['事项编号', 'Case reference'], rent: ['申请租金', 'Proposed rent'],
+  documentDate: ['文档日期', 'Document date'], recipientName: ['收件方', 'Recipient or department'],
+  recipientContact: ['收件联系', 'Recipient contact/address'], recipientOrganization: ['收件机构', 'Recipient organization'],
+  salutation: ['称呼', 'Salutation'],
+  senderName: ['发件人', 'Sender name'], senderContact: ['发件联系', 'Sender contact details'],
+  senderRole: ['发件身份', 'Sender role'], senderOrganization: ['发件机构', 'Sender organization'],
+  attachments: ['附件清单', 'Actual attachment list'], nextActionOwner: ['跟进人', 'Next-action owner'], targetDate: ['目标日期', 'Target date'],
 });
 function options(record, supplied = {}) {
   const kind = supplied.kind ?? record?.draftType;
@@ -155,10 +155,10 @@ function removeVerifiedNames(content, record, fields, context) {
 function missingQuestion(key, reason, locale) {
   const label = labels[key][locale === 'zh' ? 0 : 1];
   const question = locale === 'zh'
-    ? reason === 'conflict' ? `「${label}」的信息存在冲突，请确认应采用的准确内容及来源。`
-      : reason === 'unconfirmed' ? `请核对并确认「${label}」的内容及来源。`
-      : reason === 'english_review' ? `请提供并确认「${label}」在英文文书中的准确写法，不会自动翻译或猜测。`
-      : `请提供「${label}」及其来源，并确认可以用于这份文书。`
+    ? reason === 'conflict' ? `「${label}」信息不一致。\n请确认正确内容和出处。`
+      : reason === 'unconfirmed' ? `请核对「${label}」及其出处。`
+      : reason === 'english_review' ? `请确认「${label}」的英文写法。\n不会自动翻译或猜测。`
+      : `请提供「${label}」和出处。\n并确认可用于这份文档。`
     : reason === 'conflict' ? `Please resolve the conflicting ${label.toLowerCase()} and confirm its source.`
       : reason === 'unconfirmed' ? `Please review and confirm the ${label.toLowerCase()} and its source.`
       : reason === 'english_review' ? `Please provide and confirm the English rendering of the ${label.toLowerCase()}; it will not be translated or guessed automatically.`

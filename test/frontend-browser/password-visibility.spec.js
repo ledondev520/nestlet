@@ -12,7 +12,7 @@ for (const lang of ['en', 'zh']) test(`registration eye controls: touch target, 
   const password = page.locator('input[name=password]'), confirmation = page.locator('input[name=passwordConfirmation]');
   for (const [field, other, show, hide] of [
     [password, confirmation, lang === 'en' ? 'Show password' : '显示密码', lang === 'en' ? 'Hide password' : '隐藏密码'],
-    [confirmation, password, lang === 'en' ? 'Show confirmation password' : '显示确认密码', lang === 'en' ? 'Hide confirmation password' : '隐藏确认密码']
+    [confirmation, password, lang === 'en' ? 'Show confirmation password' : "显示确认密码", lang === 'en' ? 'Hide confirmation password' : "隐藏确认密码"]
   ]) {
     const toggle = page.getByRole('button', { name: show, exact: true });
     const value = await field.inputValue(), box = await toggle.boundingBox();

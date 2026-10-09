@@ -769,6 +769,33 @@ Legacy schema4/schema9 restore fences are tested through first schema10 startup;
 
 An exact historical `f738655` schema9 storage binary refused a disposable schema10 database without byte changes. The real schema1→10 migration smoke passed on private synthetic local data; this is not a Docker/production run. The unchanged production-build bundle-size advisory remains. Browser discovery lists **57 scenarios**, adding a manual-service confirmation/cancel/ordinary-read-only and display-reference journey. Chromium was not launched locally; exact combined official browser/container CI and independent review remain release gates. No live migration, restore, payment, provider request or account grant occurred.
 
+## 2026-10-08 — approved plain-language interface copy
+
+Applied the owner-approved Chinese copy review against `421545755ab9cb2d26e061b4cc72c9ea84940cd8`. Visible menus/actions now use the approved short labels and consistent 对话 / 事项 / 文档 terminology. Important consent, privacy, uncertainty, conflict, data-loss and cost statements remain explicit as short separate lines. Caption notes in the review are not treated as interface text.
+
+This change is presentation only: no API/schema/provider settings, canonical identifiers, request payloads, saved content, English document generation or export behavior changed. The existing full starter-message payloads and historical title-recognition strings are retained. Direct PDF download remains available. The attachment label remains 添加附件 because the current picker accepts documents as well as images. Confirmation receipts render localized field names while retaining the original canonical keys and provenance. Distinct password-toggle accessibility names and the one-time no-library action's description are preserved.
+
+Local verification on the candidate tree:
+- `npm run check` and production build passed.
+- `npm test`: 482/482 passed.
+- Full frontend suite: 389/389 passed, including new copy-length, retained-warning-meaning, multiline presentation and localized-receipt tests.
+- `git diff --check` passed.
+- Local Chromium could not start because the execution sandbox rejects its local socket. The browser assertions therefore were not executed locally; the two HTTP-only browser-suite checks are not a browser pass. Use the official `Nestlet browser acceptance` workflow and its exact-SHA screenshots for desktop/mobile acceptance.
+
+Not established here: live provider completion, real email delivery, production deployment, or durable provider-key storage. The separately authorized persistence work must retain its own verification boundary and current storage-specific wording.
+
+Official first browser run `37861083523` on `913fa658c6445bbe63ae71d2aa7e476fb59a0d55`: 60/62 passed. The two failures matched outdated Chinese substrings for the printed-date caution and successful model-response check. Captured UI output showed the approved new meanings; only those exact test expectations were updated. Full exact-head browser rerun remains required.
+
 ## 2026-10-09 — durable encrypted provider settings candidate
 
 Replaces browser-saved RAM-only credentials with a separate AES-256-GCM SQLite credential store, committed before activation and restored at startup. Application schema10 is unchanged. Synthetic private wrapping files and authored provider transport verify restart, paused-state retention, prior-key preservation on validation/database failure, fail-closed wrong-key/tamper handling, private-path checks and explicit ciphertext-only backup/restore. Production wrapping-secret creation/mounts and real credential migration have not been performed; these require the separate approved operations/secure-entry steps documented in `provider-config-storage.md`.
+
+## 2026-10-09 — plain-language copy integrated with durable settings and language preference
+
+Copy-only head `37e4ae30b435c099e74919d73c3090e1afaf299d` passed all three official gates; browser run `37862224534` passed 62/62 with no skipped scenarios. Independent review inspected desktop/mobile Chinese screenshots, the compact model setup, disclosure wording and corrected two-line keyboard hint.
+
+The copy branch now integrates main `bc17377018f22f42b811e550e8dbb118bb681fe1` without changing its provider persistence or language-preference behavior. Conflict resolution preserves the secure-storage readiness gate, encrypted-storage metadata, prior-setting-preservation error, locale initialization/save effect and exact locale-only browser-storage assertion. The encrypted-storage and unavailable-storage Chinese messages use readable short lines. Browser coverage additionally captures the expanded durable-storage feedback and setup-unavailable state; it does not claim real-provider or production restart evidence.
+
+Combined local syntax/build and diff checks passed; backend 496/496 and frontend 393/393 passed. The final integrated head still requires fresh official browser/container/checks gates and screenshot review before merging. Production deployment remains a separate operations gate.
+
+Combined browser run `37863513096` on `66b5e2cf86441106877622aa934f2544cdbfd4d2` passed 65/66. Its trace showed the viewport already at 1280 while React still exposed the mobile navigation at focus time; before Enter, the navigation had remounted in the desktop header. The reference-panel test now waits for the viewport-specific navigation host and closed drawer, then asserts focus before pressing Enter. All keyboard activation, current-page, data-integrity and no-business-write checks remain; no runtime behavior was changed. Exact-head official rerun remains required.

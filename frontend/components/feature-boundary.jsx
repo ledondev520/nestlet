@@ -9,10 +9,10 @@ export class FeatureBoundary extends Component {
     if (!this.state.failed) return <div key={this.state.attempt}>{this.props.children}</div>;
     const zh = this.props.lang !== 'en';
     return <Alert variant="destructive">
-      <AlertTitle>{zh ? '这个页面暂时无法显示' : 'This page could not be displayed'}</AlertTitle>
-      <AlertDescription>
-        <p>{zh ? '请重试。页面重新加载会丢失尚未保存的输入。' : 'Try again. Reloading the page clears unsaved input.'}</p>
-        <Button variant="outline" className="mt-3" onClick={() => this.setState(state => ({ failed: false, attempt: state.attempt + 1 }))}>{zh ? '重新加载此页' : 'Reload this page'}</Button>
+      <AlertTitle>{zh ? "加载失败" : 'This page could not be displayed'}</AlertTitle>
+      <AlertDescription className="whitespace-pre-line">
+        <p className="whitespace-pre-line">{zh ? "请先保留未保存的输入。\n重新加载会清空这些内容。" : 'Try again. Reloading the page clears unsaved input.'}</p>
+        <Button variant="outline" className="mt-3" onClick={() => this.setState(state => ({ failed: false, attempt: state.attempt + 1 }))}>{zh ? "重新加载" : 'Reload this page'}</Button>
       </AlertDescription>
     </Alert>;
   }

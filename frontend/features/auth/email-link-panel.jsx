@@ -44,16 +44,16 @@ export function EmailLinkPanel({ link, lang = 'zh', onClose }) {
     finally { if (operation.current(task)) setBusy(false); operation.finish(task); }
   }
   function close() { operation.cancel(); link.clear(); clearNativePasswords(formRef.current); onClose?.(); }
-  return <Card className="paper-card mx-auto w-full max-w-lg"><CardHeader className="space-y-3"><MailCheck className="size-5 text-muted-foreground" aria-hidden="true" /><CardTitle className="paper-title text-2xl">{reset ? t.resetTitle : t.verifyTitle}</CardTitle><CardDescription>{reset ? t.resetHint : t.verifyHint}</CardDescription></CardHeader><CardContent className="space-y-5">
-    {done ? <p role="status" className="paper-note rounded-r-md p-3 text-sm">{reset ? t.resetDone : t.verified}</p> : <form ref={formRef} autoComplete="on" method="post" noValidate onSubmit={submit} className="space-y-4" aria-busy={busy}>
-      {used && !busy && <p role="status" className="text-sm leading-relaxed text-muted-foreground">{link.valid ? t.linkSubmitted : t.linkUnavailable}</p>}
-      {status.secureLogin !== true && <p role="alert" className="text-sm text-destructive">{t.insecureLogin}</p>}
+  return <Card className="paper-card mx-auto w-full max-w-lg"><CardHeader className="space-y-3"><MailCheck className="size-5 text-muted-foreground" aria-hidden="true" /><CardTitle className="paper-title text-2xl">{reset ? t.resetTitle : t.verifyTitle}</CardTitle><CardDescription className="whitespace-pre-line">{reset ? t.resetHint : t.verifyHint}</CardDescription></CardHeader><CardContent className="space-y-5">
+    {done ? <p role="status" className="whitespace-pre-line paper-note rounded-r-md p-3 text-sm">{reset ? t.resetDone : t.verified}</p> : <form ref={formRef} autoComplete="on" method="post" noValidate onSubmit={submit} className="space-y-4" aria-busy={busy}>
+      {used && !busy && <p role="status" className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">{link.valid ? t.linkSubmitted : t.linkUnavailable}</p>}
+      {status.secureLogin !== true && <p role="alert" className="whitespace-pre-line text-sm text-destructive">{t.insecureLogin}</p>}
       {reset && !used && <PasswordFields id={id} t={t} onChange={() => setError(null)} disabled={busy || status.secureLogin !== true} error={error} />}
-      {error && <p role="alert" className="text-sm text-destructive">{authErrorMessage(error, lang)}</p>}
+      {error && <p role="alert" className="whitespace-pre-line text-sm text-destructive">{authErrorMessage(error, lang)}</p>}
       {!used && <Button className="w-full" type="submit" disabled={busy || status.secureLogin !== true}>{reset ? t.reset : t.verify}</Button>}
-      {busy && <p role="status" className="flex items-center gap-2 text-sm"><LoaderCircle className="size-4 animate-spin" aria-hidden="true" />{reset ? t.resetBusy : t.verifyBusy}</p>}
+      {busy && <p role="status" className="whitespace-pre-line flex items-center gap-2 text-sm"><LoaderCircle className="size-4 animate-spin" aria-hidden="true" />{reset ? t.resetBusy : t.verifyBusy}</p>}
     </form>}
     <Button type="button" variant="outline" onClick={close}>{done ? status.authenticated ? t.continueAccount : t.backToLogin : t.leaveLink}</Button>
-    <p className="text-xs leading-relaxed text-muted-foreground">{t.emailPrivacy}</p>
+    <p className="whitespace-pre-line text-xs leading-relaxed text-muted-foreground">{t.emailPrivacy}</p>
   </CardContent></Card>;
 }

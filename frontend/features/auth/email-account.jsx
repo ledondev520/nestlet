@@ -44,19 +44,19 @@ export function EmailAccount({ session, lang = 'zh', active = true }) {
     catch (failure) { if (operation.current(task) && failure.name !== 'AbortError') setError(failure); }
     finally { if (operation.current(task)) setBusy(false); operation.finish(task); }
   }
-  return <Card className="paper-card"><CardHeader><CardTitle className="paper-title text-xl">{t.emailAccount}</CardTitle><CardDescription>{bound ? t.emailVerified : t.emailNotBound}</CardDescription></CardHeader><CardContent className="space-y-4">
-    {bound && <p className="break-all text-sm">{status.email}</p>}
-    <p className="text-sm leading-relaxed text-muted-foreground">{privateRecovery ? t.bootstrapRecovery : bound ? t.emailRecovery : t.bindingHint}</p>
-    {!allowed && !bound && <p role="status" className="text-sm text-muted-foreground">{status.secureLogin === true ? t.emailUnavailable : t.insecureLogin}</p>}
-    {pending && !bound && <p role="status" className="paper-note rounded-r-md p-3 text-sm">{t.bindingPending}</p>}
+  return <Card className="paper-card"><CardHeader><CardTitle className="paper-title text-xl">{t.emailAccount}</CardTitle><CardDescription className="whitespace-pre-line">{bound ? t.emailVerified : t.emailNotBound}</CardDescription></CardHeader><CardContent className="space-y-4">
+    {bound && <p className="whitespace-pre-line break-all text-sm">{status.email}</p>}
+    <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">{privateRecovery ? t.bootstrapRecovery : bound ? t.emailRecovery : t.bindingHint}</p>
+    {!allowed && !bound && <p role="status" className="whitespace-pre-line text-sm text-muted-foreground">{status.secureLogin === true ? t.emailUnavailable : t.insecureLogin}</p>}
+    {pending && !bound && <p role="status" className="whitespace-pre-line paper-note rounded-r-md p-3 text-sm">{t.bindingPending}</p>}
     {!bound && editing && <form ref={formRef} autoComplete="on" method="post" noValidate onSubmit={bind} className="space-y-4" aria-busy={busy}>
       <AuthField id={`${id}-email`} label={t.email} help={t.emailHint} type="email" name="email" autoComplete="email" autoCapitalize="none" spellCheck={false} defaultValue={email} onChange={event => { setEmail(event.target.value); setError(null); }} maxLength={254} required disabled={busy || !allowed} error={error?.field === 'email'} />
       <PasswordFields key={passwordEpoch} id={id} t={t} onChange={() => setError(null)} current confirm={false} disabled={busy || !allowed} error={error} />
       <div className="flex flex-wrap gap-2"><Button type="submit" disabled={busy || !allowed || cooldown > 0}>{busy ? t.bindBusy : t.bind}</Button><Button type="button" variant="outline" disabled={busy} onClick={() => { clearNativePasswords(formRef.current); setEditing(false); setError(null); }}>{t.cancel}</Button></div>
     </form>}
-    {error && <p role="alert" className="text-sm text-destructive">{authErrorMessage(error, lang)}</p>}
+    {error && <p role="alert" className="whitespace-pre-line text-sm text-destructive">{authErrorMessage(error, lang)}</p>}
     {!bound && !editing && <Button type="button" variant="outline" disabled={busy || !allowed || cooldown > 0} onClick={() => { setEditing(true); setError(null); }}>{t.bind}</Button>}
-    {cooldown > 0 && !bound && <p role="status" className="text-xs text-muted-foreground">{cooldown} {t.cooldown}</p>}
+    {cooldown > 0 && !bound && <p role="status" className="whitespace-pre-line text-xs text-muted-foreground">{cooldown} {t.cooldown}</p>}
     <Button type="button" variant="ghost" disabled={busy} onClick={check}>{t.refresh}</Button>
   </CardContent></Card>;
 }

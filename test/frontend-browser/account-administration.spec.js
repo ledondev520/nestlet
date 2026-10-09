@@ -172,7 +172,7 @@ test('owner confirms grant/revoke; delegated diagnostics stay bounded and ordina
       await noHorizontalOverflow(delegated);
       await screenshot(delegated, testInfo, 'delegated-diagnostics-320-en');
       await switchLanguage(delegated,'zh',true);
-      await expect(card(delegated, '有限运行状态')).toBeVisible();
+      await expect(card(delegated, "运行状态")).toBeVisible();
       await noHorizontalOverflow(delegated);
       await screenshot(delegated, testInfo, 'delegated-diagnostics-320-zh');
       await english(delegated);
