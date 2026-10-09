@@ -93,8 +93,10 @@ test('actual chat HTTP integration persists the server appendix exactly once and
     upstream=await provider((body,_round,_req,res)=>{
       if(body.stream===false){res.writeHead(200,{'Content-Type':'application/json'});res.end(JSON.stringify({model:'deepseek-flash',choices:[{message:{content:'Saved case search'},finish_reason:'stop'}]}));return;}
       assert.match(body.messages[0].content,/Official-source reference context:/);
-      assert.match(body.messages[0].content,/"id":"oha"/);
-      assert.match(body.messages[0].content,/https:\/\/www\.oakha\.org/);
+      assert.match(body.messages[0].content,/"id":"unknown"/);
+      assert.match(body.messages[0].content,/"selectedReferenceAgency":"oha"/);
+      assert.match(body.messages[0].content,/"specificNotesWithheld":true/);
+      assert.doesNotMatch(body.messages[0].content,/https:\/\/www\.oakha\.org/);
       assert.match(body.messages[0].content,/"acceptanceStatus":"unconfirmed"/);
       if(!body.tools)return answer('Ordinary authored protocol response.');
       const toolResults=body.messages.filter(message=>message.role==='tool');

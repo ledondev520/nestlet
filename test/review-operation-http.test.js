@@ -11,6 +11,8 @@ import { tmpdir } from 'node:os';
 import { DatabaseSync } from 'node:sqlite';
 import { openStorage } from '../storage.js';
 import { extract } from '../public/core.js';
+import { generateReviewedDocument } from '../document-context.js';
+import { caseArtifactContext } from '../chat.js';
 import { buildChatTurn as buildLegacyChatTurn, readChatEvents as readLegacyChatEvents } from './fixtures/legacy-chat-parser-090d08e.js';
 
 const password = 'synthetic-review-http-password';
@@ -459,4 +461,51 @@ for (const [label, content, extra] of [
   assert.equal(f.requests[0].tool_choice, extra.actionConsent === false ? undefined : 'auto');
   assert.equal(f.metrics().length, 0);
   f.unchanged();
+});
+
+
+test('exact current-case summary request receives independent completed v3 metadata rather than only old conversation drafts',async t=>{
+  const f=await harness(t,'ordinary');
+  const oldMessage=f.messages()[1];
+  const oldText='Only a stale followup draft exists. SFHA requires a Vendor Number before inspection.';
+  const historical=f.store.appendMessage('owner',f.conversation.id,{role:'assistant',state:'complete',content:oldText});
+  const payload={title:'Synthetic current case',sourceText:'Property: 101 Example Lane\nOwner: Synthetic Owner LLC\nPHA: Not confirmed\nCase reference: SYN-A1008\nProposed rent: $2100',fields:[],draftType:'followup',draftText:''};
+  payload.fields=extract(payload.sourceText).map(field=>({...field,confirmed:true}));
+  const draft1=f.store.createArtifact('owner',f.record.id,{kind:'followup',status:'draft',content:'Historical draft one',sourceConversationId:f.conversation.id,sourceMessageId:oldMessage.id,expectedCaseVersion:1});
+  let record=f.store.updateCase('owner',f.record.id,payload,1);
+  f.store.createArtifact('owner',record.id,{kind:'followup',status:'draft',content:'Historical draft two',sourceConversationId:f.conversation.id,sourceMessageId:oldMessage.id,expectedCaseVersion:2});
+  const detail=value=>({value,source:'Synthetic human review',confirmed:true,confirmedAt:'2026-10-09T01:00:00.000Z',notApplicable:false,sourceMessageId:null});
+  payload.documentContext=Object.fromEntries(Object.entries({recipientName:'Synthetic recipient',recipientContact:'recipient@example.invalid',senderName:'Synthetic sender',senderContact:'sender@example.invalid'}).map(([key,value])=>[key,detail(value)]));
+  record=f.store.updateCase('owner',record.id,payload,record.version);
+  record=f.store.updateCase('owner',record.id,payload,record.version);
+  assert.equal(record.version,4);
+  const body=generateReviewedDocument(record,'followup',{status:'final'});
+  const final=f.store.createArtifact('owner',record.id,{kind:'followup',status:'final',content:body,expectedCaseVersion:4},{generationMethod:'reviewed-template'});
+  assert.equal(final.version,3);assert.equal(final.sourceConversationId,null);assert.equal(final.isStale,false);
+  const other=f.store.createCase('owner',{...payload,title:'Other case must stay isolated'});
+  const foreign=f.store.createArtifact('owner',other.id,{kind:'status-summary',status:'draft',content:'OTHER_CASE_BODY_SENTINEL',expectedCaseVersion:other.version});
+  const secondUser=f.store.createTrialUser({username:'other-case-reader',passwordHash});
+  assert.throws(()=>caseArtifactContext(f.store,secondUser.id,record),{code:'CHAT_INVALID'});
+  const prompt='继续我们这个虚构测试事项。请只根据当前事项已经保存并核对的信息，用三条简短中文说明：当前房屋和案号、拟申请租金、已经完成的文档以及还需要人工注意什么。不要重新搜索资料库，不要使用另一个事项的值，不要更改资料或重新生成文档。';
+  for(const actionConsent of [false,true]){
+    const response=await f.request(f.requestBody(prompt,{actionConsent,guidanceAgency:'sfha'}));assert.equal(response.status,200);await response.text();
+    const sent=f.requests.at(-1),contextMessage=sent.messages.find(message=>typeof message.content==='string'&&message.content.startsWith('Working-copy case context'));
+    const context=JSON.parse(contextMessage.content.split('\n').slice(1).join('\n'));
+    assert.equal(context.caseId,record.id);assert.equal(context.caseVersion,4);
+    assert.deepEqual(context.savedDocuments.versions,[{id:final.id,kind:'followup',status:'final',version:3,sourceCaseVersion:4,currentCaseVersion:4,isStale:false,needsRegeneration:false,latestForKind:true,latestFinalForKind:true,hasNewerSavedVersion:false}]);
+    assert.equal(context.savedDocuments.observedSavedVersions,3);assert.equal(context.savedDocuments.omittedVersions,2);assert.equal(context.savedDocuments.incomplete,true);
+    assert.equal(context.fields.find(field=>field.key==='pha').value,'');assert.equal(context.fields.find(field=>field.key==='pha').confirmed,true);
+    assert.ok(sent.messages.some(message=>message.content===oldText));assert.ok(sent.messages.some(message=>message.content===prompt));
+    assert.match(sent.messages[0].content,/savedDocuments inventory covers the current case across conversations/);
+    assert.match(sent.messages[0].content,/never describe a current saved final as merely a stale draft/);
+    assert.doesNotMatch(JSON.stringify(sent),new RegExp(foreign.id+'|OTHER_CASE_BODY_SENTINEL'));
+    assert.ok(!JSON.stringify(sent).includes(body));
+    const ref=JSON.parse(sent.messages[0].content.split('Official-source reference context:\n')[1].split('\n')[0]);
+    assert.equal(ref.id,'unknown');assert.equal(ref.selectedReferenceAgency,'sfha');assert.equal(ref.caseAgencyConfirmedMatch,false);
+    assert.doesNotMatch(JSON.stringify(ref),/Vendor Number|RTA submission by voucher expiry/);
+  }
+  assert.equal(f.requests.length,2,'No extra search or provider call');
+  assert.deepEqual(f.store.getCase('owner',record.id),record);assert.equal(f.store.listArtifacts('owner',record.id).length,3);
+  assert.equal(f.messages().find(message=>message.id===historical.id).content,oldText);
+  assert.equal(f.store.getArtifact('owner',draft1.id).content,'Historical draft one');assert.equal(f.store.getArtifact('owner',final.id).content,body);
 });

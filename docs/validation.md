@@ -2,6 +2,20 @@
 
 Checkpoint: 2026-10-07. This is a development checkpoint, not final acceptance. Deployment and real-browser integration remain separate; rerun after the final source freeze.
 
+## Current-case document and agency grounding, 2026-10-09
+
+Branch `fix/current-case-document-grounding`, based on `1d6c259`. A live saved-case summary incorrectly described only old conversation-linked drafts although the document UI showed a current completed followup version 3; it also repeated selected-agency requirements while the reviewed PHA was unknown. The previous prompt had no case-wide artifact inventory, and source-message artifact links omit independently generated documents.
+
+- The existing authenticated current-case read now adds a bounded metadata inventory, independent of conversation: newest saved version and newest final per supported kind (at most six rows), exact source/current case versions, staleness, newer-version flags and explicit omission/snapshot limits. No document body or title is injected. Earlier chat/source-linked subsets do not supersede current saved metadata. A saved final remains a supplementary document, not agency approval or official submission.
+- Selected agency references remain UI references. Unknown, unreviewed, conflicting or differently confirmed PHA receives generic guidance rather than unrelated agency-specific notes. Exact reviewed identity matches retain dated/unconfirmed references. Explicit named general-reference questions retain those references with case applicability unconfirmed. No location-based agency inference, history rewrite, schema/auth/API or permission change.
+- The exact original Chinese summary request is reproduced with actual HTTP/SQLite: case version 4, historical conversation drafts 1/2, and independently generated final followup 3. Both ordinary and action-enabled requests receive the current metadata without another lookup/model call; foreign case/owner documents and raw document bodies stay excluded. Case data, raw historical replies and document bytes remain unchanged.
+- `npm ci`, `npm run check`, `npm run build`, and `git diff --check`: passed. Build retains its existing bundle-size warning.
+- Focused chat/HTTP tests: **27/27 passed**. Backend aggregate: **500/500 passed**. The initial backend run was **499/500** because a protocol fixture still expected selected OHA notes for an unknown PHA; its expectation now asserts the corrected generic scope.
+- An initial frontend aggregate reported a malformed-201 fixture failure and did not terminate. That isolated test passed unchanged. A full equivalent frontend run with an explicit 60-second per-test timeout passed **393/393**, with zero skipped/cancelled tests. No frontend code or assertions were changed for that retry.
+- Provider responses are synthetic fixtures. No new live provider request, browser test or deployment was performed for this change. Official exact-head CI and a real retest in the same historical conversation remain release gates; this is stronger input grounding, not proof of model wording.
+
+Rollback: revert this small context change and rebuild the existing image. No database migration or data rollback.
+
 ## Saved-state survival and language preference, 2026-10-08
 
 Based on `4215457`, the interface now restores only its supported `zh`/`en` preference from browser storage, with safe Chinese fallback for invalid/missing/denied storage and a usable in-memory switch when writes fail. No private content or credentials enter this browser preference. See [frontend boundary](../frontend/README.md).
