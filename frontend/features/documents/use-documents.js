@@ -6,7 +6,7 @@ import { confirmationBody, currentValue, issueChange, printableFilename, fillPri
 import { validDocumentRecovery, documentDraftSnapshot } from './draft-state.js';
 import { documentFailure, useDocumentObservation } from './observation.js';
 
-const initial = () => ({record:null, source:'', kind:'followup', readiness:null, readinessLoading:false, artifacts:[], conversations:[],
+const initial = () => ({record:null, recordIdentity:null, source:'', kind:'followup', readiness:null, readinessLoading:false, artifacts:[], conversations:[],
   selected:null, content:'', artifactTitle:'', saveStatus:'draft', answers:{}, namesVerified:false, issueForm:null, issueBaseline:'',
   detailForm:{key:'recipientOrganization',value:'',notApplicable:false,touched:false}, recoveryBaseVersion:null,
   busy:'', loading:true, error:null, notice:'', keptEdits:false});
@@ -65,7 +65,7 @@ export function useDocuments(lang, caseId, onDirtyChange, visible = true) {
       const result = await json(current, 'get', `/api/cases/${caseId}`);
       if (!result.case || result.case.id !== caseId) throw failure('INVALID_RESPONSE');
       const record = result.case;
-      setState(previous => ({...previous, record, loading:false, kind: keepEdits && snapshot.record ? previous.kind : record.draftType,
+      setState(previous => ({...previous, record, recordIdentity:current.identity, loading:false, kind: keepEdits && snapshot.record ? previous.kind : record.draftType,
         source: keepEdits && snapshot.record && previous.source !== snapshot.record.sourceText ? previous.source : record.sourceText,
         content: keepEdits && snapshot.record && (previous.selected || previous.content !== snapshot.record.draftText) ? previous.content : record.draftText || '',
         namesVerified:keepEdits && snapshot.record && previous.namesVerified !== snapshot.record.namesVerified ? previous.namesVerified : record.namesVerified === true,
@@ -254,6 +254,6 @@ export function useDocuments(lang, caseId, onDirtyChange, visible = true) {
     const current = ticket(); const result = await api.get(`/api/conversations/${conversationId}`, {signal:signal || current.signal}); verify(current);
     if (result.conversation?.caseId !== caseId) throw failure('INVALID_RESPONSE'); return result.messages || [];
   };
-  return {state, status, cacheStatus, dirty, contentDirty, patch, editArtifact, reload, generate, confirmAnswers, saveIssue, openArtifact, saveArtifact, copy, download, downloadPdf, print,
+  return {state, status, recordCurrent:Boolean(identity && state.recordIdentity === identity && state.record?.id === caseId), cacheStatus, dirty, contentDirty, patch, editArtifact, reload, generate, confirmAnswers, saveIssue, openArtifact, saveArtifact, copy, download, downloadPdf, print,
     sourceMessages, observation};
 }

@@ -1,3 +1,4 @@
+import { artifactNextStep, artifactNextStepCopy } from '@/lib/artifact-next-step';
 import { readinessReasonLabel } from '@/lib/inbox-read-model';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -16,7 +17,7 @@ export function ChatCaseWorkflow({ api, lang, caseId, userId, disabled, active =
     const controller = new AbortController(), captured = scope;
     const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]);
     const current = () => !controller.signal.aborted && currentScope.current === captured;
-    setLoading(true); setError(null);
+    setLoading(true); setError(null); setSnapshot(null);
     (async () => {
       const result = await api.get(`/api/cases/${caseId}`, { signal });
       if (!current()) return;
@@ -26,11 +27,16 @@ export function ChatCaseWorkflow({ api, lang, caseId, userId, disabled, active =
       const readiness = await api.get(`/api/cases/${caseId}/readiness?kind=${encodeURIComponent(result.case.draftType)}&locale=${en ? 'en' : 'zh'}`, { signal });
       if (!current()) return;
       if (typeof readiness.ready !== 'boolean' || !Array.isArray(readiness.missing) || readiness.missing.some(item => typeof item.question !== 'string' || !Object.hasOwn(words.fields, item.key))) throw { code: 'INVALID_RESPONSE' };
-      setSnapshot({ scope: captured, record: result.case, readiness });
+      const versions = await api.get(`/api/cases/${caseId}/artifacts`, { signal });
+      if (!current()) return;
+      if (!Array.isArray(versions.artifacts)) throw { code: 'INVALID_RESPONSE' };
+      setSnapshot({ scope: captured, api, refreshKey, revision, record: result.case, readiness, artifacts: versions.artifacts });
     })().catch(failure => { if (current()) setError(failure); }).finally(() => { if (current()) setLoading(false); });
     return () => controller.abort();
   }, [api, scope, active, refreshKey, revision, onSavedTitle]);
-  const saved = snapshot?.scope === scope ? snapshot : null;
+  const saved = active && !loading && snapshot?.scope === scope && snapshot.api === api && snapshot.refreshKey === refreshKey && snapshot.revision === revision ? snapshot : null;
+  const next = artifactNextStep(saved?.record, saved?.artifacts), nextCopy = artifactNextStepCopy[en ? 'en' : 'zh'];
+  const prepareNew = saved && next.phase === 'empty';
   const confirmed = saved ? [...saved.record.fields, ...Object.entries(saved.record.documentContext || {}).map(([key, detail]) => ({ ...detail, key }))].filter(field => field.confirmed && !field.conflict && (field.value || field.notApplicable)) : [];
   const resolved = (saved?.record.caseIssues || []).filter(issue => issue.status === 'resolved');
   return <Card data-testid="chat-case-workflow" className="mb-5">
@@ -42,7 +48,9 @@ export function ChatCaseWorkflow({ api, lang, caseId, userId, disabled, active =
       {loading && <p role="status" className="whitespace-pre-line text-sm text-muted-foreground">{en ? 'Checking saved case details…' : "正在检查已保存的事项资料…"}</p>}
       {error && <Alert variant="destructive"><AlertDescription className="whitespace-pre-line">{documentErrorText(error, lang)}<Button size="sm" variant="ghost" disabled={disabled || loading} onClick={() => setRevision(value => value + 1)}>{words.retry}</Button></AlertDescription></Alert>}
       {saved && !error && <>
-        <p className="whitespace-pre-line text-sm font-medium">{saved.readiness.ready ? (en ? 'Saved details are ready for document generation.' : "所需资料已保存，可以生成文档。") : (en ? 'Still needed for this document' : "待补资料")}</p>
+        <p className="whitespace-pre-line text-sm font-medium">{next.phase !== 'empty' ? nextCopy[next.phase] : saved.readiness.ready ? (en ? 'Saved details are ready for document generation.' : "所需资料已保存，可以生成文档。") : (en ? 'Still needed for this document' : "待补资料")}</p>
+        {next.artifact && <p className="text-xs text-muted-foreground">{next.artifact.title || next.artifact.kind} · {next.artifact.status === 'final' ? words.final : words.draft} · v{next.artifact.version}</p>}
+        {next.newerDraft && <p className="text-xs text-muted-foreground">{nextCopy.newerDraft} v{next.newerDraft.version}</p>}
         {!!saved.readiness.missing.length && <ul className="space-y-2 text-sm text-muted-foreground">{saved.readiness.missing.map(item => <li key={item.key}>{compact && readinessReasonLabel(item.reason,lang) ? <>{words.fields[item.key]} · <span data-readiness-reason={item.reason} className={item.reason==='conflict'?'text-destructive':'text-muted-foreground'}>{readinessReasonLabel(item.reason,lang)}</span></> : item.question}</li>)}</ul>}
         {compact && !!saved.readiness.missing.length && <details><summary className="cursor-pointer text-xs">{en ? 'Full questions' : "全部问题"} · {saved.readiness.missing.length}</summary><ul className="mt-2 space-y-2 text-xs text-muted-foreground">{saved.readiness.missing.map(item => <li key={item.key}>{item.question}</li>)}</ul></details>}
         {!!confirmed.length && <details className="rounded border px-3 py-2"><summary className="cursor-pointer text-sm">{en ? 'Already confirmed in this case' : "已核资料"} · {confirmed.length}</summary><dl className="mt-3 grid gap-3 sm:grid-cols-2">{confirmed.map(field => <div key={field.key} className="min-w-0"><dt className="text-xs text-muted-foreground">{words.fields[field.key]}</dt><dd className="break-words text-sm">{field.notApplicable ? words.notApplicable : field.value}</dd></div>)}</dl></details>}
@@ -50,7 +58,7 @@ export function ChatCaseWorkflow({ api, lang, caseId, userId, disabled, active =
       </>}
       <div className="flex flex-wrap gap-2">
         <Button variant="outline" disabled={disabled} onClick={onOpenMaterials}>{en ? 'Review facts and materials' : "核对材料"}</Button>
-        <Button disabled={disabled || !caseId} onClick={() => onOpenDocuments?.({ userId, caseId })}>{en ? 'Finish and preview English document' : "准备文档"}</Button>
+        <Button disabled={disabled || !caseId || !active} onClick={() => onOpenDocuments?.({ userId, caseId })}>{prepareNew ? (en ? 'Finish and preview English document' : "准备文档") : nextCopy.view}</Button>
       </div>
       {compact ? <details className="text-xs text-muted-foreground"><summary className="cursor-pointer">{en ? 'Saved facts only · Nothing is sent' : "仅显示已存资料，不会发送。"}</summary><p className="whitespace-pre-line mt-2">{en ? 'Conversation suggestions need your review before saving. Pending material edits are handled before document generation.' : "对话建议须核对后保存。\n生成文档前，先处理未保存的材料。"}</p></details> : <p className="whitespace-pre-line text-xs text-muted-foreground">{en ? 'Only saved details are shown here. If material edits are pending, the next step returns to them first. Nothing is sent to a recipient.' : "这里只显示已保存的资料。\n未保存的材料会先返回处理。\n不会发送给收件人。"}</p>}
     </CardContent>

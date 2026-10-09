@@ -2,6 +2,12 @@
 
 Checkpoint: 2026-10-07. This is a development checkpoint, not final acceptance. Deployment and real-browser integration remain separate; rerun after the final source freeze.
 
+## Combined tool-journey repairs, 2026-10-09
+
+The local repair combines history identification/reading position, corrected current onboarding, and document/search next-step presentation. Current-case artifact metadata now determines whether the next action opens an existing current final/draft rather than treating readiness as proof that nothing has been produced. Historical, unavailable and contradictory inventories remain explicit, delayed cross-account/case responses cannot promote stale results, and opening a saved document uses the existing dirty guard. Pure search results identify where they came from without claiming they were cited in an assistant reply. No commercial features, schema/permission changes, production records, credentials or new provider calls are part of this repair.
+
+Local combined verification: `npm run check`, `npm run build`, backend 501/501, frontend 401/401, email contracts 54/54, and actual HTTP/DOM artifact invalidation 1/1 passed. The existing malformed-201 uncertain-create test passed in the complete run and five additional isolated repetitions; a contributor’s earlier incomplete run cannot establish a root cause and is not counted as a pass. An initial PDF negative-permission test failed with a cross-directory dependency symlink; a local dependency copy restored its intended permission boundary and the full suite passed without changing that assertion or system permissions. Browser discovery lists 70 scenarios in 26 files, including the three new history viewports and one document next-step scenario. Local Chromium socket `EPERM` prevented browser execution; official exact-source browser CI and screenshots remain release gates. These are local synthetic checks, not deployment or real-provider acceptance.
+
 ## History identification and reading continuity, 2026-10-09
 
 Based on `52f6ce5`. Existing generated titles are attempted asynchronously only after the first meaningful completed assistant reply; old or unsuccessful titles can remain generic. The stored generic value cannot establish whether a historical attempt was absent, skipped or failed. History reads do not generate or backfill titles. The frontend previously discarded available account-scoped date/reference/last-message metadata and had no initial transcript positioning.

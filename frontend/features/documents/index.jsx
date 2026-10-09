@@ -1,3 +1,4 @@
+import { artifactNextStep, artifactNextStepCopy } from '@/lib/artifact-next-step';
 import { useEffect, useRef, useState } from 'react';
 import { FileText, Copy, Download, Printer, RefreshCw, Plus, Check, ArrowUpRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -83,7 +84,15 @@ function ContextDetails({record, lang, disabled, onAdd, form, onForm}) {
 export function DocumentsPage({lang = 'zh', caseId, onDirtyChange, onOpenIntake, active = true}) {
   const page = useDocuments(lang, caseId, onDirtyChange, active);
   const {state, status, patch} = page;
-  const d = documentCopy(lang), busy = Boolean(state.busy || state.readinessLoading), record = state.record;
+  const d = documentCopy(lang), busy = Boolean(state.busy || state.readinessLoading), record = page.recordCurrent ? state.record : null;
+  const next = artifactNextStep(record, state.busy === 'reload' || state.loading ? null : state.artifacts, state.kind), nextCopy = artifactNextStepCopy[lang === 'en' ? 'en' : 'zh'];
+  const currentDocument = ['final', 'draft'].includes(next.phase) ? next.artifact : null;
+  const previewRef = useRef(null), requestedPreview = useRef(null);
+  useEffect(() => {
+    if (state.selected && requestedPreview.current?.caseId === caseId && requestedPreview.current?.id === state.selected.id) {
+      requestedPreview.current = null; previewRef.current?.scrollIntoView?.({block:'start'});
+    }
+  }, [caseId, state.selected]);
   const missing = state.readiness?.missing || [];
   const questionKeys = [...new Set([...missing.map(item => item.key), ...Object.keys(state.answers)])];
   const languageReview = missing.some(item => item.reason === 'english_review') || Object.values(state.answers).some(answer => /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u.test(typeof answer === 'string' ? answer : answer.value));
@@ -92,6 +101,7 @@ export function DocumentsPage({lang = 'zh', caseId, onDirtyChange, onOpenIntake,
   const openIssue = issue => {const form = issue ? {id:issue.id, question:issue.question, resolution:issue.resolution, status:issue.status, sourceMessageId:issue.sourceMessageId} : emptyIssue(); patch({issueForm:form, issueBaseline:JSON.stringify(form)});};
   const openVersion = id => {
     if (page.contentDirty && !window.confirm(lang === 'en' ? 'Open another version and discard unsaved document edits?' : '打开其他版本会丢弃未保存的修改。\n要继续吗？')) return;
+    requestedPreview.current = {caseId, id};
     page.openArtifact(id);
   };
   const isEnglish = !hasUnreviewedCJK(state.content, record);
@@ -110,6 +120,12 @@ export function DocumentsPage({lang = 'zh', caseId, onDirtyChange, onOpenIntake,
     {state.loading && <div role="status" aria-label={d.loading} className="space-y-3"><Skeleton className="h-10 w-2/3" /><Skeleton className="h-44 w-full" /><span className="sr-only">{d.loading}</span></div>}
     {!state.loading && !record && <Button disabled={busy} onClick={() => page.reload(false)}>{d.retry}</Button>}
     {record && <>
+      {!state.loading && state.busy !== 'reload' && !state.error && next.phase !== 'empty' && <Card className="paper-card" data-testid="document-next-step"><CardContent className="space-y-3 pt-4">
+        <p className="text-sm font-medium">{nextCopy[next.phase]}</p>
+        {next.artifact && <p className="text-sm">{next.artifact.title || next.artifact.kind} · {next.artifact.status === 'final' ? d.final : d.draft} · v{next.artifact.version}</p>}
+        {next.newerDraft && <p className="text-sm text-muted-foreground">{nextCopy.newerDraft} v{next.newerDraft.version}</p>}
+        {currentDocument && <Button disabled={busy} onClick={() => openVersion(currentDocument.id)}>{next.phase === 'final' ? nextCopy.openFinal : nextCopy.openDraft}</Button>}
+      </CardContent></Card>}
       <Card data-journey-action="review.confirm" className="paper-card">
         <CardHeader><div className="flex flex-wrap items-center justify-between gap-3"><CardTitle className="paper-title text-xl">{questionKeys.length ? d.missingTitle : d.ready}</CardTitle><Badge variant="outline">v{record.version}</Badge></div><CardDescription className="whitespace-pre-line">{d.missingHint}</CardDescription></CardHeader>
         <CardContent className="space-y-5">
@@ -128,7 +144,7 @@ export function DocumentsPage({lang = 'zh', caseId, onDirtyChange, onOpenIntake,
             {languageReview && !record.namesVerified && <div className="flex items-start gap-2"><Checkbox id="document-names-verified" checked={state.namesVerified} disabled={busy} onCheckedChange={checked => patch({namesVerified:checked === true})} /><Label htmlFor="document-names-verified" className="whitespace-pre-line text-sm leading-relaxed">{d.namesVerified}</Label></div>}
             <div className="flex flex-wrap gap-2"><Button type="submit" variant="outline" disabled={busy}>{d.confirm}</Button><Button type="button" disabled={busy || page.contentDirty} onClick={() => page.confirmAnswers(true)}><Check aria-hidden="true" />{d.confirmContinue}</Button></div>
           </form>}
-          {!questionKeys.length && <Button data-journey-action="draft.generate" disabled={busy || !state.readiness?.ready || page.contentDirty} onClick={page.generate}><FileText aria-hidden="true" />{d.generate}</Button>}
+          {!questionKeys.length && <Button variant={currentDocument ? "outline" : "default"} data-journey-action="draft.generate" disabled={busy || !state.readiness?.ready || page.contentDirty} onClick={page.generate}><FileText aria-hidden="true" />{currentDocument ? nextCopy.generateAnother : d.generate}</Button>}
           {page.contentDirty && <p className="whitespace-pre-line text-sm text-muted-foreground">{d.saveBeforeExport}</p>}
         </CardContent>
       </Card>
@@ -152,7 +168,7 @@ export function DocumentsPage({lang = 'zh', caseId, onDirtyChange, onOpenIntake,
         </CardContent>
       </Card>
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_17rem]">
-        <Card data-journey-action="draft.edit" className="paper-card min-w-0">
+        <Card ref={previewRef} data-journey-action="draft.edit" className="paper-card min-w-0">
           <CardHeader><div className="flex flex-wrap items-center justify-between gap-2"><CardTitle className="paper-title text-xl">{d.preview}</CardTitle>{state.content && <Badge variant="outline">{page.contentDirty ? d.edited : state.selected?.status === 'final' ? d.final : d.draft}</Badge>}</div><CardDescription className="whitespace-pre-line">{d.previewHint}</CardDescription></CardHeader>
           <CardContent className="space-y-4">
             {state.selected?.isStale && <Alert><AlertTitle className="whitespace-pre-line">{d.historical}</AlertTitle><AlertDescription className="whitespace-pre-line">{d.stale}</AlertDescription></Alert>}

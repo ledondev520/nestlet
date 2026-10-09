@@ -4,7 +4,10 @@ import { chatCopy } from './copy.js';
 import { inspectSource, sourceCase, sourceNavigationCopy, sourceNavigationError } from './source-navigation.js';
 
 /** Read-only source actions. App alone owns guarded case switching and editors. */
-export function ChatSourceNavigation({ api, sources, userId, caseId, lang = 'zh', active = true, disabled = false, onOpenSourceCase, claimOperation, releaseOperation }) {
+export function ChatSourceNavigation({ api, sources, userId, caseId, lang = 'zh', active = true, disabled = false, onOpenSourceCase, claimOperation, releaseOperation, mode = 'conversation' }) {
+  const lookup = mode === 'lookup';
+  const sourceTitle = lookup ? (lang === 'en' ? 'Saved search results' : '查找结果') : (chatCopy[lang] || chatCopy.zh).librarySources;
+  const sourceNote = lookup ? (lang === 'en' ? 'Matching saved records only. No reply was sent and no record was changed.' : '这里只列出匹配的已存记录。\n未发送对话，也未修改记录。') : (chatCopy[lang] || chatCopy.zh).librarySourcesNote;
   const words = chatCopy[lang] || chatCopy.zh, copy = sourceNavigationCopy[lang] || sourceNavigationCopy.zh;
   const [detail, setDetail] = useState(null), [pending, setPending] = useState(false), [notice, setNotice] = useState('');
   const latest = useRef(null), operation = useRef(null), mounted = useRef(false);
@@ -48,8 +51,8 @@ export function ChatSourceNavigation({ api, sources, userId, caseId, lang = 'zh'
     }
   }
   const blocked = disabled || pending || !active;
-  return <section aria-label={words.librarySources} className="space-y-2 rounded border p-3" data-testid="chat-source-navigation">
-    <h2 className="text-sm font-semibold">{words.librarySources}</h2><p className="whitespace-pre-line text-xs text-muted-foreground">{words.librarySourcesNote}</p>
+  return <section aria-label={sourceTitle} className="space-y-2 rounded border p-3" data-testid="chat-source-navigation">
+    <h2 className="text-sm font-semibold">{sourceTitle}</h2><p className="whitespace-pre-line text-xs text-muted-foreground">{sourceNote}</p>
     <ul className="space-y-2 text-xs">{sources.items.map(source => <li key={source.sourceId} className="space-y-2 break-words" data-source-id={source.sourceId}>
       <p className="whitespace-pre-line"><strong>{source.sourceId}</strong> · {words[{ client: 'libraryClient', case: 'libraryCase', asset: 'libraryAsset', artifact: 'libraryArtifact' }[source.kind]]} · {source.title} {source.titleTruncated && `(${words.libraryTitleTruncated})`}</p>
       <p className="whitespace-pre-line">{words.libraryVersion} {source.version} · {words[{ metadata: 'libraryMetadata', read: 'libraryRead', unavailable: 'libraryUnreadable' }[source.retrievalState]]}{source.truncated && ` · ${words.libraryExcerptTruncated}`}{source.status && ` · ${words[source.status === 'final' ? 'libraryFinal' : 'libraryDraft']}`}{(source.isStale || source.needsRegeneration) && ` · ${words.libraryStale}`}</p>
