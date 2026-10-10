@@ -861,7 +861,10 @@ Synthetic mobile screenshots: [case management](design-evidence/experience-repor
 Continuation of PR #56 from `bafe693`. No database, backend auth deadline, provider, or model change.
 
 - Test-first failures: delayed old-cookie 401 caused a false signed-out state; a bare PDF URL followed by Chinese punctuation included the following prose in href. Both focused checks now pass.
-- Local syntax/build passed. Frontend **419/419 passed**. Backend remains **495/501** locally with the six previously identified Linux-font-dependent PDF failures; exact-candidate Linux CI is required before release.
+- Local syntax/build passed. Frontend **422/422 passed**. Backend remains **495/501** locally with the six previously identified Linux-font-dependent PDF failures; exact-candidate Linux CI is required before release.
 - **11/11 real-browser scenarios passed** across new clipboard/session/link coverage and existing chat resume, Markdown, historical continuity and source navigation. Real app authentication/HTTP/SQLite and authored synthetic content; provider transport, where present, is a controlled fixture, not a live-model claim. The 401 transport gate delays actual server denials rather than inventing successful authentication responses.
 - Ordinary clipboard paste did not reproduce the reported send-button anomaly. Keep this distinction from the reproducible session and link defects. Explicit URLs and unsafe-link protections remain covered.
 - User authorized merge/deployment after verification. Release must preserve existing private configuration, data and sessions through the established same-schema updater; production evidence will be linked from the PR after actual execution.
+
+
+The follow-up standards review found the reverse ordering: an explicit login already in flight could be superseded by a later old-request 401. A new failing test reproduced the wrong account state before the correction. Explicit login, verification and logout now hold an identity-transition guard; background recovery cannot replace them. Tests cover both orderings plus verify/logout, and the frontend aggregate was rerun at **422/422**.

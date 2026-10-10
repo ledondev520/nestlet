@@ -278,3 +278,40 @@ test('an old-cookie verification cannot replace a newer explicit login',async co
  await act(async()=>{release();await pending;});
  assert.equal(app.session.status.userId,'new-user');assert.equal(app.session.status.csrfToken,'new-csrf');assert.equal(reads,1);
 });
+
+test('an old 401 arriving after explicit login starts cannot preempt that login',async context=>{
+ const first={authenticated:true,userId:'first-user',csrfToken:'first-csrf'},next={authenticated:true,userId:'new-user',csrfToken:'new-csrf'};
+ let statusReads=0,reads=0,releaseRead,releaseLogin,releaseStaleStatus,loginSettled=false;
+ const app=await setup(async path=>{
+  if(path==='/api/status'){
+   if(++statusReads===1)return response(first);
+   if(loginSettled)return response(next);
+   return new Promise(done=>releaseStaleStatus=()=>done(response(first)));
+  }
+  if(path==='/api/login')return new Promise(done=>releaseLogin=()=>{loginSettled=true;done(response(next));});
+  if(++reads===1)return new Promise(done=>releaseRead=()=>done(response({code:'AUTH_REQUIRED'},401)));
+  return response({owner:'new-user'});
+ });context.after(app.close);
+ let oldRead,login;
+ await act(async()=>{oldRead=app.session.api.get('/api/cases').catch(error=>error);});
+ await act(async()=>{login=app.session.login({username:'synthetic-new',password:'synthetic-only'});});
+ await act(async()=>{releaseRead();});
+ await act(async()=>{releaseLogin();await login;releaseStaleStatus?.();await oldRead;});
+ assert.equal(app.session.status.userId,'new-user');assert.equal(app.session.status.csrfToken,'new-csrf');assert.equal(reads,1);
+});
+
+for(const action of ['verifyEmail','logout'])test(`old denials cannot take priority over explicit ${action}`,async context=>{
+ let account={authenticated:true,userId:'first-user',csrfToken:'first-csrf'},reads=0,statusReads=0,releaseRead,releaseAction;
+ const next=action==='logout'?signedOut:{verified:true,authenticated:true,userId:'verified-user',role:'trial',csrfToken:'verified-csrf'};
+ const app=await setup(async path=>{
+  if(path==='/api/status'){statusReads++;return response(account);}
+  if(path==='/api/logout'||path==='/api/auth/email/verify')return new Promise(done=>releaseAction=()=>{account=next;done(response(next));});
+  reads++;return new Promise(done=>releaseRead=()=>done(response({code:'AUTH_REQUIRED'},401)));
+ });context.after(app.close);
+ let oldRead,explicit;
+ await act(async()=>{oldRead=app.session.api.get('/api/cases').catch(error=>error);});
+ await act(async()=>{explicit=action==='logout'?app.session.logout():app.session.verifyEmail({token:'synthetic-only'});});
+ await act(async()=>{releaseRead();await oldRead;releaseAction();await explicit;});
+ assert.equal(statusReads,2);assert.equal(reads,1);assert.equal(app.session.status.authenticated,action!=='logout');
+ if(action!=='logout')assert.equal(app.session.status.userId,'verified-user');
+});
