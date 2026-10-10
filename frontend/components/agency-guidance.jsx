@@ -1,13 +1,16 @@
+import { savedAgencyId } from '@/lib/case-review-status';
+import { Button } from '@/components/ui/button';
 import { useId } from 'react';
 import { Label } from '@/components/ui/label';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { AGENCY_OPTIONS, GUIDANCE_COPY, getAgencyGuidance } from '../../public/agency-guidance.js';
 
 /** A reference choice, never a case fact, readiness gate, or official-form validator. */
-export function AgencyGuidance({ lang = 'zh', agency, onAgencyChange }) {
+export function AgencyGuidance({ lang = 'zh', agency, onAgencyChange, record }) {
   const id = useId(), language = lang === 'en' ? 'en' : 'zh';
   const copy = GUIDANCE_COPY[language], guidance = getAgencyGuidance(agency, language);
-  return <details className="mb-6 rounded-lg border border-border bg-card px-4 py-3" data-testid="agency-guidance">
+  const savedAgency=savedAgencyId(record), mismatch=Boolean(savedAgency&&savedAgency!==guidance.id);
+  return <>{mismatch&&<div role="alert" className="mb-3 space-y-2 rounded-lg border border-destructive/40 p-3 text-sm"><p className="whitespace-pre-line">{language==='zh'?'参考机构与事项信息不一致。\n请确认适用机构后再使用资料。':'The reference agency differs from the saved case agency. Confirm which agency applies before using these sources.'}</p><p>{record.fields.find(field=>field.key==='pha')?.value}</p><Button type="button" variant="outline" size="sm" onClick={()=>onAgencyChange(savedAgency)}>{language==='zh'?'匹配机构':'Use case agency for references'}</Button></div>}<details className="mb-6 rounded-lg border border-border bg-card px-4 py-3" data-testid="agency-guidance">
     <summary className="cursor-pointer text-sm font-medium">
       {copy.title}<span className="ml-2 font-normal text-muted-foreground">· {guidance.label}</span>
       <span className="ml-2 text-xs font-normal text-muted-foreground">{language === 'zh' ? '是否适用待确认' : 'Applicability unconfirmed'}</span>
@@ -35,5 +38,5 @@ export function AgencyGuidance({ lang = 'zh', agency, onAgencyChange }) {
       </details>
       <p className="whitespace-pre-line text-xs text-muted-foreground">{copy.checkedLabel}: {guidance.checkedAt}</p>
     </div>
-  </details>;
+  </details></>;
 }

@@ -100,3 +100,62 @@ test('pagination clamps after records shrink, search normalizes Unicode and glob
   assert.equal(savedCasePage(records, { page: 10 }).page, 0);
   for (const clientId of [undefined, null, '']) assert.equal(new URL(assetSearchPath({ clientId }), 'http://test').searchParams.has('clientId'), false);
 });
+
+
+test('existing case management exposes assignment and explicit deletion scope without writing on open', async () => {
+  const api = apiFor(path => path === '/api/cases' ? {cases:[unassigned]} : path.startsWith('/api/clients') ? {clients:[]} : {case:{...unassigned,version:1,sourceText:'',fields:[],draftType:'followup',draftText:''}});
+  await render(api, {}, CustomerWorkspace);
+  await click(button('Manage case: Synthetic unassigned intake'));
+  assert.match(content(), /Customer/);
+  assert.match(content(), /Saved original files remain/);
+  assert.ok(button('Save changes'));
+  assert.ok(button('Delete case'));
+});
+
+test('case edits preserve canonical content and version; a conflict stops retries until reloaded', async () => {
+  const customerId=linked.clientId,writes=[];
+  let conflict=true;
+  const canonical={...unassigned,version:7,sourceText:'Keep this source',fields:[{key:'property',value:'Synthetic property',confirmed:true,source:'Synthetic source',conflict:false}],draftType:'followup',draftText:'Keep this draft',documentContext:{senderName:{value:'Synthetic sender',confirmed:true}},caseIssues:[{id:'keep'}]};
+  const api=apiFor(path=>path==='/api/cases'?{cases:[canonical]}:path.startsWith('/api/clients')?{clients:[{id:customerId,displayName:'Synthetic customer'}]}:{case:canonical});
+  api.put=async(path,body)=>{writes.push({path,body});if(conflict)throw {code:'CASE_CONFLICT',status:409};return {case:{...canonical,...body,version:8}};};
+  await render(api, {}, CustomerWorkspace);await click(button(`Manage case: ${canonical.title}`));
+  const select=container.querySelector('select');await React.act(async()=>{select.value=customerId;select.dispatchEvent(new Event('change',{bubbles:true}));});
+  await React.act(async()=>{button('Save changes').click();button('Save changes').click();});await tick();
+  assert.equal(writes.length,1);assert.equal(writes[0].body.expectedVersion,7);assert.equal(writes[0].body.clientId,customerId);
+  assert.equal(writes[0].body.sourceText,canonical.sourceText);assert.deepEqual(writes[0].body.fields,canonical.fields);assert.equal(writes[0].body.draftText,canonical.draftText);
+  assert.equal(Object.hasOwn(writes[0].body,'documentContext'),false);assert.equal(Object.hasOwn(writes[0].body,'caseIssues'),false);
+  assert.match(content(),/changed elsewhere/);assert.equal(button('Save changes').disabled,true);
+  conflict=false;await click(button('Reload case'));assert.equal(button('Save changes').disabled,false);
+});
+
+test('delete requires a separate confirmation, uses the reviewed version and locks repeated clicks', async () => {
+ const canonical={...unassigned,version:3},gate=deferred(),deleted=[];
+ const api=apiFor(path=>path==='/api/cases'?{cases:[canonical]}:path.startsWith('/api/clients')?{clients:[]}:{case:canonical});
+ api.delete=async(path,body)=>{deleted.push({path,body});return gate.promise;};
+ await render(api, {}, CustomerWorkspace);await click(button(`Manage case: ${canonical.title}`));
+ await click(button('Delete case'));assert.equal(deleted.length,0);
+ await React.act(async()=>{button('Confirm deletion').click();button('Confirm deletion').click();});
+ assert.deepEqual(deleted,[{path:`/api/cases/${canonical.id}`,body:{expectedVersion:3}}]);
+ await React.act(async()=>gate.resolve({deleted:true}));await tick();assert.match(content(),/Case deleted/);
+});
+
+test('an unavailable case does not report a user-confirmed deletion or discard the active workspace', async()=>{
+ const canonical={...unassigned,version:1},deletions=[];
+ const api=apiFor(path=>path==='/api/cases'?{cases:[canonical]}:path.startsWith('/api/clients')?{clients:[]}:Promise.reject({status:404,code:'CASE_NOT_FOUND'}));
+ await render(api,{onDeletedCase:id=>deletions.push(id)},CustomerWorkspace);
+ await click(button(`Manage case: ${canonical.title}`));await click(button('Back to list'));
+ assert.deepEqual(deletions,[]);assert.match(content(),/Workspace drafts were not discarded/);
+});
+
+test('a delayed committed deletion survives filtering and hidden-page navigation and reports its result once',async()=>{
+ const canonical={...unassigned,version:3},gate=deferred(),deletions=[];let exists=true,calls=0;
+ const api=apiFor(path=>path==='/api/cases'?{cases:exists?[canonical]:[]}:path.startsWith('/api/clients')?{clients:[]}:{case:canonical});
+ api.delete=async()=>{calls++;exists=false;return gate.promise;};
+ const props={onDeletedCase:id=>deletions.push(id)};
+ await render(api,props,CustomerWorkspace);await click(button(`Manage case: ${canonical.title}`));await click(button('Delete case'));await click(button('Confirm deletion'));
+ const searchInput=container.querySelector('input[type="search"]');await React.act(async()=>{Object.getOwnPropertyDescriptor(dom.window.HTMLInputElement.prototype,'value').set.call(searchInput,'No matching records');searchInput.dispatchEvent(new Event('input',{bubbles:true}));});await tick();
+ await render(api,{...props,active:false},CustomerWorkspace);
+ await React.act(async()=>gate.resolve({deleted:true}));await tick();
+ assert.deepEqual(deletions,[canonical.id]);assert.equal(calls,1);
+ await render(api,props,CustomerWorkspace);assert.match(content(),/Case deleted/);
+});

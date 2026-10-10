@@ -434,7 +434,7 @@ export function ChatPage({ lang='zh', caseId=null, initialConversationId=null, c
       // Service/quota denials are not authentication failures. They are definite
       // pre-persistence refusals; preserve the question without replay or a
       // misleading failed-history reconciliation.
-      if(!streamStarted&&['SERVICE_PAUSED','SERVICE_EXPIRED','TRIAL_LIMIT_REACHED'].includes(failure.code)){restoreRejectedTurn();setError(failure);setNotice('');return;}
+      if(!streamStarted&&['SENSITIVE_DATA','SERVICE_PAUSED','SERVICE_EXPIRED','TRIAL_LIMIT_REACHED'].includes(failure.code)){restoreRejectedTurn();setError(failure.code==='SENSITIVE_DATA'?new ChatClientError('CHAT_INPUT_SENSITIVE'):failure);setNotice('');return;}
       // These rejections happen before provider work. Reconcile session state
       // once, but never replay a chat POST or create another case/conversation.
       if(!streamStarted&&!stopRequested.current&&['CSRF_REJECTED','AUTH_REQUIRED'].includes(failure.code)){
@@ -520,7 +520,7 @@ export function ChatPage({ lang='zh', caseId=null, initialConversationId=null, c
         </div>}
         {librarySources&&<ChatSourceNavigation api={api} sources={librarySources} userId={status.userId} caseId={caseRef.current} lang={lang} active={active}
           disabled={phase !== 'idle' || bridgeBusy || retentionBusy || imagePending > 0} onOpenSourceCase={onOpenSourceCase} claimOperation={claimSourceOperation} releaseOperation={releaseSourceOperation} />}
-        {!librarySources && messages.some(message => message.role === 'assistant') && <p className="whitespace-pre-line text-xs text-muted-foreground">{(sourceNavigationCopy[lang] || sourceNavigationCopy.zh).history}</p>}
+        {!librarySources && messages.some(message => message.role === 'assistant' && /\[S\d+\]/u.test(message.content)) && <p className="whitespace-pre-line text-xs text-muted-foreground">{(sourceNavigationCopy[lang] || sourceNavigationCopy.zh).history}</p>}
         {error&&error.code!==serviceFailure&&<Alert variant="destructive"><AlertDescription className="whitespace-pre-line">{chatErrorText(error,lang)}</AlertDescription></Alert>}
         {unavailableExactConversation&&phase==='idle'&&<p role="status" className="whitespace-pre-line text-sm text-muted-foreground">{lang==='en'?'This conversation could not be loaded. Reload it or start a new conversation to continue.':'这段对话暂时无法读取。请重新读取，或开始新对话。'}</p>}
         {recoveryUnavailable&&<Alert><AlertDescription className="whitespace-pre-line">{words.recoveryUnavailable}</AlertDescription><Button variant="outline" type="button" disabled={busy} onClick={reloadConversation}>{words.retryOpening}</Button></Alert>}
@@ -534,11 +534,11 @@ export function ChatPage({ lang='zh', caseId=null, initialConversationId=null, c
         <form className="chat-composer" onSubmit={send} onDragOver={event=>{event.preventDefault();setDragging(true);}} onDragLeave={()=>setDragging(false)} onDrop={event=>{event.preventDefault();setDragging(false);receiveFiles(event.dataTransfer.files);}}>
           <div className="chat-compose-fields">
           <Label className="sr-only" htmlFor={inputId}>{words.composer}</Label>
-          <Textarea ref={composer} id={inputId} value={input} maxLength={CHAT_BOUNDS.text} disabled={busy} className={`chat-input ${dragging?'ring-2 ring-ring':''}`} placeholder={words.placeholder}
+          <Textarea ref={composer} id={inputId} value={input} aria-describedby={`${inputId}-count`} maxLength={CHAT_BOUNDS.text} disabled={busy} className={`chat-input ${dragging?'ring-2 ring-ring':''}`} placeholder={words.placeholder}
             onKeyDown={event=>{if(event.key==='Enter'&&!event.shiftKey&&!event.nativeEvent.isComposing&&event.keyCode!==229){event.preventDefault();send(event);}}}
             onChange={event=>{inputRef.current=event.target.value;setInput(event.target.value);}}
             onPaste={event=>{const files=Array.from(event.clipboardData.files||[]);if(files.length){event.preventDefault();const text=event.clipboardData.getData('text/plain');if(text){const next=(inputRef.current+text).slice(0,CHAT_BOUNDS.text);inputRef.current=next;setInput(next);}receiveFiles(files);}}}/>
-          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">{input.length>7000&&<span>{input.length.toLocaleString()} / 8,000</span>}{imagePending>0&&<span role="status">{words.decoding}</span>}</div>
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground"><span id={`${inputId}-count`}>{input.length.toLocaleString()} / 8,000</span>{imagePending>0&&<span role="status">{words.decoding}</span>}</div>
           {!!images.length&&<div className="flex flex-wrap gap-3">{images.map(image=><div key={image.id} className="flex items-center gap-2 rounded border p-2"><img src={image.preview} alt={words.imageOnly} className="h-16 w-16 object-contain"/><Button type="button" variant="ghost" size="sm" disabled={busy} onClick={()=>removeImage(image.id)} aria-label={words.remove}>{words.remove}</Button></div>)}</div>}
           <ChatOriginalRetention api={api} userId={status.userId} authenticated={status.authenticated} caseId={caseRef.current} images={images} lang={lang} disabled={phase !== 'idle' || bridgeBusy || sourceBusy || imagePending > 0} ensureCase={ensureCase} onBusyChange={updateRetentionBusy} onOpenMaterials={onOpenMaterials} />
           </div>

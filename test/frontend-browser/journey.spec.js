@@ -125,7 +125,7 @@ test('legacy six-character account → standalone original → unassigned case �
     await openSavedCase(page, title);
     await navigate(page, 'Documents');
     const documents = page.getByTestId('documents-page');
-    await expect(documents.getByText('The essential details are ready.', { exact: true })).toBeVisible();
+    await expect(documents.getByText('The supplementary document details are ready.', { exact: true })).toBeVisible();
     await expect(documents.getByLabel('Recipient / department', { exact: true })).toHaveCount(0);
     await documents.getByRole('button', { name: 'Open', exact: true }).click();
     await expect(documents.getByLabel('English document body', { exact: true })).toHaveValue(content);

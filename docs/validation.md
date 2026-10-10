@@ -833,3 +833,38 @@ The copy branch now integrates main `bc17377018f22f42b811e550e8dbb118bb681fe1` w
 Combined local syntax/build and diff checks passed; backend 496/496 and frontend 393/393 passed. The final integrated head still requires fresh official browser/container/checks gates and screenshot review before merging. Production deployment remains a separate operations gate.
 
 Combined browser run `37863513096` on `66b5e2cf86441106877622aa934f2544cdbfd4d2` passed 65/66. Its trace showed the viewport already at 1280 while React still exposed the mobile navigation at focus time; before Enter, the navigation had remounted in the desktop header. The reference-panel test now waits for the viewport-specific navigation host and closed drawer, then asserts focus before pressing Enter. All keyboard activation, current-page, data-integrity and no-business-write checks remain; no runtime behavior was changed. Exact-head official rerun remains required.
+
+## 2026-10-09 — experience report iteration (local candidate)
+
+Base: `66725b9` (GitHub main / PR #55). Independent branch `codex/experience-report`; scope and report mapping: [experience iteration](tasks/experience-report-iteration.md).
+
+- Test-first reproduction: sensitive-input rejection incorrectly re-read history, and saved cases lacked a management control. Both focused DOM checks failed before implementation and passed afterwards.
+- `npm run check` and `npm run build`: passed on Node 24.19.0. The existing bundle-size advisory remains.
+- `npm run test:frontend`: **409/409 passed** using a canonical local temporary directory. Initial macOS temporary-path failures were environmental; no production storage permission checks were weakened.
+- `npm test`: **495/501 passed** in a private canonical temporary directory. Six PDF-related cases fail because the Linux Noto CJK font path is absent on macOS. Unmodified base PDF cases reproduce `PDF_EXPORT_UNAVAILABLE`. Local Docker is not running; Linux CI remains the required full-suite check.
+- New real-browser scenarios: **2/2 passed** at 1440px and 390px, with real HTTP/SQLite and synthetic accounts/materials. They verify association, rename, review status, official-source entry, agency mismatch without fact writes, delete cancellation/confirmation, cascaded conversation/artifact removal, original retention and current-case reset. Screenshot review found narrow mobile metadata in the initial layout; adjusted before the final affected-flow rerun.
+- No real provider requests, email delivery, production mutations, deployment or agency-content verification was performed. Production health returned `{ok:true}` only; deployed SHA remains unverified.
+
+
+Review hardening: the independent standards review identified loss of pending deletion callbacks when list filters or page navigation unmounted the editor; the spec review identified a 404 return path that incorrectly cleared drafts as though deletion had been confirmed. Management now stays mounted at the customer-workspace level, and unavailable records have a separate non-destructive return path. Added DOM regressions for delayed deletion across filter/navigation and 404 preservation, plus a real-browser remote-deletion/unsaved-material regression. These review fixes used tests after implementation, unlike the initial two test-first reproductions.
+
+The existing native-select keyboard agency test does not advance options under the local macOS headless Chromium build. A minimal standalone native `<select>` reproduces the same ArrowDown/Enter failure. The unchanged test remains enabled for Linux CI; local selectOption-based mismatch and fact-preservation behavior passed. This is not reported as a local keyboard pass.
+
+
+Final affected-flow local evidence: 12 distinct browser scenarios passed across the affected customer, conversation-confirmation, chat workflow, responsive and document journey suites. The final 4-scenario rerun included both new viewport journeys, remote-deletion draft preservation and the complete original standalone-document journey (4/4). The overflow assertion now waits for asynchronous responsive layout updates while retaining its original strict checks. Source-navigation keyboard selection remains the separately documented macOS limitation above. Standards and spec reviewers rechecked the deletion fixes and reported no remaining blocking findings; this was independent source review, not independent test execution.
+
+Synthetic mobile screenshots: [case management](design-evidence/experience-report/mobile-case-management.png), [document review](design-evidence/experience-report/mobile-document-review.png). No production data appears in these images.
+
+
+## 2026-10-10 — late-session responses and saved links (candidate)
+
+Continuation of PR #56 from `bafe693`. No database, backend auth deadline, provider, or model change.
+
+- Test-first failures: delayed old-cookie 401 caused a false signed-out state; a bare PDF URL followed by Chinese punctuation included the following prose in href. Both focused checks now pass.
+- Local syntax/build passed. Frontend **422/422 passed**. Backend remains **495/501** locally with the six previously identified Linux-font-dependent PDF failures; exact-candidate Linux CI is required before release.
+- **11/11 real-browser scenarios passed** across new clipboard/session/link coverage and existing chat resume, Markdown, historical continuity and source navigation. Real app authentication/HTTP/SQLite and authored synthetic content; provider transport, where present, is a controlled fixture, not a live-model claim. The 401 transport gate delays actual server denials rather than inventing successful authentication responses.
+- Ordinary clipboard paste did not reproduce the reported send-button anomaly. Keep this distinction from the reproducible session and link defects. Explicit URLs and unsafe-link protections remain covered.
+- User authorized merge/deployment after verification. Release must preserve existing private configuration, data and sessions through the established same-schema updater; production evidence will be linked from the PR after actual execution.
+
+
+The follow-up standards review found the reverse ordering: an explicit login already in flight could be superseded by a later old-request 401. A new failing test reproduced the wrong account state before the correction. Explicit login, verification and logout now hold an identity-transition guard; background recovery cannot replace them. Tests cover both orderings plus verify/logout, and the frontend aggregate was rerun at **422/422**.

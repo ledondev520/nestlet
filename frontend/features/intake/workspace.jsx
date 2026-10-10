@@ -1,3 +1,4 @@
+import { CaseReviewStatus } from '@/components/case-review-status';
 import { useEffect, useId, useRef, useState } from 'react';
 import { Upload, FileText, ArrowRight, RotateCcw, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -37,6 +38,7 @@ export function IntakeWorkspace({
   onOpenDocuments,
   active = true
 }) {
+  const filePicker=useRef(null);
   const activeRef = useRef(active); activeRef.current = active;
   // Fixed action names only. Observability is optional and never changes work.
   const activate = event => { try { journey?.activateStep(activeRef.current ? event : null); } catch {} };
@@ -739,7 +741,7 @@ export function IntakeWorkspace({
   return <section className="space-y-7 py-8" aria-labelledby={`${id}-title`}
     onFocusCapture={event => activate(event.target.closest('[data-journey-action]')?.dataset.journeyAction || null)}
     onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget)) activate(null); }}>
-    <header className="space-y-3"><div className="flex flex-wrap items-center justify-between gap-3"><h1 id={`${id}-title`} className="paper-title text-3xl font-bold tracking-tight">{words.title}</h1><Badge variant="outline">{base ? `${words.version} ${base.version}` : words.notSaved}</Badge></div><p className="whitespace-pre-line max-w-2xl text-sm leading-7 text-muted-foreground">{words.intro}</p></header>
+    <header className="space-y-3"><div className="flex flex-wrap items-center justify-between gap-3"><h1 id={`${id}-title`} className="paper-title text-3xl font-bold tracking-tight">{words.title}</h1><Badge variant="outline">{reading || (caseId && base?.id !== caseId) ? words.loading : base ? `${words.version} ${base.version}` : words.notSaved}</Badge></div><p className="whitespace-pre-line max-w-2xl text-sm leading-7 text-muted-foreground">{words.intro}</p></header>
     {error && <Alert variant="destructive"><AlertDescription className="whitespace-pre-line">{errorText(error, words)}</AlertDescription></Alert>}
     {notice && <Alert><Check className="size-4" aria-hidden="true" /><AlertDescription className="whitespace-pre-line">{words[notice] || notice}</AlertDescription></Alert>}
     {cacheStatus === 'unavailable' && <p role="status" className="whitespace-pre-line text-sm text-destructive">{words.cacheUnavailable}</p>}
@@ -753,7 +755,7 @@ export function IntakeWorkspace({
         ...previous,
         title: event.target.value
       }))} /></div>
-    <Card data-journey-action="input.file"><CardHeader><CardTitle className="flex items-center gap-2"><Upload className="size-4" aria-hidden="true" />{words.materialTitle}</CardTitle></CardHeader><CardContent className="space-y-5"><div className="rounded-lg border border-dashed border-input bg-background p-5"><Label htmlFor={`${id}-files`} className="mb-3 block">{words.chooseFiles}</Label><Input id={`${id}-files`} type="file" multiple accept=".txt,.csv,.pdf,.xlsx,.xls,.png,.jpg,.jpeg" disabled={blocked || Boolean(workbook)} aria-describedby={`${id}-formats`} onChange={event => {
+    <Card data-journey-action="input.file"><CardHeader><CardTitle className="flex items-center gap-2"><Upload className="size-4" aria-hidden="true" />{words.materialTitle}</CardTitle></CardHeader><CardContent className="space-y-5"><div className="rounded-lg border border-dashed border-input bg-background p-5"><Label htmlFor={`${id}-files`} className="mb-3 block">{words.chooseFiles}</Label><Button type="button" variant="outline" disabled={blocked || Boolean(workbook)} aria-describedby={`${id}-formats`} onClick={()=>filePicker.current?.click()}>{words.chooseFiles}</Button><Input ref={filePicker} className="hidden" tabIndex={-1} id={`${id}-files`} type="file" multiple accept=".txt,.csv,.pdf,.xlsx,.xls,.png,.jpg,.jpeg" disabled={blocked || Boolean(workbook)} aria-describedby={`${id}-formats`} onChange={event => {
             addFiles(event.target.files);
             event.target.value = '';
           }} /><p id={`${id}-formats`} className="whitespace-pre-line mt-3 text-xs text-muted-foreground">{words.formats}</p></div>
@@ -786,6 +788,7 @@ export function IntakeWorkspace({
               confirmed: checked === true
             })} /><Label htmlFor={`${id}-${field.key}-confirm`} className="text-sm leading-6">{words.confirm}</Label></div>}</div>)}</CardContent></Card>
     {assets.length > 0 && <Card><CardHeader><CardTitle className="flex items-center gap-2"><FileText className="size-4" aria-hidden="true" />{words.assets}</CardTitle></CardHeader><CardContent><ul className="space-y-3">{assets.map(asset => <li key={asset.id} className="flex flex-wrap items-center justify-between gap-2 border-b pb-3 text-sm last:border-0"><span className="min-w-0 break-all">{asset.originalFilename}</span><div className="flex gap-3"><a className="text-accent-foreground underline underline-offset-4" href={`/api/assets/${asset.id}/preview`} target="_blank" rel="noopener noreferrer">{words.preview}</a><a className="text-accent-foreground underline underline-offset-4" href={`/api/assets/${asset.id}/download`}>{words.download}</a></div></li>)}</ul>{base && assets.some(asset => !asset.caseId) && <Button className="mt-4" variant="outline" disabled={blocked} onClick={retryLinks}>{words.archiveLink}</Button>}</CardContent></Card>}
-    <footer data-journey-action="case.save" className="space-y-3 rounded-xl border bg-card p-5">{hasLegacyChange && <p className="whitespace-pre-line text-sm leading-6 text-muted-foreground">{words.draftNotice}</p>}<div className="flex flex-wrap items-center justify-between gap-3"><p className="whitespace-pre-line text-xs text-muted-foreground" role="status">{localDirty ? words.unsaved : base ? words.caseSaved : words.notSaved}</p><div className="flex flex-wrap gap-2"><Button variant="outline" disabled={blocked || conflict || sourceTooLong} onClick={() => saveCase(false)}>{phase === 'saving' ? words.saving : words.save}</Button><Button disabled={blocked || conflict || sourceTooLong || Boolean(workbook) || queue.some(item => item.file)} onClick={() => localDirty || !base ? saveCase(true) : onOpenDocuments?.(base.id)}>{localDirty || !base ? words.saveDocuments : words.documents}<ArrowRight aria-hidden="true" /></Button></div></div></footer>
+    {base && base.id===caseId && !reading && <CaseReviewStatus record={base} lang={lang}/>}
+    <footer data-journey-action="case.save" className="space-y-3 rounded-xl border bg-card p-5">{hasLegacyChange && <p className="whitespace-pre-line text-sm leading-6 text-muted-foreground">{words.draftNotice}</p>}<div className="flex flex-wrap items-center justify-between gap-3"><p className="whitespace-pre-line text-xs text-muted-foreground" role="status">{reading || (caseId && base?.id !== caseId) ? words.loading : localDirty ? words.unsaved : base ? words.caseSaved : words.notSaved}</p><div className="flex flex-wrap gap-2"><Button variant="outline" disabled={blocked || conflict || sourceTooLong} onClick={() => saveCase(false)}>{phase === 'saving' ? words.saving : words.save}</Button><Button disabled={blocked || conflict || sourceTooLong || Boolean(workbook) || queue.some(item => item.file)} onClick={() => localDirty || !base ? saveCase(true) : onOpenDocuments?.(base.id)}>{localDirty || !base ? words.saveDocuments : words.documents}<ArrowRight aria-hidden="true" /></Button></div></div></footer>
   </section>;
 }

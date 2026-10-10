@@ -11,7 +11,8 @@ export class ApiError extends Error {
 }
 
 export function createApiClient({ fetchImpl = (...args) => fetch(...args), getCsrfToken = () => '', onUnauthorized = () => {}, onMutation = () => {}, getJourney = () => null } = {}) {
-  async function request(path, { method = 'GET', body, signal, rawBody, contentType, filename, assetConsent, documentConsent, telemetry } = {}) {
+  async function request(path, options = {}, recoveryAttempted = false) {
+    const { method = 'GET', body, signal, rawBody, contentType, filename, assetConsent, documentConsent, telemetry } = options;
     if (typeof path !== 'string' || !path.startsWith('/api/') || path.includes('\\') || /[\r\n]/.test(path)) {
       throw new ApiError('INVALID_API_PATH');
     }
@@ -64,7 +65,16 @@ export function createApiClient({ fetchImpl = (...args) => fetch(...args), getCs
     if (!response.ok) {
       // A delayed old-account request must not log out a newer session.
       const rejectedBindingPassword = path === '/api/auth/email/bind' && data?.code === 'INVALID_CREDENTIALS';
-      if (response.status === 401 && !path.startsWith('/api/login') && !rejectedBindingPassword && requestCsrf === getCsrfToken()) onUnauthorized();
+      if (response.status === 401 && !path.startsWith('/api/login') && !rejectedBindingPassword && requestCsrf === getCsrfToken()) {
+        const verified = await onUnauthorized({path, method, recoveryAttempted});
+        if(signal?.aborted)throw new DOMException('Aborted', 'AbortError');
+        if (!recoveryAttempted && verified?.sameUser === true && verified.csrfToken === getCsrfToken()) {
+          // Only repeat a read, once, after the session owner verifies identity.
+          // A write may require user review and is never automatically replayed.
+          if (['GET','HEAD'].includes(method)) return request(path, options, true);
+          throw new ApiError('SESSION_REFRESHED', 409);
+        }
+      }
       // Never render arbitrary backend exception text as interface copy.
       throw new ApiError(typeof data?.code === 'string' ? data.code : 'REQUEST_FAILED', response.status, data?.details);
     }

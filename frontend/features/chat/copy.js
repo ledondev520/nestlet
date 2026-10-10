@@ -68,6 +68,7 @@ export const chatCopy = {
     "serviceExpired": "助手服务已到期，请联系所有者。\n已有资料仍可查看和导出。",
     "quota": "本时段使用次数已达上限，请稍后再试。",
     "sensitive": "疑似含敏感身份信息。\n请删除或去除身份信息后再发送。",
+    "inputSensitive": "消息被拦截，未保存为对话。\n请移除敏感号码后再发送。",
     "streamError": "回复中断，请重试。",
     "saveError": "未能确认回复保存，请复制保留后重试。",
     "duplicate": "这个问题已提交，请刷新对话。\n如需再问，请重新点击发送。",
@@ -185,6 +186,7 @@ export const chatCopy = {
     "serviceExpired": "AI service has expired. Existing records and exports remain available; contact the owner.",
     "quota": "The usage limit for this period has been reached. Try again later.",
     "sensitive": "Possible sensitive identifiers were detected. Remove or de-identify them before sending.",
+    "inputSensitive": "Message blocked and not saved to the conversation. Remove sensitive identifiers before sending again.",
     "streamError": "The reply was interrupted. Try again.",
     "saveError": "Could not confirm the saved reply. Copy it before retrying.",
     "duplicate": "This question was already submitted. Reload the conversation; a new send must be an explicit action.",
@@ -241,10 +243,10 @@ const errorKeys = {
   LIBRARY_SENSITIVE_DATA:'librarySensitive', LIBRARY_RESULT_LIMIT:'libraryLimit', LIBRARY_TOOL_LIMIT:'libraryLimit',
   LIBRARY_ABORTED:'libraryStopped', LIBRARY_TIMEOUT:'libraryStopped', LIBRARY_UNVERIFIED_CITATION:'libraryCitation',
   CHAT_EMPTY:'emptyError', CHAT_TOO_LARGE:'tooLarge', INPUT_TOO_LARGE:'tooLarge', CHAT_IMAGE_INVALID:'imageError', CHAT_IMAGE_UNSUPPORTED:'imageError', CHAT_IMAGE_BUSY:'imageBusy',
-  AUTH_REQUIRED:'authError', CSRF_REJECTED:'csrfError', SESSION_REFRESH_FAILED:'sessionRefreshError', OPERATOR_SETUP_REQUIRED:'unavailable', HTTPS_REQUIRED:'secureConnectionError', ORIGIN_REJECTED:'secureConnectionError',
+  AUTH_REQUIRED:'authError', CSRF_REJECTED:'csrfError', SESSION_REFRESHED:'connectionRefreshed', SESSION_REFRESH_FAILED:'sessionRefreshError', OPERATOR_SETUP_REQUIRED:'unavailable', HTTPS_REQUIRED:'secureConnectionError', ORIGIN_REJECTED:'secureConnectionError',
   LIVE_DISABLED:'unavailable', API_KEY_REQUIRED:'unavailable', CASE_INVALID:'storageError', CONVERSATION_INVALID:'storageError', INVALID_RESPONSE:'storageError',
   CASE_SAVE_UNCERTAIN:'caseSaveUncertain', CASE_CONFLICT:'conflict', CASE_NOT_FOUND:'notFound', CONVERSATION_NOT_FOUND:'notFound', BUSY:'busy', CHAT_CONVERSATION_BUSY:'busy',
-  SERVICE_REFRESH_FAILED:'serviceRefreshFailed', SERVICE_PAUSED:'servicePaused', SERVICE_EXPIRED:'serviceExpired', TRIAL_LIMIT_REACHED:'quota', SENSITIVE_DATA:'sensitive', CHAT_PROVIDER_FAILED:'streamError', CHAT_STREAM_FAILED:'streamError', CHAT_INCOMPLETE:'streamError', CHAT_UNSUPPORTED_OUTPUT:'streamError',
+  SERVICE_REFRESH_FAILED:'serviceRefreshFailed', SERVICE_PAUSED:'servicePaused', SERVICE_EXPIRED:'serviceExpired', TRIAL_LIMIT_REACHED:'quota', CHAT_INPUT_SENSITIVE:'inputSensitive', SENSITIVE_DATA:'sensitive', CHAT_PROVIDER_FAILED:'streamError', CHAT_STREAM_FAILED:'streamError', CHAT_INCOMPLETE:'streamError', CHAT_UNSUPPORTED_OUTPUT:'streamError',
   CHAT_SAVE_FAILED:'saveError', CHAT_TURN_EXISTS:'duplicate', CAPACITY_REACHED:'capacity', CASE_LIMIT_REACHED:'capacity', NETWORK_ERROR:'network'
 };
 export function chatErrorText(error, lang='zh') { if(['CONVERSATION_ACTION_INVALID','CONVERSATION_ACTION_SOURCE_NOT_FOUND','CONVERSATION_ACTION_SOURCE_INCOMPLETE','DOCUMENT_ENGLISH_REQUIRED'].includes(error?.code))return conversationActionError(error,lang); const words=chatCopy[lang] || chatCopy.zh; return words[errorKeys[error?.code] || 'generic']; }

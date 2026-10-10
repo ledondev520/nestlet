@@ -40,7 +40,7 @@ export const copy = {
       CASE_NOT_FOUND: '这条事项不存在，或当前账号无权访问。',
       CASE_LIMIT_REACHED: '本账号已有100个事项，已达上限。\n请先整理已有事项。',
       CAPACITY_REACHED: '本账号保存空间已满。\n请先整理已有记录。',
-      AUTH_REQUIRED: '登录已失效，请重新登录。',
+      SESSION_REFRESHED:'连接已恢复，操作未自动重试。\n请核对后再试。', AUTH_REQUIRED: '登录已失效，请重新登录。',
       CSRF_REJECTED: '登录状态已变化，请刷新页面后重试。',
       NETWORK_ERROR: '暂时无法连接。请检查网络后重试。',
       generic: "操作失败，请重试。"
@@ -87,7 +87,7 @@ export const copy = {
       CASE_NOT_FOUND: 'This case does not exist or is not available to this account.',
       CASE_LIMIT_REACHED: 'Your account has reached its 100-case limit. Review existing cases first.',
       CAPACITY_REACHED: 'Your account has reached its storage limit. Review existing records first.',
-      AUTH_REQUIRED: 'Your session has expired. Please sign in again.',
+      SESSION_REFRESHED:'Connection restored. Your action was not retried. Review and try again.', AUTH_REQUIRED: 'Your session has expired. Please sign in again.',
       CSRF_REJECTED: 'Your session has changed. Refresh the page and try again.',
       NETWORK_ERROR: 'Cannot connect right now. Check your connection and try again.',
       generic: "The action failed. Try again."
