@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { remarkReadableLinks } from './remark-readable-links.js';
 import { withinMarkdownBudget } from './markdown-budget.js';
 import './assistant-markdown.css';
 
@@ -9,7 +10,7 @@ import './assistant-markdown.css';
 const elements = ['p', 'br', 'strong', 'em', 'del', 'blockquote', 'ul', 'ol', 'li',
   'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hr', 'pre', 'code', 'a', 'img',
   'table', 'thead', 'tbody', 'tr', 'th', 'td', 'input'];
-const plugins = [remarkGfm];
+const plugins = [remarkGfm, remarkReadableLinks];
 
 export function safeMarkdownUrl(value) {
   if (!value || /[\u0000-\u0020\u007f\\]/u.test(value)) return '';

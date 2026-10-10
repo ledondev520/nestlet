@@ -854,3 +854,14 @@ The existing native-select keyboard agency test does not advance options under t
 Final affected-flow local evidence: 12 distinct browser scenarios passed across the affected customer, conversation-confirmation, chat workflow, responsive and document journey suites. The final 4-scenario rerun included both new viewport journeys, remote-deletion draft preservation and the complete original standalone-document journey (4/4). The overflow assertion now waits for asynchronous responsive layout updates while retaining its original strict checks. Source-navigation keyboard selection remains the separately documented macOS limitation above. Standards and spec reviewers rechecked the deletion fixes and reported no remaining blocking findings; this was independent source review, not independent test execution.
 
 Synthetic mobile screenshots: [case management](design-evidence/experience-report/mobile-case-management.png), [document review](design-evidence/experience-report/mobile-document-review.png). No production data appears in these images.
+
+
+## 2026-10-10 — late-session responses and saved links (candidate)
+
+Continuation of PR #56 from `bafe693`. No database, backend auth deadline, provider, or model change.
+
+- Test-first failures: delayed old-cookie 401 caused a false signed-out state; a bare PDF URL followed by Chinese punctuation included the following prose in href. Both focused checks now pass.
+- Local syntax/build passed. Frontend **419/419 passed**. Backend remains **495/501** locally with the six previously identified Linux-font-dependent PDF failures; exact-candidate Linux CI is required before release.
+- **11/11 real-browser scenarios passed** across new clipboard/session/link coverage and existing chat resume, Markdown, historical continuity and source navigation. Real app authentication/HTTP/SQLite and authored synthetic content; provider transport, where present, is a controlled fixture, not a live-model claim. The 401 transport gate delays actual server denials rather than inventing successful authentication responses.
+- Ordinary clipboard paste did not reproduce the reported send-button anomaly. Keep this distinction from the reproducible session and link defects. Explicit URLs and unsafe-link protections remain covered.
+- User authorized merge/deployment after verification. Release must preserve existing private configuration, data and sessions through the established same-schema updater; production evidence will be linked from the PR after actual execution.

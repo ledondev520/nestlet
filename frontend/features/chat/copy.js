@@ -243,7 +243,7 @@ const errorKeys = {
   LIBRARY_SENSITIVE_DATA:'librarySensitive', LIBRARY_RESULT_LIMIT:'libraryLimit', LIBRARY_TOOL_LIMIT:'libraryLimit',
   LIBRARY_ABORTED:'libraryStopped', LIBRARY_TIMEOUT:'libraryStopped', LIBRARY_UNVERIFIED_CITATION:'libraryCitation',
   CHAT_EMPTY:'emptyError', CHAT_TOO_LARGE:'tooLarge', INPUT_TOO_LARGE:'tooLarge', CHAT_IMAGE_INVALID:'imageError', CHAT_IMAGE_UNSUPPORTED:'imageError', CHAT_IMAGE_BUSY:'imageBusy',
-  AUTH_REQUIRED:'authError', CSRF_REJECTED:'csrfError', SESSION_REFRESH_FAILED:'sessionRefreshError', OPERATOR_SETUP_REQUIRED:'unavailable', HTTPS_REQUIRED:'secureConnectionError', ORIGIN_REJECTED:'secureConnectionError',
+  AUTH_REQUIRED:'authError', CSRF_REJECTED:'csrfError', SESSION_REFRESHED:'connectionRefreshed', SESSION_REFRESH_FAILED:'sessionRefreshError', OPERATOR_SETUP_REQUIRED:'unavailable', HTTPS_REQUIRED:'secureConnectionError', ORIGIN_REJECTED:'secureConnectionError',
   LIVE_DISABLED:'unavailable', API_KEY_REQUIRED:'unavailable', CASE_INVALID:'storageError', CONVERSATION_INVALID:'storageError', INVALID_RESPONSE:'storageError',
   CASE_SAVE_UNCERTAIN:'caseSaveUncertain', CASE_CONFLICT:'conflict', CASE_NOT_FOUND:'notFound', CONVERSATION_NOT_FOUND:'notFound', BUSY:'busy', CHAT_CONVERSATION_BUSY:'busy',
   SERVICE_REFRESH_FAILED:'serviceRefreshFailed', SERVICE_PAUSED:'servicePaused', SERVICE_EXPIRED:'serviceExpired', TRIAL_LIMIT_REACHED:'quota', CHAT_INPUT_SENSITIVE:'inputSensitive', SENSITIVE_DATA:'sensitive', CHAT_PROVIDER_FAILED:'streamError', CHAT_STREAM_FAILED:'streamError', CHAT_INCOMPLETE:'streamError', CHAT_UNSUPPORTED_OUTPUT:'streamError',

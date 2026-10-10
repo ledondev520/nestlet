@@ -112,3 +112,12 @@ test('read-model invalidation publishes only acknowledged current-session writes
   reply={ok:false,status:409,json:async()=>({code:'CASE_CONFLICT'})};request=api.put('/api/cases/id',{});release();await assert.rejects(request);assert.equal(events.length,1);
   reply={ok:true,json:async()=>{throw Error('invalid');}};request=api.post('/api/cases',{});release();await assert.rejects(request);assert.equal(events.length,1);
 });
+
+test('cancelling a read while identity is checked never starts a recovered retry',async()=>{
+ let release,calls=0;
+ const controller=new AbortController();
+ const api=createApiClient({getCsrfToken:()=> 'synthetic-csrf',onUnauthorized:()=>new Promise(done=>release=()=>done({sameUser:true,csrfToken:'synthetic-csrf'})),fetchImpl:async()=>{calls++;return {ok:false,status:401,json:async()=>({code:'AUTH_REQUIRED'})};}});
+ const pending=api.get('/api/cases',{signal:controller.signal});
+ while(!release)await new Promise(done=>setTimeout(done,0));controller.abort();release();
+ await assert.rejects(pending,{name:'AbortError'});assert.equal(calls,1);
+});

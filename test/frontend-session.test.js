@@ -203,3 +203,78 @@ test('abandoning registration verification cannot install a late session respons
   await act(async () => { finish(response({ verified: true, authenticated: true, userId: 'abandoned', role: 'trial', csrfToken: 'new-csrf' })); assert.equal((await request).name, 'AbortError'); });
   assert.equal(app.session.status.authenticated, false);
 });
+
+test('a delayed old-cookie 401 rechecks the current cookie before interrupting the same account',async context=>{
+  const userId='11111111-1111-4111-8111-111111111111',key={userId,workspaceKey:'33333333-3333-4333-8333-333333333333',feature:'chat'};
+  let account={authenticated:true,userId,username:'synthetic-user',csrfToken:'old-synthetic-csrf'},release,reads=0,statusReads=0;
+  const app=await setup(async path=>{
+    if(path==='/api/status'){statusReads++;return response(account);}
+    if(path==='/api/conversations/synthetic'){
+      if(++reads===1)return new Promise(resolve=>{release=()=>resolve(response({code:'AUTH_REQUIRED'},401));});
+      return response({messages:[]});
+    }
+    throw new Error('Unexpected request');
+  });context.after(app.close);
+  assert.equal(draftVault.write(key,{input:'Preserve synthetic pending question'}),true);
+  let pending;await act(async()=>{pending=app.session.api.get('/api/conversations/synthetic').catch(error=>error);});
+  // Another tab renewed the same browser cookie; this tab still holds the old CSRF.
+  account={...account,csrfToken:'new-synthetic-csrf'};
+  let result;await act(async()=>{release();result=await pending;});
+  assert.deepEqual(result,{messages:[]});assert.equal(app.session.status.authenticated,true);
+  assert.equal(app.session.status.csrfToken,'new-synthetic-csrf');assert.equal(statusReads,2);assert.equal(reads,2);
+  assert.deepEqual(draftVault.read(key),{input:'Preserve synthetic pending question'});
+});
+
+test('same-account session recovery does not replay a rejected write',async context=>{
+ let token='old-csrf',writes=0;
+ const app=await setup(async path=>{
+  if(path==='/api/status')return response({authenticated:true,userId:'same-user',csrfToken:token});
+  writes++;token='new-csrf';return response({code:'AUTH_REQUIRED'},401);
+ });context.after(app.close);
+ await act(async()=>{await assert.rejects(app.session.api.post('/api/clients',{displayName:'Synthetic'}),{code:'SESSION_REFRESHED',status:409});});
+ assert.equal(writes,1);assert.equal(app.session.status.authenticated,true);assert.equal(app.session.status.csrfToken,'new-csrf');
+});
+
+for(const mode of ['expired','other-user','offline'])test(`401 recovery ${mode} never retries the old account read`,async context=>{
+ let statusReads=0,reads=0;
+ const app=await setup(async path=>{
+  if(path==='/api/status'){
+   if(++statusReads>1){if(mode==='offline')throw new Error('Synthetic offline status');if(mode==='expired')return response(signedOut);return response({authenticated:true,userId:'other-user',csrfToken:'other-csrf'});}
+   return response({authenticated:true,userId:'first-user',csrfToken:'first-csrf'});
+  }
+  reads++;return response({code:'AUTH_REQUIRED'},401);
+ });context.after(app.close);
+ await act(async()=>{await assert.rejects(app.session.api.get('/api/cases'),{code:'AUTH_REQUIRED'});});
+ assert.equal(reads,1);assert.equal(app.session.status.authenticated,mode==='other-user');
+ if(mode==='other-user')assert.equal(app.session.status.userId,'other-user');
+});
+
+test('concurrent stale-cookie reads share one verification and retry at most once',async context=>{
+ let statusReads=0,release;const counts={};
+ const app=await setup(async path=>{
+  if(path==='/api/status'){
+   if(++statusReads===1)return response({authenticated:true,userId:'same-user',csrfToken:'old-csrf'});
+   return new Promise(resolve=>release=()=>resolve(response({authenticated:true,userId:'same-user',csrfToken:'new-csrf'})));
+  }
+  counts[path]=(counts[path]||0)+1;return counts[path]===1?response({code:'AUTH_REQUIRED'},401):response({ok:true});
+ });context.after(app.close);
+ let one,two;await act(async()=>{one=app.session.api.get('/api/cases');two=app.session.api.get('/api/clients');});
+ await act(async()=>{release();await Promise.all([one,two]);});
+ assert.equal(statusReads,2);assert.deepEqual(counts,{'/api/cases':2,'/api/clients':2});
+});
+
+test('an old-cookie verification cannot replace a newer explicit login',async context=>{
+ let account={authenticated:true,userId:'first-user',csrfToken:'first-csrf'},statusReads=0,release,reads=0;
+ const app=await setup(async path=>{
+  if(path==='/api/status'){
+   if(++statusReads===2)return new Promise(done=>release=()=>done(response({authenticated:true,userId:'first-user',csrfToken:'late-csrf'})));
+   return response(account);
+  }
+  if(path==='/api/login'){account={authenticated:true,userId:'new-user',csrfToken:'new-csrf'};return response(account);}
+  reads++;return response({code:'AUTH_REQUIRED'},401);
+ });context.after(app.close);
+ let pending;await act(async()=>{pending=app.session.api.get('/api/cases').catch(error=>error);});
+ await act(async()=>app.session.login({username:'synthetic-other',password:'synthetic-only'}));
+ await act(async()=>{release();await pending;});
+ assert.equal(app.session.status.userId,'new-user');assert.equal(app.session.status.csrfToken,'new-csrf');assert.equal(reads,1);
+});

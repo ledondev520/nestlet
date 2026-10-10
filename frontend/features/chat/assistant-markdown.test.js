@@ -79,3 +79,21 @@ test('streaming across length and delimiter limits keeps every character and saf
   }
   assert.equal(render('**Finished**').querySelector('strong').textContent,'Finished');
 });
+
+test('bare official links beside Chinese sentence punctuation retain their exact destination in saved replies',()=>{
+  const content='资料：https://sfha.org/files/documents/52517ENG.pdf。下一步请核对。';
+  const doc=render(content,{lang:'zh'});
+  assert.equal(doc.querySelector('a')?.getAttribute('href'),'https://sfha.org/files/documents/52517ENG.pdf');
+  assert.equal(doc.querySelector('.assistant-markdown').textContent,content);
+});
+
+test('Chinese link separators preserve prose while explicit destinations, encoded punctuation and code remain literal',()=>{
+ for(const suffix of ['，继续核对','（机构网站）','；请核对','！请核对','、再看资料']){
+  const content=`https://example.invalid/forms.pdf${suffix}`,doc=render(content);
+  assert.equal(doc.querySelector('a').getAttribute('href'),'https://example.invalid/forms.pdf');assert.equal(doc.querySelector('.assistant-markdown').textContent,content);
+ }
+ for(const content of ['[Explicit](https://example.invalid/表格。pdf)','<https://example.invalid/表格。pdf>','https://example.invalid/%E3%80%82.pdf']){
+  assert.ok(decodeURI(render(content).querySelector('a').getAttribute('href')).includes(content.includes('%E3')?'。.pdf':'。pdf'),content);
+ }
+ const code=render('`https://example.invalid/。`\n\n```text\nhttps://example.invalid/。\n```');assert.equal(code.querySelectorAll('a').length,0);
+});

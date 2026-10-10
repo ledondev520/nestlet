@@ -371,13 +371,13 @@ test('expired tab CSRF is refreshed without another login or an automatic chat r
 });
 
 test('a received unsaved reply survives verified same-user reauthentication without replaying the turn',async context=>{
- const caseId=randomUUID(),conversationId=randomUUID(),userId=randomUUID(),requestId=randomUUID();let sent=false,expire=true,clientMessageId;
+ const caseId=randomUUID(),conversationId=randomUUID(),userId=randomUUID(),requestId=randomUUID();let sent=false,expire=true,authenticated=true,clientMessageId;
  const frame=(name,value)=>`event: ${name}\ndata: ${JSON.stringify(value)}\n\n`;
- const app=await mount({caseId,fetchHandler:async(path,options)=>{
+ const app=await mount({caseId,statusHandler:()=>response(authenticated?identity:{authenticated:false,authConfigured:true}),fetchHandler:async(path,options)=>{
   if(path===`/api/cases/${caseId}`)return response({case:{id:caseId,title:'Synthetic resume case'}});
   if(path===`/api/cases/${caseId}/conversations`)return response({conversations:[{id:conversationId,caseId,title:'Synthetic resume thread'}]});
   if(path===`/api/conversations/${conversationId}`){
-   if(sent&&expire){expire=false;return response({code:'AUTH_REQUIRED'},401);}
+   if(sent&&expire){expire=false;authenticated=false;return response({code:'AUTH_REQUIRED'},401);}
    return response({conversation:{id:conversationId,caseId},messages:sent?[{id:userId,clientMessageId,requestId,role:'user',content:'Keep this synthetic question',state:'complete'}]:[]});
   }
   if(path==='/api/chat'){sent=true;clientMessageId=JSON.parse(options.body).clientMessageId;return new Response(frame('conversation',{conversationId,userMessageId:userId})+frame('delta',{text:'Unsaved synthetic answer worth keeping.'})+frame('error',{code:'CHAT_SAVE_FAILED',requestId}),{headers:{'Content-Type':'text/event-stream','X-Request-Id':requestId}});}
@@ -385,7 +385,7 @@ test('a received unsaved reply survives verified same-user reauthentication with
  }});context.after(app.close);
  await app.flush();await app.type('Keep this synthetic question');await app.click(app.button('Send'));await app.flush();
  assert.equal(app.dom.window.document.querySelector('textarea'),null,'An actual unauthorized history read shows sign-in, not an extended session');
- await app.setStatus(identity);await app.flush();await app.flush();
+ authenticated=true;await app.setStatus(identity);await app.flush();await app.flush();
  assert.match(app.dom.window.document.body.textContent,/Unsaved synthetic answer worth keeping/);
  assert.match(app.dom.window.document.body.textContent,/Not confirmed saved|not yet confirmed saved|Save not confirmed/i);
  assert.equal(app.requests.filter(item=>item.path==='/api/chat').length,1,'Reauthentication must never repeat provider work');

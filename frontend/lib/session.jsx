@@ -15,7 +15,7 @@ export function SessionProvider({ children }) {
   const [dataRevision, setDataRevision] = useState(0);
   const statusRef = useRef(emptySession);
   const journey = useMemo(() => createJourneyTelemetry({ getSession: () => statusRef.current }), []);
-  const generation = useRef(0);
+  const generation = useRef(0), apiRef = useRef(null), recoveryRead = useRef(null);
   const update = useCallback(next => {
     if (next.authenticated && typeof next.userId === 'string' && next.userId) {
       const resumed = draftVault.verifyUser(next.userId);
@@ -36,12 +36,35 @@ export function SessionProvider({ children }) {
     const capabilities = Object.fromEntries(['authConfigured', 'secureLogin', 'registrationEnabled', 'emailDeliveryConfigured'].filter(key => Object.hasOwn(previous, key)).map(key => [key, previous[key]]));
     update({ ...emptySession, ...capabilities });
   }, [update]);
+  const reconcileUnauthorized = useCallback(({path, recoveryAttempted}) => {
+    const previous=statusRef.current;
+    if(!previous.authenticated || path==='/api/status' || path==='/api/logout' || recoveryAttempted){expire();return null;}
+    const pending=recoveryRead.current;
+    if(pending && pending.generation===generation.current && pending.userId===previous.userId && pending.csrfToken===previous.csrfToken)return pending.promise;
+    const operation={generation:++generation.current,userId:previous.userId,csrfToken:previous.csrfToken};
+    recoveryRead.current=operation;
+    const current=()=>generation.current===operation.generation && statusRef.current.userId===previous.userId && statusRef.current.csrfToken===previous.csrfToken;
+    operation.promise=(async()=>{
+      try{
+        const next=await apiRef.current.get('/api/status',{signal:AbortSignal.timeout(15000),telemetry:false});
+        if(!current())return null;
+        if(!next.authenticated || typeof next.userId!=='string' || !next.userId || typeof next.csrfToken!=='string' || !next.csrfToken){expire();return null;}
+        update(next);setError(null);
+        // Another verified account replaces private state but cannot authorize
+        // a retry of the previous account's request.
+        return next.userId===previous.userId?{sameUser:true,csrfToken:next.csrfToken}:null;
+      }catch(failure){if(current()){expire();setError(failure);}return null;}
+      finally{if(recoveryRead.current===operation)recoveryRead.current=null;}
+    })();
+    return operation.promise;
+  },[expire,update]);
   const api = useMemo(() => createApiClient({
     getCsrfToken: () => statusRef.current.csrfToken || '',
-    onUnauthorized: expire,
+    onUnauthorized: reconcileUnauthorized,
     onMutation: ({ path }) => { if (/^\/api\/(cases|clients|assets|artifacts|conversations)(?:\/|$|\?)/u.test(path)) setDataRevision(value => value + 1); },
     getJourney: () => journey
-  }), [expire, journey]);
+  }), [reconcileUnauthorized, journey]);
+  apiRef.current=api;
 
   const refresh = useCallback(async ({ signal } = {}) => {
     const current = ++generation.current;
